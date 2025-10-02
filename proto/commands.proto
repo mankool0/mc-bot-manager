@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+
+// Command messages (Manager -> Client)
+// Each command is a separate message type for clarity
+
+// Tell client to connect to a server
+message ConnectToServerCommand {
+  string server_address = 1;    // IP:port to connect to
+}
+
+// Tell client to disconnect from current server
+message DisconnectCommand {
+  string reason = 1;            // Optional disconnect reason
+}
+
+// Send a chat message or command
+message SendChatCommand {
+  string message = 1;           // Chat message or command (e.g., "/help")
+}
+
+// Movement commands
+message MoveToCommand {
+  Vec3d target_position = 1;
+}
+
+message LookAtCommand {
+  oneof target {
+    Vec3d position = 1;
+    int32 entity_id = 2;
+  }
+}
+
+message SetRotationCommand {
+  float yaw = 1;
+  float pitch = 2;
+}
+
+// Item/hotbar commands
+message SwitchHotbarSlotCommand {
+  int32 slot = 1;              // Target slot (0-8)
+}
+
+message UseItemCommand {
+  Hand hand = 1;               // Which hand to use
+}
+
+message DropItemCommand {
+  bool drop_all = 1;           // Drop entire stack vs single item
+}
+
+// Tell client to shut down the process
+message ShutdownCommand {
+  string reason = 1;           // Optional reason for shutdown
+}
+
+// Response to any command (Client -> Manager)
+message CommandResponse {
+  enum Status {
+    SUCCESS = 0;
+    FAILED = 1;
+    IN_PROGRESS = 2;
+    CANCELLED = 3;
+  }
+
+  string command_id = 1;        // ID of the command being responded to
+  Status status = 2;
+  string message = 3;           // Error message or status description
+}

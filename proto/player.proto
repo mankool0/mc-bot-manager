@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+
+// Player-related messages
+
+// Player state update (Client -> Manager)
+// Data from LocalPlayer.java
+message PlayerStateUpdate {
+  // Player identification
+  string uuid = 1;
+  string name = 2;
+
+  // Position and rotation (from LocalPlayer.sendPosition() at LocalPlayer.java:242-280)
+  Vec3d position = 3;           // Use double precision like Minecraft
+  Vec3d velocity = 4;           // From Entity.getDeltaMovement()
+  float yaw = 5;                // Y rotation (from LocalPlayer.yRotLast)
+  float pitch = 6;              // X rotation (from LocalPlayer.xRotLast)
+  bool on_ground = 7;           // From LocalPlayer.onGround()
+
+  // Health and hunger
+  float health = 8;             // From LivingEntity.getHealth()
+  int32 food_level = 9;         // From Player.getFoodData().getFoodLevel() - hunger bars (0-20)
+  float saturation = 10;        // From Player.getFoodData().getSaturationLevel() - 0-20
+  int32 air = 11;               // From LivingEntity.getAirSupply() - 0-300 ticks underwater
+
+  // Experience
+  int32 experience_level = 12;  // From Player.experienceLevel
+  float experience_progress = 13;  // From Player.experienceProgress - 0-1
+  int32 total_experience = 14;  // From Player.totalExperience
+
+  // Status flags
+  bool sprinting = 15;          // From LivingEntity.isSprinting()
+  bool crouching = 16;          // From LocalPlayer.crouching field
+  bool swimming = 17;           // From LivingEntity.isSwimming()
+  bool flying = 18;             // From Player.getAbilities().flying
+  bool burning = 19;            // From Entity.isOnFire()
+
+  // Combat
+  float absorption = 20;        // From LivingEntity.getAbsorptionAmount() - golden hearts
+
+  // World info
+  string dimension = 21;        // From Player.level().dimension().toString()
+}

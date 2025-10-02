@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+import "connection.proto";
+import "player.proto";
+import "chat.proto";
+import "commands.proto";
+import "inventory.proto";
+
+// Main protocol definition that ties everything together
+
+// Client -> Manager messages
+message ClientToManagerMessage {
+  // Message identification
+  string message_id = 1;        // Unique ID for tracking
+  int64 timestamp = 2;          // Unix timestamp in milliseconds
+
+  oneof payload {
+    // Connection & status messages
+    ConnectionInfo connection_info = 3;
+    ServerConnectionStatus server_status = 5;
+
+    // Player updates
+    PlayerStateUpdate player_state = 6;
+
+    // Inventory updates
+    InventoryUpdate inventory = 7;
+
+    // Chat messages from game
+    ChatMessage chat = 8;
+
+    // Command responses
+    CommandResponse command_response = 9;
+  }
+}
+
+// Manager -> Client commands
+message ManagerToClientMessage {
+  // Message identification
+  string message_id = 1;        // Unique ID for tracking
+  int64 timestamp = 2;          // Unix timestamp in milliseconds
+
+  oneof payload {
+    // Server commands
+    ConnectToServerCommand connect_server = 4;
+    DisconnectCommand disconnect = 5;
+
+    // Chat/communication
+    SendChatCommand send_chat = 6;
+
+    // Movement/actions
+    MoveToCommand move_to = 7;
+    LookAtCommand look_at = 8;
+    SetRotationCommand set_rotation = 9;
+
+    // Inventory
+    SwitchHotbarSlotCommand switch_hotbar = 10;
+    UseItemCommand use_item = 11;
+    DropItemCommand drop_item = 12;
+
+    // Process control
+    ShutdownCommand shutdown = 13;
+  }
+}

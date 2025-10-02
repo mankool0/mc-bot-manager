@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+
+// Inventory state messages (Client -> Manager)
+message InventoryUpdate {
+  // All inventory items (slots 0-40+) - includes main inventory, hotbar, and equipment
+  repeated ItemStack items = 1;
+
+  // Current selection
+  int32 selected_slot = 2;      // Currently selected hotbar slot (0-8)
+}
+
+// Container/GUI state (Client -> Manager)
+message ContainerUpdate {
+  enum ContainerType {
+    PLAYER_INVENTORY = 0;
+    CHEST = 1;
+    ENDER_CHEST = 2;
+    SHULKER_BOX = 3;
+    FURNACE = 4;
+    BLAST_FURNACE = 5;
+    SMOKER = 6;
+    CRAFTING_TABLE = 7;
+    ENCHANTING_TABLE = 8;
+    ANVIL = 9;
+    BREWING_STAND = 10;
+    VILLAGER_TRADE = 11;
+    HORSE_INVENTORY = 12;
+    HOPPER = 13;
+    DISPENSER = 14;
+    DROPPER = 15;
+    BEACON = 16;
+    OTHER = 99;
+  }
+
+  ContainerType type = 1;
+  int32 container_id = 2;       // Server-assigned container ID (from AbstractContainerMenu)
+  repeated ItemStack items = 3;
+  bool is_open = 4;
+  BlockPos position = 5;        // Position of the container block (if applicable)
+
+  // Container-specific progress data
+  map<string, int32> properties = 6;  // Flexible for different container types
+  // Examples:
+  // Furnace: "burn_time", "max_burn_time", "cooking_progress", "cooking_total"
+  // Brewing: "brew_time", "fuel"
+  // Enchanting: "enchant_seed"
+}
+
+// Item use/interaction events
+message ItemInteraction {
+  enum InteractionType {
+    START_USING = 0;            // Started using item (e.g., eating, drawing bow)
+    STOP_USING = 1;             // Stopped using item
+    FINISH_USING = 2;           // Completed using item (e.g., finished eating)
+    BREAK_ITEM = 3;             // Item broke from durability
+  }
+
+  InteractionType type = 1;
+  ItemStack item = 2;
+  Hand hand = 3;
+  int32 use_duration = 4;       // How long the item was used (in ticks)
+}
