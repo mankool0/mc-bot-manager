@@ -14,9 +14,6 @@
       "me.mankool.mcBotClient.client.McBotClientDataGenerator"
     ],
     "client": [
-      "me.mankool.mcBotClient.client.McBotClientClient"
-    ],
-    "main": [
       "me.mankool.mcBotClient.McBotClient"
     ]
   },

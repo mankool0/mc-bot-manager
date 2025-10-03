@@ -1,6 +1,12 @@
 plugins {
     id 'fabric-loom' version '1.11-SNAPSHOT'
     id 'maven-publish'
+    id 'com.google.protobuf' version '0.9.5'
+}
+
+// Load local deployment configuration if it exists
+if (file('deploy.gradle').exists()) {
+    apply from: 'deploy.gradle'
 }
 
 version = project.mod_version
@@ -27,12 +33,40 @@ fabricApi {
     }
 }
 
+sourceSets {
+    main {
+        proto {
+            //noinspection GroovyAssignabilityCheck
+            srcDir 'submodules/mc-bot-proto/proto'
+        }
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${project.protobuf_version}"
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {}
+            }
+        }
+    }
+}
+
+// Fix duplicate proto files issue
+tasks.withType(Copy).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 repositories {
     // Add repositories to retrieve artifacts from in here.
     // You should only use this when depending on other mods because
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    mavenCentral()
 }
 
 dependencies {
@@ -42,6 +76,24 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Protocol Buffers - using implementation for compile, include for runtime
+    implementation "com.google.protobuf:protobuf-java:${project.protobuf_version}"
+    include "com.google.protobuf:protobuf-java:${project.protobuf_version}"
+
+    // JNA for Windows named pipes
+    implementation "net.java.dev.jna:jna:${project.jna_version}"
+    implementation "net.java.dev.jna:jna-platform:${project.jna_version}"
+    include "net.java.dev.jna:jna:${project.jna_version}"
+    include "net.java.dev.jna:jna-platform:${project.jna_version}"
+
+    // junixsocket for Unix domain sockets
+    implementation "com.kohlschutter.junixsocket:junixsocket-core:${project.junixsocket_version}"
+    implementation "com.kohlschutter.junixsocket:junixsocket-common:${project.junixsocket_version}"
+    implementation "com.kohlschutter.junixsocket:junixsocket-native-common:${project.junixsocket_version}"
+    include "com.kohlschutter.junixsocket:junixsocket-core:${project.junixsocket_version}"
+    include "com.kohlschutter.junixsocket:junixsocket-common:${project.junixsocket_version}"
+    include "com.kohlschutter.junixsocket:junixsocket-native-common:${project.junixsocket_version}"
 }
 
 processResources {

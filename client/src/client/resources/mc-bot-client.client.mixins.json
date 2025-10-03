@@ -4,6 +4,7 @@
   "package": "me.mankool.mcBotClient.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ClientPlayNetworkHandlerAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
