@@ -352,8 +352,12 @@ public class PipeConnection {
             throw new IllegalStateException("Not connected to pipe");
         }
 
+        Runtime runtime = Runtime.getRuntime();
+        long currentMemory = runtime.totalMemory() - runtime.freeMemory();
+
         Connection.HeartbeatMessage heartbeat = Connection.HeartbeatMessage.newBuilder()
             .setTimestamp(System.currentTimeMillis())
+            .setCurrentMemory(currentMemory)
             .build();
 
         try {

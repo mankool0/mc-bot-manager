@@ -24,7 +24,7 @@ public class InventoryOutbound extends BaseOutbound {
 
         tickCounter++;
 
-        // Send inventory update every 10 ticks (200ms)
+        // Send inventory update every 10 ticks
         if (tickCounter % 10 == 0) {
             sendUpdate();
         }

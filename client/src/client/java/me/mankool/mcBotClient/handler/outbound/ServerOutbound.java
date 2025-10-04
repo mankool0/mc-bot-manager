@@ -43,6 +43,9 @@ public class ServerOutbound extends BaseOutbound {
         String playerUuid = session.getUuidOrNull() != null ?
             session.getUuidOrNull().toString() : "unknown";
 
+        Runtime runtime = Runtime.getRuntime();
+        long maxMemory = runtime.maxMemory();
+
         Connection.ConnectionInfo infoBuilder = Connection.ConnectionInfo.newBuilder()
             .setClientVersion(client.getGameVersion())
             .setModVersion(modVersion)
@@ -50,6 +53,7 @@ public class ServerOutbound extends BaseOutbound {
             .setPlayerUuid(playerUuid)
             .setStartupTime(System.currentTimeMillis())
             .setProcessId((int) ProcessHandle.current().pid())
+            .setMaxMemory(maxMemory)
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
