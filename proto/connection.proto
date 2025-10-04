@@ -12,12 +12,14 @@ message ConnectionInfo {
   string player_uuid = 4;
   int64 startup_time = 5;       // Unix timestamp when client started
   int32 process_id = 6;         // Process ID of the Minecraft client
+  int64 max_memory = 7;         // Maximum memory available to JVM in bytes
 }
 
 // Regular heartbeat (Client -> Manager)
 // This is a standalone message not wrapped in ClientToManagerMessage/ManagerToClientMessage
 message HeartbeatMessage {
   int64 timestamp = 1;
+  int64 current_memory = 2;  // Current memory usage in bytes
 }
 
 // Server connection status (Client -> Manager) - matches Minecraft's ServerData structure
