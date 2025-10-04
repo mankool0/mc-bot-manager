@@ -5,22 +5,7 @@ LogManager::LogManager(QObject *parent)
 {
 }
 
-void LogManager::setManagerLogWidget(QPlainTextEdit *widget)
-{
-    managerLogWidget = widget;
-}
-
-void LogManager::setPrismLogWidget(QPlainTextEdit *widget)
-{
-    prismLogWidget = widget;
-}
-
-void LogManager::setAutoScroll(bool enabled)
-{
-    autoScroll = enabled;
-}
-
-void LogManager::log(const QString &message, LogLevel level)
+void LogManager::logImpl(const QString &message, LogLevel level)
 {
     if (!managerLogWidget) return;
 
@@ -32,7 +17,7 @@ void LogManager::log(const QString &message, LogLevel level)
     }
 }
 
-void LogManager::logPrism(const QString &message)
+void LogManager::logPrismImpl(const QString &message)
 {
     if (!prismLogWidget) return;
 
@@ -44,19 +29,19 @@ void LogManager::logPrism(const QString &message)
     }
 }
 
-void LogManager::clearManagerLog()
+void LogManager::clearManagerLogImpl()
 {
     if (managerLogWidget) {
         managerLogWidget->clear();
-        log("Manager log cleared", Info);
+        logImpl("Manager log cleared", Info);
     }
 }
 
-void LogManager::clearPrismLog()
+void LogManager::clearPrismLogImpl()
 {
     if (prismLogWidget) {
         prismLogWidget->clear();
-        logPrism("Prism log cleared");
+        logPrismImpl("Prism log cleared");
     }
 }
 
@@ -67,22 +52,26 @@ QString LogManager::formatMessage(const QString &message, LogLevel level)
     QString color;
     QString prefix;
     switch (level) {
-        case Info:
-            color = "black";
-            prefix = "INFO";
-            break;
-        case Warning:
-            color = "#FF8C00";  // Dark orange
-            prefix = "WARN";
-            break;
-        case Error:
-            color = "#DC143C";  // Crimson
-            prefix = "ERROR";
-            break;
-        case Success:
-            color = "#228B22";  // Forest green
-            prefix = "OK";
-            break;
+    case Debug:
+        color = "gray";
+        prefix = "DEBUG";
+        break;
+    case Info:
+        color = "black";
+        prefix = "INFO";
+        break;
+    case Warning:
+        color = "#FF8C00"; // Dark orange
+        prefix = "WARN";
+        break;
+    case Error:
+        color = "#DC143C"; // Crimson
+        prefix = "ERROR";
+        break;
+    case Success:
+        color = "#228B22"; // Forest green
+        prefix = "OK";
+        break;
     }
 
     return QString("<span style='color: gray'>%1</span> "
