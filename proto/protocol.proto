@@ -20,6 +20,7 @@ message ClientToManagerMessage {
   oneof payload {
     // Connection & status messages
     ConnectionInfo connection_info = 3;
+    HeartbeatMessage heartbeat = 4;
     ServerConnectionStatus server_status = 5;
 
     // Player updates
@@ -43,6 +44,9 @@ message ManagerToClientMessage {
   int64 timestamp = 2;          // Unix timestamp in milliseconds
 
   oneof payload {
+    // Connection & status messages
+    HeartbeatMessage heartbeat = 3;
+
     // Server commands
     ConnectToServerCommand connect_server = 4;
     DisconnectCommand disconnect = 5;

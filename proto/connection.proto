@@ -15,11 +15,9 @@ message ConnectionInfo {
   int64 max_memory = 7;         // Maximum memory available to JVM in bytes
 }
 
-// Regular heartbeat (Client -> Manager)
-// This is a standalone message not wrapped in ClientToManagerMessage/ManagerToClientMessage
+// Regular heartbeat (bidirectional)
 message HeartbeatMessage {
-  int64 timestamp = 1;
-  int64 current_memory = 2;  // Current memory usage in bytes
+  int64 current_memory = 1;  // Current memory usage in bytes
 }
 
 // Server connection status (Client -> Manager) - matches Minecraft's ServerData structure
