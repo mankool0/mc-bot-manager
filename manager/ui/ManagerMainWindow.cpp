@@ -2,6 +2,7 @@
 #include "PrismSettingsDialog.h"
 #include "logging/LogManager.h"
 #include "prism/PrismLauncherManager.h"
+#include "network/PipeServer.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTimer>
@@ -17,40 +18,31 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    logManager = new LogManager(this);
-    logManager->setManagerLogWidget(ui->managerLogTextEdit);
-    logManager->setPrismLogWidget(ui->prismLogTextEdit);
+    LogManager::setManagerLogWidget(ui->managerLogTextEdit);
+    LogManager::setPrismLogWidget(ui->prismLogTextEdit);
 
-    prismLauncherManager = new PrismLauncherManager(logManager, this);
-    prismLauncherManager->setPrismConfig(&prismConfig);
+    PrismLauncherManager::setPrismConfig(&prismConfig);
 
-    connect(prismLauncherManager,
+    connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftLaunching,
             this,
             [this](const QString &botName) {
-                for (BotInstance &bot : botInstances) {
+                QVector<BotInstance> &bots = BotManager::getBots();
+                for (BotInstance &bot : bots) {
                     if (bot.status == BotStatus::Starting) {
-                        logManager->log(QString("Minecraft launching for bot '%1'").arg(bot.name), LogManager::Success);
+                        LogManager::log(QString("Minecraft launching for bot '%1'").arg(bot.name), LogManager::Success);
                         break;
                     }
                 }
             });
 
-    connect(prismLauncherManager,
+    connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftStarting,
             this,
             [this](const QString &botName) {
-                for (BotInstance &bot : botInstances) {
-                    if (bot.status == BotStatus::Starting) {
-                        //logManager->log(QString("Bot '%1' Minecraft process is - starting...").arg(bot.name), LogManager::Info);
-
-                        // TODO: This is temp for testing until client side pipe connection is implemented
-                        bot.status = BotStatus::Online;
-                        logManager->log(QString("Bot '%1' is now online").arg(bot.name), LogManager::Success);
-                        onBotStatusChanged();
-                        break;
-                    }
-                }
+                // Minecraft process started - bot remains in Starting status
+                // until client connection is established
+                LogManager::log("Minecraft process detected starting", LogManager::Info);
             });
 
     setupUI();
@@ -59,8 +51,7 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
 
 ManagerMainWindow::~ManagerMainWindow()
 {
-    delete logManager;
-    delete prismLauncherManager;
+    PipeServer::stop();
     delete ui;
 }
 
@@ -98,11 +89,17 @@ void ManagerMainWindow::setupUI()
 
     loadPrismLauncherConfig();
 
-    tableUpdateTimer = new QTimer(this);
-    connect(tableUpdateTimer, &QTimer::timeout, this, &ManagerMainWindow::updateInstancesTable);
-    tableUpdateTimer->start(50);
+    // Connect BotManager signals for reactive UI updates
+    connect(&BotManager::instance(), &BotManager::botAdded,
+            this, [this](const QString &) { updateInstancesTable(); });
+    connect(&BotManager::instance(), &BotManager::botRemoved,
+            this, [this](const QString &) { updateInstancesTable(); });
+    connect(&BotManager::instance(), &BotManager::botUpdated,
+            this, [this](const QString &) { updateInstancesTable(); });
 
-    logManager->log("MC Bot Manager started", LogManager::Info);
+    setupPipeServer();
+
+    LogManager::log("MC Bot Manager started", LogManager::Info);
 }
 
 void ManagerMainWindow::showInstancesContextMenu(const QPoint &pos)
@@ -113,9 +110,10 @@ void ManagerMainWindow::showInstancesContextMenu(const QPoint &pos)
     QTableWidgetItem *item = ui->instancesTableWidget->itemAt(pos);
     if (item) {
         int row = item->row();
-        if (row >= 0 && row < botInstances.size()) {
+        QVector<BotInstance> &bots = BotManager::getBots();
+        if (row >= 0 && row < bots.size()) {
             botAtPos = true;
-            const BotInstance &bot = botInstances[row];
+            const BotInstance &bot = bots[row];
             bool isOnline = (bot.status == BotStatus::Online);
 
             contextMenu.addSeparator();
@@ -149,7 +147,7 @@ void ManagerMainWindow::addNewBot()
     bool ok;
     QString botName = QInputDialog::getText(this, "Add New Bot",
                                            "Bot name:", QLineEdit::Normal,
-                                           QString("NewBot_%1").arg(botInstances.size() + 1), &ok);
+                                           QString("NewBot_%1").arg(BotManager::getBots().size() + 1), &ok);
 
     if (ok && !botName.isEmpty()) {
         BotInstance newBot;
@@ -169,10 +167,10 @@ void ManagerMainWindow::addNewBot()
         newBot.position = QVector3D(0, 0, 0);
         newBot.dimension = "";
 
-        botInstances.append(newBot);
+        BotManager::addBot(newBot);
         updateInstancesTable();
 
-        logManager->log(QString("Added new bot '%1'").arg(botName), LogManager::Success);
+        LogManager::log(QString("Added new bot '%1'").arg(botName), LogManager::Success);
     }
 }
 
@@ -182,8 +180,9 @@ void ManagerMainWindow::removeBot()
     if (selectedItems.isEmpty()) return;
 
     int row = selectedItems[0]->row();
-    if (row >= 0 && row < botInstances.size()) {
-        QString botName = botInstances[row].name;
+    QVector<BotInstance> &bots = BotManager::getBots();
+    if (row >= 0 && row < bots.size()) {
+        QString botName = bots[row].name;
 
         QMessageBox::StandardButton reply = QMessageBox::question(this,
             "Remove Bot",
@@ -192,7 +191,7 @@ void ManagerMainWindow::removeBot()
             QMessageBox::No);
 
         if (reply == QMessageBox::Yes) {
-            botInstances.removeAt(row);
+            BotManager::removeBot(botName);
             updateInstancesTable();
 
             if (selectedBotName == botName) {
@@ -201,17 +200,18 @@ void ManagerMainWindow::removeBot()
                 ui->detailsStackedWidget->hide();
             }
 
-            logManager->log(QString("Removed bot '%1'").arg(botName), LogManager::Success);
+            LogManager::log(QString("Removed bot '%1'").arg(botName), LogManager::Success);
         }
     }
 }
 
 void ManagerMainWindow::updateInstancesTable()
 {
-    ui->instancesTableWidget->setRowCount(botInstances.size());
+    QVector<BotInstance> &bots = BotManager::getBots();
+    ui->instancesTableWidget->setRowCount(bots.size());
 
-    for (int i = 0; i < botInstances.size(); ++i) {
-        const BotInstance &bot = botInstances[i];
+    for (int i = 0; i < bots.size(); ++i) {
+        const BotInstance &bot = bots[i];
 
         // Name column (0)
         QTableWidgetItem *nameItem = ui->instancesTableWidget->item(i, 0);
@@ -309,6 +309,11 @@ void ManagerMainWindow::updateInstancesTable()
     }
 
     ui->instancesTableWidget->resizeColumnsToContents();
+
+    // Update status display if the selected bot's state changed
+    if (!selectedBotName.isEmpty()) {
+        updateStatusDisplay();
+    }
 }
 
 void ManagerMainWindow::onInstanceSelectionChanged()
@@ -322,8 +327,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
     }
 
     int row = selectedItems[0]->row();
-    if (row >= 0 && row < botInstances.size()) {
-        const BotInstance &bot = botInstances[row];
+    QVector<BotInstance> &bots = BotManager::getBots();
+    if (row >= 0 && row < bots.size()) {
+        const BotInstance &bot = bots[row];
         selectedBotName = bot.name;
         loadBotConfiguration(bot);
         ui->detailsStackedWidget->setCurrentIndex(1);
@@ -337,19 +343,16 @@ void ManagerMainWindow::onConfigurationChanged()
     if (loadingConfiguration) return;
 
     if (!selectedBotName.isEmpty()) {
-        for (BotInstance &bot : botInstances) {
-            if (bot.name == selectedBotName) {
-                bot.instance = ui->instanceComboBox->currentText() == "(None)" ? "" : ui->instanceComboBox->currentText();
-                bot.account = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
-                bot.server = ui->serverLineEdit->text();
-                bot.maxMemory = ui->memorySpinBox->value();
-                bot.restartThreshold = ui->restartThresholdSpinBox->value();
-                bot.autoRestart = ui->autoRestartCheckBox->isChecked();
-                bot.tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
-                bot.debugLogging = ui->debugModeCheckBox->isChecked();
-
-                break;
-            }
+        BotInstance *bot = BotManager::getBotByName(selectedBotName);
+        if (bot) {
+            bot->instance = ui->instanceComboBox->currentText() == "(None)" ? "" : ui->instanceComboBox->currentText();
+            bot->account = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
+            bot->server = ui->serverLineEdit->text();
+            bot->maxMemory = ui->memorySpinBox->value();
+            bot->restartThreshold = ui->restartThresholdSpinBox->value();
+            bot->autoRestart = ui->autoRestartCheckBox->isChecked();
+            bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
+            bot->debugLogging = ui->debugModeCheckBox->isChecked();
         }
     }
 }
@@ -406,16 +409,12 @@ void ManagerMainWindow::updateStatusDisplay()
         return;
     }
 
-    // Update button states based on bot status
-    BotInstance *selectedBot = nullptr;
-    for (BotInstance &bot : botInstances) {
-        if (bot.name == selectedBotName) {
-            selectedBot = &bot;
-            break;
-        }
-    }
-
+    BotInstance *selectedBot = BotManager::getBotByName(selectedBotName);
     if (selectedBot) {
+        ui->pipeStatusLabel->setText(QString("Connection %1 [%2]")
+            .arg(selectedBot->connectionId)
+            .arg(selectedBot->status == BotStatus::Online ? "Connected" : "Not Connected"));
+
         ui->launchBotButton->setEnabled(selectedBot->status == BotStatus::Offline);
         ui->stopBotButton->setEnabled(selectedBot->status == BotStatus::Online);
         ui->restartBotButton->setEnabled(selectedBot->status == BotStatus::Online);
@@ -430,17 +429,10 @@ void ManagerMainWindow::launchBot()
 
 bool ManagerMainWindow::launchBotByName(const QString &botName)
 {
-    // Find the bot to launch
-    BotInstance *botToLaunch = nullptr;
-    for (BotInstance &bot : botInstances) {
-        if (bot.name == botName) {
-            botToLaunch = &bot;
-            break;
-        }
-    }
+    BotInstance *botToLaunch = BotManager::getBotByName(botName);
 
     if (!botToLaunch) {
-        logManager->log(QString("Bot '%1' not found").arg(botName), LogManager::Error);
+        LogManager::log(QString("Bot '%1' not found").arg(botName), LogManager::Error);
         return false;
     }
 
@@ -449,25 +441,25 @@ bool ManagerMainWindow::launchBotByName(const QString &botName)
     }
 
     if (botToLaunch->instance.isEmpty()) {
-        logManager->log(QString("Bot '%1' has no instance configured").arg(botName), LogManager::Error);
+        LogManager::log(QString("Bot '%1' has no instance configured").arg(botName), LogManager::Error);
         return false;
     }
 
     if (botToLaunch->account.isEmpty()) {
-        logManager->log(QString("Bot '%1' has no account configured").arg(botName), LogManager::Error);
+        LogManager::log(QString("Bot '%1' has no account configured").arg(botName), LogManager::Error);
         return false;
     }
 
     QString prismCommand = prismConfig.prismExecutable;
     if (prismCommand.isEmpty()) {
-        logManager->log("PrismLauncher not configured. Go to Tools -> PrismLauncher Settings", LogManager::Error);
+        LogManager::log("PrismLauncher not configured. Go to Tools -> PrismLauncher Settings", LogManager::Error);
         return false;
     }
 
     botToLaunch->status = BotStatus::Starting;
     updateStatusDisplay();
 
-    prismLauncherManager->launchBot(botToLaunch);
+    PrismLauncherManager::launchBot(botToLaunch);
 
     return true;
 }
@@ -477,26 +469,30 @@ void ManagerMainWindow::stopBot()
 {
     if (selectedBotName.isEmpty()) return;
 
-    for (BotInstance &bot : botInstances) {
-        if (bot.name == selectedBotName) {
-            if (bot.process != nullptr) {
-                logManager->log(QString("Stopping bot '%1'...").arg(bot.name), LogManager::Info);
-                bot.status = BotStatus::Stopping;
-                updateStatusDisplay();
+    BotInstance *bot = BotManager::getBotByName(selectedBotName);
+    if (bot) {
+        if (bot->minecraftPid > 0 || bot->status == BotStatus::Online) {
+            LogManager::log(QString("Stopping bot '%1'...").arg(bot->name), LogManager::Info);
+            bot->status = BotStatus::Stopping;
+            updateStatusDisplay();
 
-                bot.process->terminate();
+            // Try graceful shutdown first
+            BotManager::sendShutdownCommand(bot->name, "Stopped by manager");
 
-                // If it doesn't terminate gracefully in 5 seconds, kill it
-                QTimer::singleShot(5000, this, [&bot, this]() {
-                    if (bot.process != nullptr && bot.process->state() == QProcess::Running) {
-                        logManager->log(QString("Force killing bot '%1' process").arg(bot.name), LogManager::Warning);
-                        bot.process->kill();
-                    }
-                });
-            } else {
-                logManager->log(QString("Bot '%1' is not running").arg(bot.name), LogManager::Warning);
-            }
-            break;
+            // Force kill after 5 seconds if not shut down
+            QTimer::singleShot(5000, this, [this, botName = bot->name, pid = bot->minecraftPid]() {
+                BotInstance *b = BotManager::getBotByName(botName);
+                if (b && b->status != BotStatus::Offline) {
+                    LogManager::log(QString("Bot '%1' didn't shut down gracefully, force killing...").arg(botName), LogManager::Warning);
+                    PrismLauncherManager::stopBot(pid);
+                }
+            });
+
+            bot->minecraftPid = 0;
+        } else if (bot->status == BotStatus::Starting) {
+            LogManager::log(QString("Bot '%1' is still starting, cannot stop yet").arg(bot->name), LogManager::Warning);
+        } else {
+            LogManager::log(QString("Bot '%1' is not running").arg(bot->name), LogManager::Warning);
         }
     }
 }
@@ -511,18 +507,16 @@ void ManagerMainWindow::loadSettingsFromFile()
 {
     // Save current changes to memory before loading
     if (!selectedBotName.isEmpty()) {
-        for (BotInstance &bot : botInstances) {
-            if (bot.name == selectedBotName) {
-                bot.instance = ui->instanceComboBox->currentText() == "(None)" ? "" : ui->instanceComboBox->currentText();
-                bot.account = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
-                bot.server = ui->serverLineEdit->text();
-                bot.maxMemory = ui->memorySpinBox->value();
-                bot.restartThreshold = ui->restartThresholdSpinBox->value();
-                bot.autoRestart = ui->autoRestartCheckBox->isChecked();
-                bot.tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
-                bot.debugLogging = ui->debugModeCheckBox->isChecked();
-                break;
-            }
+        BotInstance *bot = BotManager::getBotByName(selectedBotName);
+        if (bot) {
+            bot->instance = ui->instanceComboBox->currentText() == "(None)" ? "" : ui->instanceComboBox->currentText();
+            bot->account = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
+            bot->server = ui->serverLineEdit->text();
+            bot->maxMemory = ui->memorySpinBox->value();
+            bot->restartThreshold = ui->restartThresholdSpinBox->value();
+            bot->autoRestart = ui->autoRestartCheckBox->isChecked();
+            bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
+            bot->debugLogging = ui->debugModeCheckBox->isChecked();
         }
     }
 
@@ -540,7 +534,7 @@ void ManagerMainWindow::loadSettingsFromFile()
         ui->detailsStackedWidget->setCurrentIndex(0);
         ui->detailsStackedWidget->hide();
 
-        logManager->log("Configuration loaded from file successfully", LogManager::Success);
+        LogManager::log("Configuration loaded from file successfully", LogManager::Success);
     }
 }
 
@@ -621,11 +615,9 @@ void ManagerMainWindow::updateInstanceComboBox()
 
         // Get the current bot's instance if we're editing
         if (!selectedBotName.isEmpty()) {
-            for (const BotInstance &bot : std::as_const(botInstances)) {
-                if (bot.name == selectedBotName) {
-                    currentBotInstance = bot.instance;
-                    break;
-                }
+            BotInstance *bot = BotManager::getBotByName(selectedBotName);
+            if (bot) {
+                currentBotInstance = bot->instance;
             }
         }
 
@@ -687,7 +679,7 @@ QString ManagerMainWindow::detectPrismLauncherPath()
 QStringList ManagerMainWindow::getUsedInstances() const
 {
     QStringList used;
-    for (const BotInstance &bot : botInstances) {
+    for (const BotInstance &bot : BotManager::getBots()) {
         if (!bot.instance.isEmpty()) {
             used.append(bot.instance);
         }
@@ -697,7 +689,7 @@ QStringList ManagerMainWindow::getUsedInstances() const
 
 void ManagerMainWindow::saveSettings()
 {
-    logManager->log("Saving configuration to file...", LogManager::Info);
+    LogManager::log("Saving configuration to file...", LogManager::Info);
     QSettings settings("MCBotManager", "MCBotManager");
 
     // Save PrismLauncher configuration
@@ -710,10 +702,11 @@ void ManagerMainWindow::saveSettings()
 
     // Save bot instances
     settings.beginGroup("Bots");
-    settings.setValue("count", botInstances.size());
+    QVector<BotInstance> &bots = BotManager::getBots();
+    settings.setValue("count", bots.size());
 
-    for (int i = 0; i < botInstances.size(); ++i) {
-        saveBotInstance(settings, botInstances[i], i);
+    for (int i = 0; i < bots.size(); ++i) {
+        saveBotInstance(settings, bots[i], i);
     }
     settings.endGroup();
 
@@ -723,7 +716,7 @@ void ManagerMainWindow::saveSettings()
     settings.setValue("windowState", saveState());
     settings.endGroup();
 
-    logManager->log(QString("Configuration saved successfully (%1 bots)").arg(botInstances.size()), LogManager::Success);
+    LogManager::log(QString("Configuration saved successfully (%1 bots)").arg(bots.size()), LogManager::Success);
 }
 
 void ManagerMainWindow::loadSettings()
@@ -748,11 +741,11 @@ void ManagerMainWindow::loadSettings()
     settings.beginGroup("Bots");
     int botCount = settings.value("count", 0).toInt();
 
-    botInstances.clear();
+    BotManager::getBots().clear();
     for (int i = 0; i < botCount; ++i) {
         BotInstance bot = loadBotInstance(settings, i);
         if (!bot.name.isEmpty()) {
-            botInstances.append(bot);
+            BotManager::addBot(bot);
         }
     }
     settings.endGroup();
@@ -810,25 +803,26 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
 void ManagerMainWindow::launchAllBots()
 {
     if (isSequentialLaunching) {
-        logManager->log("Sequential launch already in progress", LogManager::Warning);
+        LogManager::log("Sequential launch already in progress", LogManager::Warning);
         return;
     }
 
     pendingLaunchQueue.clear();
 
-    for (const BotInstance &bot : std::as_const(botInstances)) {
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (const BotInstance &bot : std::as_const(bots)) {
         if (bot.status != BotStatus::Online && bot.status != BotStatus::Starting) {
             pendingLaunchQueue.append(bot.name);
         }
     }
 
     if (pendingLaunchQueue.isEmpty()) {
-        logManager->log("All bots are already online", LogManager::Info);
+        LogManager::log("All bots are already online", LogManager::Info);
         return;
     }
 
     isSequentialLaunching = true;
-    logManager->log(QString("Starting sequential launch of %1 bots...").arg(pendingLaunchQueue.size()), LogManager::Info);
+    LogManager::log(QString("Starting sequential launch of %1 bots...").arg(pendingLaunchQueue.size()), LogManager::Info);
     launchNextBotInQueue();
 }
 
@@ -836,18 +830,33 @@ void ManagerMainWindow::stopAllBots()
 {
     int stoppedCount = 0;
 
-    logManager->log("Stopping all bots...", LogManager::Info);
+    LogManager::log("Stopping all bots...", LogManager::Info);
 
-    for (BotInstance &bot : botInstances) {
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
         if (bot.status == BotStatus::Online || bot.status == BotStatus::Starting) {
-            logManager->log(QString("Stopping bot '%1'").arg(bot.name), LogManager::Info);
+            LogManager::log(QString("Stopping bot '%1'").arg(bot.name), LogManager::Info);
 
-            // Terminate the process if it exists
-            if (bot.process != nullptr) {
-                bot.process->terminate();
-                // Process cleanup will happen in the finished signal handler
+            // Send graceful shutdown first
+            if (bot.minecraftPid > 0) {
+                BotManager::sendShutdownCommand(bot.name, "Stopped by manager");
+                bot.status = BotStatus::Stopping;
+
+                QString botName = bot.name;
+                qint64 pid = bot.minecraftPid;
+                QTimer::singleShot(5000, this, [this, botName, pid]() {
+                    BotInstance *b = BotManager::getBotByName(botName);
+                    if (b && b->status != BotStatus::Offline) {
+                        LogManager::log(QString("Force killing bot '%1' (PID: %2)").arg(botName).arg(pid), LogManager::Warning);
+                        PrismLauncherManager::stopBot(pid);
+                        b->status = BotStatus::Offline;
+                        b->connectionId = -1;
+                        b->minecraftPid = 0;
+                        emit BotManager::instance().botUpdated(botName);
+                    }
+                });
             } else {
-                // If no process, just update status
+                // If no PID, just update status
                 bot.status = BotStatus::Offline;
                 bot.currentMemory = 0;
                 bot.position = QVector3D(0, 0, 0);
@@ -860,10 +869,10 @@ void ManagerMainWindow::stopAllBots()
 
     // Log results
     if (stoppedCount > 0) {
-        logManager->log(QString("Marked %1 bot(s) as offline").arg(stoppedCount), LogManager::Success);
-        logManager->log("Note: Minecraft processes may still be running - close them manually if needed", LogManager::Warning);
+        LogManager::log(QString("Marked %1 bot(s) as offline").arg(stoppedCount), LogManager::Success);
+        LogManager::log("Note: Minecraft processes may still be running - close them manually if needed", LogManager::Warning);
     } else {
-        logManager->log("No bots were online to stop", LogManager::Info);
+        LogManager::log("No bots were online to stop", LogManager::Info);
     }
 }
 
@@ -872,30 +881,30 @@ void ManagerMainWindow::onClearLog()
 {
     // Clear the currently visible tab
     if (ui->logTabWidget->currentIndex() == 0) {
-        logManager->clearManagerLog();
+        LogManager::clearManagerLog();
     } else {
-        logManager->clearPrismLog();
+        LogManager::clearPrismLog();
     }
 }
 
 void ManagerMainWindow::onAutoScrollToggled(bool checked)
 {
-    logManager->setAutoScroll(checked);
+    LogManager::setAutoScroll(checked);
 }
 
 void ManagerMainWindow::launchNextBotInQueue()
 {
     if (pendingLaunchQueue.isEmpty()) {
         isSequentialLaunching = false;
-        logManager->log("Sequential launch complete: All bots processed", LogManager::Success);
+        LogManager::log("Sequential launch complete: All bots processed", LogManager::Success);
         return;
     }
 
     QString botName = pendingLaunchQueue.takeFirst();
-    logManager->log(QString("Launching bot '%1'... (waiting for online status before next launch)").arg(botName), LogManager::Info);
+    LogManager::log(QString("Launching bot '%1'... (waiting for online status before next launch)").arg(botName), LogManager::Info);
 
     if (!launchBotByName(botName)) {
-        logManager->log(QString("Failed to launch bot '%1' - check instance and account configuration").arg(botName), LogManager::Error);
+        LogManager::log(QString("Failed to launch bot '%1' - check instance and account configuration").arg(botName), LogManager::Error);
         // Continue with next bot even if this one failed
         QTimer::singleShot(1000, this, &ManagerMainWindow::launchNextBotInQueue);
     }
@@ -915,17 +924,79 @@ void ManagerMainWindow::onBotStatusChanged()
     } else {
         // No more bots to launch
         isSequentialLaunching = false;
-        logManager->log("Sequential launch complete: All queued bots have been launched", LogManager::Success);
+        LogManager::log("Sequential launch complete: All queued bots have been launched", LogManager::Success);
     }
 }
 
 QString ManagerMainWindow::statusToString(BotStatus status)
 {
     switch (status) {
-        case BotStatus::Offline: return "Offline";
-        case BotStatus::Starting: return "Starting";  
-        case BotStatus::Online: return "Online";
-        case BotStatus::Stopping: return "Stopping";
+    case BotStatus::Offline:
+        return "Offline";
+    case BotStatus::Starting:
+        return "Starting";
+    case BotStatus::Online:
+        return "Online";
+    case BotStatus::Stopping:
+        return "Stopping";
+    case BotStatus::Error:
+        return "Error";
     }
     return "Unknown";
+}
+
+void ManagerMainWindow::setupPipeServer()
+{
+    connect(&PipeServer::instance(), &PipeServer::clientConnected,
+            this, &ManagerMainWindow::onClientConnected);
+
+    connect(&PipeServer::instance(), &PipeServer::clientDisconnected,
+            this, &ManagerMainWindow::onClientDisconnected);
+
+    connect(&PipeServer::instance(), &PipeServer::messageReceived,
+            this, &ManagerMainWindow::onMessageReceived);
+
+    // Get socket path (prefer XDG_RUNTIME_DIR, fallback to /tmp)
+    QString socketPath;
+    QByteArray xdgRuntime = qgetenv("XDG_RUNTIME_DIR");
+    if (!xdgRuntime.isEmpty()) {
+        socketPath = QString::fromUtf8(xdgRuntime) + "/minecraft_manager";
+    } else {
+        socketPath = "/tmp/minecraft_manager";
+    }
+
+    if (!PipeServer::start(socketPath)) {
+        LogManager::log("Failed to start pipe server", LogManager::Error);
+    }
+}
+
+void ManagerMainWindow::onClientConnected(int connectionId, const QString &botName)
+{
+    if (!botName.isEmpty()) {
+        BotInstance *bot = BotManager::getBotByName(botName);
+        if (bot) {
+            bot->connectionId = connectionId;
+            bot->status = BotStatus::Online;
+            updateInstancesTable();
+            updateStatusDisplay();
+        }
+    }
+}
+
+void ManagerMainWindow::onClientDisconnected(int connectionId)
+{
+    BotInstance *bot = BotManager::getBotByConnectionId(connectionId);
+    if (bot) {
+        bot->connectionId = -1;
+        bot->status = BotStatus::Offline;
+        updateInstancesTable();
+        updateStatusDisplay();
+    }
+}
+
+void ManagerMainWindow::onMessageReceived(int connectionId, const QJsonObject &message)
+{
+    LogManager::log(QString("Message from connection %1: %2 bytes")
+                   .arg(connectionId)
+                   .arg(message["raw_data_size"].toInt()), LogManager::Info);
 }

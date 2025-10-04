@@ -8,7 +8,6 @@
 #include <QTimer>
 #include <QRegularExpression>
 
-class LogManager;
 struct BotInstance;
 struct PrismConfig;
 enum class BotStatus;
@@ -18,13 +17,15 @@ class PrismLauncherManager : public QObject
     Q_OBJECT
 
 public:
-    explicit PrismLauncherManager(LogManager *logger, QObject *parent = nullptr);
+    static PrismLauncherManager& instance();
     ~PrismLauncherManager();
 
-    void setPrismConfig(PrismConfig *config);
-    void launchBot(BotInstance *bot);
-    void stopPrismGUI();
-    bool isPrismGUIRunning() const;
+    static void setPrismConfig(PrismConfig *config);
+    static void launchBot(BotInstance *bot);
+    static void stopBot(qint64 minecraftPid);
+    static void stopPrismGUI();
+    static bool isPrismGUIRunning();
+    static qint64 getPrismGUIPid();
 
 signals:
     void minecraftLaunching(const QString &botName);
@@ -33,12 +34,17 @@ signals:
     void prismGUIStopped();
 
 private:
-    void launchPrismGUI(BotInstance *bot);
-    void sendLaunchCommand(BotInstance *bot);
+    explicit PrismLauncherManager(QObject *parent = nullptr);
+    PrismLauncherManager(const PrismLauncherManager&) = delete;
+    PrismLauncherManager& operator=(const PrismLauncherManager&) = delete;
+
+    void launchBotImpl(BotInstance *bot);
+    void stopBotImpl(qint64 minecraftPid);
+    void stopPrismGUIImpl();
+    void launchPrismGUIImpl(BotInstance *bot);
+    void sendLaunchCommandImpl(BotInstance *bot);
     void processOutput(const QString &output, bool isStderr = false);
     void parsePrismCommand(const QString &command, QString &executable, QStringList &arguments);
-
-    LogManager *logManager;
     PrismConfig *prismConfig = nullptr;
     QProcess *prismGUIProcess = nullptr;
 };

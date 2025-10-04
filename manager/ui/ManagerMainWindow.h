@@ -17,43 +17,14 @@
 #include <QVector3D>
 #include <QSettings>
 #include <QTimer>
-#include <QLocalServer>
-#include <QLocalSocket>
-#include <QIODevice>
+
+#include "bot/BotManager.h"
+#include "ui_ManagerMainWindow.h"
 
 class LogManager;
 class PrismLauncherManager;
+class PipeServer;
 class QProcess;
-
-#include "ui_ManagerMainWindow.h"
-
-enum class BotStatus {
-    Offline,
-    Starting,
-    Online,
-    Stopping
-};
-
-struct BotInstance {
-    QString name;
-    BotStatus status = BotStatus::Offline;
-    QString instance;
-    QString account;
-    QString server;
-    int connectionId = -1;
-    int maxMemory;
-    int currentMemory;
-    int restartThreshold;
-    bool autoRestart;
-    bool tokenRefresh;
-    bool debugLogging;
-
-    QVector3D position;
-    QString dimension;
-
-    QProcess* process = nullptr;
-    qint64 minecraftPid = 0;
-};
 
 struct PrismConfig {
     QString prismPath;
@@ -86,21 +57,12 @@ private slots:
 
 private:
     Ui::ManagerMainWindow *ui;
-    QList<BotInstance> botInstances;
     QString selectedBotName;
     PrismConfig prismConfig;
     bool loadingConfiguration;
 
-    LogManager *logManager = nullptr;
-    PrismLauncherManager *prismLauncherManager = nullptr;
-
     QStringList pendingLaunchQueue;
     bool isSequentialLaunching = false;
-    QTimer *tableUpdateTimer = nullptr;
-
-    QLocalServer *pipeServer = nullptr;
-    QMap<int, QIODevice*> botConnections;  // connectionId -> socket
-    int nextConnectionId = 1000;
 
     void setupUI();
     void updateInstancesTable();
@@ -128,11 +90,9 @@ private:
     void onAutoScrollToggled(bool checked);
 
     void setupPipeServer();
-    void handleNewConnection();
-    void handleClientData(QIODevice *socket);
-    void processHandshake(QIODevice *socket, const QJsonObject &message);
-    void sendToBot(int connectionId, const QJsonObject &message);
-    void broadcastToAllBots(const QJsonObject &message);
+    void onClientConnected(int connectionId, const QString &botName);
+    void onClientDisconnected(int connectionId);
+    void onMessageReceived(int connectionId, const QJsonObject &message);
 
     static QString statusToString(BotStatus status);
 };

@@ -10,7 +10,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Protobuf)
+
+# Generate QtProtobuf files from submodule
+file(GLOB PROTO_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/submodules/mc-bot-proto/proto/*.proto
+)
+
+qt_add_protobuf(mc-bot-manager-proto
+    PROTO_FILES ${PROTO_FILES}
+    OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
 
 file(GLOB_RECURSE PROJECT_SOURCES
     "main.cpp"
@@ -21,6 +31,10 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "logging/*.h"
     "prism/*.cpp"
     "prism/*.h"
+    "network/*.cpp"
+    "network/*.h"
+    "bot/*.cpp"
+    "bot/*.h"
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -46,10 +60,18 @@ else()
     endif()
 endif()
 
-target_link_libraries(mc-bot-manager PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network)
+target_link_libraries(mc-bot-manager PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Protobuf
+    mc-bot-manager-proto
+)
 
-# Add current directory to include path for relative includes
-target_include_directories(mc-bot-manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# Add current directory and generated proto directory to include path
+target_include_directories(mc-bot-manager PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
