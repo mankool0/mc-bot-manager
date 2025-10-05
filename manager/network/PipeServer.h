@@ -37,7 +37,6 @@ public:
 signals:
     void clientConnected(int connectionId, const QString &botName);
     void clientDisconnected(int connectionId);
-    void messageReceived(int connectionId, const QJsonObject &message);
 
 private slots:
     void handleNewConnection();

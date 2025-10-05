@@ -78,6 +78,7 @@ private:
     };
     QList<ScheduledLaunch> scheduledLaunches;
     QTimer *launchSchedulerTimer = nullptr;
+    QTimer *uptimeCheckTimer = nullptr;
     QDockWidget *networkStatsDock = nullptr;
 
     void setupUI();
@@ -98,8 +99,10 @@ private:
     BotInstance loadBotInstance(QSettings &settings, int index);
 
     bool launchBotByName(const QString &botName);
+    void restartBotByName(const QString &botName, const QString &reason);
 
     void checkScheduledLaunches();
+    void checkBotUptimes();
 
     void onClearLog();
     void onAutoScrollToggled(bool checked);
@@ -107,7 +110,6 @@ private:
     void setupPipeServer();
     void onClientConnected(int connectionId, const QString &botName);
     void onClientDisconnected(int connectionId);
-    void onMessageReceived(int connectionId, const QJsonObject &message);
 
     static QString statusToString(BotStatus status);
 };
