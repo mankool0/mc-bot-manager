@@ -101,6 +101,7 @@ void ManagerMainWindow::setupUI()
 
     connect(ui->clearLogButton, &QPushButton::clicked, this, &ManagerMainWindow::onClearLog);
     connect(ui->autoScrollCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onAutoScrollToggled);
+    connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
 
     NetworkStatsWidget *statsWidget = new NetworkStatsWidget(this);
     networkStatsDock = new QDockWidget("Network Statistics", this);
