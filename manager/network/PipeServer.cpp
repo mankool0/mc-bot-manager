@@ -251,7 +251,6 @@ void PipeServer::sendToClientImpl(int connectionId, const QByteArray &data)
 
     QLocalSocket *socket = connections[connectionId];
     socket->write(data);
-    LogManager::log(QString("Sent %1 bytes to connection %2").arg(data.size()).arg(connectionId), LogManager::Debug);
 
     // Track bytes sent
     BotInstance *bot = BotManager::getBotByConnectionId(connectionId);

@@ -36,6 +36,7 @@ struct BotInstance {
     bool autoRestart;
     bool tokenRefresh;
     bool debugLogging;
+    bool manualStop = false;
 
     QVector3D position;
     QString dimension;
