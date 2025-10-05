@@ -1,4 +1,5 @@
 #include "ManagerMainWindow.h"
+#include "BotConsoleWidget.h"
 #include "PrismSettingsDialog.h"
 #include "NetworkStatsWidget.h"
 #include "logging/LogManager.h"
@@ -16,6 +17,7 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ManagerMainWindow)
     , loadingConfiguration(false)
+    , detailsPinned(false)
 {
     ui->setupUi(this);
 
@@ -81,7 +83,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
 
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
-    connect(ui->actionNetworkStats, &QAction::triggered, this, &ManagerMainWindow::showNetworkStats);
+    connect(ui->actionNetworkStats, &QAction::toggled, this, &ManagerMainWindow::showNetworkStats);
     connect(ui->actionSave, &QAction::triggered, this, &ManagerMainWindow::saveSettings);
     connect(ui->actionOpen, &QAction::triggered, this, &ManagerMainWindow::loadSettingsFromFile);
     connect(ui->actionLaunchAll, &QAction::triggered, this, &ManagerMainWindow::launchAllBots);
@@ -98,6 +100,14 @@ void ManagerMainWindow::setupUI()
 
     ui->detailsStackedWidget->setCurrentIndex(0);
     ui->detailsStackedWidget->hide();
+
+    QPushButton *pinButton = new QPushButton(this);
+    pinButton->setCheckable(true);
+    pinButton->setIcon(QIcon::fromTheme("window-pin"));
+    pinButton->setToolTip("Pin details panel");
+    pinButton->setMaximumWidth(30);
+    ui->mainTabWidget->setCornerWidget(pinButton, Qt::TopRightCorner);
+    connect(pinButton, &QPushButton::toggled, this, &ManagerMainWindow::onPinDetailsToggled);
 
     connect(ui->clearLogButton, &QPushButton::clicked, this, &ManagerMainWindow::onClearLog);
     connect(ui->autoScrollCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onAutoScrollToggled);
@@ -202,6 +212,20 @@ void ManagerMainWindow::addNewBot()
         newBot.dimension = "";
 
         BotManager::addBot(newBot);
+
+        BotInstance *bot = BotManager::getBotByName(botName);
+        if (bot && !bot->consoleWidget) {
+            bot->consoleWidget = new BotConsoleWidget(this);
+            connect(bot->consoleWidget, &BotConsoleWidget::commandEntered,
+                    this, &ManagerMainWindow::onConsoleCommandEntered);
+            bot->consoleWidget->hide();
+
+            QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->consoleTab->layout());
+            if (layout) {
+                layout->addWidget(bot->consoleWidget);
+            }
+        }
+
         updateInstancesTable();
 
         LogManager::log(QString("Added new bot '%1'").arg(botName), LogManager::Success);
@@ -353,22 +377,48 @@ void ManagerMainWindow::updateInstancesTable()
 void ManagerMainWindow::onInstanceSelectionChanged()
 {
     QList<QTableWidgetItem*> selectedItems = ui->instancesTableWidget->selectedItems();
+
+    if (selectedItems.isEmpty() && detailsPinned && !selectedBotName.isEmpty()) {
+        BotInstance *pinnedBot = BotManager::getBotByName(selectedBotName);
+        if (pinnedBot) {
+            QVector<BotInstance> &bots = BotManager::getBots();
+            for (int i = 0; i < bots.size(); ++i) {
+                if (bots[i].name == selectedBotName) {
+                    ui->instancesTableWidget->selectRow(i);
+                    return;
+                }
+            }
+        }
+    }
+
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (bot.consoleWidget) {
+            bot.consoleWidget->hide();
+        }
+    }
+
     if (selectedItems.isEmpty()) {
-        selectedBotName.clear();
-        ui->detailsStackedWidget->setCurrentIndex(0);
-        ui->detailsStackedWidget->hide();
+        if (!detailsPinned) {
+            selectedBotName.clear();
+            ui->detailsStackedWidget->setCurrentIndex(0);
+            ui->detailsStackedWidget->hide();
+        }
         return;
     }
 
     int row = selectedItems[0]->row();
-    QVector<BotInstance> &bots = BotManager::getBots();
     if (row >= 0 && row < bots.size()) {
-        const BotInstance &bot = bots[row];
+        BotInstance &bot = bots[row];
         selectedBotName = bot.name;
         loadBotConfiguration(bot);
         ui->detailsStackedWidget->setCurrentIndex(1);
         ui->detailsStackedWidget->show();
         updateStatusDisplay();
+
+        if (bot.consoleWidget) {
+            bot.consoleWidget->show();
+        }
     }
 }
 
@@ -387,6 +437,7 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->autoRestart = ui->autoRestartCheckBox->isChecked();
             bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
             bot->debugLogging = ui->debugModeCheckBox->isChecked();
+            updateInstancesTable();
         }
     }
 }
@@ -779,6 +830,8 @@ void ManagerMainWindow::saveSettings()
     settings.beginGroup("Window");
     settings.setValue("geometry", saveGeometry());
     settings.setValue("windowState", saveState());
+    settings.setValue("detailsPinned", detailsPinned);
+    settings.setValue("networkStatsVisible", ui->actionNetworkStats->isChecked());
     settings.endGroup();
 
     LogManager::log(QString("Configuration saved successfully (%1 bots)").arg(bots.size()), LogManager::Success);
@@ -815,11 +868,21 @@ void ManagerMainWindow::loadSettings()
     }
     settings.endGroup();
 
-    // Restore window state
+    setupConsoleTab();
+
     settings.beginGroup("Window");
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("windowState").toByteArray());
+    detailsPinned = settings.value("detailsPinned", false).toBool();
+    bool networkStatsVisible = settings.value("networkStatsVisible", false).toBool();
     settings.endGroup();
+
+    QPushButton *pinButton = qobject_cast<QPushButton*>(ui->mainTabWidget->cornerWidget(Qt::TopRightCorner));
+    if (pinButton) {
+        pinButton->setChecked(detailsPinned);
+    }
+
+    ui->actionNetworkStats->setChecked(networkStatsVisible);
 }
 
 void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &bot, int index)
@@ -1084,8 +1147,62 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
     }
 }
 
-void ManagerMainWindow::showNetworkStats()
+void ManagerMainWindow::setupConsoleTab()
 {
-    networkStatsDock->show();
-    networkStatsDock->raise();
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->consoleTab->layout());
+    if (!layout) {
+        layout = new QVBoxLayout(ui->consoleTab);
+        layout->setContentsMargins(0, 0, 0, 0);
+    }
+
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (!bot.consoleWidget) {
+            bot.consoleWidget = new BotConsoleWidget(this);
+            connect(bot.consoleWidget, &BotConsoleWidget::commandEntered,
+                    this, &ManagerMainWindow::onConsoleCommandEntered);
+            bot.consoleWidget->hide();
+            layout->addWidget(bot.consoleWidget);
+        }
+    }
+}
+
+void ManagerMainWindow::onConsoleCommandEntered(const QString &command)
+{
+    if (selectedBotName.isEmpty()) {
+        return;
+    }
+
+    BotInstance *bot = BotManager::getBotByName(selectedBotName);
+    if (!bot || bot->connectionId < 0) {
+        if (bot && bot->consoleWidget) {
+            bot->consoleWidget->appendResponse(false, "Bot not connected");
+        }
+        return;
+    }
+
+    BotManager::sendCommand(selectedBotName, command);
+}
+
+void ManagerMainWindow::handleCommandResponse(const QString &botName, bool success, const QString &message)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(success, message);
+    }
+}
+
+void ManagerMainWindow::showNetworkStats(bool show)
+{
+    if (show) {
+        networkStatsDock->show();
+        networkStatsDock->raise();
+    } else {
+        networkStatsDock->hide();
+    }
+}
+
+void ManagerMainWindow::onPinDetailsToggled(bool pinned)
+{
+    detailsPinned = pinned;
 }
