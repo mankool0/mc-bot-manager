@@ -112,6 +112,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         bot->connectionId = connectionId;
         bot->status = BotStatus::Online;
         bot->minecraftPid = info.processId();
+        bot->startTime = QDateTime::currentDateTime();
 
         // Update max memory from connection info (convert bytes to MB)
         if (info.maxMemory() > 0) {

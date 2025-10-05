@@ -187,6 +187,7 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
         if (clientMsg.hasConnectionInfo()) {
             connectionBotNames[connectionId] = clientMsg.connectionInfo().playerName();
             BotManager::handleConnectionInfo(connectionId, clientMsg.connectionInfo());
+            emit clientConnected(connectionId, clientMsg.connectionInfo().playerName());
         } else if (clientMsg.hasHeartbeat()) {
             BotManager::handleHeartbeat(connectionId, clientMsg.heartbeat());
         } else if (clientMsg.hasServerStatus()) {

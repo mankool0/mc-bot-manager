@@ -91,7 +91,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->accountComboBox, &QComboBox::currentTextChanged, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->serverLineEdit, &QLineEdit::textChanged, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->memorySpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &ManagerMainWindow::onConfigurationChanged);
-    connect(ui->restartThresholdSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->restartThresholdSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->autoRestartCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->tokenRefreshCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->debugModeCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
@@ -122,6 +122,10 @@ void ManagerMainWindow::setupUI()
 
     launchSchedulerTimer = new QTimer(this);
     connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
+
+    uptimeCheckTimer = new QTimer(this);
+    connect(uptimeCheckTimer, &QTimer::timeout, this, &ManagerMainWindow::checkBotUptimes);
+    uptimeCheckTimer->start(60000);
 
     setupPipeServer();
 
@@ -541,8 +545,26 @@ void ManagerMainWindow::stopBot()
 
 void ManagerMainWindow::restartBot()
 {
-    stopBot();
-    QTimer::singleShot(1500, this, &ManagerMainWindow::launchBot);
+    if (!selectedBotName.isEmpty()) {
+        restartBotByName(selectedBotName, "Manual restart");
+    }
+}
+
+void ManagerMainWindow::restartBotByName(const QString &botName, const QString &reason)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (!bot) return;
+
+    if (bot->status == BotStatus::Online) {
+        LogManager::log(QString("Restarting bot '%1': %2").arg(botName).arg(reason), LogManager::Info);
+        bot->manualStop = true;
+        bot->status = BotStatus::Stopping;
+        BotManager::sendShutdownCommand(botName, reason);
+
+        QTimer::singleShot(3000, this, [this, botName]() {
+            launchBotByName(botName);
+        });
+    }
 }
 
 void ManagerMainWindow::loadSettingsFromFile()
@@ -830,7 +852,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.connectionId = settings.value("connectionId", -1).toInt();
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
     bot.currentMemory = 0;
-    bot.restartThreshold = settings.value("restartThreshold", 48).toInt();
+    bot.restartThreshold = settings.value("restartThreshold", 48.0).toDouble();
     bot.autoRestart = settings.value("autoRestart", true).toBool();
     bot.tokenRefresh = settings.value("tokenRefresh", true).toBool();
     bot.debugLogging = settings.value("debugLogging", false).toBool();
@@ -940,6 +962,23 @@ void ManagerMainWindow::onAutoScrollToggled(bool checked)
     LogManager::setAutoScroll(checked);
 }
 
+void ManagerMainWindow::checkBotUptimes()
+{
+    QVector<BotInstance> &bots = BotManager::getBots();
+    QDateTime now = QDateTime::currentDateTime();
+
+    for (BotInstance &bot : bots) {
+        if (bot.status == BotStatus::Online && bot.restartThreshold > 0 && bot.startTime.isValid()) {
+            qint64 uptimeSeconds = bot.startTime.secsTo(now);
+            double uptimeHours = uptimeSeconds / 3600.0;
+
+            if (uptimeHours >= bot.restartThreshold) {
+                restartBotByName(bot.name, QString("Uptime threshold reached (%1 hours)").arg(uptimeHours, 0, 'f', 2));
+            }
+        }
+    }
+}
+
 void ManagerMainWindow::checkScheduledLaunches()
 {
     if (scheduledLaunches.isEmpty()) {
@@ -997,9 +1036,6 @@ void ManagerMainWindow::setupPipeServer()
     connect(&PipeServer::instance(), &PipeServer::clientDisconnected,
             this, &ManagerMainWindow::onClientDisconnected);
 
-    connect(&PipeServer::instance(), &PipeServer::messageReceived,
-            this, &ManagerMainWindow::onMessageReceived);
-
     // Get socket path (prefer XDG_RUNTIME_DIR, fallback to /tmp)
     QString socketPath;
     QByteArray xdgRuntime = qgetenv("XDG_RUNTIME_DIR");
@@ -1019,8 +1055,6 @@ void ManagerMainWindow::onClientConnected(int connectionId, const QString &botNa
     if (!botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot) {
-            bot->connectionId = connectionId;
-            bot->status = BotStatus::Online;
             updateInstancesTable();
             updateStatusDisplay();
         }
@@ -1047,13 +1081,6 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
             });
         }
     }
-}
-
-void ManagerMainWindow::onMessageReceived(int connectionId, const QJsonObject &message)
-{
-    LogManager::log(QString("Message from connection %1: %2 bytes")
-                   .arg(connectionId)
-                   .arg(message["raw_data_size"].toInt()), LogManager::Info);
 }
 
 void ManagerMainWindow::showNetworkStats()

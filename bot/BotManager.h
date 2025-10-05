@@ -6,6 +6,7 @@
 #include <QString>
 #include <QVector3D>
 #include <QProcess>
+#include <QDateTime>
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -32,11 +33,12 @@ struct BotInstance {
     int connectionId = -1;
     int maxMemory;
     int currentMemory;
-    int restartThreshold;
+    double restartThreshold;
     bool autoRestart;
     bool tokenRefresh;
     bool debugLogging;
     bool manualStop = false;
+    QDateTime startTime;
 
     QVector3D position;
     QString dimension;
