@@ -70,8 +70,9 @@ void PipeServer::stopImpl()
 
     for (auto it = connections.begin(); it != connections.end(); ++it) {
         QLocalSocket *socket = it.value();
-        socket->disconnectFromServer();
-        socket->deleteLater();
+        if (socket) {
+            socket->deleteLater();
+        }
     }
     for (auto stream : connectionStreams) {
         delete stream;

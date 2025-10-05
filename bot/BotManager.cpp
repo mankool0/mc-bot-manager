@@ -221,6 +221,11 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
     }
 }
 
+void BotManager::sendCommand(const QString &botName, const QString &commandText)
+{
+    instance().sendCommandImpl(botName, commandText);
+}
+
 void BotManager::sendShutdownCommand(const QString &botName, const QString &reason)
 {
     instance().sendShutdownCommandImpl(botName, reason);
@@ -266,6 +271,186 @@ void BotManager::sendShutdownCommandImpl(const QString &botName, const QString &
     PipeServer::sendToClient(bot->connectionId, message);
 
     LogManager::log(QString("Sent graceful shutdown command to bot '%1'").arg(botName), LogManager::Info);
+}
+
+void BotManager::sendCommandImpl(const QString &botName, const QString &commandText)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot send command: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot send command: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    QStringList parts = commandText.split(' ', Qt::SkipEmptyParts);
+    if (parts.isEmpty()) {
+        return;
+    }
+
+    QString cmd = parts[0].toLower();
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    if (cmd == "connect") {
+        if (parts.size() < 2) {
+            LogManager::log("Usage: connect <server_address>", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::ConnectToServerCommand connectCmd;
+        connectCmd.setServerAddress(parts.mid(1).join(' '));
+        msg.setConnectServer(connectCmd);
+    }
+    else if (cmd == "disconnect") {
+        mankool::mcbot::protocol::DisconnectCommand disconnectCmd;
+        disconnectCmd.setReason(parts.size() > 1 ? parts.mid(1).join(' ') : "");
+        msg.setDisconnect(disconnectCmd);
+    }
+    else if (cmd == "chat") {
+        if (parts.size() < 2) {
+            LogManager::log("Usage: chat <message>", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::SendChatCommand chatCmd;
+        chatCmd.setMessage(parts.mid(1).join(' '));
+        msg.setSendChat(chatCmd);
+    }
+    else if (cmd == "move") {
+        if (parts.size() < 4) {
+            LogManager::log("Usage: move <x> <y> <z>", LogManager::Warning);
+            return;
+        }
+        bool okX, okY, okZ;
+        double x = parts[1].toDouble(&okX);
+        double y = parts[2].toDouble(&okY);
+        double z = parts[3].toDouble(&okZ);
+        if (!okX || !okY || !okZ) {
+            LogManager::log("Invalid coordinates", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::MoveToCommand moveCmd;
+        mankool::mcbot::protocol::Vec3d pos;
+        pos.setX(x);
+        pos.setY(y);
+        pos.setZ(z);
+        moveCmd.setTargetPosition(pos);
+        msg.setMoveTo(moveCmd);
+    }
+    else if (cmd == "lookat") {
+        if (parts.size() < 2) {
+            LogManager::log("Usage: lookat <x> <y> <z> | lookat entity <id>", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::LookAtCommand lookAtCmd;
+        if (parts[1].toLower() == "entity") {
+            if (parts.size() < 3) {
+                LogManager::log("Usage: lookat entity <id>", LogManager::Warning);
+                return;
+            }
+            bool ok;
+            int entityId = parts[2].toInt(&ok);
+            if (!ok) {
+                LogManager::log("Invalid entity ID", LogManager::Warning);
+                return;
+            }
+            lookAtCmd.setEntityId(entityId);
+        } else {
+            if (parts.size() < 4) {
+                LogManager::log("Usage: lookat <x> <y> <z>", LogManager::Warning);
+                return;
+            }
+            bool okX, okY, okZ;
+            double x = parts[1].toDouble(&okX);
+            double y = parts[2].toDouble(&okY);
+            double z = parts[3].toDouble(&okZ);
+            if (!okX || !okY || !okZ) {
+                LogManager::log("Invalid coordinates", LogManager::Warning);
+                return;
+            }
+            mankool::mcbot::protocol::Vec3d pos;
+            pos.setX(x);
+            pos.setY(y);
+            pos.setZ(z);
+            lookAtCmd.setPosition(pos);
+        }
+        msg.setLookAt(lookAtCmd);
+    }
+    else if (cmd == "rotate") {
+        if (parts.size() < 3) {
+            LogManager::log("Usage: rotate <yaw> <pitch>", LogManager::Warning);
+            return;
+        }
+        bool okYaw, okPitch;
+        float yaw = parts[1].toFloat(&okYaw);
+        float pitch = parts[2].toFloat(&okPitch);
+        if (!okYaw || !okPitch) {
+            LogManager::log("Invalid rotation values", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::SetRotationCommand rotateCmd;
+        rotateCmd.setYaw(yaw);
+        rotateCmd.setPitch(pitch);
+        msg.setSetRotation(rotateCmd);
+    }
+    else if (cmd == "hotbar") {
+        if (parts.size() < 2) {
+            LogManager::log("Usage: hotbar <slot>", LogManager::Warning);
+            return;
+        }
+        bool ok;
+        int slot = parts[1].toInt(&ok);
+        if (!ok || slot < 0 || slot > 8) {
+            LogManager::log("Slot must be 0-8", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::SwitchHotbarSlotCommand hotbarCmd;
+        hotbarCmd.setSlot(slot);
+        msg.setSwitchHotbar(hotbarCmd);
+    }
+    else if (cmd == "use") {
+        mankool::mcbot::protocol::UseItemCommand useCmd;
+        if (parts.size() > 1 && parts[1].toLower() == "offhand") {
+            useCmd.setHand(mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND);
+        } else {
+            useCmd.setHand(mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND);
+        }
+        msg.setUseItem(useCmd);
+    }
+    else if (cmd == "drop") {
+        mankool::mcbot::protocol::DropItemCommand dropCmd;
+        dropCmd.setDropAll(parts.size() > 1 && parts[1].toLower() == "all");
+        msg.setDropItem(dropCmd);
+    }
+    else if (cmd == "shutdown") {
+        mankool::mcbot::protocol::ShutdownCommand shutdownCmd;
+        shutdownCmd.setReason(parts.size() > 1 ? parts.mid(1).join(' ') : "Console command");
+        msg.setShutdown(shutdownCmd);
+    }
+    else {
+        LogManager::log(QString("Unknown command: %1").arg(cmd), LogManager::Warning);
+        return;
+    }
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize command '%1' for bot '%2'").arg(commandText, botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+    LogManager::log(QString("Sent command to %1: %2").arg(botName, commandText), LogManager::Info);
 }
 
 void BotManager::handleHeartbeat(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat)

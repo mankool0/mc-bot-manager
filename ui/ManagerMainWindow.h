@@ -28,6 +28,7 @@ class PrismLauncherManager;
 class PipeServer;
 class QProcess;
 class NetworkStatsWidget;
+class BotConsoleWidget;
 
 struct PrismConfig {
     QString prismPath;
@@ -60,13 +61,14 @@ private slots:
     void onConfigurationChanged();
     void launchAllBots();
     void stopAllBots();
-    void showNetworkStats();
+    void showNetworkStats(bool show);
 
 private:
     Ui::ManagerMainWindow *ui;
     QString selectedBotName;
     PrismConfig prismConfig;
     bool loadingConfiguration;
+    bool detailsPinned;
 
     struct ScheduledLaunch {
         QString botName;
@@ -110,6 +112,11 @@ private:
     void setupPipeServer();
     void onClientConnected(int connectionId, const QString &botName);
     void onClientDisconnected(int connectionId);
+
+    void setupConsoleTab();
+    void onConsoleCommandEntered(const QString &command);
+    void handleCommandResponse(const QString &botName, bool success, const QString &message);
+    void onPinDetailsToggled(bool pinned);
 
     static QString statusToString(BotStatus status);
 };

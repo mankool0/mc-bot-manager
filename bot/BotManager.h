@@ -13,8 +13,10 @@
 #include "inventory.qpb.h"
 #include "chat.qpb.h"
 #include "commands.qpb.h"
+#include "common.qpb.h"
 
 class LogManager;
+class BotConsoleWidget;
 
 enum class BotStatus {
     Offline,
@@ -51,6 +53,8 @@ struct BotInstance {
     qint64 bytesSent = 0;
     double dataRateIn = 0.0;   // bytes/sec
     double dataRateOut = 0.0;  // bytes/sec
+
+    BotConsoleWidget* consoleWidget = nullptr;
 };
 
 class BotManager : public QObject
@@ -81,7 +85,7 @@ public:
     static void handleCommandResponse(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     static void handleHeartbeat(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
 
-    // Command senders
+    static void sendCommand(const QString &botName, const QString &commandText);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
 
 signals:
@@ -105,6 +109,7 @@ private:
     void handleChatMessageImpl(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     void handleCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     void handleHeartbeatImpl(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
+    void sendCommandImpl(const QString &botName, const QString &commandText);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
 
     QVector<BotInstance> botInstances;

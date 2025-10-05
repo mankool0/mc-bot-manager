@@ -217,7 +217,7 @@
                  <item row="1" column="1">
                   <widget class="QComboBox" name="accountComboBox">
                    <property name="editable">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                    <property name="currentText">
                     <string/>
@@ -518,39 +518,6 @@
          <attribute name="title">
           <string>Console</string>
          </attribute>
-         <layout class="QVBoxLayout" name="consoleTabLayout">
-          <item>
-           <widget class="QPlainTextEdit" name="consoleOutput">
-            <property name="font">
-             <font>
-              <family>Consolas</family>
-              <pointsize>9</pointsize>
-             </font>
-            </property>
-            <property name="readOnly">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="consoleInputLayout">
-            <item>
-             <widget class="QLineEdit" name="consoleInput">
-              <property name="placeholderText">
-               <string>Enter command...</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="consoleSendButton">
-              <property name="text">
-               <string>Send</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
         </widget>
        </widget>
       </widget>
@@ -796,8 +763,11 @@
    </property>
   </action>
   <action name="actionNetworkStats">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
-    <string>&amp;Network Statistics...</string>
+    <string>&amp;Network Statistics</string>
    </property>
   </action>
   <action name="actionPreferences">
