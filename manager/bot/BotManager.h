@@ -42,6 +42,12 @@ struct BotInstance {
 
     QProcess* process = nullptr;
     qint64 minecraftPid = 0;
+
+    // Network statistics
+    qint64 bytesReceived = 0;
+    qint64 bytesSent = 0;
+    double dataRateIn = 0.0;   // bytes/sec
+    double dataRateOut = 0.0;  // bytes/sec
 };
 
 class BotManager : public QObject

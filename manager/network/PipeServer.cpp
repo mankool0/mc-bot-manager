@@ -169,6 +169,12 @@ void PipeServer::handleClientData()
         }
 
         processMessage(connectionId, messageData);
+
+        // Track bytes received
+        BotInstance *bot = BotManager::getBotByConnectionId(connectionId);
+        if (bot) {
+            bot->bytesReceived += messageLength + 4; // Include length prefix
+        }
     }
 }
 
@@ -177,12 +183,12 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
     QProtobufSerializer serializer;
 
     mankool::mcbot::protocol::ClientToManagerMessage clientMsg;
-    if (serializer.deserialize(&clientMsg, data) &&
-        (clientMsg.hasConnectionInfo() || clientMsg.hasServerStatus() || clientMsg.hasPlayerState() ||
-         clientMsg.hasInventory() || clientMsg.hasChat() || clientMsg.hasCommandResponse())) {
+    if (serializer.deserialize(&clientMsg, data)) {
         if (clientMsg.hasConnectionInfo()) {
             connectionBotNames[connectionId] = clientMsg.connectionInfo().playerName();
             BotManager::handleConnectionInfo(connectionId, clientMsg.connectionInfo());
+        } else if (clientMsg.hasHeartbeat()) {
+            BotManager::handleHeartbeat(connectionId, clientMsg.heartbeat());
         } else if (clientMsg.hasServerStatus()) {
             BotManager::handleServerStatus(connectionId, clientMsg.serverStatus());
         } else if (clientMsg.hasPlayerState()) {
@@ -197,13 +203,8 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
         return;
     }
 
-    mankool::mcbot::protocol::HeartbeatMessage heartbeat;
-    if (serializer.deserialize(&heartbeat, data)) {
-        BotManager::handleHeartbeat(connectionId, heartbeat);
-        return;
-    }
-
-    LogManager::log(QString("Failed to parse message (%1 bytes)").arg(data.size()), LogManager::Error);
+    LogManager::log(QString("Failed to parse message (%1 bytes)").arg(data.size()),
+                    LogManager::Error);
 }
 
 
@@ -251,6 +252,12 @@ void PipeServer::sendToClientImpl(int connectionId, const QByteArray &data)
     QLocalSocket *socket = connections[connectionId];
     socket->write(data);
     LogManager::log(QString("Sent %1 bytes to connection %2").arg(data.size()).arg(connectionId), LogManager::Debug);
+
+    // Track bytes sent
+    BotInstance *bot = BotManager::getBotByConnectionId(connectionId);
+    if (bot) {
+        bot->bytesSent += data.size();
+    }
 }
 
 void PipeServer::broadcastToAll(const QByteArray &data)

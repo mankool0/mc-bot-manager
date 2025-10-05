@@ -1,5 +1,6 @@
 #include "ManagerMainWindow.h"
 #include "PrismSettingsDialog.h"
+#include "NetworkStatsWidget.h"
 #include "logging/LogManager.h"
 #include "prism/PrismLauncherManager.h"
 #include "network/PipeServer.h"
@@ -67,6 +68,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
 
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
+    connect(ui->actionNetworkStats, &QAction::triggered, this, &ManagerMainWindow::showNetworkStats);
     connect(ui->actionSave, &QAction::triggered, this, &ManagerMainWindow::saveSettings);
     connect(ui->actionOpen, &QAction::triggered, this, &ManagerMainWindow::loadSettingsFromFile);
     connect(ui->actionLaunchAll, &QAction::triggered, this, &ManagerMainWindow::launchAllBots);
@@ -86,6 +88,14 @@ void ManagerMainWindow::setupUI()
 
     connect(ui->clearLogButton, &QPushButton::clicked, this, &ManagerMainWindow::onClearLog);
     connect(ui->autoScrollCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onAutoScrollToggled);
+
+    NetworkStatsWidget *statsWidget = new NetworkStatsWidget(this);
+    networkStatsDock = new QDockWidget("Network Statistics", this);
+    networkStatsDock->setWidget(statsWidget);
+    networkStatsDock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
+    networkStatsDock->setObjectName("networkStatsDock");
+    addDockWidget(Qt::RightDockWidgetArea, networkStatsDock);
+    networkStatsDock->hide();
 
     loadPrismLauncherConfig();
 
@@ -415,9 +425,14 @@ void ManagerMainWindow::updateStatusDisplay()
             .arg(selectedBot->connectionId)
             .arg(selectedBot->status == BotStatus::Online ? "Connected" : "Not Connected"));
 
-        ui->launchBotButton->setEnabled(selectedBot->status == BotStatus::Offline);
-        ui->stopBotButton->setEnabled(selectedBot->status == BotStatus::Online);
-        ui->restartBotButton->setEnabled(selectedBot->status == BotStatus::Online);
+        bool isOnline = (selectedBot->status == BotStatus::Online);
+        ui->launchBotButton->setEnabled(!isOnline);
+        ui->stopBotButton->setEnabled(isOnline);
+        ui->restartBotButton->setEnabled(isOnline);
+        ui->instanceComboBox->setEnabled(!isOnline);
+        ui->accountComboBox->setEnabled(!isOnline);
+        ui->serverLineEdit->setEnabled(!isOnline);
+        ui->memorySpinBox->setEnabled(!isOnline);
     }
 }
 
@@ -999,4 +1014,10 @@ void ManagerMainWindow::onMessageReceived(int connectionId, const QJsonObject &m
     LogManager::log(QString("Message from connection %1: %2 bytes")
                    .arg(connectionId)
                    .arg(message["raw_data_size"].toInt()), LogManager::Info);
+}
+
+void ManagerMainWindow::showNetworkStats()
+{
+    networkStatsDock->show();
+    networkStatsDock->raise();
 }
