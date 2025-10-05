@@ -56,6 +56,19 @@ ManagerMainWindow::~ManagerMainWindow()
     delete ui;
 }
 
+void ManagerMainWindow::closeEvent(QCloseEvent *event)
+{
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (bot.status == BotStatus::Online) {
+            bot.manualStop = true;
+            BotManager::sendShutdownCommand(bot.name, "Manager closing");
+        }
+    }
+
+    QMainWindow::closeEvent(event);
+}
+
 void ManagerMainWindow::setupUI()
 {
     connect(ui->instancesTableWidget, &QWidget::customContextMenuRequested,
@@ -107,6 +120,9 @@ void ManagerMainWindow::setupUI()
     connect(&BotManager::instance(), &BotManager::botUpdated,
             this, [this](const QString &) { updateInstancesTable(); });
 
+    launchSchedulerTimer = new QTimer(this);
+    connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
+
     setupPipeServer();
 
     LogManager::log("MC Bot Manager started", LogManager::Info);
@@ -125,13 +141,16 @@ void ManagerMainWindow::showInstancesContextMenu(const QPoint &pos)
             botAtPos = true;
             const BotInstance &bot = bots[row];
             bool isOnline = (bot.status == BotStatus::Online);
+            bool isOffline = (bot.status == BotStatus::Offline);
+            bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
+                                              [&bot](const ScheduledLaunch &s) { return s.botName == bot.name; });
 
             contextMenu.addSeparator();
 
-            if (!isOnline) {
+            if (isOffline && !inLaunchQueue) {
                 QAction *launchAction = contextMenu.addAction("Launch Bot");
                 connect(launchAction, &QAction::triggered, this, &ManagerMainWindow::launchBot);
-            } else {
+            } else if (isOnline) {
                 QAction *stopAction = contextMenu.addAction("Stop Bot");
                 connect(stopAction, &QAction::triggered, this, &ManagerMainWindow::stopBot);
 
@@ -426,7 +445,12 @@ void ManagerMainWindow::updateStatusDisplay()
             .arg(selectedBot->status == BotStatus::Online ? "Connected" : "Not Connected"));
 
         bool isOnline = (selectedBot->status == BotStatus::Online);
-        ui->launchBotButton->setEnabled(!isOnline);
+        bool isStarting = (selectedBot->status == BotStatus::Starting);
+        bool isOffline = (selectedBot->status == BotStatus::Offline);
+        bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
+                                          [this](const ScheduledLaunch &s) { return s.botName == selectedBotName; });
+
+        ui->launchBotButton->setEnabled(isOffline && !inLaunchQueue);
         ui->stopBotButton->setEnabled(isOnline);
         ui->restartBotButton->setEnabled(isOnline);
         ui->instanceComboBox->setEnabled(!isOnline);
@@ -472,6 +496,7 @@ bool ManagerMainWindow::launchBotByName(const QString &botName)
     }
 
     botToLaunch->status = BotStatus::Starting;
+    updateInstancesTable();
     updateStatusDisplay();
 
     PrismLauncherManager::launchBot(botToLaunch);
@@ -489,6 +514,7 @@ void ManagerMainWindow::stopBot()
         if (bot->minecraftPid > 0 || bot->status == BotStatus::Online) {
             LogManager::log(QString("Stopping bot '%1'...").arg(bot->name), LogManager::Info);
             bot->status = BotStatus::Stopping;
+            bot->manualStop = true;
             updateStatusDisplay();
 
             // Try graceful shutdown first
@@ -497,7 +523,8 @@ void ManagerMainWindow::stopBot()
             // Force kill after 5 seconds if not shut down
             QTimer::singleShot(5000, this, [this, botName = bot->name, pid = bot->minecraftPid]() {
                 BotInstance *b = BotManager::getBotByName(botName);
-                if (b && b->status != BotStatus::Offline) {
+                // Only kill if bot is still offline AND the PID hasn't changed (no restart)
+                if (b && b->status != BotStatus::Offline && b->minecraftPid == pid && pid > 0) {
                     LogManager::log(QString("Bot '%1' didn't shut down gracefully, force killing...").arg(botName), LogManager::Warning);
                     PrismLauncherManager::stopBot(pid);
                 }
@@ -817,28 +844,34 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
 
 void ManagerMainWindow::launchAllBots()
 {
-    if (isSequentialLaunching) {
+    if (!scheduledLaunches.isEmpty()) {
         LogManager::log("Sequential launch already in progress", LogManager::Warning);
         return;
     }
 
-    pendingLaunchQueue.clear();
-
     QVector<BotInstance> &bots = BotManager::getBots();
+    QDateTime now = QDateTime::currentDateTime();
+    int delaySeconds = 0;
+
     for (const BotInstance &bot : std::as_const(bots)) {
         if (bot.status != BotStatus::Online && bot.status != BotStatus::Starting) {
-            pendingLaunchQueue.append(bot.name);
+            ScheduledLaunch launch;
+            launch.botName = bot.name;
+            launch.launchTime = now.addSecs(delaySeconds);
+            scheduledLaunches.append(launch);
+            delaySeconds += 30;
         }
     }
 
-    if (pendingLaunchQueue.isEmpty()) {
+    if (scheduledLaunches.isEmpty()) {
         LogManager::log("All bots are already online", LogManager::Info);
         return;
     }
 
-    isSequentialLaunching = true;
-    LogManager::log(QString("Starting sequential launch of %1 bots...").arg(pendingLaunchQueue.size()), LogManager::Info);
-    launchNextBotInQueue();
+    LogManager::log(QString("Scheduled %1 bots for sequential launch (30s intervals)").arg(scheduledLaunches.size()), LogManager::Info);
+    launchSchedulerTimer->start(1000);
+    updateInstancesTable();
+    updateStatusDisplay();
 }
 
 void ManagerMainWindow::stopAllBots()
@@ -851,6 +884,8 @@ void ManagerMainWindow::stopAllBots()
     for (BotInstance &bot : bots) {
         if (bot.status == BotStatus::Online || bot.status == BotStatus::Starting) {
             LogManager::log(QString("Stopping bot '%1'").arg(bot.name), LogManager::Info);
+
+            bot.manualStop = true;
 
             // Send graceful shutdown first
             if (bot.minecraftPid > 0) {
@@ -882,10 +917,8 @@ void ManagerMainWindow::stopAllBots()
         }
     }
 
-    // Log results
     if (stoppedCount > 0) {
-        LogManager::log(QString("Marked %1 bot(s) as offline").arg(stoppedCount), LogManager::Success);
-        LogManager::log("Note: Minecraft processes may still be running - close them manually if needed", LogManager::Warning);
+        LogManager::log(QString("Sent shutdown command to %1 bot(s)").arg(stoppedCount), LogManager::Success);
     } else {
         LogManager::log("No bots were online to stop", LogManager::Info);
     }
@@ -907,39 +940,35 @@ void ManagerMainWindow::onAutoScrollToggled(bool checked)
     LogManager::setAutoScroll(checked);
 }
 
-void ManagerMainWindow::launchNextBotInQueue()
+void ManagerMainWindow::checkScheduledLaunches()
 {
-    if (pendingLaunchQueue.isEmpty()) {
-        isSequentialLaunching = false;
-        LogManager::log("Sequential launch complete: All bots processed", LogManager::Success);
+    if (scheduledLaunches.isEmpty()) {
         return;
     }
 
-    QString botName = pendingLaunchQueue.takeFirst();
-    LogManager::log(QString("Launching bot '%1'... (waiting for online status before next launch)").arg(botName), LogManager::Info);
+    QDateTime now = QDateTime::currentDateTime();
+    QList<ScheduledLaunch> toRemove;
 
-    if (!launchBotByName(botName)) {
-        LogManager::log(QString("Failed to launch bot '%1' - check instance and account configuration").arg(botName), LogManager::Error);
-        // Continue with next bot even if this one failed
-        QTimer::singleShot(1000, this, &ManagerMainWindow::launchNextBotInQueue);
-    }
-    // If launch succeeds, onBotStatusChanged will be called when the bot comes online
-}
-
-void ManagerMainWindow::onBotStatusChanged()
-{
-    if (!isSequentialLaunching) {
-        return;
+    for (const ScheduledLaunch &launch : std::as_const(scheduledLaunches)) {
+        if (launch.launchTime <= now) {
+            LogManager::log(QString("Launching scheduled bot '%1'").arg(launch.botName), LogManager::Info);
+            launchBotByName(launch.botName);
+            toRemove.append(launch);
+        }
     }
 
-    // If we have more bots to launch, continue with the next one
-    if (!pendingLaunchQueue.isEmpty()) {
-        // Wait a bit before launching the next bot
-        QTimer::singleShot(3000, this, &ManagerMainWindow::launchNextBotInQueue);
-    } else {
-        // No more bots to launch
-        isSequentialLaunching = false;
-        LogManager::log("Sequential launch complete: All queued bots have been launched", LogManager::Success);
+    for (const ScheduledLaunch &launch : toRemove) {
+        scheduledLaunches.removeAll(launch);
+    }
+
+    if (toRemove.size() > 0) {
+        updateInstancesTable();
+        updateStatusDisplay();
+    }
+
+    if (!toRemove.isEmpty() && scheduledLaunches.isEmpty()) {
+        LogManager::log("Sequential launch complete: All scheduled bots launched", LogManager::Success);
+        launchSchedulerTimer->stop();
     }
 }
 
@@ -1002,10 +1031,21 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
 {
     BotInstance *bot = BotManager::getBotByConnectionId(connectionId);
     if (bot) {
+        QString botName = bot->name;
+        bool shouldAutoRestart = bot->autoRestart && !bot->manualStop;
+
         bot->connectionId = -1;
         bot->status = BotStatus::Offline;
+        bot->manualStop = false;
         updateInstancesTable();
         updateStatusDisplay();
+
+        if (shouldAutoRestart) {
+            LogManager::log(QString("Bot '%1' crashed, auto-restarting...").arg(botName), LogManager::Warning);
+            QTimer::singleShot(2000, this, [this, botName]() {
+                launchBotByName(botName);
+            });
+        }
     }
 }
 

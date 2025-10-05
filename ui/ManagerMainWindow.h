@@ -18,6 +18,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QDockWidget>
+#include <QCloseEvent>
 
 #include "bot/BotManager.h"
 #include "ui_ManagerMainWindow.h"
@@ -43,6 +44,9 @@ public:
     ManagerMainWindow(QWidget *parent = nullptr);
     ~ManagerMainWindow();
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private slots:
     void showInstancesContextMenu(const QPoint &pos);
     void addNewBot();
@@ -64,8 +68,16 @@ private:
     PrismConfig prismConfig;
     bool loadingConfiguration;
 
-    QStringList pendingLaunchQueue;
-    bool isSequentialLaunching = false;
+    struct ScheduledLaunch {
+        QString botName;
+        QDateTime launchTime;
+
+        bool operator==(const ScheduledLaunch &other) const {
+            return botName == other.botName;
+        }
+    };
+    QList<ScheduledLaunch> scheduledLaunches;
+    QTimer *launchSchedulerTimer = nullptr;
     QDockWidget *networkStatsDock = nullptr;
 
     void setupUI();
@@ -87,8 +99,7 @@ private:
 
     bool launchBotByName(const QString &botName);
 
-    void launchNextBotInQueue();
-    void onBotStatusChanged();
+    void checkScheduledLaunches();
 
     void onClearLog();
     void onAutoScrollToggled(bool checked);
