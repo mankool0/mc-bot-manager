@@ -1,9 +1,11 @@
 package me.mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
+import mankool.mcbot.protocol.Common;
 import me.mankool.mcBotClient.connection.PipeConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.util.Hand;
 
 public class InventoryHandler extends BaseInboundHandler {
 
@@ -24,9 +26,13 @@ public class InventoryHandler extends BaseInboundHandler {
             return;
         }
 
-        // TODO: Implement hotbar switching when we have proper access
-        System.out.println("Switch to hotbar slot: " + slot);
-        sendFailure(messageId, "Hotbar switching not implemented yet");
+        try {
+            player.getInventory().setSelectedSlot(slot);
+            sendSuccess(messageId, "Switched to hotbar slot " + slot);
+        } catch (Exception e) {
+            System.err.println("Failed to switch hotbar slot: " + e.getMessage());
+            sendFailure(messageId, "Failed to switch slot: " + e.getMessage());
+        }
     }
 
     public void handleUseItem(String messageId, Commands.UseItemCommand command) {
@@ -36,9 +42,19 @@ public class InventoryHandler extends BaseInboundHandler {
             return;
         }
 
-        // TODO: Use item in specified hand
-        System.out.println("Use item in hand: " + command.getHand());
-        sendFailure(messageId, "Item use not implemented yet");
+        try {
+            Hand hand = command.getHand() == Common.Hand.OFF_HAND ? Hand.OFF_HAND : Hand.MAIN_HAND;
+
+            if (client.interactionManager != null) {
+                client.interactionManager.interactItem(player, hand);
+                sendSuccess(messageId, "Used item in " + hand + " hand");
+            } else {
+                sendFailure(messageId, "Interaction manager not available");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to use item: " + e.getMessage());
+            sendFailure(messageId, "Failed to use item: " + e.getMessage());
+        }
     }
 
     public void handleDropItem(String messageId, Commands.DropItemCommand command) {
@@ -48,8 +64,18 @@ public class InventoryHandler extends BaseInboundHandler {
             return;
         }
 
-        // TODO: Drop item(s)
-        System.out.println("Drop item, all: " + command.getDropAll());
-        sendFailure(messageId, "Item drop not implemented yet");
+        try {
+            boolean dropAll = command.getDropAll();
+            boolean dropped = player.dropSelectedItem(dropAll);
+
+            if (dropped) {
+                sendSuccess(messageId, "Dropped item" + (dropAll ? " stack" : ""));
+            } else {
+                sendFailure(messageId, "No item to drop");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to drop item: " + e.getMessage());
+            sendFailure(messageId, "Failed to drop item: " + e.getMessage());
+        }
     }
 }

@@ -21,8 +21,9 @@ public class ChatHandler extends BaseInboundHandler {
         try {
             String message = command.getMessage();
             if (message.startsWith("/")) {
-                // It's a command
-                player.networkHandler.sendChatCommand(message);
+                // It's a command - remove the leading slash
+                String commandWithoutSlash = message.substring(1);
+                player.networkHandler.sendChatCommand(commandWithoutSlash);
                 sendSuccess(messageId, "Command sent: " + message);
             } else {
                 // Regular chat message
