@@ -356,19 +356,15 @@ public class PipeConnection {
         long currentMemory = runtime.totalMemory() - runtime.freeMemory();
 
         Connection.HeartbeatMessage heartbeat = Connection.HeartbeatMessage.newBuilder()
-            .setTimestamp(System.currentTimeMillis())
             .setCurrentMemory(currentMemory)
             .build();
 
-        try {
-            byte[] data = heartbeat.toByteArray();
-            if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                sendMessageWindows(data);
-            } else {
-                sendMessageUnix(data);
-            }
-        } catch (IOException e) {
-            System.err.println("Failed to send heartbeat: " + e.getMessage());
-        }
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(java.util.UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setHeartbeat(heartbeat)
+            .build();
+
+        sendMessage(message);
     }
 }
