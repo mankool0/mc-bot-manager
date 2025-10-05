@@ -17,6 +17,7 @@
 #include <QVector3D>
 #include <QSettings>
 #include <QTimer>
+#include <QDockWidget>
 
 #include "bot/BotManager.h"
 #include "ui_ManagerMainWindow.h"
@@ -25,6 +26,7 @@ class LogManager;
 class PrismLauncherManager;
 class PipeServer;
 class QProcess;
+class NetworkStatsWidget;
 
 struct PrismConfig {
     QString prismPath;
@@ -54,6 +56,7 @@ private slots:
     void onConfigurationChanged();
     void launchAllBots();
     void stopAllBots();
+    void showNetworkStats();
 
 private:
     Ui::ManagerMainWindow *ui;
@@ -63,6 +66,7 @@ private:
 
     QStringList pendingLaunchQueue;
     bool isSequentialLaunching = false;
+    QDockWidget *networkStatsDock = nullptr;
 
     void setupUI();
     void updateInstancesTable();
