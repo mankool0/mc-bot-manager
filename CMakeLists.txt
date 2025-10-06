@@ -110,7 +110,7 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/mc-bot-manager AppDir/usr/bin/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.desktop AppDir/usr/share/applications/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
-        COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+        COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file AppDir/usr/share/applications/mc-bot-manager.desktop --plugin qt --output appimage
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Building AppImage in build directory..."
     )
