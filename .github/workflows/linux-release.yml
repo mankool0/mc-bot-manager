@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - 'ghworkflow'
     tags:
       - 'v*'
   pull_request:
