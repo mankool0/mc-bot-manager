@@ -72,9 +72,16 @@ jobs:
           path: ${{ env.APPIMAGE_ARTIFACT }}
 
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.APPIMAGE_ARTIFACT }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release package
+        if: inputs.create_release && !startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-release
+          path: ${{ env.APPIMAGE_ARTIFACT }}
