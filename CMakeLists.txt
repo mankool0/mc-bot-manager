@@ -97,3 +97,22 @@ install(TARGETS mc-bot-manager
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(mc-bot-manager)
 endif()
+
+# AppImage support
+option(BUILD_APPIMAGE "Build AppImage" OFF)
+
+if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
+    # Custom target to build AppImage in build directory
+    add_custom_target(appimage
+        COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/bin
+        COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/share/applications
+        COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/share/icons/hicolor/256x256/apps
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/mc-bot-manager AppDir/usr/bin/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.desktop AppDir/usr/share/applications/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
+        COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Building AppImage in build directory..."
+    )
+    add_dependencies(appimage mc-bot-manager)
+endif()

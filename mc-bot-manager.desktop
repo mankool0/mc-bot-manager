@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=MC Bot Manager
+Comment=Manage multiple Minecraft bot instances
+Exec=mc-bot-manager
+Icon=mc-bot-manager
+Categories=Utility;Game;
+Terminal=false
