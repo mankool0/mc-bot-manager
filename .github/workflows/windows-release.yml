@@ -55,19 +55,17 @@ jobs:
           cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
 
-      - name: Deploy Qt Build
+      - name: Deploy Qt dependencies
         working-directory: build
         run: |
-          mkdir deploy
-          copy mc-bot-manager.exe deploy\
-          copy mc-bot-manager-proto.dll deploy\
-          windeployqt deploy\mc-bot-manager.exe --release
+          mkdir mc-bot-manager
+          copy mc-bot-manager.exe mc-bot-manager\
+          copy mc-bot-manager-proto.dll mc-bot-manager\
+          windeployqt mc-bot-manager\mc-bot-manager.exe --release
 
       - name: Package release
         working-directory: build
         run: |
-          mkdir mc-bot-manager
-          xcopy /E /I /Y deploy mc-bot-manager
           7z a ..\${{ env.ARTIFACT }} mc-bot-manager\
 
       - name: Upload artifact
@@ -75,6 +73,7 @@ jobs:
         with:
           name: ${{ env.ARTIFACT }}
           path: ${{ env.ARTIFACT }}
+          compression-level: 0
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
