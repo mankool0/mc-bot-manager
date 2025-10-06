@@ -19,7 +19,7 @@ defaults:
 env:
   QT_VERSION: 6.9.3
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
-  STATIC_ARTIFACT: mc-bot-manager-linux-static
+  BINARY_ARTIFACT: mc-bot-manager-linux-binary
 
 jobs:
   build:
@@ -49,10 +49,10 @@ jobs:
           wget -O linuxdeploy-plugin-qt-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy*.AppImage
 
-      - name: Build static binary
+      - name: Build binary
         run: |
-          mkdir -p build-static
-          cd build-static
+          mkdir -p build-binary
+          cd build-binary
           cmake .. -DCMAKE_BUILD_TYPE=Release
           cmake --build . -j$(nproc)
           strip mc-bot-manager
@@ -69,11 +69,13 @@ jobs:
           cmake --build . --target appimage
           mv MC_Bot_Manager*.AppImage ../${{ env.APPIMAGE_ARTIFACT }}
 
-      - name: Upload static binary
+      - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.STATIC_ARTIFACT }}
-          path: build-static/mc-bot-manager
+          name: ${{ env.BINARY_ARTIFACT }}
+          path: |
+            build-binary/mc-bot-manager
+            build-binary/libmc-bot-manager-proto.so
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
@@ -86,7 +88,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build-static/mc-bot-manager
+            build-binary/mc-bot-manager
+            build-binary/libmc-bot-manager-proto.so
             ${{ env.APPIMAGE_ARTIFACT }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

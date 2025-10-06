@@ -88,7 +88,7 @@ set_target_properties(mc-bot-manager PROPERTIES
 )
 
 include(GNUInstallDirs)
-install(TARGETS mc-bot-manager
+install(TARGETS mc-bot-manager mc-bot-manager-proto
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -105,9 +105,11 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
     # Custom target to build AppImage in build directory
     add_custom_target(appimage
         COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/bin
+        COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/lib
         COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/share/applications
         COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/share/icons/hicolor/256x256/apps
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/mc-bot-manager AppDir/usr/bin/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libmc-bot-manager-proto.so AppDir/usr/lib/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.desktop AppDir/usr/share/applications/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
         COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file AppDir/usr/share/applications/mc-bot-manager.desktop --plugin qt --output appimage
