@@ -40,6 +40,9 @@ jobs:
           arch: 'linux_gcc_64'
           modules: 'qtgrpc'
 
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
       - name: Download linuxdeploy tools
         run: |
           wget -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
