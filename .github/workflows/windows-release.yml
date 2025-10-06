@@ -55,12 +55,13 @@ jobs:
           cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
 
-      - name: Deploy Qt dependencies
+      - name: Deploy Qt Build
         working-directory: build
         run: |
-          windeployqt mc-bot-manager.exe --release
+          mkdir deploy
           copy mc-bot-manager.exe deploy\
           copy mc-bot-manager-proto.dll deploy\
+          windeployqt deploy\mc-bot-manager.exe --release
 
       - name: Package release
         working-directory: build
