@@ -79,9 +79,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload release package
+      - name: Create manual release
         if: inputs.create_release && !startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v4
+        uses: softprops/action-gh-release@v2
         with:
-          name: manual-release
-          path: ${{ env.APPIMAGE_ARTIFACT }}
+          tag_name: manual-release
+          name: Manual Release
+          body: Manual release build from ${{ github.sha }}
+          files: ${{ env.APPIMAGE_ARTIFACT }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
