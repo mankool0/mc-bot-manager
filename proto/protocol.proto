@@ -8,6 +8,7 @@ import "player.proto";
 import "chat.proto";
 import "commands.proto";
 import "inventory.proto";
+import "meteor.proto";
 
 // Main protocol definition that ties everything together
 
@@ -34,6 +35,11 @@ message ClientToManagerMessage {
 
     // Command responses
     CommandResponse command_response = 9;
+
+    // Meteor module responses
+    GetModulesResponse modules_response = 10;
+    SetModuleConfigResponse module_config_response = 11;
+    ModuleStateChanged module_state_changed = 12;
   }
 }
 
@@ -66,5 +72,9 @@ message ManagerToClientMessage {
 
     // Process control
     ShutdownCommand shutdown = 13;
+
+    // Meteor module management
+    GetModulesRequest get_modules = 14;
+    SetModuleConfigCommand set_module_config = 15;
   }
 }

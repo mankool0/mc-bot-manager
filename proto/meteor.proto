@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Meteor Client module management
+
+// Setting information
+message SettingInfo {
+  string name = 1;
+
+  enum SettingType {
+    BOOLEAN = 0;
+    INTEGER = 1;
+    DOUBLE = 2;
+    STRING = 3;
+    ENUM = 4;
+    COLOR = 5;
+    KEYBIND = 6;
+    BLOCK = 7;
+    ITEM = 8;
+  }
+
+  SettingType type = 2;
+  string current_value = 3;
+  repeated string possible_values = 4;  // For enums
+
+  // Optional metadata
+  optional double min_value = 5;        // For numeric settings
+  optional double max_value = 6;        // For numeric settings
+  optional string description = 7;      // Setting description
+  optional string group_name = 8;       // Setting group
+}
+
+// Module information
+message ModuleInfo {
+  string name = 1;
+  string category = 2;
+  bool enabled = 3;
+  string description = 4;
+  repeated SettingInfo settings = 5;
+}
+
+// Request all available modules (Manager -> Client)
+message GetModulesRequest {
+  optional string category_filter = 1;  // Optional: filter by category
+}
+
+// Response with all modules (Client -> Manager)
+message GetModulesResponse {
+  repeated ModuleInfo modules = 1;
+}
+
+// Set module configuration (Manager -> Client)
+message SetModuleConfigCommand {
+  string module_name = 1;
+  optional bool enabled = 2;            // Enable/disable the module
+  map<string, string> settings = 3;     // Setting path -> value (use "group.name" format for grouped settings)
+}
+
+// Response to module config change (Client -> Manager)
+message SetModuleConfigResponse {
+  bool success = 1;
+  string error_message = 2;
+  ModuleInfo updated_module = 3;        // Return updated module state
+}
+
+// Notify manager of module state change (Client -> Manager)
+// Useful for when modules are toggled manually or by other means
+message ModuleStateChanged {
+  string module_name = 1;
+  optional bool enabled = 2;                    // If present, module was toggled
+  map<string, string> changed_settings = 3;     // Settings that changed (path -> new value)
+}
