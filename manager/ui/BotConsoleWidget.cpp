@@ -84,7 +84,8 @@ void BotConsoleWidget::initializeCommands()
         {"hotbar", "Switch hotbar slot", "hotbar <slot>"},
         {"use", "Use item in hand", "use [main|offhand]"},
         {"drop", "Drop item", "drop [all]"},
-        {"shutdown", "Shutdown the bot", "shutdown [reason]"}
+        {"shutdown", "Shutdown the bot", "shutdown [reason]"},
+        {"meteor", "Manage Meteor client modules", "meteor list [category] | meteor toggle <module> | meteor set <module> <\"setting\"|enabled> <value>"}
     };
 
     QStringList commandNames;

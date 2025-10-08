@@ -519,6 +519,11 @@
           <string>Console</string>
          </attribute>
         </widget>
+        <widget class="QWidget" name="meteorTab">
+         <attribute name="title">
+          <string>Meteor</string>
+         </attribute>
+        </widget>
        </widget>
       </widget>
      </widget>

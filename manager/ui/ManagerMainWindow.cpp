@@ -1,5 +1,6 @@
 #include "ManagerMainWindow.h"
 #include "BotConsoleWidget.h"
+#include "MeteorModulesWidget.h"
 #include "PrismSettingsDialog.h"
 #include "NetworkStatsWidget.h"
 #include "logging/LogManager.h"
@@ -130,6 +131,10 @@ void ManagerMainWindow::setupUI()
             this, [this](const QString &) { updateInstancesTable(); });
     connect(&BotManager::instance(), &BotManager::botUpdated,
             this, [this](const QString &) { updateInstancesTable(); });
+    connect(&BotManager::instance(), &BotManager::meteorModulesReceived,
+            this, &ManagerMainWindow::onMeteorModulesReceived);
+    connect(&BotManager::instance(), &BotManager::meteorSingleModuleUpdated,
+            this, &ManagerMainWindow::onMeteorSingleModuleUpdated);
 
     launchSchedulerTimer = new QTimer(this);
     connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
@@ -214,15 +219,31 @@ void ManagerMainWindow::addNewBot()
         BotManager::addBot(newBot);
 
         BotInstance *bot = BotManager::getBotByName(botName);
-        if (bot && !bot->consoleWidget) {
-            bot->consoleWidget = new BotConsoleWidget(this);
-            connect(bot->consoleWidget, &BotConsoleWidget::commandEntered,
-                    this, &ManagerMainWindow::onConsoleCommandEntered);
-            bot->consoleWidget->hide();
+        if (bot) {
+            if (!bot->consoleWidget) {
+                bot->consoleWidget = new BotConsoleWidget(this);
+                connect(bot->consoleWidget, &BotConsoleWidget::commandEntered,
+                        this, &ManagerMainWindow::onConsoleCommandEntered);
+                bot->consoleWidget->hide();
 
-            QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->consoleTab->layout());
-            if (layout) {
-                layout->addWidget(bot->consoleWidget);
+                QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->consoleTab->layout());
+                if (layout) {
+                    layout->addWidget(bot->consoleWidget);
+                }
+            }
+
+            if (!bot->meteorWidget) {
+                bot->meteorWidget = new MeteorModulesWidget(this);
+                connect(bot->meteorWidget, &MeteorModulesWidget::moduleToggled,
+                        this, &ManagerMainWindow::onMeteorModuleToggled);
+                connect(bot->meteorWidget, &MeteorModulesWidget::settingChanged,
+                        this, &ManagerMainWindow::onMeteorSettingChanged);
+                bot->meteorWidget->hide();
+
+                QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->meteorTab->layout());
+                if (layout) {
+                    layout->addWidget(bot->meteorWidget);
+                }
             }
         }
 
@@ -396,6 +417,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         if (bot.consoleWidget) {
             bot.consoleWidget->hide();
         }
+        if (bot.meteorWidget) {
+            bot.meteorWidget->hide();
+        }
     }
 
     if (selectedItems.isEmpty()) {
@@ -418,6 +442,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
 
         if (bot.consoleWidget) {
             bot.consoleWidget->show();
+        }
+        if (bot.meteorWidget) {
+            bot.meteorWidget->show();
         }
     }
 }
@@ -869,6 +896,7 @@ void ManagerMainWindow::loadSettings()
     settings.endGroup();
 
     setupConsoleTab();
+    setupMeteorTab();
 
     settings.beginGroup("Window");
     restoreGeometry(settings.value("geometry").toByteArray());
@@ -1121,6 +1149,9 @@ void ManagerMainWindow::onClientConnected(int connectionId, const QString &botNa
         if (bot) {
             updateInstancesTable();
             updateStatusDisplay();
+
+            // Request Meteor modules list
+            BotManager::sendCommand(botName, "meteor list");
         }
     }
 }
@@ -1190,6 +1221,87 @@ void ManagerMainWindow::handleCommandResponse(const QString &botName, bool succe
     if (bot && bot->consoleWidget) {
         bot->consoleWidget->appendResponse(success, message);
     }
+}
+
+void ManagerMainWindow::setupMeteorTab()
+{
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->meteorTab->layout());
+    if (!layout) {
+        layout = new QVBoxLayout(ui->meteorTab);
+        layout->setContentsMargins(0, 0, 0, 0);
+    }
+
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (!bot.meteorWidget) {
+            bot.meteorWidget = new MeteorModulesWidget(this);
+            connect(bot.meteorWidget, &MeteorModulesWidget::moduleToggled,
+                    this, &ManagerMainWindow::onMeteorModuleToggled);
+            connect(bot.meteorWidget, &MeteorModulesWidget::settingChanged,
+                    this, &ManagerMainWindow::onMeteorSettingChanged);
+            bot.meteorWidget->hide();
+            layout->addWidget(bot.meteorWidget);
+        }
+    }
+}
+
+void ManagerMainWindow::onMeteorModulesReceived(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->meteorWidget) {
+        bot->meteorWidget->updateModules(bot->meteorModules);
+    }
+}
+
+void ManagerMainWindow::onMeteorSingleModuleUpdated(const QString &botName, const QString &moduleName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->meteorWidget) {
+        // Find the updated module
+        for (const auto &module : bot->meteorModules) {
+            if (module.name() == moduleName) {
+                bot->meteorWidget->updateSingleModule(module);
+                break;
+            }
+        }
+    }
+}
+
+void ManagerMainWindow::onMeteorModuleToggled(const QString &moduleName, bool enabled)
+{
+    if (selectedBotName.isEmpty()) {
+        return;
+    }
+
+    BotInstance *bot = BotManager::getBotByName(selectedBotName);
+    if (!bot || bot->status != BotStatus::Online || bot->connectionId < 0) {
+        LogManager::log(QString("Cannot toggle module: bot '%1' is not connected").arg(selectedBotName),
+                       LogManager::Warning);
+        return;
+    }
+
+    QString command = QString("meteor set %1 enabled %2").arg(moduleName, enabled ? "true" : "false");
+    BotManager::sendCommand(selectedBotName, command);
+}
+
+void ManagerMainWindow::onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QString &value)
+{
+    if (selectedBotName.isEmpty()) {
+        return;
+    }
+
+    BotInstance *bot = BotManager::getBotByName(selectedBotName);
+    if (!bot || bot->status != BotStatus::Online || bot->connectionId < 0) {
+        LogManager::log(QString("Cannot change setting: bot '%1' is not connected").arg(selectedBotName),
+                       LogManager::Warning);
+        return;
+    }
+
+    QString quotedSettingPath = settingPath.contains(' ') ? QString("\"%1\"").arg(settingPath) : settingPath;
+    QString quotedValue = value.contains(' ') ? QString("\"%1\"").arg(value) : value;
+
+    QString command = QString("meteor set %1 %2 %3").arg(moduleName, quotedSettingPath, quotedValue);
+    BotManager::sendCommand(selectedBotName, command);
 }
 
 void ManagerMainWindow::showNetworkStats(bool show)
