@@ -9,6 +9,8 @@ import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.invoke.MethodHandles;
+
 public class McBotClient implements ClientModInitializer {
     public static final String MOD_ID = "mc-bot-client";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
@@ -22,6 +24,17 @@ public class McBotClient implements ClientModInitializer {
     public void onInitializeClient() {
         instance = this;
         LOGGER.info("Initializing Minecraft Bot Client");
+
+        // Register lambda factory for Orbit event bus (required for @EventHandler annotations)
+        try {
+            meteordevelopment.meteorclient.MeteorClient.EVENT_BUS.registerLambdaFactory(
+                "me.mankool.mcBotClient",
+                (lookupInMethod, klass) -> (MethodHandles.Lookup) lookupInMethod.invoke(null, klass, MethodHandles.lookup())
+            );
+            LOGGER.info("Registered Orbit lambda factory for event handlers");
+        } catch (Exception e) {
+            LOGGER.error("Failed to register Orbit lambda factory", e);
+        }
 
         // Register lifecycle events
         ClientLifecycleEvents.CLIENT_STARTED.register(this::onClientStarted);

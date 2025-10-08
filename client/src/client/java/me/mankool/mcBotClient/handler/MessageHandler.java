@@ -24,6 +24,7 @@ public class MessageHandler {
     private final PlayerActionHandler playerActionHandler;
     private final InventoryHandler inventoryHandler;
     private final ChatHandler chatHandler;
+    private final MeteorModuleHandler meteorModuleHandler;
 
     // Outbound handlers (send data updates)
     private final ServerOutbound serverOutbound;
@@ -39,6 +40,7 @@ public class MessageHandler {
         this.playerActionHandler = new PlayerActionHandler(client, connection);
         this.inventoryHandler = new InventoryHandler(client, connection);
         this.chatHandler = new ChatHandler(client, connection);
+        this.meteorModuleHandler = new MeteorModuleHandler(client, connection);
 
         // Initialize outbound handlers
         this.serverOutbound = new ServerOutbound(client, connection);
@@ -74,6 +76,10 @@ public class MessageHandler {
             msg -> inventoryHandler.handleDropItem(msg.getMessageId(), msg.getDropItem()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SHUTDOWN,
             msg -> connectionHandler.handleShutdown(msg.getMessageId(), msg.getShutdown()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_MODULES,
+            msg -> meteorModuleHandler.handleGetModules(msg.getMessageId(), msg.getGetModules()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_MODULE_CONFIG,
+            msg -> meteorModuleHandler.handleSetModuleConfig(msg.getMessageId(), msg.getSetModuleConfig()));
     }
 
     public void start() {

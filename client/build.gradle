@@ -67,6 +67,16 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
     mavenCentral()
+
+    // Meteor Client maven repository
+    maven {
+        name = "Meteor"
+        url = "https://maven.meteordev.org/releases"
+    }
+    maven {
+        name = "Meteor Snapshots"
+        url = "https://maven.meteordev.org/snapshots"
+    }
 }
 
 dependencies {
@@ -76,6 +86,12 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Meteor Client - utility mod
+    modImplementation "meteordevelopment:meteor-client:${project.meteor_version}"
+
+    // Baritone (https://github.com/MeteorDevelopment/baritone)
+    modCompileOnly "meteordevelopment:baritone:${project.baritone_version}"
 
     // Protocol Buffers - using implementation for compile, include for runtime
     implementation "com.google.protobuf:protobuf-java:${project.protobuf_version}"
