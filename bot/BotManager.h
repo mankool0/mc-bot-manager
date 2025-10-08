@@ -14,9 +14,11 @@
 #include "chat.qpb.h"
 #include "commands.qpb.h"
 #include "common.qpb.h"
+#include "meteor.qpb.h"
 
 class LogManager;
 class BotConsoleWidget;
+class MeteorModulesWidget;
 
 enum class BotStatus {
     Offline,
@@ -55,6 +57,10 @@ struct BotInstance {
     double dataRateOut = 0.0;  // bytes/sec
 
     BotConsoleWidget* consoleWidget = nullptr;
+    MeteorModulesWidget* meteorWidget = nullptr;
+
+    // Meteor modules data
+    QVector<mankool::mcbot::protocol::ModuleInfo> meteorModules;
 };
 
 class BotManager : public QObject
@@ -84,14 +90,21 @@ public:
     static void handleChatMessage(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     static void handleCommandResponse(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     static void handleHeartbeat(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
+    static void handleModulesResponse(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response);
+    static void handleModuleConfigResponse(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response);
+    static void handleModuleStateChanged(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange);
 
     static void sendCommand(const QString &botName, const QString &commandText);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
+
+    static QString getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting);
 
 signals:
     void botAdded(const QString &name);
     void botRemoved(const QString &name);
     void botUpdated(const QString &name);
+    void meteorModulesReceived(const QString &botName);
+    void meteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
 
 private:
     explicit BotManager(QObject *parent = nullptr);
@@ -109,6 +122,9 @@ private:
     void handleChatMessageImpl(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     void handleCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     void handleHeartbeatImpl(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
+    void handleModulesResponseImpl(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response);
+    void handleModuleConfigResponseImpl(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response);
+    void handleModuleStateChangedImpl(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange);
     void sendCommandImpl(const QString &botName, const QString &commandText);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
 

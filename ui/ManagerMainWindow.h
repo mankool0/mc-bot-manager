@@ -118,6 +118,12 @@ private:
     void handleCommandResponse(const QString &botName, bool success, const QString &message);
     void onPinDetailsToggled(bool pinned);
 
+    void setupMeteorTab();
+    void onMeteorModulesReceived(const QString &botName);
+    void onMeteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
+    void onMeteorModuleToggled(const QString &moduleName, bool enabled);
+    void onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QString &value);
+
     static QString statusToString(BotStatus status);
 };
 #endif // MANAGERMAINWINDOW_H

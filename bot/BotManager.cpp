@@ -1,6 +1,7 @@
 #include "BotManager.h"
 #include "logging/LogManager.h"
 #include "network/PipeServer.h"
+#include "ui/BotConsoleWidget.h"
 #include <QDateTime>
 #include <QDataStream>
 #include <QtProtobuf/QProtobufSerializer>
@@ -71,6 +72,15 @@ void BotManager::removeBotImpl(const QString &name)
 {
     for (int i = 0; i < botInstances.size(); ++i) {
         if (botInstances[i].name == name) {
+            if (botInstances[i].consoleWidget) {
+                delete botInstances[i].consoleWidget;
+                botInstances[i].consoleWidget = nullptr;
+            }
+            if (botInstances[i].meteorWidget) {
+                delete botInstances[i].meteorWidget;
+                botInstances[i].meteorWidget = nullptr;
+            }
+
             botInstances.removeAt(i);
             emit botRemoved(name);
             return;
@@ -106,7 +116,6 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     QString modVersion = info.modVersion();
     QString playerUuid = info.playerUuid();
 
-    // Find bot by player name and update its state
     BotInstance *bot = getBotByNameImpl(playerName);
     if (bot) {
         bot->connectionId = connectionId;
@@ -143,7 +152,6 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
     QString serverName = status.serverName();
     QString serverAddr = status.serverAddress();
 
-    // Update bot state
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
         bot->server = serverAddr;
@@ -162,7 +170,6 @@ void BotManager::handlePlayerState(int connectionId, const mankool::mcbot::proto
 
 void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state)
 {
-    // Update bot state
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
         if (state.hasPosition()) {
@@ -221,6 +228,230 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
     }
 }
 
+void BotManager::handleModulesResponse(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response)
+{
+    instance().handleModulesResponseImpl(connectionId, response);
+}
+
+void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    bot->meteorModules.clear();
+    for (const auto &module : response.modules()) {
+        bot->meteorModules.append(module);
+    }
+
+    QString output = QString("=== Meteor Modules (%1) ===\n").arg(response.modules().size());
+
+    for (const auto &module : response.modules()) {
+        QString statusIcon = module.enabled() ? "[✓]" : "[ ]";
+        output += QString("%1 %2 (%3)\n").arg(statusIcon, module.name(), module.category());
+
+        if (!module.description().isEmpty()) {
+            output += QString("    %1\n").arg(module.description());
+        }
+
+        if (!module.settings().empty()) {
+            output += "    Settings:\n";
+
+            QMap<QString, QVector<const mankool::mcbot::protocol::SettingInfo*>> groupedSettings;
+            for (const auto &setting : module.settings()) {
+                QString group = setting.hasGroupName() ? setting.groupName() : QString();
+                groupedSettings[group].append(&setting);
+            }
+
+            for (auto it = groupedSettings.constBegin(); it != groupedSettings.constEnd(); ++it) {
+                const QString &groupName = it.key();
+                const auto &settings = it.value();
+
+                if (!groupName.isEmpty()) {
+                    output += QString("      [%1]\n").arg(groupName);
+                }
+
+                for (const auto *setting : settings) {
+                    QString settingPath = getSettingPath(*setting);
+                    output += QString("        %1 = %2\n").arg(settingPath, setting->currentValue());
+                }
+            }
+        }
+        output += "\n";
+    }
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(true, output.trimmed());
+    }
+
+    LogManager::log(QString("[%1] Received %2 modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
+
+    emit meteorModulesReceived(bot->name);
+}
+
+void BotManager::handleModuleConfigResponse(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response)
+{
+    instance().handleModuleConfigResponseImpl(connectionId, response);
+}
+
+void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    QString output;
+    bool moduleFound = false;
+    if (response.success()) {
+        const auto &updatedModule = response.updatedModule();
+
+        for (int i = 0; i < bot->meteorModules.size(); ++i) {
+            if (bot->meteorModules[i].name() == updatedModule.name()) {
+                bot->meteorModules[i] = updatedModule;
+                moduleFound = true;
+                break;
+            }
+        }
+
+        QString statusIcon = updatedModule.enabled() ? "[✓]" : "[ ]";
+        output = QString("Module updated: %1 %2").arg(statusIcon, updatedModule.name());
+
+        if (!updatedModule.settings().empty()) {
+            output += "\nSettings:";
+
+            QMap<QString, QVector<const mankool::mcbot::protocol::SettingInfo*>> groupedSettings;
+            for (const auto &setting : updatedModule.settings()) {
+                QString group = setting.hasGroupName() ? setting.groupName() : QString();
+                groupedSettings[group].append(&setting);
+            }
+
+            for (auto it = groupedSettings.constBegin(); it != groupedSettings.constEnd(); ++it) {
+                const QString &groupName = it.key();
+                const auto &settings = it.value();
+
+                if (!groupName.isEmpty()) {
+                    output += QString("\n  [%1]").arg(groupName);
+                }
+
+                for (const auto *setting : settings) {
+                    QString settingPath = getSettingPath(*setting);
+                    output += QString("\n    %1 = %2").arg(settingPath, setting->currentValue());
+                }
+            }
+        }
+    } else {
+        output = QString("Error: %1").arg(response.errorMessage());
+    }
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(response.success(), output);
+    }
+
+    LogManager::log(QString("[%1] Module config: %2").arg(bot->name, output),
+                    response.success() ? LogManager::Info : LogManager::Warning);
+
+    if (moduleFound) {
+        emit meteorSingleModuleUpdated(bot->name, response.updatedModule().name());
+    }
+}
+
+void BotManager::handleModuleStateChanged(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange)
+{
+    instance().handleModuleStateChangedImpl(connectionId, stateChange);
+}
+
+void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    bool moduleFound = false;
+    for (int i = 0; i < bot->meteorModules.size(); ++i) {
+        if (bot->meteorModules[i].name() == stateChange.moduleName()) {
+            if (stateChange.hasEnabled()) {
+                bot->meteorModules[i].setEnabled(stateChange.enabled());
+            }
+
+            if (!stateChange.changedSettings().isEmpty()) {
+                QVector<mankool::mcbot::protocol::SettingInfo> updatedSettings;
+                for (const auto &setting : bot->meteorModules[i].settings()) {
+                    mankool::mcbot::protocol::SettingInfo updatedSetting = setting;
+
+                    QString settingPath = getSettingPath(setting);
+
+                    if (stateChange.changedSettings().contains(settingPath)) {
+                        updatedSetting.setCurrentValue(stateChange.changedSettings().value(settingPath));
+                    }
+
+                    updatedSettings.append(updatedSetting);
+                }
+                bot->meteorModules[i].setSettings(updatedSettings);
+            }
+
+            moduleFound = true;
+            break;
+        }
+    }
+
+    QStringList changes;
+    if (stateChange.hasEnabled()) {
+        QString statusIcon = stateChange.enabled() ? "[✓]" : "[ ]";
+        changes.append(QString("enabled: %1").arg(statusIcon));
+    }
+    if (!stateChange.changedSettings().isEmpty()) {
+        for (auto it = stateChange.changedSettings().constBegin();
+             it != stateChange.changedSettings().constEnd(); ++it) {
+            changes.append(QString("%1 = %2").arg(it.key(), it.value()));
+        }
+    }
+
+    QString output = QString("Module state changed: %1 (%2)")
+        .arg(stateChange.moduleName(), changes.join(", "));
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(true, output);
+    }
+
+    LogManager::log(QString("[%1] %2").arg(bot->name, output), LogManager::Info);
+
+    if (moduleFound) {
+        emit meteorSingleModuleUpdated(bot->name, stateChange.moduleName());
+    }
+}
+
+// Helper function to parse command text with support for quoted strings
+static QStringList parseCommandWithQuotes(const QString &commandText)
+{
+    QStringList result;
+    QString current;
+    bool inQuotes = false;
+    bool escaped = false;
+
+    for (int i = 0; i < commandText.length(); ++i) {
+        QChar c = commandText[i];
+
+        if (escaped) {
+            current += c;
+            escaped = false;
+        } else if (c == '\\') {
+            escaped = true;
+        } else if (c == '"') {
+            inQuotes = !inQuotes;
+        } else if (c == ' ' && !inQuotes) {
+            if (!current.isEmpty()) {
+                result.append(current);
+                current.clear();
+            }
+        } else {
+            current += c;
+        }
+    }
+
+    if (!current.isEmpty()) {
+        result.append(current);
+    }
+
+    return result;
+}
+
 void BotManager::sendCommand(const QString &botName, const QString &commandText)
 {
     instance().sendCommandImpl(botName, commandText);
@@ -244,7 +475,6 @@ void BotManager::sendShutdownCommandImpl(const QString &botName, const QString &
         return;
     }
 
-    // Create shutdown command message
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
@@ -253,7 +483,6 @@ void BotManager::sendShutdownCommandImpl(const QString &botName, const QString &
     shutdown.setReason(reason);
     msg.setShutdown(shutdown);
 
-    // Serialize protobuf message
     QProtobufSerializer serializer;
     QByteArray protoData = serializer.serialize(&msg);
     if (protoData.isEmpty()) {
@@ -286,7 +515,7 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
         return;
     }
 
-    QStringList parts = commandText.split(' ', Qt::SkipEmptyParts);
+    QStringList parts = parseCommandWithQuotes(commandText);
     if (parts.isEmpty()) {
         return;
     }
@@ -431,6 +660,71 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
         shutdownCmd.setReason(parts.size() > 1 ? parts.mid(1).join(' ') : "Console command");
         msg.setShutdown(shutdownCmd);
     }
+    else if (cmd == "meteor") {
+        if (parts.size() < 2) {
+            LogManager::log("Usage: meteor list [category] | meteor toggle <module> | meteor set <module> <setting|enabled> <value>", LogManager::Warning);
+            return;
+        }
+        QString subCmd = parts[1].toLower();
+        if (subCmd == "list") {
+            mankool::mcbot::protocol::GetModulesRequest getModulesReq;
+            if (parts.size() > 2) {
+                getModulesReq.setCategoryFilter(parts[2]);
+            }
+            msg.setGetModules(getModulesReq);
+        }
+        else if (subCmd == "toggle") {
+            if (parts.size() < 3) {
+                LogManager::log("Usage: meteor toggle <module>", LogManager::Warning);
+                return;
+            }
+            mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
+            setModuleCmd.setModuleName(parts[2]);
+            // Don't set enabled field - bot will determine current state and flip it
+            msg.setSetModuleConfig(setModuleCmd);
+        }
+        else if (subCmd == "set") {
+            if (parts.size() < 4) {
+                LogManager::log("Usage: meteor set <module> <setting|group.setting|enabled> <value>", LogManager::Warning);
+                return;
+            }
+            mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
+            setModuleCmd.setModuleName(parts[2]);
+
+            QString settingName = parts[3];
+
+            // Special handling for "enabled" setting
+            if (settingName.toLower() == "enabled") {
+                if (parts.size() < 5) {
+                    LogManager::log("Usage: meteor set <module> enabled <true|false>", LogManager::Warning);
+                    return;
+                }
+                QString value = parts[4].toLower();
+                if (value == "true" || value == "1" || value == "on" || value == "yes") {
+                    setModuleCmd.setEnabled(true);
+                } else if (value == "false" || value == "0" || value == "off" || value == "no") {
+                    setModuleCmd.setEnabled(false);
+                } else {
+                    LogManager::log("Invalid enabled value. Use: true/false, 1/0, on/off, yes/no", LogManager::Warning);
+                    return;
+                }
+            } else {
+                if (parts.size() < 5) {
+                    LogManager::log("Usage: meteor set <module> <setting|group.setting> <value>", LogManager::Warning);
+                    return;
+                }
+                QHash<QString, QString> settings;
+                QString settingValue = parts.mid(4).join(' ');
+                settings.insert(settingName, settingValue);
+                setModuleCmd.setSettings(settings);
+            }
+            msg.setSetModuleConfig(setModuleCmd);
+        }
+        else {
+            LogManager::log(QString("Unknown meteor subcommand: %1").arg(subCmd), LogManager::Warning);
+            return;
+        }
+    }
     else {
         LogManager::log(QString("Unknown command: %1").arg(cmd), LogManager::Warning);
         return;
@@ -451,6 +745,13 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
 
     PipeServer::sendToClient(bot->connectionId, message);
     LogManager::log(QString("Sent command to %1: %2").arg(botName, commandText), LogManager::Info);
+}
+
+QString BotManager::getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting)
+{
+    return setting.hasGroupName() && !setting.groupName().isEmpty()
+        ? QString("%1.%2").arg(setting.groupName(), setting.name())
+        : setting.name();
 }
 
 void BotManager::handleHeartbeat(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat)

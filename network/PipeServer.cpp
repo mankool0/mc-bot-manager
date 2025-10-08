@@ -201,6 +201,12 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleChatMessage(connectionId, clientMsg.chat());
         } else if (clientMsg.hasCommandResponse()) {
             BotManager::handleCommandResponse(connectionId, clientMsg.commandResponse());
+        } else if (clientMsg.hasModulesResponse()) {
+            BotManager::handleModulesResponse(connectionId, clientMsg.modulesResponse());
+        } else if (clientMsg.hasModuleConfigResponse()) {
+            BotManager::handleModuleConfigResponse(connectionId, clientMsg.moduleConfigResponse());
+        } else if (clientMsg.hasModuleStateChanged()) {
+            BotManager::handleModuleStateChanged(connectionId, clientMsg.moduleStateChanged());
         }
         return;
     }
