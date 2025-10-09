@@ -22,7 +22,6 @@ qt_add_protobuf(mc-bot-manager-proto
 )
 
 file(GLOB_RECURSE PROJECT_SOURCES
-    "main.cpp"
     "ui/*.cpp"
     "ui/*.h"
     "ui/*.ui"
@@ -43,6 +42,7 @@ endif()
 
 qt_add_executable(mc-bot-manager
     MANUAL_FINALIZATION
+    main.cpp
     ${PROJECT_SOURCES}
     ${app_icon_resource_windows}
 )
