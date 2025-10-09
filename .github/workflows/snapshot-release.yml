@@ -1,0 +1,155 @@
+name: Snapshot Release
+
+on:
+  push:
+    branches:
+      - 'master'
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  QT_VERSION: 6.10.0
+  APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
+  WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtgrpc
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Download linuxdeploy tools
+        run: |
+          wget -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -O linuxdeploy-plugin-qt-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+      - name: Build AppImage
+        run: |
+          mkdir -p build-appimage
+          cd build-appimage
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build . -j$(nproc)
+          strip mc-bot-manager
+          mv ../linuxdeploy*.AppImage .
+          export PATH=$PWD:$PATH
+          cmake --build . --target appimage
+          mv MC_Bot_Manager*.AppImage ../${{ env.APPIMAGE_ARTIFACT }}
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: ${{ env.APPIMAGE_ARTIFACT }}
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtgrpc
+
+      - name: Install protobuf
+        shell: cmd
+        run: choco install protoc -y
+
+      - name: Set up Visual Studio shell
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        shell: cmd
+        run: |
+          mkdir build
+          cd build
+          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+
+      - name: Deploy Qt dependencies
+        working-directory: build
+        shell: cmd
+        run: |
+          mkdir mc-bot-manager
+          copy mc-bot-manager.exe mc-bot-manager\
+          copy mc-bot-manager-proto.dll mc-bot-manager\
+          windeployqt mc-bot-manager\mc-bot-manager.exe --release
+
+      - name: Package Windows build
+        working-directory: build
+        run: 7z a ..\${{ env.WINDOWS_ARTIFACT }} mc-bot-manager\
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: ${{ env.WINDOWS_ARTIFACT }}
+
+  create-release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: linux-appimage
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-zip
+
+      - name: Delete previous snapshot release
+        run: gh release delete snapshot --cleanup-tag || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create snapshot release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: snapshot
+          name: Snapshot Build
+          body: |
+            Snapshot build from commit [${{ github.sha }}](${{ github.event.repository.html_url }}/commit/${{ github.sha }})
+
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.event.head_commit.message }}
+          files: |
+            ${{ env.APPIMAGE_ARTIFACT }}
+            ${{ env.WINDOWS_ARTIFACT }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
