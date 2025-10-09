@@ -688,63 +688,6 @@ void ManagerMainWindow::loadPrismLauncherConfig()
     updateAccountComboBox();
 }
 
-void ManagerMainWindow::parsePrismInstances()
-{
-    prismConfig.instances.clear();
-
-    if (prismConfig.prismPath.isEmpty()) return;
-
-    QString instancesPath = prismConfig.prismPath + "/instances";
-    QDir instancesDir(instancesPath);
-
-    if (!instancesDir.exists()) return;
-
-    QStringList instanceDirs = instancesDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-
-    for (const QString &instanceName : std::as_const(instanceDirs)) {
-        QString instanceCfgPath = instancesPath + "/" + instanceName + "/instance.cfg";
-        if (QFile::exists(instanceCfgPath)) {
-            prismConfig.instances.append(instanceName);
-        }
-    }
-
-    prismConfig.instances.sort();
-}
-
-void ManagerMainWindow::parsePrismAccounts()
-{
-    prismConfig.accounts.clear();
-
-    if (prismConfig.prismPath.isEmpty()) return;
-
-    QString accountsPath = prismConfig.prismPath + "/accounts.json";
-    QFile accountsFile(accountsPath);
-
-    if (!accountsFile.open(QIODevice::ReadOnly)) return;
-
-    QByteArray data = accountsFile.readAll();
-    accountsFile.close();
-
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError) return;
-
-    QJsonObject rootObj = doc.object();
-    QJsonArray accountsArray = rootObj["accounts"].toArray();
-
-    for (const QJsonValue &value : std::as_const(accountsArray)) {
-        QJsonObject accountObj = value.toObject();
-        QJsonObject profileObj = accountObj["profile"].toObject();
-        QString accountName = profileObj["name"].toString();
-
-        if (!accountName.isEmpty()) {
-            prismConfig.accounts.append(accountName);
-        }
-    }
-
-    prismConfig.accounts.sort();
-}
 
 void ManagerMainWindow::updateInstanceComboBox()
 {
@@ -790,11 +733,23 @@ void ManagerMainWindow::configurePrismLauncher()
 {
     PrismSettingsDialog dialog(this);
 
-    // Set current configuration
-    dialog.setCurrentPath(prismConfig.prismPath);
-    dialog.setExecutable(prismConfig.prismExecutable);
-    dialog.setInstances(prismConfig.instances);
-    dialog.setAccounts(prismConfig.accounts);
+    // Auto-detect PrismLauncher path if not configured
+    QString pathToSet = prismConfig.prismPath;
+    bool pathWasDetected = false;
+    if (pathToSet.isEmpty()) {
+        pathToSet = PrismSettingsDialog::detectPrismLauncherPath();
+        pathWasDetected = !pathToSet.isEmpty();
+    }
+
+    // Set path (this will parse and auto-fill for new paths)
+    dialog.setCurrentPath(pathToSet);
+
+    // Only override with saved config if we're using an existing path
+    if (!pathWasDetected && !prismConfig.prismPath.isEmpty()) {
+        dialog.setExecutable(prismConfig.prismExecutable);
+        dialog.setInstances(prismConfig.instances);
+        dialog.setAccounts(prismConfig.accounts);
+    }
 
     if (dialog.exec() == QDialog::Accepted) {
         QString newPath = dialog.getCurrentPath();
@@ -812,12 +767,6 @@ void ManagerMainWindow::configurePrismLauncher()
         // Update executable even if path didn't change
         prismConfig.prismExecutable = newExecutable;
     }
-}
-
-QString ManagerMainWindow::detectPrismLauncherPath()
-{
-    // TODO: Not used for now, can add auto-detection later
-    return QString();
 }
 
 QStringList ManagerMainWindow::getUsedInstances() const
@@ -872,15 +821,15 @@ void ManagerMainWindow::loadSettings()
     // Load PrismLauncher configuration
     settings.beginGroup("PrismLauncher");
     prismConfig.prismPath = settings.value("path", "").toString();
-    prismConfig.prismExecutable = settings.value("executable", "prismlauncher").toString();
+    prismConfig.prismExecutable = settings.value("executable", "").toString();
     prismConfig.instances = settings.value("instances", QStringList()).toStringList();
     prismConfig.accounts = settings.value("accounts", QStringList()).toStringList();
     settings.endGroup();
 
     // Re-parse PrismLauncher directory if path exists to get latest instances/accounts
     if (!prismConfig.prismPath.isEmpty()) {
-        parsePrismInstances();
-        parsePrismAccounts();
+        prismConfig.instances = PrismSettingsDialog::parsePrismInstances(prismConfig.prismPath);
+        prismConfig.accounts = PrismSettingsDialog::parsePrismAccounts(prismConfig.prismPath);
     }
 
     // Load bot instances

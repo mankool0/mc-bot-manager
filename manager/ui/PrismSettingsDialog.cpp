@@ -36,6 +36,14 @@ void PrismSettingsDialog::setCurrentPath(const QString &path)
 
     if (!path.isEmpty()) {
         parsePrismDirectory(path);
+
+        if (ui->executableLineEdit->text().isEmpty()) {
+            QString detectedExe = detectPrismLauncherExecutable(path);
+            if (!detectedExe.isEmpty()) {
+                ui->executableLineEdit->setText(detectedExe);
+                currentExecutable = detectedExe;
+            }
+        }
     }
 
     updateStatistics();
@@ -117,13 +125,17 @@ void PrismSettingsDialog::updateStatistics()
 
 void PrismSettingsDialog::parsePrismDirectory(const QString &path)
 {
-    parsePrismInstances(path);
-    parsePrismAccounts(path);
+    setInstances(parsePrismInstances(path));
+    setAccounts(parsePrismAccounts(path));
 }
 
-void PrismSettingsDialog::parsePrismInstances(const QString &path)
+QStringList PrismSettingsDialog::parsePrismInstances(const QString &path)
 {
-    QStringList newInstances;
+    QStringList instances;
+
+    if (path.isEmpty()) {
+        return instances;
+    }
 
     QString instancesPath = path + "/instances";
     QDir instancesDir(instancesPath);
@@ -136,19 +148,23 @@ void PrismSettingsDialog::parsePrismInstances(const QString &path)
             // Verify it's a valid instance by checking for instance.cfg
             QString instanceCfgPath = instancesPath + "/" + instanceName + "/instance.cfg";
             if (QFile::exists(instanceCfgPath)) {
-                newInstances.append(instanceName);
+                instances.append(instanceName);
             }
         }
 
-        newInstances.sort();
+        instances.sort();
     }
 
-    setInstances(newInstances);
+    return instances;
 }
 
-void PrismSettingsDialog::parsePrismAccounts(const QString &path)
+QStringList PrismSettingsDialog::parsePrismAccounts(const QString &path)
 {
-    QStringList newAccounts;
+    QStringList accounts;
+
+    if (path.isEmpty()) {
+        return accounts;
+    }
 
     QString accountsPath = path + "/accounts.json";
     QFile accountsFile(accountsPath);
@@ -170,15 +186,15 @@ void PrismSettingsDialog::parsePrismAccounts(const QString &path)
                 QString accountName = profileObj["name"].toString();
 
                 if (!accountName.isEmpty()) {
-                    newAccounts.append(accountName);
+                    accounts.append(accountName);
                 }
             }
 
-            newAccounts.sort();
+            accounts.sort();
         }
     }
 
-    setAccounts(newAccounts);
+    return accounts;
 }
 
 void PrismSettingsDialog::onBrowseExeClicked()
@@ -201,4 +217,67 @@ void PrismSettingsDialog::onBrowseExeClicked()
         ui->executableLineEdit->setText(selectedExe);
         currentExecutable = selectedExe;
     }
+}
+
+bool PrismSettingsDialog::isFlatpakPath(const QString &path)
+{
+    return path.contains(".var/app/org.prismlauncher.PrismLauncher");
+}
+
+QString PrismSettingsDialog::detectPrismLauncherPath()
+{
+    QStringList searchPaths;
+
+#ifdef Q_OS_WIN
+    // Windows: Check %APPDATA%\PrismLauncher (Roaming - contains instances and accounts.json)
+    QString appData = QDir::fromNativeSeparators(qgetenv("APPDATA"));
+    if (!appData.isEmpty()) {
+        searchPaths << appData + "/PrismLauncher";
+    }
+#elif defined(Q_OS_LINUX)
+    // Linux: Check Flatpak installation first, then native installation
+    QString home = QDir::homePath();
+    searchPaths << home + "/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher";
+    searchPaths << home + "/.local/share/PrismLauncher";
+#elif defined(Q_OS_MAC)
+    // macOS: Check ~/Library/Application Support/PrismLauncher
+    QString home = QDir::homePath();
+    searchPaths << home + "/Library/Application Support/PrismLauncher";
+#endif
+
+    for (const QString &path : searchPaths) {
+        QDir dir(path);
+        if (dir.exists()) {
+            if (dir.exists("instances") && QFile::exists(path + "/accounts.json")) {
+                return path;
+            }
+        }
+    }
+
+    return QString();
+}
+
+QString PrismSettingsDialog::detectPrismLauncherExecutable(const QString &prismPath)
+{
+#ifdef Q_OS_WIN
+    // Windows: Check %LOCALAPPDATA%\Programs\PrismLauncher\prismlauncher.exe
+    QString localAppData = QDir::fromNativeSeparators(qgetenv("LOCALAPPDATA"));
+    if (!localAppData.isEmpty()) {
+        QString exePath = localAppData + "/Programs/PrismLauncher/prismlauncher.exe";
+        if (QFile::exists(exePath)) {
+            return exePath;
+        }
+    }
+#elif defined(Q_OS_LINUX)
+    // Linux: Check if this is a Flatpak installation
+    if (isFlatpakPath(prismPath)) {
+        return "/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=prismlauncher --file-forwarding org.prismlauncher.PrismLauncher";
+    }
+    // For native Linux installations the user should configure it
+#elif defined(Q_OS_MAC)
+    // macOS: TODO - need to figure out where PrismLauncher installs on macOS
+    // For now, leave blank for user configuration
+#endif
+
+    return QString();
 }
