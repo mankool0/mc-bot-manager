@@ -27,6 +27,12 @@ public:
     QStringList getInstances() const { return instances; }
     QStringList getAccounts() const { return accounts; }
 
+    // Static utility methods for parsing PrismLauncher data
+    static QString detectPrismLauncherPath();
+    static QString detectPrismLauncherExecutable(const QString &prismPath);
+    static QStringList parsePrismInstances(const QString &prismPath);
+    static QStringList parsePrismAccounts(const QString &prismPath);
+
 private slots:
     void onBrowseClicked();
     void onBrowseExeClicked();
@@ -40,8 +46,7 @@ private:
     QStringList accounts;
 
     void parsePrismDirectory(const QString &path);
-    void parsePrismInstances(const QString &path);
-    void parsePrismAccounts(const QString &path);
+    static bool isFlatpakPath(const QString &path);
 };
 
 #endif // PRISMSETTINGSDIALOG_H

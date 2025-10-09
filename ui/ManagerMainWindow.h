@@ -88,11 +88,8 @@ private:
     void loadBotConfiguration(const BotInstance &bot);
     void updateStatusDisplay();
     void loadPrismLauncherConfig();
-    void parsePrismInstances();
-    void parsePrismAccounts();
     void updateInstanceComboBox();
     void updateAccountComboBox();
-    QString detectPrismLauncherPath();
     QStringList getUsedInstances() const;
 
     void saveSettings();
