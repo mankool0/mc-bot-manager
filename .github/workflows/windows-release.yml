@@ -75,7 +75,7 @@ jobs:
           path: build/mc-bot-manager
 
       - name: Package release
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release || (github.event_name == 'push' && github.ref == 'refs/heads/master')
         working-directory: build
         run: |
           7z a ..\${{ env.ARTIFACT }} mc-bot-manager\
