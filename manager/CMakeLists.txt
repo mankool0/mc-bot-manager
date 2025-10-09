@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 0.1 LANGUAGES CXX)
+if(WIN32)
+    project(mc-bot-manager VERSION 0.1 LANGUAGES CXX RC)
+else()
+    project(mc-bot-manager VERSION 0.1 LANGUAGES CXX)
+endif()
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
