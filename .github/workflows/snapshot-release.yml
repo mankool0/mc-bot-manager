@@ -106,6 +106,7 @@ jobs:
 
       - name: Package Windows build
         working-directory: build
+        shell: cmd
         run: 7z a ..\${{ env.WINDOWS_ARTIFACT }} mc-bot-manager\
 
       - name: Upload Windows artifact
