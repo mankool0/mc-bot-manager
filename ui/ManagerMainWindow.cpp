@@ -104,7 +104,8 @@ void ManagerMainWindow::setupUI()
 
     QPushButton *pinButton = new QPushButton(this);
     pinButton->setCheckable(true);
-    pinButton->setIcon(QIcon::fromTheme("window-pin"));
+    pinButton->setIcon(
+        QIcon::fromTheme("window-pin", style()->standardIcon(QStyle::SP_TitleBarShadeButton)));
     pinButton->setToolTip("Pin details panel");
     pinButton->setMaximumWidth(30);
     ui->mainTabWidget->setCornerWidget(pinButton, Qt::TopRightCorner);
