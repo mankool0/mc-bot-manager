@@ -22,7 +22,7 @@ defaults:
     shell: bash
 
 env:
-  QT_VERSION: 6.9.3
+  QT_VERSION: 6.10.0
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
 
 jobs:
@@ -86,6 +86,22 @@ jobs:
           tag_name: manual-release
           name: Manual Release
           body: Manual release build from ${{ github.sha }}
+          files: ${{ env.APPIMAGE_ARTIFACT }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create snapshot release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && !startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: snapshot
+          name: Snapshot Build
+          body: |
+            Snapshot build from commit [${{ github.sha }}](${{ github.event.repository.html_url }}/commit/${{ github.sha }})
+
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.event.head_commit.message }}
           files: ${{ env.APPIMAGE_ARTIFACT }}
           prerelease: true
         env:
