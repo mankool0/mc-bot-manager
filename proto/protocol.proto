@@ -9,6 +9,7 @@ import "chat.proto";
 import "commands.proto";
 import "inventory.proto";
 import "meteor.proto";
+import "baritone.proto";
 
 // Main protocol definition that ties everything together
 
@@ -40,6 +41,13 @@ message ClientToManagerMessage {
     GetModulesResponse modules_response = 10;
     SetModuleConfigResponse module_config_response = 11;
     ModuleStateChanged module_state_changed = 12;
+
+    // Baritone responses
+    GetBaritoneSettingsResponse baritone_settings_response = 13;
+    GetBaritoneCommandsResponse baritone_commands_response = 14;
+    SetBaritoneSettingsResponse baritone_settings_set_response = 15;
+    ExecuteBaritoneCommandResponse baritone_command_response = 16;
+    BaritoneSettingUpdate baritone_setting_update = 17;
   }
 }
 
@@ -76,5 +84,11 @@ message ManagerToClientMessage {
     // Meteor module management
     GetModulesRequest get_modules = 14;
     SetModuleConfigCommand set_module_config = 15;
+
+    // Baritone control
+    GetBaritoneSettingsRequest get_baritone_settings = 16;
+    GetBaritoneCommandsRequest get_baritone_commands = 17;
+    SetBaritoneSettingsCommand set_baritone_settings = 18;
+    ExecuteBaritoneCommand execute_baritone_command = 19;
   }
 }
