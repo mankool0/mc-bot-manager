@@ -4,7 +4,8 @@
   "package": "me.mankool.mcBotClient.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ClientPlayNetworkHandlerAccessor"
+    "ClientPlayNetworkHandlerAccessor",
+    "baritone.BaritoneSettingMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -25,6 +25,7 @@ public class MessageHandler {
     private final InventoryHandler inventoryHandler;
     private final ChatHandler chatHandler;
     private final MeteorModuleHandler meteorModuleHandler;
+    private final BaritoneHandler baritoneHandler;
 
     // Outbound handlers (send data updates)
     private final ServerOutbound serverOutbound;
@@ -41,6 +42,7 @@ public class MessageHandler {
         this.inventoryHandler = new InventoryHandler(client, connection);
         this.chatHandler = new ChatHandler(client, connection);
         this.meteorModuleHandler = new MeteorModuleHandler(client, connection);
+        this.baritoneHandler = new BaritoneHandler(client, connection);
 
         // Initialize outbound handlers
         this.serverOutbound = new ServerOutbound(client, connection);
@@ -80,6 +82,14 @@ public class MessageHandler {
             msg -> meteorModuleHandler.handleGetModules(msg.getMessageId(), msg.getGetModules()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_MODULE_CONFIG,
             msg -> meteorModuleHandler.handleSetModuleConfig(msg.getMessageId(), msg.getSetModuleConfig()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_BARITONE_SETTINGS,
+            msg -> baritoneHandler.handleGetBaritoneSettings(msg.getMessageId(), msg.getGetBaritoneSettings()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_BARITONE_COMMANDS,
+            msg -> baritoneHandler.handleGetBaritoneCommands(msg.getMessageId(), msg.getGetBaritoneCommands()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_BARITONE_SETTINGS,
+            msg -> baritoneHandler.handleSetBaritoneSettings(msg.getMessageId(), msg.getSetBaritoneSettings()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.EXECUTE_BARITONE_COMMAND,
+            msg -> baritoneHandler.handleExecuteBaritoneCommand(msg.getMessageId(), msg.getExecuteBaritoneCommand()));
     }
 
     public void start() {
@@ -124,5 +134,8 @@ public class MessageHandler {
         if (tick % 20 == 0) {
             connection.sendHeartbeat();
         }
+
+        // Tick Baritone handler for setting change polling
+        baritoneHandler.tick();
     }
 }

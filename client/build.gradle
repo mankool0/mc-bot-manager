@@ -77,6 +77,11 @@ repositories {
         name = "Meteor Snapshots"
         url = "https://maven.meteordev.org/snapshots"
     }
+
+    maven {
+        name = "babbaj-repo"
+        url = "https://babbaj.github.io/maven/"
+    }
 }
 
 dependencies {
@@ -91,7 +96,11 @@ dependencies {
     modImplementation "meteordevelopment:meteor-client:${project.meteor_version}"
 
     // Baritone (https://github.com/MeteorDevelopment/baritone)
-    modCompileOnly "meteordevelopment:baritone:${project.baritone_version}"
+    modImplementation "meteordevelopment:baritone:${project.baritone_version}"
+    include "meteordevelopment:baritone:${project.baritone_version}"
+
+    // Baritone's nether-pathfinder dependency (from babbaj-repo)
+    modImplementation "dev.babbaj:nether-pathfinder:1.6"
 
     // Protocol Buffers - using implementation for compile, include for runtime
     implementation "com.google.protobuf:protobuf-java:${project.protobuf_version}"
