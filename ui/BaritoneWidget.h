@@ -12,7 +12,8 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QMap>
-#include "baritone.qpb.h"
+
+struct BaritoneSettingData;
 
 class BaritoneWidget : public QWidget
 {
@@ -22,8 +23,8 @@ public:
     explicit BaritoneWidget(QWidget *parent = nullptr);
     ~BaritoneWidget();
 
-    void updateSettings(const QVector<mankool::mcbot::protocol::BaritoneSettingInfo> &settings);
-    void updateSingleSetting(const mankool::mcbot::protocol::BaritoneSettingInfo &setting);
+    void updateSettings(const QMap<QString, BaritoneSettingData> &settings);
+    void updateSingleSetting(const BaritoneSettingData &setting);
     void clear();
 
 signals:
@@ -40,16 +41,16 @@ private:
 
     void setupUI();
     void populateTree();
-    QTreeWidgetItem* createSettingItem(const mankool::mcbot::protocol::BaritoneSettingInfo &setting);
-    void updateSettingWidget(QTreeWidgetItem *settingItem, const mankool::mcbot::protocol::BaritoneSettingInfo &setting);
-    QWidget* createSettingEditor(const mankool::mcbot::protocol::BaritoneSettingInfo &setting,
+    QTreeWidgetItem* createSettingItem(const BaritoneSettingData &setting);
+    void updateSettingWidget(QTreeWidgetItem *settingItem, const BaritoneSettingData &setting);
+    QWidget* createSettingEditor(const BaritoneSettingData &setting,
                                    const QString &settingName);
 
     QVBoxLayout *mainLayout;
     QLineEdit *filterEdit;
     QTreeWidget *settingTree;
 
-    QVector<mankool::mcbot::protocol::BaritoneSettingInfo> allSettings;
+    QMap<QString, BaritoneSettingData> allSettings;
     QMap<QString, QTreeWidgetItem*> settingItems;
 
     bool updatingFromCode; // Flag to prevent signal loops

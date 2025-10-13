@@ -14,7 +14,9 @@
 #include <QDoubleSpinBox>
 #include <QScrollBar>
 #include <QMap>
-#include "meteor.qpb.h"
+
+struct MeteorModuleData;
+struct MeteorSettingData;
 
 class MeteorModulesWidget : public QWidget
 {
@@ -24,8 +26,8 @@ public:
     explicit MeteorModulesWidget(QWidget *parent = nullptr);
     ~MeteorModulesWidget();
 
-    void updateModules(const QVector<mankool::mcbot::protocol::ModuleInfo> &modules);
-    void updateSingleModule(const mankool::mcbot::protocol::ModuleInfo &module);
+    void updateModules(const QMap<QString, MeteorModuleData> &modules);
+    void updateSingleModule(const MeteorModuleData &module);
     void clear();
 
 signals:
@@ -50,10 +52,10 @@ private:
 
     void setupUI();
     void populateTree();
-    QTreeWidgetItem* createModuleItem(const mankool::mcbot::protocol::ModuleInfo &module);
-    void updateModuleSettings(QTreeWidgetItem *moduleItem, const mankool::mcbot::protocol::ModuleInfo &module);
-    void updateSettingWidget(QTreeWidgetItem *settingItem, const mankool::mcbot::protocol::SettingInfo &setting);
-    QWidget* createSettingEditor(const mankool::mcbot::protocol::SettingInfo &setting,
+    QTreeWidgetItem* createModuleItem(const MeteorModuleData &module);
+    void updateModuleSettings(QTreeWidgetItem *moduleItem, const MeteorModuleData &module);
+    void updateSettingWidget(QTreeWidgetItem *settingItem, const MeteorSettingData &setting);
+    QWidget* createSettingEditor(const MeteorSettingData &setting,
                                    const QString &moduleName,
                                    const QString &settingPath);
 
@@ -62,7 +64,7 @@ private:
     QComboBox *categoryFilter;
     QTreeWidget *moduleTree;
 
-    QVector<mankool::mcbot::protocol::ModuleInfo> allModules;
+    QMap<QString, MeteorModuleData> allModules;
     QMap<QString, QTreeWidgetItem*> moduleItems;
 
     bool updatingFromCode; // Flag to prevent signal loops

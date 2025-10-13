@@ -1204,11 +1204,11 @@ void ManagerMainWindow::onConsoleCommandEntered(const QString &command)
 
     // Check if it's a known Baritone command
     for (const auto &baritoneCmd : bot->baritoneCommands) {
-        if (baritoneCmd.name().toLower() == cmdName) {
+        if (baritoneCmd.name.toLower() == cmdName) {
             isBaritoneCommand = true;
             break;
         }
-        for (const auto &alias : baritoneCmd.aliases()) {
+        for (const auto &alias : baritoneCmd.aliases) {
             if (alias.toLower() == cmdName) {
                 isBaritoneCommand = true;
                 break;
@@ -1266,12 +1266,8 @@ void ManagerMainWindow::onMeteorSingleModuleUpdated(const QString &botName, cons
 {
     BotInstance *bot = BotManager::getBotByName(botName);
     if (bot && bot->meteorWidget) {
-        // Find the updated module
-        for (const auto &module : bot->meteorModules) {
-            if (module.name() == moduleName) {
-                bot->meteorWidget->updateSingleModule(module);
-                break;
-            }
+        if (bot->meteorModules.contains(moduleName)) {
+            bot->meteorWidget->updateSingleModule(bot->meteorModules[moduleName]);
         }
     }
 }
@@ -1347,11 +1343,11 @@ void ManagerMainWindow::onBaritoneCommandsReceived(const QString &botName)
     if (bot && bot->consoleWidget) {
         QVector<QPair<QString, QString>> commands;
         for (const auto &cmd : bot->baritoneCommands) {
-            QString description = cmd.shortDesc();
-            if (!cmd.longDesc().isEmpty()) {
-                description += QString("\n") + cmd.longDesc().join("\n");
+            QString description = cmd.shortDesc;
+            if (!cmd.longDesc.isEmpty()) {
+                description += QString("\n") + cmd.longDesc.join("\n");
             }
-            commands.append(qMakePair(cmd.name(), description));
+            commands.append(qMakePair(cmd.name, description));
         }
         bot->consoleWidget->addBaritoneCommands(commands);
         LogManager::log(QString("[%1] Baritone: Added %2 commands to console").arg(botName).arg(commands.size()), LogManager::Info);
@@ -1362,12 +1358,8 @@ void ManagerMainWindow::onBaritoneSingleSettingUpdated(const QString &botName, c
 {
     BotInstance *bot = BotManager::getBotByName(botName);
     if (bot && bot->baritoneWidget) {
-        // Find the updated setting
-        for (const auto &setting : bot->baritoneSettings) {
-            if (setting.name() == settingName) {
-                bot->baritoneWidget->updateSingleSetting(setting);
-                break;
-            }
+        if (bot->baritoneSettings.contains(settingName)) {
+            bot->baritoneWidget->updateSingleSetting(bot->baritoneSettings[settingName]);
         }
     }
 }
