@@ -154,8 +154,6 @@ public class PipeConnection {
     }
 
     private void sendMessageInternal(Protocol.ClientToManagerMessage message) throws IOException {
-        // Messages already have timestamp and message_id set by the caller
-
         byte[] data = message.toByteArray();
 
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
@@ -183,8 +181,6 @@ public class PipeConnection {
     }
 
     private void sendMessageUnix(byte[] data) throws IOException {
-        // Combine length prefix (4 bytes, little-endian) and data into single write
-        // This prevents fragmentation at TCP/socket level
         ByteBuffer messageBuffer = ByteBuffer.allocate(4 + data.length);
         messageBuffer.order(ByteOrder.LITTLE_ENDIAN);
         messageBuffer.putInt(data.length);
@@ -276,7 +272,6 @@ public class PipeConnection {
             throw new IOException("Invalid message length: " + messageLength);
         }
 
-        // Read the message data
         int totalRead = 0;
         while (totalRead < messageLength) {
             int read = inputStream.read(buffer, totalRead, messageLength - totalRead);
@@ -296,7 +291,6 @@ public class PipeConnection {
 
         running.set(false);
 
-        // Interrupt threads
         if (sendThread != null) {
             sendThread.interrupt();
         }
@@ -304,7 +298,6 @@ public class PipeConnection {
             receiveThread.interrupt();
         }
 
-        // Close connection
         try {
             if (System.getProperty("os.name").toLowerCase().contains("win")) {
                 if (connection != null) {
