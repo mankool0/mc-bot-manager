@@ -306,16 +306,16 @@
                     <number>2</number>
                    </property>
                    <property name="minimum">
-                    <double>0</double>
+                    <double>0.000000000000000</double>
                    </property>
                    <property name="maximum">
-                    <double>168</double>
+                    <double>168.000000000000000</double>
                    </property>
                    <property name="singleStep">
-                    <double>0.5</double>
+                    <double>0.500000000000000</double>
                    </property>
                    <property name="value">
-                    <double>48</double>
+                    <double>48.000000000000000</double>
                    </property>
                   </widget>
                  </item>
@@ -524,6 +524,11 @@
           <string>Meteor</string>
          </attribute>
         </widget>
+        <widget class="QWidget" name="baritoneTab">
+         <attribute name="title">
+          <string>Baritone</string>
+         </attribute>
+        </widget>
        </widget>
       </widget>
      </widget>
@@ -559,11 +564,8 @@
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionAccountManager"/>
     <addaction name="actionPrismSettings"/>
     <addaction name="actionNetworkStats"/>
-    <addaction name="separator"/>
-    <addaction name="actionPreferences"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -757,11 +759,6 @@
     <string>Stop All &amp;Bots</string>
    </property>
   </action>
-  <action name="actionAccountManager">
-   <property name="text">
-    <string>&amp;Account Manager...</string>
-   </property>
-  </action>
   <action name="actionPrismSettings">
    <property name="text">
     <string>&amp;Prism Launcher Settings...</string>
@@ -773,11 +770,6 @@
    </property>
    <property name="text">
     <string>&amp;Network Statistics</string>
-   </property>
-  </action>
-  <action name="actionPreferences">
-   <property name="text">
-    <string>Pre&amp;ferences...</string>
    </property>
   </action>
   <action name="actionAbout">

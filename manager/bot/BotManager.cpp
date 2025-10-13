@@ -80,6 +80,10 @@ void BotManager::removeBotImpl(const QString &name)
                 delete botInstances[i].meteorWidget;
                 botInstances[i].meteorWidget = nullptr;
             }
+            if (botInstances[i].baritoneWidget) {
+                delete botInstances[i].baritoneWidget;
+                botInstances[i].baritoneWidget = nullptr;
+            }
 
             botInstances.removeAt(i);
             emit botRemoved(name);
@@ -279,11 +283,8 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
         output += "\n";
     }
 
-    if (bot->consoleWidget) {
-        bot->consoleWidget->appendResponse(true, output.trimmed());
-    }
 
-    LogManager::log(QString("[%1] Received %2 modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
+    LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
 
     emit meteorModulesReceived(bot->name);
 }
@@ -341,11 +342,8 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
         output = QString("Error: %1").arg(response.errorMessage());
     }
 
-    if (bot->consoleWidget) {
-        bot->consoleWidget->appendResponse(response.success(), output);
-    }
 
-    LogManager::log(QString("[%1] Module config: %2").arg(bot->name, output),
+    LogManager::log(QString("[%1] %2").arg(bot->name, output),
                     response.success() ? LogManager::Info : LogManager::Warning);
 
     if (moduleFound) {
@@ -403,14 +401,6 @@ void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::m
         }
     }
 
-    QString output = QString("Module state changed: %1 (%2)")
-        .arg(stateChange.moduleName(), changes.join(", "));
-
-    if (bot->consoleWidget) {
-        bot->consoleWidget->appendResponse(true, output);
-    }
-
-    LogManager::log(QString("[%1] %2").arg(bot->name, output), LogManager::Info);
 
     if (moduleFound) {
         emit meteorSingleModuleUpdated(bot->name, stateChange.moduleName());
@@ -744,7 +734,6 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
     message.append(protoData);
 
     PipeServer::sendToClient(bot->connectionId, message);
-    LogManager::log(QString("Sent command to %1: %2").arg(botName, commandText), LogManager::Info);
 }
 
 QString BotManager::getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting)
@@ -777,4 +766,298 @@ void BotManager::handleHeartbeatImpl(int connectionId, const mankool::mcbot::pro
             LogManager::log(QString("[DEBUG %1] Heartbeat received").arg(bot->name), LogManager::Debug);
         }
     }
+}
+
+void BotManager::handleBaritoneSettingsResponse(int connectionId, const mankool::mcbot::protocol::GetBaritoneSettingsResponse &response)
+{
+    instance().handleBaritoneSettingsResponseImpl(connectionId, response);
+}
+
+void BotManager::handleBaritoneSettingsResponseImpl(int connectionId, const mankool::mcbot::protocol::GetBaritoneSettingsResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    bot->baritoneSettings.clear();
+    for (const auto &setting : response.settings()) {
+        bot->baritoneSettings.append(setting);
+    }
+
+    LogManager::log(QString("[%1] Received %2 Baritone settings").arg(bot->name).arg(response.settings().size()), LogManager::Info);
+
+    emit baritoneSettingsReceived(bot->name);
+}
+
+void BotManager::handleBaritoneCommandsResponse(int connectionId, const mankool::mcbot::protocol::GetBaritoneCommandsResponse &response)
+{
+    instance().handleBaritoneCommandsResponseImpl(connectionId, response);
+}
+
+void BotManager::handleBaritoneCommandsResponseImpl(int connectionId, const mankool::mcbot::protocol::GetBaritoneCommandsResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    bot->baritoneCommands.clear();
+    for (const auto &command : response.commands()) {
+        bot->baritoneCommands.append(command);
+    }
+
+    LogManager::log(QString("[%1] Received %2 Baritone commands").arg(bot->name).arg(response.commands().size()), LogManager::Info);
+
+    emit baritoneCommandsReceived(bot->name);
+}
+
+void BotManager::handleBaritoneSettingsSetResponse(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response)
+{
+    instance().handleBaritoneSettingsSetResponseImpl(connectionId, response);
+}
+
+void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    QString output;
+    if (response.success()) {
+        QStringList changedSettings;
+        for (const auto &updatedSetting : response.updatedSettings()) {
+            changedSettings.append(QString("%1 = %2").arg(updatedSetting.name(), updatedSetting.currentValue()));
+        }
+
+        if (!changedSettings.isEmpty()) {
+            output = QString("Baritone settings updated: %1").arg(changedSettings.join(", "));
+        } else {
+            output = QString("Baritone settings updated: %1").arg(response.result());
+        }
+
+        // Update stored settings
+        for (const auto &updatedSetting : response.updatedSettings()) {
+            for (int i = 0; i < bot->baritoneSettings.size(); ++i) {
+                if (bot->baritoneSettings[i].name() == updatedSetting.name()) {
+                    bot->baritoneSettings[i] = updatedSetting;
+                    emit baritoneSingleSettingUpdated(bot->name, updatedSetting.name());
+                    break;
+                }
+            }
+        }
+    } else {
+        output = QString("Error: %1").arg(response.result());
+    }
+
+    LogManager::log(QString("[%1] %2").arg(bot->name, output),
+                    response.success() ? LogManager::Info : LogManager::Warning);
+}
+
+void BotManager::handleBaritoneCommandResponse(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response)
+{
+    instance().handleBaritoneCommandResponseImpl(connectionId, response);
+}
+
+void BotManager::handleBaritoneCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    QString output = response.result();
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(response.success(), output);
+    }
+
+    LogManager::log(QString("[%1] %2").arg(bot->name, output),
+                    response.success() ? LogManager::Info : LogManager::Warning);
+}
+
+void BotManager::handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update)
+{
+    instance().handleBaritoneSettingUpdateImpl(connectionId, update);
+}
+
+void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    // Find and update the setting
+    bool settingFound = false;
+    for (int i = 0; i < bot->baritoneSettings.size(); ++i) {
+        if (bot->baritoneSettings[i].name() == update.settingName()) {
+            bot->baritoneSettings[i].setCurrentValue(update.newValue());
+            settingFound = true;
+            break;
+        }
+    }
+
+    if (settingFound) {
+        emit baritoneSingleSettingUpdated(bot->name, update.settingName());
+    }
+}
+
+void BotManager::requestBaritoneSettings(const QString &botName)
+{
+    instance().requestBaritoneSettingsImpl(botName);
+}
+
+void BotManager::requestBaritoneSettingsImpl(const QString &botName)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot request Baritone settings: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot request Baritone settings: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::GetBaritoneSettingsRequest request;
+    msg.setGetBaritoneSettings(request);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize Baritone settings request for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+
+void BotManager::requestBaritoneCommands(const QString &botName)
+{
+    instance().requestBaritoneCommandsImpl(botName);
+}
+
+void BotManager::requestBaritoneCommandsImpl(const QString &botName)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot request Baritone commands: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot request Baritone commands: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::GetBaritoneCommandsRequest request;
+    msg.setGetBaritoneCommands(request);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize Baritone commands request for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+
+void BotManager::sendBaritoneCommand(const QString &botName, const QString &commandText)
+{
+    instance().sendBaritoneCommandImpl(botName, commandText);
+}
+
+void BotManager::sendBaritoneCommandImpl(const QString &botName, const QString &commandText)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot send Baritone command: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot send Baritone command: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::ExecuteBaritoneCommand execCmd;
+    execCmd.setCommand(commandText);
+    msg.setExecuteBaritoneCommand(execCmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize Baritone command for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+
+void BotManager::sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QString &value)
+{
+    instance().sendBaritoneSettingChangeImpl(botName, settingName, value);
+}
+
+void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QString &value)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot change Baritone setting: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot change Baritone setting: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::SetBaritoneSettingsCommand setCmd;
+    QHash<QString, QString> settings;
+    settings.insert(settingName, value);
+    setCmd.setSettings(settings);
+    msg.setSetBaritoneSettings(setCmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize Baritone setting change for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
 }

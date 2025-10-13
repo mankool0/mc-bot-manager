@@ -15,10 +15,12 @@
 #include "commands.qpb.h"
 #include "common.qpb.h"
 #include "meteor.qpb.h"
+#include "baritone.qpb.h"
 
 class LogManager;
 class BotConsoleWidget;
 class MeteorModulesWidget;
+class BaritoneWidget;
 
 enum class BotStatus {
     Offline,
@@ -58,9 +60,14 @@ struct BotInstance {
 
     BotConsoleWidget* consoleWidget = nullptr;
     MeteorModulesWidget* meteorWidget = nullptr;
+    BaritoneWidget* baritoneWidget = nullptr;
 
     // Meteor modules data
     QVector<mankool::mcbot::protocol::ModuleInfo> meteorModules;
+
+    // Baritone data
+    QVector<mankool::mcbot::protocol::BaritoneSettingInfo> baritoneSettings;
+    QVector<mankool::mcbot::protocol::BaritoneCommandInfo> baritoneCommands;
 };
 
 class BotManager : public QObject
@@ -94,8 +101,19 @@ public:
     static void handleModuleConfigResponse(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response);
     static void handleModuleStateChanged(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange);
 
+    // Baritone handlers
+    static void handleBaritoneSettingsResponse(int connectionId, const mankool::mcbot::protocol::GetBaritoneSettingsResponse &response);
+    static void handleBaritoneCommandsResponse(int connectionId, const mankool::mcbot::protocol::GetBaritoneCommandsResponse &response);
+    static void handleBaritoneSettingsSetResponse(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
+    static void handleBaritoneCommandResponse(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
+    static void handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
+
     static void sendCommand(const QString &botName, const QString &commandText);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
+    static void requestBaritoneSettings(const QString &botName);
+    static void requestBaritoneCommands(const QString &botName);
+    static void sendBaritoneCommand(const QString &botName, const QString &commandText);
+    static void sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QString &value);
 
     static QString getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting);
 
@@ -105,6 +123,9 @@ signals:
     void botUpdated(const QString &name);
     void meteorModulesReceived(const QString &botName);
     void meteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
+    void baritoneSettingsReceived(const QString &botName);
+    void baritoneCommandsReceived(const QString &botName);
+    void baritoneSingleSettingUpdated(const QString &botName, const QString &settingName);
 
 private:
     explicit BotManager(QObject *parent = nullptr);
@@ -125,8 +146,17 @@ private:
     void handleModulesResponseImpl(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response);
     void handleModuleConfigResponseImpl(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response);
     void handleModuleStateChangedImpl(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange);
+    void handleBaritoneSettingsResponseImpl(int connectionId, const mankool::mcbot::protocol::GetBaritoneSettingsResponse &response);
+    void handleBaritoneCommandsResponseImpl(int connectionId, const mankool::mcbot::protocol::GetBaritoneCommandsResponse &response);
+    void handleBaritoneSettingsSetResponseImpl(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
+    void handleBaritoneCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
+    void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
     void sendCommandImpl(const QString &botName, const QString &commandText);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
+    void requestBaritoneSettingsImpl(const QString &botName);
+    void requestBaritoneCommandsImpl(const QString &botName);
+    void sendBaritoneCommandImpl(const QString &botName, const QString &commandText);
+    void sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QString &value);
 
     QVector<BotInstance> botInstances;
 };

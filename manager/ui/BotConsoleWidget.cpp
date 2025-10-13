@@ -121,8 +121,7 @@ void BotConsoleWidget::onInputChanged(const QString &text)
         return;
     }
 
-    QString commandName = text.split(' ').first().toLower();
-    updateCommandHint(commandName);
+    updateCommandHint(text);
 }
 
 void BotConsoleWidget::updateCommandHint(const QString &commandName)
@@ -138,12 +137,36 @@ void BotConsoleWidget::updateCommandHint(const QString &commandName)
 
 QString BotConsoleWidget::findCommandHelp(const QString &commandName)
 {
+    QString lowerInput = commandName.toLower().trimmed();
+
+    // First, try to find an exact match (case-insensitive)
     for (const auto &cmd : availableCommands) {
-        if (cmd.name.startsWith(commandName, Qt::CaseInsensitive)) {
+        if (cmd.name.toLower() == lowerInput) {
+            // Convert \n to <br/> for HTML rendering
+            QString htmlDescription = cmd.description;
+            htmlDescription.replace("\n", "<br/>");
             return QString("<b>%1</b>: %2<br/>Usage: <tt>%3</tt>")
-                .arg(cmd.name, cmd.description, cmd.syntax);
+                .arg(cmd.name, htmlDescription, cmd.syntax);
         }
     }
+
+    // If no exact match, find the first command that starts with the input
+    // Only show hint if the input is more specific than just "baritone "
+    if (lowerInput == "baritone" || lowerInput == "baritone ") {
+        // Don't show hint for just "baritone" - let user see the full dropdown
+        return QString();
+    }
+
+    for (const auto &cmd : availableCommands) {
+        if (cmd.name.startsWith(lowerInput, Qt::CaseInsensitive)) {
+            // Convert \n to <br/> for HTML rendering
+            QString htmlDescription = cmd.description;
+            htmlDescription.replace("\n", "<br/>");
+            return QString("<b>%1</b>: %2<br/>Usage: <tt>%3</tt>")
+                .arg(cmd.name, htmlDescription, cmd.syntax);
+        }
+    }
+
     return QString();
 }
 
@@ -180,6 +203,33 @@ void BotConsoleWidget::setCommandHistory(const QStringList &history)
 {
     commandHistory = history;
     historyIndex = commandHistory.size();
+}
+
+void BotConsoleWidget::addBaritoneCommands(const QVector<QPair<QString, QString>> &commands)
+{
+    // Remove old baritone commands
+    availableCommands.erase(
+        std::remove_if(availableCommands.begin(), availableCommands.end(),
+                      [](const CommandInfo &cmd) {
+                          return cmd.name.startsWith("baritone ");
+                      }),
+        availableCommands.end());
+
+    // Add new baritone commands with "baritone " prefix
+    for (const auto &cmd : commands) {
+        CommandInfo info;
+        info.name = "baritone " + cmd.first;
+        info.description = cmd.second + " (Baritone)";
+        info.syntax = "baritone " + cmd.first + " [args]";
+        availableCommands.append(info);
+    }
+
+    // Update completer model
+    QStringList commandNames;
+    for (const auto &cmd : availableCommands) {
+        commandNames << cmd.name;
+    }
+    completerModel->setStringList(commandNames);
 }
 
 bool BotConsoleWidget::eventFilter(QObject *obj, QEvent *event)

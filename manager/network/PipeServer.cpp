@@ -207,6 +207,16 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleModuleConfigResponse(connectionId, clientMsg.moduleConfigResponse());
         } else if (clientMsg.hasModuleStateChanged()) {
             BotManager::handleModuleStateChanged(connectionId, clientMsg.moduleStateChanged());
+        } else if (clientMsg.hasBaritoneSettingsResponse()) {
+            BotManager::handleBaritoneSettingsResponse(connectionId, clientMsg.baritoneSettingsResponse());
+        } else if (clientMsg.hasBaritoneCommandsResponse()) {
+            BotManager::handleBaritoneCommandsResponse(connectionId, clientMsg.baritoneCommandsResponse());
+        } else if (clientMsg.hasBaritoneSettingsSetResponse()) {
+            BotManager::handleBaritoneSettingsSetResponse(connectionId, clientMsg.baritoneSettingsSetResponse());
+        } else if (clientMsg.hasBaritoneCommandResponse()) {
+            BotManager::handleBaritoneCommandResponse(connectionId, clientMsg.baritoneCommandResponse());
+        } else if (clientMsg.hasBaritoneSettingUpdate()) {
+            BotManager::handleBaritoneSettingUpdate(connectionId, clientMsg.baritoneSettingUpdate());
         }
         return;
     }
