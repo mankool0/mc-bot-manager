@@ -1,4 +1,5 @@
 #include "BaritoneWidget.h"
+#include "bot/BotManager.h"
 #include <QHeaderView>
 #include <algorithm>
 
@@ -44,7 +45,7 @@ void BaritoneWidget::setupUI()
     connect(filterEdit, &QLineEdit::textChanged, this, &BaritoneWidget::onFilterTextChanged);
 }
 
-void BaritoneWidget::updateSettings(const QVector<mankool::mcbot::protocol::BaritoneSettingInfo> &settings)
+void BaritoneWidget::updateSettings(const QMap<QString, BaritoneSettingData> &settings)
 {
     updatingFromCode = true;
     allSettings = settings;
@@ -59,19 +60,14 @@ void BaritoneWidget::clear()
     allSettings.clear();
 }
 
-void BaritoneWidget::updateSingleSetting(const mankool::mcbot::protocol::BaritoneSettingInfo &setting)
+void BaritoneWidget::updateSingleSetting(const BaritoneSettingData &setting)
 {
     updatingFromCode = true;
 
-    QString settingName = setting.name().trimmed();
+    QString settingName = setting.name.trimmed();
 
-    // Find and update the setting in our stored data
-    for (int i = 0; i < allSettings.size(); ++i) {
-        if (allSettings[i].name().trimmed() == settingName) {
-            allSettings[i] = setting;
-            break;
-        }
-    }
+    // Update the setting in our stored data
+    allSettings[settingName] = setting;
 
     QTreeWidgetItem *existingItem = settingItems.value(settingName, nullptr);
     if (existingItem) {
@@ -88,16 +84,18 @@ void BaritoneWidget::populateTree()
 
     QString filterText = filterEdit->text().toLower();
 
-    // Sort settings alphabetically
-    QVector<mankool::mcbot::protocol::BaritoneSettingInfo> sortedSettings = allSettings;
+    // Convert map to sorted vector for display
+    QVector<BaritoneSettingData> sortedSettings;
+    for (auto it = allSettings.constBegin(); it != allSettings.constEnd(); ++it) {
+        sortedSettings.append(it.value());
+    }
     std::sort(sortedSettings.begin(), sortedSettings.end(),
-              [](const mankool::mcbot::protocol::BaritoneSettingInfo &a,
-                 const mankool::mcbot::protocol::BaritoneSettingInfo &b) {
-                  return a.name().trimmed().toLower() < b.name().trimmed().toLower();
+              [](const BaritoneSettingData &a, const BaritoneSettingData &b) {
+                  return a.name.trimmed().toLower() < b.name.trimmed().toLower();
               });
 
     for (const auto &setting : sortedSettings) {
-        QString settingName = setting.name().trimmed();
+        QString settingName = setting.name.trimmed();
         if (!filterText.isEmpty() && !settingName.toLower().contains(filterText)) {
             continue;
         }
@@ -113,21 +111,21 @@ void BaritoneWidget::populateTree()
     }
 }
 
-QTreeWidgetItem* BaritoneWidget::createSettingItem(const mankool::mcbot::protocol::BaritoneSettingInfo &setting)
+QTreeWidgetItem* BaritoneWidget::createSettingItem(const BaritoneSettingData &setting)
 {
     QTreeWidgetItem *settingItem = new QTreeWidgetItem();
 
-    QString settingName = setting.name().trimmed();
+    QString settingName = setting.name.trimmed();
     settingItem->setText(0, settingName);
     settingItem->setData(0, SettingNameRole, settingName);
-    settingItem->setData(0, SettingTypeRole, setting.type());
+    settingItem->setData(0, SettingTypeRole, setting.type);
 
     QString tooltip = settingName;
-    if (setting.hasDescription() && !setting.description().isEmpty()) {
-        tooltip += "\n" + setting.description();
+    if (!setting.description.isEmpty()) {
+        tooltip += "\n" + setting.description;
     }
-    if (!setting.defaultValue().isEmpty()) {
-        tooltip += "\nDefault: " + setting.defaultValue();
+    if (!setting.defaultValue.isEmpty()) {
+        tooltip += "\nDefault: " + setting.defaultValue;
     }
     settingItem->setToolTip(0, tooltip);
 
@@ -135,24 +133,24 @@ QTreeWidgetItem* BaritoneWidget::createSettingItem(const mankool::mcbot::protoco
 }
 
 void BaritoneWidget::updateSettingWidget(QTreeWidgetItem *settingItem,
-                                          const mankool::mcbot::protocol::BaritoneSettingInfo &setting)
+                                          const BaritoneSettingData &setting)
 {
     QWidget *widget = settingTree->itemWidget(settingItem, 1);
     if (!widget) {
-        settingItem->setText(1, setting.currentValue());
+        settingItem->setText(1, setting.currentValue);
         return;
     }
 
-    QString type = setting.type().toLower();
+    QString type = setting.type.toLower();
 
     if (type == "boolean" || type == "java.lang.boolean") {
         if (QCheckBox *checkBox = qobject_cast<QCheckBox*>(widget)) {
-            checkBox->setChecked(setting.currentValue().toLower() == "true");
+            checkBox->setChecked(setting.currentValue.toLower() == "true");
         }
     } else if (type == "integer" || type == "java.lang.integer" || type == "int") {
         if (QSpinBox *spinBox = qobject_cast<QSpinBox*>(widget)) {
             bool ok;
-            int value = setting.currentValue().toInt(&ok);
+            int value = setting.currentValue.toInt(&ok);
             if (ok) {
                 spinBox->setValue(value);
             }
@@ -160,7 +158,7 @@ void BaritoneWidget::updateSettingWidget(QTreeWidgetItem *settingItem,
     } else if (type == "double" || type == "java.lang.double" || type == "float" || type == "java.lang.float") {
         if (QDoubleSpinBox *spinBox = qobject_cast<QDoubleSpinBox*>(widget)) {
             bool ok;
-            double value = setting.currentValue().toDouble(&ok);
+            double value = setting.currentValue.toDouble(&ok);
             if (ok) {
                 spinBox->setValue(value);
             }
@@ -168,7 +166,7 @@ void BaritoneWidget::updateSettingWidget(QTreeWidgetItem *settingItem,
     } else if (type == "long" || type == "java.lang.long") {
         if (QSpinBox *spinBox = qobject_cast<QSpinBox*>(widget)) {
             bool ok;
-            int value = setting.currentValue().toInt(&ok);
+            int value = setting.currentValue.toInt(&ok);
             if (ok) {
                 spinBox->setValue(value);
             }
@@ -176,20 +174,20 @@ void BaritoneWidget::updateSettingWidget(QTreeWidgetItem *settingItem,
     } else {
         // String or other types
         if (QLineEdit *lineEdit = qobject_cast<QLineEdit*>(widget)) {
-            lineEdit->setText(setting.currentValue());
-            lineEdit->setProperty("originalValue", setting.currentValue());
+            lineEdit->setText(setting.currentValue);
+            lineEdit->setProperty("originalValue", setting.currentValue);
         }
     }
 }
 
-QWidget* BaritoneWidget::createSettingEditor(const mankool::mcbot::protocol::BaritoneSettingInfo &setting,
+QWidget* BaritoneWidget::createSettingEditor(const BaritoneSettingData &setting,
                                                const QString &settingName)
 {
-    QString type = setting.type().toLower();
+    QString type = setting.type.toLower();
 
     if (type == "boolean" || type == "java.lang.boolean") {
         QCheckBox *checkBox = new QCheckBox(this);
-        checkBox->setChecked(setting.currentValue().toLower() == "true");
+        checkBox->setChecked(setting.currentValue.toLower() == "true");
         connect(checkBox, &QCheckBox::toggled, this, [this, settingName](bool checked) {
             if (!updatingFromCode) {
                 emit settingChanged(settingName, checked ? "true" : "false");
@@ -201,7 +199,7 @@ QWidget* BaritoneWidget::createSettingEditor(const mankool::mcbot::protocol::Bar
         spinBox->setMinimum(std::numeric_limits<int>::min());
         spinBox->setMaximum(std::numeric_limits<int>::max());
         bool ok;
-        int value = setting.currentValue().toInt(&ok);
+        int value = setting.currentValue.toInt(&ok);
         if (ok) {
             spinBox->setValue(value);
         }
@@ -219,7 +217,7 @@ QWidget* BaritoneWidget::createSettingEditor(const mankool::mcbot::protocol::Bar
         spinBox->setDecimals(4);
         spinBox->setSingleStep(0.1);
         bool ok;
-        double value = setting.currentValue().toDouble(&ok);
+        double value = setting.currentValue.toDouble(&ok);
         if (ok) {
             spinBox->setValue(value);
         }
@@ -236,7 +234,7 @@ QWidget* BaritoneWidget::createSettingEditor(const mankool::mcbot::protocol::Bar
         spinBox->setMinimum(std::numeric_limits<int>::min());
         spinBox->setMaximum(std::numeric_limits<int>::max());
         bool ok;
-        int value = setting.currentValue().toInt(&ok);
+        int value = setting.currentValue.toInt(&ok);
         if (ok) {
             spinBox->setValue(value);
         }
@@ -250,8 +248,8 @@ QWidget* BaritoneWidget::createSettingEditor(const mankool::mcbot::protocol::Bar
     } else {
         // String or other types - use QLineEdit
         QLineEdit *lineEdit = new QLineEdit(this);
-        lineEdit->setText(setting.currentValue());
-        lineEdit->setProperty("originalValue", setting.currentValue());
+        lineEdit->setText(setting.currentValue);
+        lineEdit->setProperty("originalValue", setting.currentValue);
         connect(lineEdit, &QLineEdit::editingFinished, this, [this, lineEdit, settingName]() {
             if (!updatingFromCode) {
                 QString newValue = lineEdit->text();

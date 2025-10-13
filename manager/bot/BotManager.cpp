@@ -2,6 +2,8 @@
 #include "logging/LogManager.h"
 #include "network/PipeServer.h"
 #include "ui/BotConsoleWidget.h"
+#include "ui/MeteorModulesWidget.h"
+#include "ui/BaritoneWidget.h"
 #include <QDateTime>
 #include <QDataStream>
 #include <QtProtobuf/QProtobufSerializer>
@@ -243,8 +245,34 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
     if (!bot) return;
 
     bot->meteorModules.clear();
-    for (const auto &module : response.modules()) {
-        bot->meteorModules.append(module);
+    for (const auto &protoModule : response.modules()) {
+        MeteorModuleData moduleData;
+        moduleData.name = protoModule.name();
+        moduleData.category = protoModule.category();
+        moduleData.description = protoModule.description();
+        moduleData.enabled = protoModule.enabled();
+
+        for (const auto &protoSetting : protoModule.settings()) {
+            MeteorSettingData settingData;
+            settingData.name = protoSetting.name();
+            settingData.groupName = protoSetting.hasGroupName() ? protoSetting.groupName() : QString();
+            settingData.currentValue = protoSetting.currentValue();
+            settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
+            settingData.type = protoSetting.type();
+            settingData.hasMin = protoSetting.hasMinValue();
+            settingData.hasMax = protoSetting.hasMaxValue();
+            settingData.minValue = protoSetting.hasMinValue() ? protoSetting.minValue() : 0.0;
+            settingData.maxValue = protoSetting.hasMaxValue() ? protoSetting.maxValue() : 0.0;
+            settingData.possibleValues = QStringList();
+            for (const auto &val : protoSetting.possibleValues()) {
+                settingData.possibleValues.append(val);
+            }
+
+            QString settingPath = getSettingPath(protoSetting);
+            moduleData.settings.insert(settingPath, settingData);
+        }
+
+        bot->meteorModules.insert(moduleData.name, moduleData);
     }
 
     QString output = QString("=== Meteor Modules (%1) ===\n").arg(response.modules().size());
@@ -300,26 +328,49 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
     if (!bot) return;
 
     QString output;
+    QString updatedModuleName;
     bool moduleFound = false;
     if (response.success()) {
-        const auto &updatedModule = response.updatedModule();
+        const auto &protoModule = response.updatedModule();
+        updatedModuleName = protoModule.name();
 
-        for (int i = 0; i < bot->meteorModules.size(); ++i) {
-            if (bot->meteorModules[i].name() == updatedModule.name()) {
-                bot->meteorModules[i] = updatedModule;
-                moduleFound = true;
-                break;
+        if (bot->meteorModules.contains(protoModule.name())) {
+            MeteorModuleData &moduleData = bot->meteorModules[protoModule.name()];
+            moduleData.enabled = protoModule.enabled();
+            moduleData.category = protoModule.category();
+            moduleData.description = protoModule.description();
+
+            moduleData.settings.clear();
+            for (const auto &protoSetting : protoModule.settings()) {
+                MeteorSettingData settingData;
+                settingData.name = protoSetting.name();
+                settingData.groupName = protoSetting.hasGroupName() ? protoSetting.groupName() : QString();
+                settingData.currentValue = protoSetting.currentValue();
+                settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
+                settingData.type = protoSetting.type();
+                settingData.hasMin = protoSetting.hasMinValue();
+                settingData.hasMax = protoSetting.hasMaxValue();
+                settingData.minValue = protoSetting.hasMinValue() ? protoSetting.minValue() : 0.0;
+                settingData.maxValue = protoSetting.hasMaxValue() ? protoSetting.maxValue() : 0.0;
+                settingData.possibleValues = QStringList();
+                for (const auto &val : protoSetting.possibleValues()) {
+                    settingData.possibleValues.append(val);
+                }
+
+                QString settingPath = getSettingPath(protoSetting);
+                moduleData.settings.insert(settingPath, settingData);
             }
+            moduleFound = true;
         }
 
-        QString statusIcon = updatedModule.enabled() ? "[✓]" : "[ ]";
-        output = QString("Module updated: %1 %2").arg(statusIcon, updatedModule.name());
+        QString statusIcon = protoModule.enabled() ? "[✓]" : "[ ]";
+        output = QString("Module updated: %1 %2").arg(statusIcon, protoModule.name());
 
-        if (!updatedModule.settings().empty()) {
+        if (!protoModule.settings().empty()) {
             output += "\nSettings:";
 
             QMap<QString, QVector<const mankool::mcbot::protocol::SettingInfo*>> groupedSettings;
-            for (const auto &setting : updatedModule.settings()) {
+            for (const auto &setting : protoModule.settings()) {
                 QString group = setting.hasGroupName() ? setting.groupName() : QString();
                 groupedSettings[group].append(&setting);
             }
@@ -347,7 +398,7 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
                     response.success() ? LogManager::Info : LogManager::Warning);
 
     if (moduleFound) {
-        emit meteorSingleModuleUpdated(bot->name, response.updatedModule().name());
+        emit meteorSingleModuleUpdated(bot->name, updatedModuleName);
     }
 }
 
@@ -361,48 +412,25 @@ void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::m
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    bool moduleFound = false;
-    for (int i = 0; i < bot->meteorModules.size(); ++i) {
-        if (bot->meteorModules[i].name() == stateChange.moduleName()) {
-            if (stateChange.hasEnabled()) {
-                bot->meteorModules[i].setEnabled(stateChange.enabled());
-            }
+    if (bot->meteorModules.contains(stateChange.moduleName())) {
+        MeteorModuleData &moduleData = bot->meteorModules[stateChange.moduleName()];
 
-            if (!stateChange.changedSettings().isEmpty()) {
-                QVector<mankool::mcbot::protocol::SettingInfo> updatedSettings;
-                for (const auto &setting : bot->meteorModules[i].settings()) {
-                    mankool::mcbot::protocol::SettingInfo updatedSetting = setting;
+        if (stateChange.hasEnabled()) {
+            moduleData.enabled = stateChange.enabled();
+        }
 
-                    QString settingPath = getSettingPath(setting);
+        if (!stateChange.changedSettings().isEmpty()) {
+            for (auto it = stateChange.changedSettings().constBegin();
+                 it != stateChange.changedSettings().constEnd(); ++it) {
+                const QString &settingPath = it.key();
+                const QString &newValue = it.value();
 
-                    if (stateChange.changedSettings().contains(settingPath)) {
-                        updatedSetting.setCurrentValue(stateChange.changedSettings().value(settingPath));
-                    }
-
-                    updatedSettings.append(updatedSetting);
+                if (moduleData.settings.contains(settingPath)) {
+                    moduleData.settings[settingPath].currentValue = newValue;
                 }
-                bot->meteorModules[i].setSettings(updatedSettings);
             }
-
-            moduleFound = true;
-            break;
         }
-    }
 
-    QStringList changes;
-    if (stateChange.hasEnabled()) {
-        QString statusIcon = stateChange.enabled() ? "[✓]" : "[ ]";
-        changes.append(QString("enabled: %1").arg(statusIcon));
-    }
-    if (!stateChange.changedSettings().isEmpty()) {
-        for (auto it = stateChange.changedSettings().constBegin();
-             it != stateChange.changedSettings().constEnd(); ++it) {
-            changes.append(QString("%1 = %2").arg(it.key(), it.value()));
-        }
-    }
-
-
-    if (moduleFound) {
         emit meteorSingleModuleUpdated(bot->name, stateChange.moduleName());
     }
 }
@@ -779,8 +807,15 @@ void BotManager::handleBaritoneSettingsResponseImpl(int connectionId, const mank
     if (!bot) return;
 
     bot->baritoneSettings.clear();
-    for (const auto &setting : response.settings()) {
-        bot->baritoneSettings.append(setting);
+    for (const auto &protoSetting : response.settings()) {
+        BaritoneSettingData settingData;
+        settingData.name = protoSetting.name();
+        settingData.type = protoSetting.type();
+        settingData.currentValue = protoSetting.currentValue();
+        settingData.defaultValue = protoSetting.defaultValue();
+        settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
+
+        bot->baritoneSettings.insert(settingData.name, settingData);
     }
 
     LogManager::log(QString("[%1] Received %2 Baritone settings").arg(bot->name).arg(response.settings().size()), LogManager::Info);
@@ -799,8 +834,20 @@ void BotManager::handleBaritoneCommandsResponseImpl(int connectionId, const mank
     if (!bot) return;
 
     bot->baritoneCommands.clear();
-    for (const auto &command : response.commands()) {
-        bot->baritoneCommands.append(command);
+    for (const auto &protoCommand : response.commands()) {
+        BaritoneCommandData commandData;
+        commandData.name = protoCommand.name();
+        commandData.aliases = QStringList();
+        for (const auto &alias : protoCommand.aliases()) {
+            commandData.aliases.append(alias);
+        }
+        commandData.shortDesc = protoCommand.shortDesc();
+        commandData.longDesc = QStringList();
+        for (const auto &line : protoCommand.longDesc()) {
+            commandData.longDesc.append(line);
+        }
+
+        bot->baritoneCommands.insert(commandData.name, commandData);
     }
 
     LogManager::log(QString("[%1] Received %2 Baritone commands").arg(bot->name).arg(response.commands().size()), LogManager::Info);
@@ -831,14 +878,16 @@ void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const m
             output = QString("Baritone settings updated: %1").arg(response.result());
         }
 
-        // Update stored settings
-        for (const auto &updatedSetting : response.updatedSettings()) {
-            for (int i = 0; i < bot->baritoneSettings.size(); ++i) {
-                if (bot->baritoneSettings[i].name() == updatedSetting.name()) {
-                    bot->baritoneSettings[i] = updatedSetting;
-                    emit baritoneSingleSettingUpdated(bot->name, updatedSetting.name());
-                    break;
+        for (const auto &protoSetting : response.updatedSettings()) {
+            if (bot->baritoneSettings.contains(protoSetting.name())) {
+                BaritoneSettingData &settingData = bot->baritoneSettings[protoSetting.name()];
+                settingData.currentValue = protoSetting.currentValue();
+                settingData.defaultValue = protoSetting.defaultValue();
+                settingData.type = protoSetting.type();
+                if (protoSetting.hasDescription()) {
+                    settingData.description = protoSetting.description();
                 }
+                emit baritoneSingleSettingUpdated(bot->name, protoSetting.name());
             }
         }
     } else {
@@ -879,17 +928,8 @@ void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    // Find and update the setting
-    bool settingFound = false;
-    for (int i = 0; i < bot->baritoneSettings.size(); ++i) {
-        if (bot->baritoneSettings[i].name() == update.settingName()) {
-            bot->baritoneSettings[i].setCurrentValue(update.newValue());
-            settingFound = true;
-            break;
-        }
-    }
-
-    if (settingFound) {
+    if (bot->baritoneSettings.contains(update.settingName())) {
+        bot->baritoneSettings[update.settingName()].currentValue = update.newValue();
         emit baritoneSingleSettingUpdated(bot->name, update.settingName());
     }
 }

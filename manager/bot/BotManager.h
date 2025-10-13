@@ -7,6 +7,7 @@
 #include <QVector3D>
 #include <QProcess>
 #include <QDateTime>
+#include <QMap>
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -16,6 +17,8 @@
 #include "common.qpb.h"
 #include "meteor.qpb.h"
 #include "baritone.qpb.h"
+
+using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
 
 class LogManager;
 class BotConsoleWidget;
@@ -28,6 +31,42 @@ enum class BotStatus {
     Online,
     Stopping,
     Error
+};
+
+struct MeteorSettingData {
+    QString name;
+    QString groupName;
+    QString currentValue;
+    QString description;
+    SettingType type;
+    double minValue;
+    double maxValue;
+    bool hasMin;
+    bool hasMax;
+    QStringList possibleValues;  // For enum types
+};
+
+struct MeteorModuleData {
+    QString name;
+    QString category;
+    QString description;
+    bool enabled;
+    QMap<QString, MeteorSettingData> settings;
+};
+
+struct BaritoneSettingData {
+    QString name;
+    QString type;
+    QString currentValue;
+    QString defaultValue;
+    QString description;
+};
+
+struct BaritoneCommandData {
+    QString name;
+    QStringList aliases;
+    QString shortDesc;
+    QStringList longDesc;
 };
 
 struct BotInstance {
@@ -63,11 +102,11 @@ struct BotInstance {
     BaritoneWidget* baritoneWidget = nullptr;
 
     // Meteor modules data
-    QVector<mankool::mcbot::protocol::ModuleInfo> meteorModules;
+    QMap<QString, MeteorModuleData> meteorModules;
 
     // Baritone data
-    QVector<mankool::mcbot::protocol::BaritoneSettingInfo> baritoneSettings;
-    QVector<mankool::mcbot::protocol::BaritoneCommandInfo> baritoneCommands;
+    QMap<QString, BaritoneSettingData> baritoneSettings;
+    QMap<QString, BaritoneCommandData> baritoneCommands;
 };
 
 class BotManager : public QObject
