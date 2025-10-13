@@ -27,6 +27,8 @@ public:
     QStringList getCommandHistory() const { return commandHistory; }
     void setCommandHistory(const QStringList &history);
 
+    void addBaritoneCommands(const QVector<QPair<QString, QString>> &commands);
+
 signals:
     void commandEntered(const QString &command);
 

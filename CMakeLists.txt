@@ -60,6 +60,11 @@ target_include_directories(mc-bot-manager PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
+# Define version for use in code
+target_compile_definitions(mc-bot-manager PRIVATE
+    APP_VERSION="${PROJECT_VERSION}"
+)
+
 set_target_properties(mc-bot-manager PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}

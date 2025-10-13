@@ -62,6 +62,7 @@ private slots:
     void launchAllBots();
     void stopAllBots();
     void showNetworkStats(bool show);
+    void showAboutDialog();
 
 private:
     Ui::ManagerMainWindow *ui;
@@ -120,6 +121,12 @@ private:
     void onMeteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
     void onMeteorModuleToggled(const QString &moduleName, bool enabled);
     void onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QString &value);
+
+    void setupBaritoneTab();
+    void onBaritoneSettingsReceived(const QString &botName);
+    void onBaritoneCommandsReceived(const QString &botName);
+    void onBaritoneSingleSettingUpdated(const QString &botName, const QString &settingName);
+    void onBaritoneSettingChanged(const QString &settingName, const QString &value);
 
     static QString statusToString(BotStatus status);
 };

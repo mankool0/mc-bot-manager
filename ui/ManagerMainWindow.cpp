@@ -1,6 +1,7 @@
 #include "ManagerMainWindow.h"
 #include "BotConsoleWidget.h"
 #include "MeteorModulesWidget.h"
+#include "BaritoneWidget.h"
 #include "PrismSettingsDialog.h"
 #include "NetworkStatsWidget.h"
 #include "logging/LogManager.h"
@@ -13,6 +14,7 @@
 #include <QDateTime>
 #include <QTextCursor>
 #include <QRegularExpression>
+#include <QActionGroup>
 
 ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -89,6 +91,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->actionOpen, &QAction::triggered, this, &ManagerMainWindow::loadSettingsFromFile);
     connect(ui->actionLaunchAll, &QAction::triggered, this, &ManagerMainWindow::launchAllBots);
     connect(ui->actionStopAll, &QAction::triggered, this, &ManagerMainWindow::stopAllBots);
+    connect(ui->actionAbout, &QAction::triggered, this, &ManagerMainWindow::showAboutDialog);
 
     connect(ui->instanceComboBox, &QComboBox::currentTextChanged, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->accountComboBox, &QComboBox::currentTextChanged, this, &ManagerMainWindow::onConfigurationChanged);
@@ -136,6 +139,12 @@ void ManagerMainWindow::setupUI()
             this, &ManagerMainWindow::onMeteorModulesReceived);
     connect(&BotManager::instance(), &BotManager::meteorSingleModuleUpdated,
             this, &ManagerMainWindow::onMeteorSingleModuleUpdated);
+    connect(&BotManager::instance(), &BotManager::baritoneSettingsReceived,
+            this, &ManagerMainWindow::onBaritoneSettingsReceived);
+    connect(&BotManager::instance(), &BotManager::baritoneCommandsReceived,
+            this, &ManagerMainWindow::onBaritoneCommandsReceived);
+    connect(&BotManager::instance(), &BotManager::baritoneSingleSettingUpdated,
+            this, &ManagerMainWindow::onBaritoneSingleSettingUpdated);
 
     launchSchedulerTimer = new QTimer(this);
     connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
@@ -244,6 +253,18 @@ void ManagerMainWindow::addNewBot()
                 QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->meteorTab->layout());
                 if (layout) {
                     layout->addWidget(bot->meteorWidget);
+                }
+            }
+
+            if (!bot->baritoneWidget) {
+                bot->baritoneWidget = new BaritoneWidget(this);
+                connect(bot->baritoneWidget, &BaritoneWidget::settingChanged,
+                        this, &ManagerMainWindow::onBaritoneSettingChanged);
+                bot->baritoneWidget->hide();
+
+                QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->baritoneTab->layout());
+                if (layout) {
+                    layout->addWidget(bot->baritoneWidget);
                 }
             }
         }
@@ -421,6 +442,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         if (bot.meteorWidget) {
             bot.meteorWidget->hide();
         }
+        if (bot.baritoneWidget) {
+            bot.baritoneWidget->hide();
+        }
     }
 
     if (selectedItems.isEmpty()) {
@@ -446,6 +470,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         }
         if (bot.meteorWidget) {
             bot.meteorWidget->show();
+        }
+        if (bot.baritoneWidget) {
+            bot.baritoneWidget->show();
         }
     }
 }
@@ -847,6 +874,7 @@ void ManagerMainWindow::loadSettings()
 
     setupConsoleTab();
     setupMeteorTab();
+    setupBaritoneTab();
 
     settings.beginGroup("Window");
     restoreGeometry(settings.value("geometry").toByteArray());
@@ -1102,6 +1130,9 @@ void ManagerMainWindow::onClientConnected(int connectionId, const QString &botNa
 
             // Request Meteor modules list
             BotManager::sendCommand(botName, "meteor list");
+
+            BotManager::requestBaritoneSettings(botName);
+            BotManager::requestBaritoneCommands(botName);
         }
     }
 }
@@ -1162,7 +1193,35 @@ void ManagerMainWindow::onConsoleCommandEntered(const QString &command)
         return;
     }
 
-    BotManager::sendCommand(selectedBotName, command);
+    QString commandToSend = command;
+    QString cmdName = command.split(' ').first().toLower();
+    bool isBaritoneCommand = false;
+
+    if (cmdName == "baritone" && command.split(' ').size() > 1) {
+        commandToSend = command.mid(cmdName.length()).trimmed();
+        cmdName = commandToSend.split(' ').first().toLower();
+    }
+
+    // Check if it's a known Baritone command
+    for (const auto &baritoneCmd : bot->baritoneCommands) {
+        if (baritoneCmd.name().toLower() == cmdName) {
+            isBaritoneCommand = true;
+            break;
+        }
+        for (const auto &alias : baritoneCmd.aliases()) {
+            if (alias.toLower() == cmdName) {
+                isBaritoneCommand = true;
+                break;
+            }
+        }
+        if (isBaritoneCommand) break;
+    }
+
+    if (isBaritoneCommand) {
+        BotManager::sendBaritoneCommand(selectedBotName, commandToSend);
+    } else {
+        BotManager::sendCommand(selectedBotName, command);
+    }
 }
 
 void ManagerMainWindow::handleCommandResponse(const QString &botName, bool success, const QString &message)
@@ -1254,6 +1313,74 @@ void ManagerMainWindow::onMeteorSettingChanged(const QString &moduleName, const 
     BotManager::sendCommand(selectedBotName, command);
 }
 
+void ManagerMainWindow::setupBaritoneTab()
+{
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->baritoneTab->layout());
+    if (!layout) {
+        layout = new QVBoxLayout(ui->baritoneTab);
+        layout->setContentsMargins(0, 0, 0, 0);
+    }
+
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (!bot.baritoneWidget) {
+            bot.baritoneWidget = new BaritoneWidget(this);
+            connect(bot.baritoneWidget, &BaritoneWidget::settingChanged,
+                    this, &ManagerMainWindow::onBaritoneSettingChanged);
+            bot.baritoneWidget->hide();
+            layout->addWidget(bot.baritoneWidget);
+        }
+    }
+}
+
+void ManagerMainWindow::onBaritoneSettingsReceived(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->baritoneWidget) {
+        bot->baritoneWidget->updateSettings(bot->baritoneSettings);
+    }
+}
+
+void ManagerMainWindow::onBaritoneCommandsReceived(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->consoleWidget) {
+        QVector<QPair<QString, QString>> commands;
+        for (const auto &cmd : bot->baritoneCommands) {
+            QString description = cmd.shortDesc();
+            if (!cmd.longDesc().isEmpty()) {
+                description += QString("\n") + cmd.longDesc().join("\n");
+            }
+            commands.append(qMakePair(cmd.name(), description));
+        }
+        bot->consoleWidget->addBaritoneCommands(commands);
+        LogManager::log(QString("[%1] Baritone: Added %2 commands to console").arg(botName).arg(commands.size()), LogManager::Info);
+    }
+}
+
+void ManagerMainWindow::onBaritoneSingleSettingUpdated(const QString &botName, const QString &settingName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->baritoneWidget) {
+        // Find the updated setting
+        for (const auto &setting : bot->baritoneSettings) {
+            if (setting.name() == settingName) {
+                bot->baritoneWidget->updateSingleSetting(setting);
+                break;
+            }
+        }
+    }
+}
+
+void ManagerMainWindow::onBaritoneSettingChanged(const QString &settingName, const QString &value)
+{
+    if (selectedBotName.isEmpty()) {
+        return;
+    }
+
+    BotManager::sendBaritoneSettingChange(selectedBotName, settingName, value);
+}
+
 void ManagerMainWindow::showNetworkStats(bool show)
 {
     if (show) {
@@ -1267,4 +1394,21 @@ void ManagerMainWindow::showNetworkStats(bool show)
 void ManagerMainWindow::onPinDetailsToggled(bool pinned)
 {
     detailsPinned = pinned;
+}
+
+void ManagerMainWindow::showAboutDialog()
+{
+    QString aboutText = QString(
+        "<h2>MC Bot Manager</h2>"
+        "<p>Version " APP_VERSION "</p>"
+        "<p>A Qt-based GUI application for managing multiple Minecraft bot instances.</p>"
+        "<p>Copyright © 2025 mankool</p>"
+        "<p>Licensed under the GNU General Public License v3.0</p>"
+        "<p>This program comes with ABSOLUTELY NO WARRANTY. "
+        "This is free software, and you are welcome to redistribute it "
+        "under certain conditions.</p>"
+        "<p>Built with Qt %1</p>"
+    ).arg(QT_VERSION_STR);
+
+    QMessageBox::about(this, "About MC Bot Manager", aboutText);
 }
