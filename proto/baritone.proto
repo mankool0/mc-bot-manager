@@ -2,13 +2,80 @@ syntax = "proto3";
 
 package mankool.mcbot.protocol;
 
-// Setting information
+message RGBColor {
+  uint32 red = 1;
+  uint32 green = 2;
+  uint32 blue = 3;
+}
+
+message Vec3i {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
+enum BlockRotation {
+  BLOCK_ROTATION_NONE = 0;
+  BLOCK_ROTATION_CLOCKWISE_90 = 1;
+  BLOCK_ROTATION_CLOCKWISE_180 = 2;
+  BLOCK_ROTATION_COUNTERCLOCKWISE_90 = 3;
+}
+
+enum BlockMirror {
+  BLOCK_MIRROR_NONE = 0;
+  BLOCK_MIRROR_LEFT_RIGHT = 1;
+  BLOCK_MIRROR_FRONT_BACK = 2;
+}
+
+message StringList {
+  repeated string items = 1;
+}
+
+message StringMap {
+  map<string, string> entries = 1;
+}
+
+message BaritoneSettingValue {
+  oneof value {
+    bool bool_value = 1;
+    int32 int_value = 2;
+    double double_value = 3;
+    float float_value = 4;
+    int64 long_value = 5;
+    string string_value = 6;
+    RGBColor color_value = 7;
+    StringList list_value = 8;
+    StringMap map_value = 9;
+    Vec3i vec3i_value = 10;
+    BlockRotation rotation_value = 11;
+    BlockMirror mirror_value = 12;
+  }
+}
+
 message BaritoneSettingInfo {
   string name = 1;
-  string type = 2;                      // Class type (Boolean, Integer, Double, etc.)
-  string current_value = 3;
-  string default_value = 4;
-  optional string description = 5;
+
+  enum SettingType {
+    BOOLEAN = 0;
+    INTEGER = 1;
+    DOUBLE = 2;
+    COLOR = 3;
+    LONG = 4;
+    LIST = 5;
+    FLOAT = 6;
+    STRING = 7;
+    MAP = 8;
+    BI_CONSUMER = 9;
+    VEC3I = 10;
+    BLOCK_MIRROR = 11;
+    CONSUMER = 12;
+    BLOCK_ROTATION = 13;
+  }
+
+  SettingType type = 2;
+  optional string description = 3;
+  BaritoneSettingValue current_value = 4;
+  optional BaritoneSettingValue default_value = 5;
 }
 
 // Command information
@@ -40,7 +107,7 @@ message GetBaritoneCommandsResponse {
 
 // Set Baritone settings (Manager -> Client)
 message SetBaritoneSettingsCommand {
-  map<string, string> settings = 1;    // Setting name -> value
+  map<string, BaritoneSettingValue> settings = 1;
 }
 
 // Response to settings change (Client -> Manager)
@@ -65,5 +132,5 @@ message ExecuteBaritoneCommandResponse {
 // Useful for when settings are changed manually or by other means
 message BaritoneSettingUpdate {
   string setting_name = 1;
-  string new_value = 2;
+  BaritoneSettingValue new_value = 2;
 }
