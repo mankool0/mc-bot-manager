@@ -8,10 +8,6 @@ import meteordevelopment.orbit.EventHandler;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Separate top-level class for listening to module toggle events.
- * Must be a separate file for Orbit annotation processor to work properly.
- */
 public class ModuleToggleListener {
     private final MeteorModuleHandler handler;
     private final Map<Module, Boolean> lastModuleStates = new HashMap<>();
@@ -19,7 +15,6 @@ public class ModuleToggleListener {
     public ModuleToggleListener(MeteorModuleHandler handler) {
         this.handler = handler;
 
-        // Initialize module states
         for (Module module : Modules.get().getAll()) {
             lastModuleStates.put(module, module.isActive());
         }
@@ -27,7 +22,6 @@ public class ModuleToggleListener {
 
     @EventHandler
     private void onModulesChanged(ActiveModulesChangedEvent event) {
-        // Check which module(s) changed state
         for (Module module : Modules.get().getAll()) {
             boolean currentState = module.isActive();
             Boolean lastState = lastModuleStates.get(module);
