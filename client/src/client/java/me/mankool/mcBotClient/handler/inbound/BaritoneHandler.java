@@ -130,7 +130,9 @@ public class BaritoneHandler extends BaseInboundHandler {
                     Settings.Setting<?> setting = settings.byLowerName.get(settingName.toLowerCase());
                     if (setting != null) {
                         BaritoneSettingInfo info = toProtoSettingInfo(setting);
-                        response.addSettings(info);
+                        if (info != null) {
+                            response.addSettings(info);
+                        }
                     } else {
                         LOGGER.warn("Requested setting not found: {}", settingName);
                     }
@@ -138,7 +140,9 @@ public class BaritoneHandler extends BaseInboundHandler {
             } else {
                 for (Settings.Setting<?> setting : settings.allSettings) {
                     BaritoneSettingInfo info = toProtoSettingInfo(setting);
-                    response.addSettings(info);
+                    if (info != null) {
+                        response.addSettings(info);
+                    }
                 }
             }
 
@@ -191,7 +195,10 @@ public class BaritoneHandler extends BaseInboundHandler {
                 }
 
                 LOGGER.info("Updated Baritone setting {} from {} to {}", settingName, oldValue, setting.value);
-                updatedSettings.add(toProtoSettingInfo(setting));
+                BaritoneSettingInfo info = toProtoSettingInfo(setting);
+                if (info != null) {
+                    updatedSettings.add(info);
+                }
             }
 
             boolean success = errors.isEmpty();
@@ -234,9 +241,14 @@ public class BaritoneHandler extends BaseInboundHandler {
     }
 
     private BaritoneSettingInfo toProtoSettingInfo(Settings.Setting<?> setting) {
+        BaritoneSettingInfo.SettingType type = toProtoSettingType(setting);
+        if (type == BaritoneSettingInfo.SettingType.UNRECOGNIZED) {
+            return null;
+        }
+
         BaritoneSettingInfo.Builder builder = BaritoneSettingInfo.newBuilder()
                 .setName(setting.getName())
-                .setType(toProtoSettingType(setting));
+                .setType(type);
 
         BaritoneSettingValue currentValue = toProtoValue(setting.value);
         if (currentValue != null) {
@@ -351,6 +363,8 @@ public class BaritoneHandler extends BaseInboundHandler {
         if (type == BlockRotation.class) return BaritoneSettingInfo.SettingType.BLOCK_ROTATION;
         if (type == BlockMirror.class) return BaritoneSettingInfo.SettingType.BLOCK_MIRROR;
 
+        LOGGER.warn("Unrecognized Baritone setting type for '{}': {} - add support or explicitly ignore this type",
+                setting.getName(), type.getSimpleName());
         return BaritoneSettingInfo.SettingType.UNRECOGNIZED;
     }
 
