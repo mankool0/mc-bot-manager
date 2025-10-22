@@ -8,6 +8,545 @@
 #include <QDataStream>
 #include <QtProtobuf/QProtobufSerializer>
 
+static QVariant baritoneProtoToVariant(
+    const mankool::mcbot::protocol::BaritoneSettingValue &value,
+    BaritoneSettingType type)
+{
+    switch (type) {
+        case BaritoneSettingType::BOOLEAN:
+            return value.boolValue();
+        case BaritoneSettingType::INTEGER:
+            return static_cast<int>(value.intValue());
+        case BaritoneSettingType::DOUBLE:
+            return static_cast<double>(value.doubleValue());
+        case BaritoneSettingType::FLOAT:
+            return value.floatValue();
+        case BaritoneSettingType::LONG:
+            return QVariant::fromValue(value.longValue());
+        case BaritoneSettingType::STRING:
+            if (value.hasStringValue()) {
+                return value.stringValue();
+            }
+            return QVariant();
+        case BaritoneSettingType::COLOR:
+            return QVariant::fromValue(RGBColor{
+                static_cast<uint32_t>(value.colorValue().red()),
+                static_cast<uint32_t>(value.colorValue().green()),
+                static_cast<uint32_t>(value.colorValue().blue())
+            });
+        case BaritoneSettingType::LIST:
+            return QVariant::fromValue(value.listValue().items());
+        case BaritoneSettingType::MAP: {
+            QMap<QString, QString> map;
+            for (auto it = value.mapValue().entries().constBegin();
+                 it != value.mapValue().entries().constEnd(); ++it) {
+                map[it.key()] = it.value();
+            }
+            return QVariant::fromValue(map);
+        }
+        case BaritoneSettingType::VEC3I:
+            return QVariant::fromValue(Vec3i{
+                static_cast<int32_t>(value.vec3iValue().x()),
+                static_cast<int32_t>(value.vec3iValue().y()),
+                static_cast<int32_t>(value.vec3iValue().z())
+            });
+        case BaritoneSettingType::BLOCK_ROTATION:
+            return QVariant::fromValue(static_cast<BlockRotation>(value.rotationValue()));
+        case BaritoneSettingType::BLOCK_MIRROR:
+            return QVariant::fromValue(static_cast<BlockMirror>(value.mirrorValue()));
+        case BaritoneSettingType::BI_CONSUMER:
+        case BaritoneSettingType::CONSUMER:
+            // These are not editable values
+            return QVariant();
+    }
+    return QVariant();
+}
+
+static QVariant meteorProtoToVariant(
+    const mankool::mcbot::protocol::MeteorSettingValue &value,
+    SettingType type)
+{
+    switch (type) {
+        case SettingType::BOOLEAN:
+            return value.boolValue();
+        case SettingType::INTEGER:
+            return static_cast<int>(value.intValue());
+        case SettingType::DOUBLE:
+            return static_cast<double>(value.doubleValue());
+        case SettingType::FLOAT:
+            return static_cast<float>(value.floatValue());
+        case SettingType::LONG:
+            return QVariant::fromValue(value.longValue());
+        case SettingType::STRING:
+        case SettingType::ENUM:
+            if (value.hasStringValue()) {
+                return value.stringValue();
+            }
+            return QVariant();
+        case SettingType::COLOR:
+            return QVariant::fromValue(RGBAColor{
+                static_cast<uint32_t>(value.colorValue().red()),
+                static_cast<uint32_t>(value.colorValue().green()),
+                static_cast<uint32_t>(value.colorValue().blue()),
+                static_cast<uint32_t>(value.colorValue().alpha())
+            });
+        case SettingType::KEYBIND:
+            return QVariant::fromValue(Keybind{value.keybindValue().keyName()});
+        case SettingType::VECTOR3D:
+            return QVariant::fromValue(Vector3d{
+                value.vector3dValue().x(),
+                value.vector3dValue().y(),
+                value.vector3dValue().z()
+            });
+        case SettingType::BLOCK_LIST:
+            return QStringList(value.blockListValue().blocks());
+        case SettingType::ITEM_LIST:
+            return QStringList(value.itemListValue().items());
+        case SettingType::ENTITY_TYPE_LIST:
+            return QStringList(value.entityTypeListValue().entityTypes());
+        case SettingType::STATUS_EFFECT_LIST:
+            return QStringList(value.statusEffectListValue().effects());
+        case SettingType::PARTICLE_TYPE_LIST:
+            return QStringList(value.particleTypeListValue().particles());
+        case SettingType::MODULE_LIST:
+            return QStringList(value.moduleListValue().modules());
+        case SettingType::PACKET_LIST:
+            return QStringList(value.packetListValue().packets());
+        case SettingType::ENCHANTMENT_LIST:
+            return QStringList(value.enchantmentListValue().enchantments());
+        case SettingType::STORAGE_BLOCK_LIST:
+            return QStringList(value.storageBlockListValue().storageBlocks());
+        case SettingType::SOUND_EVENT_LIST:
+            return QStringList(value.soundEventListValue().sounds());
+        case SettingType::SCREEN_HANDLER_LIST:
+            return QStringList(value.screenHandlerListValue().handlers());
+        case SettingType::STRING_LIST:
+            return QStringList(value.stringListValue().strings());
+        case SettingType::ESP_BLOCK_DATA: {
+            if (!value.hasEspBlockDataValue()) {
+                LogManager::log("ESP_BLOCK_DATA setting received but espBlockDataValue not set in protobuf", LogManager::Warning);
+                return QVariant();
+            }
+            const auto &espData = value.espBlockDataValue();
+            ESPBlockData data;
+            data.shapeMode = static_cast<ESPBlockData::ShapeMode>(espData.shapeMode());
+            data.lineColor = RGBAColor{
+                static_cast<uint32_t>(espData.lineColor().red()),
+                static_cast<uint32_t>(espData.lineColor().green()),
+                static_cast<uint32_t>(espData.lineColor().blue()),
+                static_cast<uint32_t>(espData.lineColor().alpha())
+            };
+            data.sideColor = RGBAColor{
+                static_cast<uint32_t>(espData.sideColor().red()),
+                static_cast<uint32_t>(espData.sideColor().green()),
+                static_cast<uint32_t>(espData.sideColor().blue()),
+                static_cast<uint32_t>(espData.sideColor().alpha())
+            };
+            data.tracer = espData.tracer();
+            data.tracerColor = RGBAColor{
+                static_cast<uint32_t>(espData.tracerColor().red()),
+                static_cast<uint32_t>(espData.tracerColor().green()),
+                static_cast<uint32_t>(espData.tracerColor().blue()),
+                static_cast<uint32_t>(espData.tracerColor().alpha())
+            };
+            return QVariant::fromValue(data);
+        }
+        case SettingType::BLOCK_ESP_CONFIG_MAP: {
+            if (!value.hasBlockEspConfigMapValue()) {
+                LogManager::log("BLOCK_ESP_CONFIG_MAP setting received but blockEspConfigMapValue not set in protobuf", LogManager::Warning);
+                return QVariant();
+            }
+            const auto &mapProto = value.blockEspConfigMapValue();
+            ESPBlockDataMap configMap;
+
+            for (auto it = mapProto.configs().constBegin(); it != mapProto.configs().constEnd(); ++it) {
+                const QString &blockName = it.key();
+                const auto &espData = it.value();
+
+                ESPBlockData data;
+                data.shapeMode = static_cast<ESPBlockData::ShapeMode>(espData.shapeMode());
+                data.lineColor = RGBAColor{
+                    static_cast<uint32_t>(espData.lineColor().red()),
+                    static_cast<uint32_t>(espData.lineColor().green()),
+                    static_cast<uint32_t>(espData.lineColor().blue()),
+                    static_cast<uint32_t>(espData.lineColor().alpha())
+                };
+                data.sideColor = RGBAColor{
+                    static_cast<uint32_t>(espData.sideColor().red()),
+                    static_cast<uint32_t>(espData.sideColor().green()),
+                    static_cast<uint32_t>(espData.sideColor().blue()),
+                    static_cast<uint32_t>(espData.sideColor().alpha())
+                };
+                data.tracer = espData.tracer();
+                data.tracerColor = RGBAColor{
+                    static_cast<uint32_t>(espData.tracerColor().red()),
+                    static_cast<uint32_t>(espData.tracerColor().green()),
+                    static_cast<uint32_t>(espData.tracerColor().blue()),
+                    static_cast<uint32_t>(espData.tracerColor().alpha())
+                };
+
+                configMap.insert(blockName, data);
+            }
+
+            return QVariant::fromValue(configMap);
+        }
+        case SettingType::POTION:
+        case SettingType::GENERIC:
+            // Generic types - store as string if available
+            if (value.hasStringValue()) {
+                return value.stringValue();
+            }
+            return QVariant();
+    }
+    return QVariant();
+}
+
+static mankool::mcbot::protocol::BaritoneSettingValue variantToBaritoneProto(
+    const QVariant &variant,
+    BaritoneSettingType type)
+{
+    mankool::mcbot::protocol::BaritoneSettingValue protoValue;
+
+    switch (type) {
+        case BaritoneSettingType::BOOLEAN:
+            protoValue.setBoolValue(variant.toBool());
+            break;
+        case BaritoneSettingType::INTEGER:
+            protoValue.setIntValue(variant.toInt());
+            break;
+        case BaritoneSettingType::DOUBLE:
+            protoValue.setDoubleValue(variant.toDouble());
+            break;
+        case BaritoneSettingType::FLOAT:
+            protoValue.setFloatValue(variant.toFloat());
+            break;
+        case BaritoneSettingType::LONG:
+            protoValue.setLongValue(variant.toLongLong());
+            break;
+        case BaritoneSettingType::STRING:
+            protoValue.setStringValue(variant.toString());
+            break;
+        case BaritoneSettingType::COLOR: {
+            RGBColor color = variant.value<RGBColor>();
+            mankool::mcbot::protocol::RGBColor protoColor;
+            protoColor.setRed(color.red);
+            protoColor.setGreen(color.green);
+            protoColor.setBlue(color.blue);
+            protoValue.setColorValue(protoColor);
+            break;
+        }
+        case BaritoneSettingType::LIST: {
+            mankool::mcbot::protocol::StringList list;
+            list.setItems(variant.toStringList());
+            protoValue.setListValue(list);
+            break;
+        }
+        case BaritoneSettingType::MAP: {
+            QMap<QString, QString> map = variant.value<QMap<QString, QString>>();
+            mankool::mcbot::protocol::StringMap protoMap;
+            QHash<QString, QString> hash;
+            for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+                hash.insert(it.key(), it.value());
+            }
+            protoMap.setEntries(hash);
+            protoValue.setMapValue(protoMap);
+            break;
+        }
+        case BaritoneSettingType::VEC3I: {
+            Vec3i vec = variant.value<Vec3i>();
+            mankool::mcbot::protocol::Vec3i protoVec;
+            protoVec.setX(vec.x);
+            protoVec.setY(vec.y);
+            protoVec.setZ(vec.z);
+            protoValue.setVec3iValue(protoVec);
+            break;
+        }
+        case BaritoneSettingType::BLOCK_ROTATION: {
+            BlockRotation localRot = variant.value<BlockRotation>();
+            protoValue.setRotationValue(
+                static_cast<mankool::mcbot::protocol::BlockRotationGadget::BlockRotation>(
+                    static_cast<int>(localRot)));
+            break;
+        }
+        case BaritoneSettingType::BLOCK_MIRROR: {
+            BlockMirror localMirror = variant.value<BlockMirror>();
+            protoValue.setMirrorValue(
+                static_cast<mankool::mcbot::protocol::BlockMirrorGadget::BlockMirror>(
+                    static_cast<int>(localMirror)));
+            break;
+        }
+        case BaritoneSettingType::BI_CONSUMER:
+        case BaritoneSettingType::CONSUMER:
+            // Not editable
+            break;
+    }
+
+    return protoValue;
+}
+
+static QString variantToDisplayString(const QVariant &variant)
+{
+    if (variant.typeId() == QMetaType::Bool) {
+        return variant.toBool() ? "true" : "false";
+    } else if (variant.typeId() == QMetaType::Int || variant.typeId() == QMetaType::Double ||
+               variant.typeId() == QMetaType::Float || variant.typeId() == QMetaType::LongLong) {
+        return variant.toString();
+    } else if (variant.typeId() == QMetaType::QString) {
+        return variant.toString();
+    } else if (variant.typeId() == QMetaType::QStringList) {
+        return variant.toStringList().join(", ");
+    } else if (variant.canConvert<RGBColor>()) {
+        RGBColor c = variant.value<RGBColor>();
+        return QString("rgb(%1,%2,%3)").arg(c.red).arg(c.green).arg(c.blue);
+    } else if (variant.canConvert<RGBAColor>()) {
+        RGBAColor c = variant.value<RGBAColor>();
+        return QString("rgba(%1,%2,%3,%4)").arg(c.red).arg(c.green).arg(c.blue).arg(c.alpha);
+    } else if (variant.canConvert<Vec3i>()) {
+        Vec3i v = variant.value<Vec3i>();
+        return QString("(%1, %2, %3)").arg(v.x).arg(v.y).arg(v.z);
+    } else if (variant.canConvert<Vector3d>()) {
+        Vector3d v = variant.value<Vector3d>();
+        return QString("(%1, %2, %3)").arg(v.x).arg(v.y).arg(v.z);
+    } else if (variant.canConvert<Keybind>()) {
+        return variant.value<Keybind>().keyName;
+    } else if (variant.canConvert<BlockRotation>()) {
+        switch (variant.value<BlockRotation>()) {
+            case BlockRotation::None: return "NONE";
+            case BlockRotation::Clockwise90: return "CLOCKWISE_90";
+            case BlockRotation::Clockwise180: return "CLOCKWISE_180";
+            case BlockRotation::CounterClockwise90: return "COUNTERCLOCKWISE_90";
+        }
+    } else if (variant.canConvert<BlockMirror>()) {
+        switch (variant.value<BlockMirror>()) {
+            case BlockMirror::None: return "NONE";
+            case BlockMirror::LeftRight: return "LEFT_RIGHT";
+            case BlockMirror::FrontBack: return "FRONT_BACK";
+        }
+    } else if (variant.canConvert<QMap<QString, QString>>()) {
+        QMap<QString, QString> map = variant.value<QMap<QString, QString>>();
+        QStringList pairs;
+        for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+            pairs.append(QString("%1=%2").arg(it.key(), it.value()));
+        }
+        return pairs.join(", ");
+    } else if (variant.canConvert<ESPBlockDataMap>()) {
+        ESPBlockDataMap map = variant.value<ESPBlockDataMap>();
+        if (map.isEmpty()) {
+            return "(empty map)";
+        }
+        QStringList blockNames;
+        for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+            blockNames.append(it.key());
+        }
+        return QString("%1 block(s): %2").arg(map.size()).arg(blockNames.join(", "));
+    }
+    return "[Complex Data]";
+}
+
+static mankool::mcbot::protocol::MeteorSettingValue variantToMeteorProto(
+    const QVariant &variant,
+    SettingType type)
+{
+    mankool::mcbot::protocol::MeteorSettingValue protoValue;
+
+    switch (type) {
+        case SettingType::BOOLEAN:
+            protoValue.setBoolValue(variant.toBool());
+            break;
+        case SettingType::INTEGER:
+            protoValue.setIntValue(variant.toInt());
+            break;
+        case SettingType::DOUBLE:
+            protoValue.setDoubleValue(variant.toDouble());
+            break;
+        case SettingType::FLOAT:
+            protoValue.setFloatValue(variant.toFloat());
+            break;
+        case SettingType::LONG:
+            protoValue.setLongValue(variant.toLongLong());
+            break;
+        case SettingType::STRING:
+        case SettingType::ENUM:
+        case SettingType::POTION:
+        case SettingType::GENERIC:
+            protoValue.setStringValue(variant.toString());
+            break;
+        case SettingType::COLOR: {
+            RGBAColor color = variant.value<RGBAColor>();
+            mankool::mcbot::protocol::RGBAColor protoColor;
+            protoColor.setRed(color.red);
+            protoColor.setGreen(color.green);
+            protoColor.setBlue(color.blue);
+            protoColor.setAlpha(color.alpha);
+            protoValue.setColorValue(protoColor);
+            break;
+        }
+        case SettingType::KEYBIND: {
+            Keybind kb = variant.value<Keybind>();
+            mankool::mcbot::protocol::Keybind protoKb;
+            protoKb.setKeyName(kb.keyName);
+            protoValue.setKeybindValue(protoKb);
+            break;
+        }
+        case SettingType::VECTOR3D: {
+            Vector3d vec = variant.value<Vector3d>();
+            mankool::mcbot::protocol::Vector3d protoVec;
+            protoVec.setX(vec.x);
+            protoVec.setY(vec.y);
+            protoVec.setZ(vec.z);
+            protoValue.setVector3dValue(protoVec);
+            break;
+        }
+        case SettingType::BLOCK_LIST: {
+            mankool::mcbot::protocol::BlockList list;
+            list.setBlocks(variant.toStringList());
+            protoValue.setBlockListValue(list);
+            break;
+        }
+        case SettingType::ITEM_LIST: {
+            mankool::mcbot::protocol::ItemList list;
+            list.setItems(variant.toStringList());
+            protoValue.setItemListValue(list);
+            break;
+        }
+        case SettingType::ENTITY_TYPE_LIST: {
+            mankool::mcbot::protocol::EntityTypeList list;
+            list.setEntityTypes(variant.toStringList());
+            protoValue.setEntityTypeListValue(list);
+            break;
+        }
+        case SettingType::STATUS_EFFECT_LIST: {
+            mankool::mcbot::protocol::StatusEffectList list;
+            list.setEffects(variant.toStringList());
+            protoValue.setStatusEffectListValue(list);
+            break;
+        }
+        case SettingType::PARTICLE_TYPE_LIST: {
+            mankool::mcbot::protocol::ParticleTypeList list;
+            list.setParticles(variant.toStringList());
+            protoValue.setParticleTypeListValue(list);
+            break;
+        }
+        case SettingType::MODULE_LIST: {
+            mankool::mcbot::protocol::ModuleList list;
+            list.setModules(variant.toStringList());
+            protoValue.setModuleListValue(list);
+            break;
+        }
+        case SettingType::PACKET_LIST: {
+            mankool::mcbot::protocol::PacketList list;
+            list.setPackets(variant.toStringList());
+            protoValue.setPacketListValue(list);
+            break;
+        }
+        case SettingType::ENCHANTMENT_LIST: {
+            mankool::mcbot::protocol::EnchantmentList list;
+            list.setEnchantments(variant.toStringList());
+            protoValue.setEnchantmentListValue(list);
+            break;
+        }
+        case SettingType::STORAGE_BLOCK_LIST: {
+            mankool::mcbot::protocol::StorageBlockList list;
+            list.setStorageBlocks(variant.toStringList());
+            protoValue.setStorageBlockListValue(list);
+            break;
+        }
+        case SettingType::SOUND_EVENT_LIST: {
+            mankool::mcbot::protocol::SoundEventList list;
+            list.setSounds(variant.toStringList());
+            protoValue.setSoundEventListValue(list);
+            break;
+        }
+        case SettingType::SCREEN_HANDLER_LIST: {
+            mankool::mcbot::protocol::ScreenHandlerList list;
+            list.setHandlers(variant.toStringList());
+            protoValue.setScreenHandlerListValue(list);
+            break;
+        }
+        case SettingType::STRING_LIST: {
+            mankool::mcbot::protocol::MeteorStringList list;
+            list.setStrings(variant.toStringList());
+            protoValue.setStringListValue(list);
+            break;
+        }
+        case SettingType::ESP_BLOCK_DATA: {
+            ESPBlockData data = variant.value<ESPBlockData>();
+            mankool::mcbot::protocol::ESPBlockData protoData;
+            protoData.setShapeMode(static_cast<mankool::mcbot::protocol::ESPBlockData::ShapeMode>(data.shapeMode));
+
+            mankool::mcbot::protocol::RGBAColor lineColor;
+            lineColor.setRed(data.lineColor.red);
+            lineColor.setGreen(data.lineColor.green);
+            lineColor.setBlue(data.lineColor.blue);
+            lineColor.setAlpha(data.lineColor.alpha);
+            protoData.setLineColor(lineColor);
+
+            mankool::mcbot::protocol::RGBAColor sideColor;
+            sideColor.setRed(data.sideColor.red);
+            sideColor.setGreen(data.sideColor.green);
+            sideColor.setBlue(data.sideColor.blue);
+            sideColor.setAlpha(data.sideColor.alpha);
+            protoData.setSideColor(sideColor);
+
+            protoData.setTracer(data.tracer);
+
+            mankool::mcbot::protocol::RGBAColor tracerColor;
+            tracerColor.setRed(data.tracerColor.red);
+            tracerColor.setGreen(data.tracerColor.green);
+            tracerColor.setBlue(data.tracerColor.blue);
+            tracerColor.setAlpha(data.tracerColor.alpha);
+            protoData.setTracerColor(tracerColor);
+
+            protoValue.setEspBlockDataValue(protoData);
+            break;
+        }
+        case SettingType::BLOCK_ESP_CONFIG_MAP: {
+            ESPBlockDataMap configMap = variant.value<ESPBlockDataMap>();
+            mankool::mcbot::protocol::BlockESPConfigMap protoMap;
+            QHash<QString, mankool::mcbot::protocol::ESPBlockData> protoConfigs;
+
+            for (auto it = configMap.constBegin(); it != configMap.constEnd(); ++it) {
+                const QString &blockName = it.key();
+                const ESPBlockData &data = it.value();
+
+                mankool::mcbot::protocol::ESPBlockData protoData;
+                protoData.setShapeMode(static_cast<mankool::mcbot::protocol::ESPBlockData::ShapeMode>(data.shapeMode));
+
+                mankool::mcbot::protocol::RGBAColor lineColor;
+                lineColor.setRed(data.lineColor.red);
+                lineColor.setGreen(data.lineColor.green);
+                lineColor.setBlue(data.lineColor.blue);
+                lineColor.setAlpha(data.lineColor.alpha);
+                protoData.setLineColor(lineColor);
+
+                mankool::mcbot::protocol::RGBAColor sideColor;
+                sideColor.setRed(data.sideColor.red);
+                sideColor.setGreen(data.sideColor.green);
+                sideColor.setBlue(data.sideColor.blue);
+                sideColor.setAlpha(data.sideColor.alpha);
+                protoData.setSideColor(sideColor);
+
+                protoData.setTracer(data.tracer);
+
+                mankool::mcbot::protocol::RGBAColor tracerColor;
+                tracerColor.setRed(data.tracerColor.red);
+                tracerColor.setGreen(data.tracerColor.green);
+                tracerColor.setBlue(data.tracerColor.blue);
+                tracerColor.setAlpha(data.tracerColor.alpha);
+                protoData.setTracerColor(tracerColor);
+
+                protoConfigs.insert(blockName, protoData);
+            }
+
+            protoMap.setConfigs(protoConfigs);
+            protoValue.setBlockEspConfigMapValue(protoMap);
+            break;
+        }
+    }
+
+    return protoValue;
+}
+
 BotManager::BotManager(QObject *parent)
     : QObject(parent)
 {
@@ -256,7 +795,7 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
             MeteorSettingData settingData;
             settingData.name = protoSetting.name();
             settingData.groupName = protoSetting.hasGroupName() ? protoSetting.groupName() : QString();
-            settingData.currentValue = protoSetting.currentValue();
+            settingData.currentValue = meteorProtoToVariant(protoSetting.currentValue(), protoSetting.type());
             settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
             settingData.type = protoSetting.type();
             settingData.hasMin = protoSetting.hasMinValue();
@@ -304,13 +843,17 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
 
                 for (const auto *setting : settings) {
                     QString settingPath = getSettingPath(*setting);
-                    output += QString("        %1 = %2\n").arg(settingPath, setting->currentValue());
+                    QVariant value = meteorProtoToVariant(setting->currentValue(), setting->type());
+                    output += QString("        %1 = %2\n").arg(settingPath, variantToDisplayString(value));
                 }
             }
         }
         output += "\n";
     }
 
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(true, output);
+    }
 
     LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
 
@@ -345,7 +888,7 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
                 MeteorSettingData settingData;
                 settingData.name = protoSetting.name();
                 settingData.groupName = protoSetting.hasGroupName() ? protoSetting.groupName() : QString();
-                settingData.currentValue = protoSetting.currentValue();
+                settingData.currentValue = meteorProtoToVariant(protoSetting.currentValue(), protoSetting.type());
                 settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
                 settingData.type = protoSetting.type();
                 settingData.hasMin = protoSetting.hasMinValue();
@@ -385,7 +928,8 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
 
                 for (const auto *setting : settings) {
                     QString settingPath = getSettingPath(*setting);
-                    output += QString("\n    %1 = %2").arg(settingPath, setting->currentValue());
+                    QVariant value = meteorProtoToVariant(setting->currentValue(), setting->type());
+                    output += QString("\n    %1 = %2").arg(settingPath, variantToDisplayString(value));
                 }
             }
         }
@@ -393,6 +937,9 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
         output = QString("Error: %1").arg(response.errorMessage());
     }
 
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(response.success(), output);
+    }
 
     LogManager::log(QString("[%1] %2").arg(bot->name, output),
                     response.success() ? LogManager::Info : LogManager::Warning);
@@ -423,10 +970,11 @@ void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::m
             for (auto it = stateChange.changedSettings().constBegin();
                  it != stateChange.changedSettings().constEnd(); ++it) {
                 const QString &settingPath = it.key();
-                const QString &newValue = it.value();
+                const mankool::mcbot::protocol::MeteorSettingValue &protoValue = it.value();
 
                 if (moduleData.settings.contains(settingPath)) {
-                    moduleData.settings[settingPath].currentValue = newValue;
+                    SettingType type = moduleData.settings[settingPath].type;
+                    moduleData.settings[settingPath].currentValue = meteorProtoToVariant(protoValue, type);
                 }
             }
         }
@@ -435,7 +983,6 @@ void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::m
     }
 }
 
-// Helper function to parse command text with support for quoted strings
 static QStringList parseCommandWithQuotes(const QString &commandText)
 {
     QStringList result;
@@ -698,7 +1245,6 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
             }
             mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
             setModuleCmd.setModuleName(parts[2]);
-            // Don't set enabled field - bot will determine current state and flip it
             msg.setSetModuleConfig(setModuleCmd);
         }
         else if (subCmd == "set") {
@@ -711,7 +1257,6 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
 
             QString settingName = parts[3];
 
-            // Special handling for "enabled" setting
             if (settingName.toLower() == "enabled") {
                 if (parts.size() < 5) {
                     LogManager::log("Usage: meteor set <module> enabled <true|false>", LogManager::Warning);
@@ -731,9 +1276,12 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
                     LogManager::log("Usage: meteor set <module> <setting|group.setting> <value>", LogManager::Warning);
                     return;
                 }
-                QHash<QString, QString> settings;
+                QHash<QString, mankool::mcbot::protocol::MeteorSettingValue> settings;
                 QString settingValue = parts.mid(4).join(' ');
-                settings.insert(settingName, settingValue);
+
+                mankool::mcbot::protocol::MeteorSettingValue protoValue;
+                protoValue.setStringValue(settingValue);
+                settings.insert(settingName, protoValue);
                 setModuleCmd.setSettings(settings);
             }
             msg.setSetModuleConfig(setModuleCmd);
@@ -811,8 +1359,10 @@ void BotManager::handleBaritoneSettingsResponseImpl(int connectionId, const mank
         BaritoneSettingData settingData;
         settingData.name = protoSetting.name();
         settingData.type = protoSetting.type();
-        settingData.currentValue = protoSetting.currentValue();
-        settingData.defaultValue = protoSetting.defaultValue();
+        settingData.currentValue = baritoneProtoToVariant(protoSetting.currentValue(), protoSetting.type());
+        if (protoSetting.hasDefaultValue()) {
+            settingData.defaultValue = baritoneProtoToVariant(protoSetting.defaultValue(), protoSetting.type());
+        }
         settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
 
         bot->baritoneSettings.insert(settingData.name, settingData);
@@ -869,7 +1419,8 @@ void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const m
     if (response.success()) {
         QStringList changedSettings;
         for (const auto &updatedSetting : response.updatedSettings()) {
-            changedSettings.append(QString("%1 = %2").arg(updatedSetting.name(), updatedSetting.currentValue()));
+            QVariant value = baritoneProtoToVariant(updatedSetting.currentValue(), updatedSetting.type());
+            changedSettings.append(QString("%1 = %2").arg(updatedSetting.name(), variantToDisplayString(value)));
         }
 
         if (!changedSettings.isEmpty()) {
@@ -881,8 +1432,10 @@ void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const m
         for (const auto &protoSetting : response.updatedSettings()) {
             if (bot->baritoneSettings.contains(protoSetting.name())) {
                 BaritoneSettingData &settingData = bot->baritoneSettings[protoSetting.name()];
-                settingData.currentValue = protoSetting.currentValue();
-                settingData.defaultValue = protoSetting.defaultValue();
+                settingData.currentValue = baritoneProtoToVariant(protoSetting.currentValue(), protoSetting.type());
+                if (protoSetting.hasDefaultValue()) {
+                    settingData.defaultValue = baritoneProtoToVariant(protoSetting.defaultValue(), protoSetting.type());
+                }
                 settingData.type = protoSetting.type();
                 if (protoSetting.hasDescription()) {
                     settingData.description = protoSetting.description();
@@ -929,7 +1482,8 @@ void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool
     if (!bot) return;
 
     if (bot->baritoneSettings.contains(update.settingName())) {
-        bot->baritoneSettings[update.settingName()].currentValue = update.newValue();
+        BaritoneSettingType type = bot->baritoneSettings[update.settingName()].type;
+        bot->baritoneSettings[update.settingName()].currentValue = baritoneProtoToVariant(update.newValue(), type);
         emit baritoneSingleSettingUpdated(bot->name, update.settingName());
     }
 }
@@ -1058,12 +1612,12 @@ void BotManager::sendBaritoneCommandImpl(const QString &botName, const QString &
     PipeServer::sendToClient(bot->connectionId, message);
 }
 
-void BotManager::sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QString &value)
+void BotManager::sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QVariant &value)
 {
     instance().sendBaritoneSettingChangeImpl(botName, settingName, value);
 }
 
-void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QString &value)
+void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QVariant &value)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -1076,13 +1630,22 @@ void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QSt
         return;
     }
 
+    if (!bot->baritoneSettings.contains(settingName)) {
+        LogManager::log(QString("Unknown Baritone setting '%1' for bot '%2'").arg(settingName, botName), LogManager::Warning);
+        return;
+    }
+
+    BaritoneSettingType type = bot->baritoneSettings[settingName].type;
+
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::SetBaritoneSettingsCommand setCmd;
-    QHash<QString, QString> settings;
-    settings.insert(settingName, value);
+    QHash<QString, mankool::mcbot::protocol::BaritoneSettingValue> settings;
+
+    mankool::mcbot::protocol::BaritoneSettingValue protoValue = variantToBaritoneProto(value, type);
+    settings.insert(settingName, protoValue);
     setCmd.setSettings(settings);
     msg.setSetBaritoneSettings(setCmd);
 
@@ -1101,3 +1664,65 @@ void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QSt
 
     PipeServer::sendToClient(bot->connectionId, message);
 }
+
+void BotManager::sendMeteorSettingChange(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value)
+{
+    instance().sendMeteorSettingChangeImpl(botName, moduleName, settingPath, value);
+}
+
+void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot change Meteor setting: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot change Meteor setting: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (!bot->meteorModules.contains(moduleName)) {
+        LogManager::log(QString("Unknown Meteor module '%1' for bot '%2'").arg(moduleName, botName), LogManager::Warning);
+        return;
+    }
+
+    const MeteorModuleData &module = bot->meteorModules[moduleName];
+    if (!module.settings.contains(settingPath)) {
+        LogManager::log(QString("Unknown setting '%1' in module '%2' for bot '%3'").arg(settingPath, moduleName, botName), LogManager::Warning);
+        return;
+    }
+
+    SettingType type = module.settings[settingPath].type;
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
+    setModuleCmd.setModuleName(moduleName);
+
+    QHash<QString, mankool::mcbot::protocol::MeteorSettingValue> settings;
+
+    mankool::mcbot::protocol::MeteorSettingValue protoValue = variantToMeteorProto(value, type);
+    settings.insert(settingPath, protoValue);
+    setModuleCmd.setSettings(settings);
+    msg.setSetModuleConfig(setModuleCmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize Meteor setting change for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+

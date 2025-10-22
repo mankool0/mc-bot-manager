@@ -148,14 +148,6 @@ void PipeServer::handleClientData()
         quint32 messageLength;
         *stream >> messageLength;
 
-        // Sanity check
-        if (messageLength > 10 * 1024 * 1024) {  // 10MB max
-            LogManager::log(QString("Invalid message length: %1 bytes").arg(messageLength), LogManager::Error);
-            stream->abortTransaction();
-            socket->readAll();  // Discard all buffered data
-            break;
-        }
-
         QByteArray messageData(messageLength, Qt::Uninitialized);
         int bytesRead = stream->readRawData(messageData.data(), messageLength);
 

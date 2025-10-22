@@ -1289,24 +1289,13 @@ void ManagerMainWindow::onMeteorModuleToggled(const QString &moduleName, bool en
     BotManager::sendCommand(selectedBotName, command);
 }
 
-void ManagerMainWindow::onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QString &value)
+void ManagerMainWindow::onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QVariant &value)
 {
     if (selectedBotName.isEmpty()) {
         return;
     }
 
-    BotInstance *bot = BotManager::getBotByName(selectedBotName);
-    if (!bot || bot->status != BotStatus::Online || bot->connectionId < 0) {
-        LogManager::log(QString("Cannot change setting: bot '%1' is not connected").arg(selectedBotName),
-                       LogManager::Warning);
-        return;
-    }
-
-    QString quotedSettingPath = settingPath.contains(' ') ? QString("\"%1\"").arg(settingPath) : settingPath;
-    QString quotedValue = value.contains(' ') ? QString("\"%1\"").arg(value) : value;
-
-    QString command = QString("meteor set %1 %2 %3").arg(moduleName, quotedSettingPath, quotedValue);
-    BotManager::sendCommand(selectedBotName, command);
+    BotManager::sendMeteorSettingChange(selectedBotName, moduleName, settingPath, value);
 }
 
 void ManagerMainWindow::setupBaritoneTab()
@@ -1364,7 +1353,7 @@ void ManagerMainWindow::onBaritoneSingleSettingUpdated(const QString &botName, c
     }
 }
 
-void ManagerMainWindow::onBaritoneSettingChanged(const QString &settingName, const QString &value)
+void ManagerMainWindow::onBaritoneSettingChanged(const QString &settingName, const QVariant &value)
 {
     if (selectedBotName.isEmpty()) {
         return;

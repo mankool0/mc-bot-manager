@@ -11,6 +11,7 @@
 #include <QCheckBox>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include <QComboBox>
 #include <QMap>
 
 struct BaritoneSettingData;
@@ -28,10 +29,13 @@ public:
     void clear();
 
 signals:
-    void settingChanged(const QString &settingName, const QString &value);
+    void settingChanged(const QString &settingName, const QVariant &value);
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
-    void onFilterTextChanged(const QString &text);
+    void applyFilter();
 
 private:
     enum UserDataRole {

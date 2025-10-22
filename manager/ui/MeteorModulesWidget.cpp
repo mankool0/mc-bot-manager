@@ -1,7 +1,14 @@
 #include "MeteorModulesWidget.h"
+#include "SettingEditorFactory.h"
+#include "ListEditorDialog.h"
+#include "StringListEditorDialog.h"
 #include "bot/BotManager.h"
 #include <QHeaderView>
 #include <QGroupBox>
+#include <QColorDialog>
+#include <QPainter>
+#include <QPixmap>
+#include <QEvent>
 #include <algorithm>
 #include <functional>
 
@@ -49,8 +56,8 @@ void MeteorModulesWidget::setupUI()
     moduleTree->setEditTriggers(QAbstractItemView::NoEditTriggers);
     mainLayout->addWidget(moduleTree);
 
-    connect(filterEdit, &QLineEdit::textChanged, this, &MeteorModulesWidget::onFilterTextChanged);
-    connect(categoryFilter, &QComboBox::currentTextChanged, this, &MeteorModulesWidget::onCategoryFilterChanged);
+    connect(filterEdit, &QLineEdit::textChanged, this, &MeteorModulesWidget::applyFilters);
+    connect(categoryFilter, &QComboBox::currentTextChanged, this, &MeteorModulesWidget::applyFilters);
     connect(moduleTree, &QTreeWidget::itemChanged, this, &MeteorModulesWidget::onItemChanged);
 }
 
@@ -119,16 +126,14 @@ void MeteorModulesWidget::updateSingleModule(const MeteorModuleData &module)
 
 void MeteorModulesWidget::populateTree()
 {
-    // Save expansion state before clearing
     QMap<QString, bool> moduleExpansion;
-    QMap<QString, QMap<QString, bool>> groupExpansion; // module name -> group name -> expanded state
+    QMap<QString, QMap<QString, bool>> groupExpansion;
 
     for (auto it = moduleItems.constBegin(); it != moduleItems.constEnd(); ++it) {
         QString moduleName = it.key();
         QTreeWidgetItem *moduleItem = it.value();
         moduleExpansion[moduleName] = moduleItem->isExpanded();
 
-        // Save expansion state of groups within this module
         QMap<QString, bool> groups;
         for (int i = 0; i < moduleItem->childCount(); ++i) {
             QTreeWidgetItem *child = moduleItem->child(i);
@@ -142,10 +147,6 @@ void MeteorModulesWidget::populateTree()
     moduleTree->clear();
     moduleItems.clear();
 
-    QString filterText = filterEdit->text().toLower();
-    QString selectedCategory = categoryFilter->currentText();
-
-    // Convert map to sorted vector for display
     QVector<MeteorModuleData> sortedModules;
     for (auto it = allModules.constBegin(); it != allModules.constEnd(); ++it) {
         sortedModules.append(it.value());
@@ -156,24 +157,14 @@ void MeteorModulesWidget::populateTree()
               });
 
     for (const auto &module : sortedModules) {
-        if (!filterText.isEmpty() && !module.name.toLower().contains(filterText)) {
-            continue;
-        }
-
-        if (selectedCategory != "All" && module.category != selectedCategory) {
-            continue;
-        }
-
         QTreeWidgetItem *item = createModuleItem(module);
         moduleTree->addTopLevelItem(item);
         moduleItems[module.name] = item;
 
-        // Restore expansion state for this module
         if (moduleExpansion.contains(module.name)) {
             item->setExpanded(moduleExpansion[module.name]);
         }
 
-        // Restore group expansion states
         if (groupExpansion.contains(module.name)) {
             const QMap<QString, bool> &groups = groupExpansion[module.name];
             for (int i = 0; i < item->childCount(); ++i) {
@@ -187,6 +178,8 @@ void MeteorModulesWidget::populateTree()
             }
         }
     }
+
+    applyFilters();
 }
 
 QTreeWidgetItem* MeteorModulesWidget::createModuleItem(const MeteorModuleData &module)
@@ -251,7 +244,7 @@ QTreeWidgetItem* MeteorModulesWidget::createModuleItem(const MeteorModuleData &m
             if (editor) {
                 moduleTree->setItemWidget(settingItem, 1, editor);
             } else {
-                settingItem->setText(1, setting.currentValue);
+                settingItem->setText(1, setting.currentValue.toString());
             }
         }
     }
@@ -285,200 +278,81 @@ void MeteorModulesWidget::updateSettingWidget(QTreeWidgetItem *settingItem, cons
 {
     QWidget *widget = moduleTree->itemWidget(settingItem, 1);
     if (!widget) {
-        settingItem->setText(1, setting.currentValue);
+        settingItem->setText(1, setting.currentValue.toString());
         return;
     }
 
-    using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
+    SettingEditorContext context;
+    context.name = setting.name;
+    context.description = setting.description;
+    context.minValue = setting.minValue;
+    context.maxValue = setting.maxValue;
+    context.hasMin = setting.hasMin;
+    context.hasMax = setting.hasMax;
+    context.possibleValues = setting.possibleValues;
+    context.parent = this;
 
-    switch (setting.type) {
-        case SettingType::BOOLEAN: {
-            if (QCheckBox *checkBox = qobject_cast<QCheckBox*>(widget)) {
-                checkBox->setChecked(setting.currentValue.toLower() == "true");
-            }
-            break;
-        }
-
-        case SettingType::INTEGER: {
-            if (QSpinBox *spinBox = qobject_cast<QSpinBox*>(widget)) {
-                bool ok;
-                int value = setting.currentValue.toInt(&ok);
-                if (ok) {
-                    spinBox->setValue(value);
-                }
-            }
-            break;
-        }
-
-        case SettingType::DOUBLE: {
-            if (QDoubleSpinBox *spinBox = qobject_cast<QDoubleSpinBox*>(widget)) {
-                bool ok;
-                double value = setting.currentValue.toDouble(&ok);
-                if (ok) {
-                    spinBox->setValue(value);
-                }
-            }
-            break;
-        }
-
-        case SettingType::ENUM: {
-            if (QComboBox *comboBox = qobject_cast<QComboBox*>(widget)) {
-                comboBox->setCurrentText(setting.currentValue);
-            }
-            break;
-        }
-
-        case SettingType::BLOCK:
-        case SettingType::ITEM: {
-            if (QLabel *label = qobject_cast<QLabel*>(widget)) {
-                QString displayValue = setting.currentValue;
-                if (displayValue.length() > MAX_DISPLAY_LENGTH) {
-                    label->setText(displayValue.left(TRUNCATE_LENGTH) + "...");
-                    label->setToolTip(displayValue + "\n\n(Edit this setting in-game - complex format)");
-                } else {
-                    label->setText(displayValue);
-                }
-            }
-            break;
-        }
-
-        case SettingType::STRING:
-        case SettingType::COLOR:
-        case SettingType::KEYBIND:
-        default: {
-            if (QLineEdit *lineEdit = qobject_cast<QLineEdit*>(widget)) {
-                lineEdit->setText(setting.currentValue);
-                lineEdit->setProperty("originalValue", setting.currentValue);
-            }
-            break;
-        }
-    }
+    SettingEditorFactory::instance().updateWidget(
+        SettingSystemType::Meteor,
+        static_cast<int>(setting.type),
+        widget,
+        setting.currentValue,
+        context
+    );
 }
 
 QWidget* MeteorModulesWidget::createSettingEditor(const MeteorSettingData &setting,
                                                     const QString &moduleName,
                                                     const QString &settingPath)
 {
-    using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
+    SettingEditorContext context;
+    context.name = setting.name;
+    context.description = setting.description;
+    context.minValue = setting.minValue;
+    context.maxValue = setting.maxValue;
+    context.hasMin = setting.hasMin;
+    context.hasMax = setting.hasMax;
+    context.possibleValues = setting.possibleValues;
+    context.parent = this;
 
-    switch (setting.type) {
-        case SettingType::BOOLEAN: {
-            QCheckBox *checkBox = new QCheckBox(this);
-            checkBox->setChecked(setting.currentValue.toLower() == "true");
-            connect(checkBox, &QCheckBox::toggled, this, [this, moduleName, settingPath](bool checked) {
-                if (!updatingFromCode) {
-                    emit settingChanged(moduleName, settingPath, checked ? "true" : "false");
-                }
-            });
-            return checkBox;
+    // Create the change callback that respects updatingFromCode flag
+    auto onChange = [this, moduleName, settingPath](const QVariant& value) {
+        if (!updatingFromCode) {
+            emit settingChanged(moduleName, settingPath, value);
         }
+    };
 
-        case SettingType::INTEGER: {
-            QSpinBox *spinBox = new QSpinBox(this);
-            if (setting.hasMin) {
-                spinBox->setMinimum(static_cast<int>(setting.minValue));
-            } else {
-                spinBox->setMinimum(std::numeric_limits<int>::min());
-            }
-            if (setting.hasMax) {
-                spinBox->setMaximum(static_cast<int>(setting.maxValue));
-            } else {
-                spinBox->setMaximum(std::numeric_limits<int>::max());
-            }
-            bool ok;
-            int value = setting.currentValue.toInt(&ok);
-            if (ok) {
-                spinBox->setValue(value);
-            }
-            connect(spinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
-                    [this, moduleName, settingPath](int value) {
-                if (!updatingFromCode) {
-                    emit settingChanged(moduleName, settingPath, QString::number(value));
+    QWidget* widget = SettingEditorFactory::instance().createEditor(
+        SettingSystemType::Meteor,
+        static_cast<int>(setting.type),
+        setting.currentValue,
+        context,
+        onChange
+    );
+
+    // For widgets that need event filtering (labels with dialogs), add module/setting context
+    if (widget) {
+        if (QLabel* label = qobject_cast<QLabel*>(widget)) {
+            label->setProperty("moduleName", moduleName);
+            label->setProperty("settingPath", settingPath);
+
+            label->installEventFilter(this);
+        } else if (widget->property("espChangeCallback").isValid()) {
+            // ESP_BLOCK_DATA container - add module/setting context
+            widget->setProperty("moduleName", moduleName);
+            widget->setProperty("settingPath", settingPath);
+
+            // Find all nested color labels and install event filters
+            QList<QLabel*> colorLabels = widget->findChildren<QLabel*>();
+            for (QLabel* colorLabel : colorLabels) {
+                if (colorLabel->property("colorR").isValid()) {
+                    colorLabel->installEventFilter(this);
                 }
-            });
-            return spinBox;
-        }
-
-        case SettingType::DOUBLE: {
-            QDoubleSpinBox *spinBox = new QDoubleSpinBox(this);
-            if (setting.hasMin) {
-                spinBox->setMinimum(setting.minValue);
-            } else {
-                spinBox->setMinimum(-999999.0);
             }
-            if (setting.hasMax) {
-                spinBox->setMaximum(setting.maxValue);
-            } else {
-                spinBox->setMaximum(999999.0);
-            }
-            spinBox->setDecimals(2);
-            spinBox->setSingleStep(0.1);
-            bool ok;
-            double value = setting.currentValue.toDouble(&ok);
-            if (ok) {
-                spinBox->setValue(value);
-            }
-            connect(spinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-                    [this, moduleName, settingPath](double value) {
-                if (!updatingFromCode) {
-                    emit settingChanged(moduleName, settingPath, QString::number(value));
-                }
-            });
-            return spinBox;
-        }
-
-        case SettingType::ENUM: {
-            QComboBox *comboBox = new QComboBox(this);
-            for (const QString &option : setting.possibleValues) {
-                comboBox->addItem(option);
-            }
-            comboBox->setCurrentText(setting.currentValue);
-            connect(comboBox, &QComboBox::currentTextChanged, this,
-                    [this, moduleName, settingPath](const QString &text) {
-                if (!updatingFromCode) {
-                    emit settingChanged(moduleName, settingPath, text);
-                }
-            });
-            return comboBox;
-        }
-
-        case SettingType::BLOCK:
-        case SettingType::ITEM: {
-            QLabel *label = new QLabel(this);
-            QString displayValue = setting.currentValue;
-
-            if (displayValue.length() > MAX_DISPLAY_LENGTH) {
-                label->setText(displayValue.left(TRUNCATE_LENGTH) + "...");
-                label->setToolTip(displayValue + "\n\n(Edit this setting in-game - complex format)");
-            } else {
-                label->setText(displayValue);
-                label->setToolTip("Edit this setting in-game - complex format");
-            }
-
-            label->setStyleSheet("QLabel { padding: 2px; }");
-            return label;
-        }
-
-        case SettingType::STRING:
-        case SettingType::COLOR:
-        case SettingType::KEYBIND:
-        default: {
-            QLineEdit *lineEdit = new QLineEdit(this);
-            lineEdit->setText(setting.currentValue);
-            lineEdit->setProperty("originalValue", setting.currentValue);
-            connect(lineEdit, &QLineEdit::editingFinished, this, [this, lineEdit, moduleName, settingPath]() {
-                if (!updatingFromCode) {
-                    QString newValue = lineEdit->text();
-                    QString originalValue = lineEdit->property("originalValue").toString();
-                    if (newValue != originalValue) {
-                        lineEdit->setProperty("originalValue", newValue);
-                        emit settingChanged(moduleName, settingPath, newValue);
-                    }
-                }
-            });
-            return lineEdit;
         }
     }
+
+    return widget;
 }
 
 void MeteorModulesWidget::onItemChanged(QTreeWidgetItem *item, int column)
@@ -496,14 +370,258 @@ void MeteorModulesWidget::onItemChanged(QTreeWidgetItem *item, int column)
     }
 }
 
-void MeteorModulesWidget::onFilterTextChanged(const QString &text)
+void MeteorModulesWidget::applyFilters()
 {
-    Q_UNUSED(text);
-    populateTree();
+    QString filterText = filterEdit->text().toLower();
+    QString selectedCategory = categoryFilter->currentText();
+
+    for (auto it = moduleItems.constBegin(); it != moduleItems.constEnd(); ++it) {
+        const QString &moduleName = it.key();
+        QTreeWidgetItem *item = it.value();
+        const MeteorModuleData &module = allModules[moduleName];
+
+        bool matchesText = filterText.isEmpty() || module.name.toLower().contains(filterText);
+        bool matchesCategory = selectedCategory == "All" || module.category == selectedCategory;
+
+        item->setHidden(!matchesText || !matchesCategory);
+    }
 }
 
-void MeteorModulesWidget::onCategoryFilterChanged(const QString &category)
+QLabel* MeteorModulesWidget::createColorLabel(const RGBAColor &color, QWidget *parent)
 {
-    Q_UNUSED(category);
-    populateTree();
+    QLabel *colorLabel = new QLabel(parent);
+    colorLabel->setFixedSize(60, 25);
+    colorLabel->setFrameStyle(QFrame::Box);
+    colorLabel->setLineWidth(1);
+
+    // Create pixmap with checkerboard pattern
+    QPixmap colorPixmap(60, 25);
+    QPainter painter(&colorPixmap);
+
+    // Draw checkerboard background
+    QColor lightGray(204, 204, 204);
+    QColor darkGray(255, 255, 255);
+    for (int y = 0; y < 25; y += 10) {
+        for (int x = 0; x < 60; x += 10) {
+            bool isLight = ((x / 10) + (y / 10)) % 2 == 0;
+            painter.fillRect(x, y, 10, 10, isLight ? lightGray : darkGray);
+        }
+    }
+
+    // Draw the color with alpha on top
+    painter.fillRect(0, 0, 60, 25, QColor(color.red, color.green, color.blue, color.alpha));
+    painter.end();
+
+    colorLabel->setPixmap(colorPixmap);
+    colorLabel->setCursor(Qt::PointingHandCursor);
+
+    // Store color for click handling
+    colorLabel->setProperty("colorR", color.red);
+    colorLabel->setProperty("colorG", color.green);
+    colorLabel->setProperty("colorB", color.blue);
+    colorLabel->setProperty("colorA", color.alpha);
+
+    // Install event filter for click handling
+    colorLabel->installEventFilter(this);
+
+    return colorLabel;
+}
+
+bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonPress) {
+        QLabel *label = qobject_cast<QLabel*>(obj);
+        if (label) {
+            // Check if this is a list with possible values (uses ListEditorDialog)
+            if (label->property("isListWithPossibleValues").toBool()) {
+                QString moduleName = label->property("moduleName").toString();
+                QString settingPath = label->property("settingPath").toString();
+                QString settingName = label->property("settingName").toString();
+                QStringList possibleValues = label->property("possibleValues").toStringList();
+
+                if (!possibleValues.isEmpty()) {
+                    // Parse current selected items from the label text
+                    QString currentText = label->text();
+                    QStringList currentItems;
+                    if (!currentText.isEmpty() && currentText != "(empty - click to add)") {
+                        // Remove the "..." suffix if truncated
+                        if (currentText.endsWith("...")) {
+                            // Get the full text from tooltip
+                            QString tooltip = label->toolTip();
+                            int newlinePos = tooltip.indexOf('\n');
+                            if (newlinePos > 0) {
+                                currentText = tooltip.left(newlinePos);
+                            }
+                        }
+                        // Parse the comma-separated list
+                        currentItems = currentText.split(", ", Qt::SkipEmptyParts);
+                    }
+
+                    // Open the list editor dialog
+                    ListEditorDialog dialog(settingName, possibleValues, currentItems, this);
+                    if (dialog.exec() == QDialog::Accepted) {
+                        QStringList newItems = dialog.getSelectedItems();
+
+                        // Update the label
+                        QString newText = newItems.join(", ");
+                        if (newText.length() > MAX_DISPLAY_LENGTH) {
+                            label->setText(newText.left(TRUNCATE_LENGTH) + "...");
+                            label->setToolTip(newText + "\n\nClick to edit");
+                        } else {
+                            label->setText(newText.isEmpty() ? "(empty - click to add)" : newText);
+                            label->setToolTip("Click to edit");
+                        }
+
+                        // Emit setting changed signal
+                        emit settingChanged(moduleName, settingPath, QVariant(newItems));
+                    }
+                }
+
+                return true;
+            }
+
+            // Check if this is a free-form string list (uses StringListEditorDialog)
+            if (label->property("isFreeFormStringList").toBool()) {
+                QString moduleName = label->property("moduleName").toString();
+                QString settingPath = label->property("settingPath").toString();
+                QString settingName = label->property("settingName").toString();
+
+                // Parse current items from the label text
+                QString currentText = label->text();
+                QStringList currentItems;
+                if (!currentText.isEmpty() && currentText != "(empty - click to add)") {
+                    // Remove the "..." suffix if truncated
+                    if (currentText.endsWith("...")) {
+                        // Get the full text from tooltip
+                        QString tooltip = label->toolTip();
+                        int newlinePos = tooltip.indexOf('\n');
+                        if (newlinePos > 0) {
+                            currentText = tooltip.left(newlinePos);
+                        }
+                    }
+                    // Parse the comma-separated list
+                    currentItems = currentText.split(", ", Qt::SkipEmptyParts);
+                }
+
+                // Open the string list editor dialog
+                StringListEditorDialog dialog(settingName, currentItems, this);
+                if (dialog.exec() == QDialog::Accepted) {
+                    QStringList newItems = dialog.getItems();
+
+                    // Update the label
+                    QString newText = newItems.join(", ");
+                    if (newText.length() > MAX_DISPLAY_LENGTH) {
+                        label->setText(newText.left(TRUNCATE_LENGTH) + "...");
+                        label->setToolTip(newText + "\n\nClick to edit");
+                    } else {
+                        label->setText(newText.isEmpty() ? "(empty - click to add)" : newText);
+                        label->setToolTip("Click to edit");
+                    }
+
+                    // Emit setting changed signal
+                    emit settingChanged(moduleName, settingPath, QVariant(newItems));
+                }
+
+                return true;
+            }
+
+            // Check if this is a color label (must have colorR property set)
+            if (label->property("colorR").isValid()) {
+                int r = label->property("colorR").toInt();
+                int g = label->property("colorG").toInt();
+                int b = label->property("colorB").toInt();
+                int a = label->property("colorA").toInt();
+
+                QColor currentColor(r, g, b, a);
+                QColor newColor = QColorDialog::getColor(currentColor, this, "Select Color",
+                                                         QColorDialog::ShowAlphaChannel);
+
+                if (newColor.isValid()) {
+                    // Update the pixmap with new color
+                    QPixmap colorPixmap(60, 25);
+                    QPainter painter(&colorPixmap);
+
+                    // Draw checkerboard background
+                    QColor lightGray(204, 204, 204);
+                    QColor darkGray(255, 255, 255);
+                    for (int y = 0; y < 25; y += 10) {
+                        for (int x = 0; x < 60; x += 10) {
+                            bool isLight = ((x / 10) + (y / 10)) % 2 == 0;
+                            painter.fillRect(x, y, 10, 10, isLight ? lightGray : darkGray);
+                        }
+                    }
+
+                    // Draw the color with alpha on top
+                    painter.fillRect(0, 0, 60, 25, newColor);
+                    painter.end();
+
+                    label->setPixmap(colorPixmap);
+                    label->setProperty("colorR", newColor.red());
+                    label->setProperty("colorG", newColor.green());
+                    label->setProperty("colorB", newColor.blue());
+                    label->setProperty("colorA", newColor.alpha());
+
+                    // Check if this is a standalone color setting or part of ESPBlockData
+                    if (label->property("moduleName").isValid()) {
+                        // Standalone color setting
+                        QString moduleName = label->property("moduleName").toString();
+                        QString settingPath = label->property("settingPath").toString();
+
+                        RGBAColor rgbaColor;
+                        rgbaColor.red = newColor.red();
+                        rgbaColor.green = newColor.green();
+                        rgbaColor.blue = newColor.blue();
+                        rgbaColor.alpha = newColor.alpha();
+
+                        emit settingChanged(moduleName, settingPath, QVariant::fromValue(rgbaColor));
+                    } else {
+                        // Part of ESPBlockData - find parent container and emit change directly
+                        QWidget *parent = label->parentWidget();
+                        while (parent) {
+                            // Check if this is an ESPBlockData container by looking for stored properties
+                            if (parent->property("moduleName").isValid() && parent->property("settingPath").isValid()) {
+                                QString moduleName = parent->property("moduleName").toString();
+                                QString settingPath = parent->property("settingPath").toString();
+
+                                // Collect all ESP data from the container
+                                QComboBox *shapeCombo = parent->findChild<QComboBox*>();
+                                QCheckBox *tracerCheck = parent->findChild<QCheckBox*>();
+                                QLabel *lineColorLabel = parent->findChild<QLabel*>("lineColor");
+                                QLabel *sideColorLabel = parent->findChild<QLabel*>("sideColor");
+                                QLabel *tracerColorLabel = parent->findChild<QLabel*>("tracerColor");
+
+                                if (shapeCombo && tracerCheck && lineColorLabel && sideColorLabel && tracerColorLabel) {
+                                    ESPBlockData newData;
+                                    newData.shapeMode = static_cast<ESPBlockData::ShapeMode>(shapeCombo->currentData().toInt());
+
+                                    newData.lineColor.red = lineColorLabel->property("colorR").toInt();
+                                    newData.lineColor.green = lineColorLabel->property("colorG").toInt();
+                                    newData.lineColor.blue = lineColorLabel->property("colorB").toInt();
+                                    newData.lineColor.alpha = lineColorLabel->property("colorA").toInt();
+
+                                    newData.sideColor.red = sideColorLabel->property("colorR").toInt();
+                                    newData.sideColor.green = sideColorLabel->property("colorG").toInt();
+                                    newData.sideColor.blue = sideColorLabel->property("colorB").toInt();
+                                    newData.sideColor.alpha = sideColorLabel->property("colorA").toInt();
+
+                                    newData.tracer = tracerCheck->isChecked();
+
+                                    newData.tracerColor.red = tracerColorLabel->property("colorR").toInt();
+                                    newData.tracerColor.green = tracerColorLabel->property("colorG").toInt();
+                                    newData.tracerColor.blue = tracerColorLabel->property("colorB").toInt();
+                                    newData.tracerColor.alpha = tracerColorLabel->property("colorA").toInt();
+
+                                    emit settingChanged(moduleName, settingPath, QVariant::fromValue(newData));
+                                }
+                                break;
+                            }
+                            parent = parent->parentWidget();
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(obj, event);
 }

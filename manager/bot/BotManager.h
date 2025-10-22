@@ -19,11 +19,85 @@
 #include "baritone.qpb.h"
 
 using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
+using BaritoneSettingType = mankool::mcbot::protocol::BaritoneSettingInfo::SettingType;
 
 class LogManager;
 class BotConsoleWidget;
 class MeteorModulesWidget;
 class BaritoneWidget;
+
+// Custom types for Baritone settings
+struct RGBColor {
+    uint32_t red = 0;
+    uint32_t green = 0;
+    uint32_t blue = 0;
+};
+
+struct Vec3i {
+    int32_t x = 0;
+    int32_t y = 0;
+    int32_t z = 0;
+};
+
+enum class BlockRotation {
+    None = 0,
+    Clockwise90 = 1,
+    Clockwise180 = 2,
+    CounterClockwise90 = 3
+};
+
+enum class BlockMirror {
+    None = 0,
+    LeftRight = 1,
+    FrontBack = 2
+};
+
+// Custom types for Meteor settings
+struct RGBAColor {
+    uint32_t red = 0;
+    uint32_t green = 0;
+    uint32_t blue = 0;
+    uint32_t alpha = 255;
+};
+
+struct Vector3d {
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+};
+
+struct Keybind {
+    QString keyName;
+};
+
+struct ESPBlockData {
+    enum ShapeMode {
+        Lines = 0,
+        Sides = 1,
+        Both = 2
+    };
+    ShapeMode shapeMode = Lines;
+    RGBAColor lineColor;
+    RGBAColor sideColor;
+    bool tracer = false;
+    RGBAColor tracerColor;
+};
+
+// Type aliases for QMap types (needed for Q_DECLARE_METATYPE)
+using StringMap = QMap<QString, QString>;
+using ESPBlockDataMap = QMap<QString, ESPBlockData>;
+
+// Declare metatypes for QVariant
+Q_DECLARE_METATYPE(RGBColor)
+Q_DECLARE_METATYPE(Vec3i)
+Q_DECLARE_METATYPE(BlockRotation)
+Q_DECLARE_METATYPE(BlockMirror)
+Q_DECLARE_METATYPE(RGBAColor)
+Q_DECLARE_METATYPE(Vector3d)
+Q_DECLARE_METATYPE(Keybind)
+Q_DECLARE_METATYPE(ESPBlockData)
+Q_DECLARE_METATYPE(StringMap)
+Q_DECLARE_METATYPE(ESPBlockDataMap)
 
 enum class BotStatus {
     Offline,
@@ -36,7 +110,7 @@ enum class BotStatus {
 struct MeteorSettingData {
     QString name;
     QString groupName;
-    QString currentValue;
+    QVariant currentValue;
     QString description;
     SettingType type;
     double minValue;
@@ -56,9 +130,9 @@ struct MeteorModuleData {
 
 struct BaritoneSettingData {
     QString name;
-    QString type;
-    QString currentValue;
-    QString defaultValue;
+    BaritoneSettingType type;
+    QVariant currentValue;
+    QVariant defaultValue;
     QString description;
 };
 
@@ -152,7 +226,8 @@ public:
     static void requestBaritoneSettings(const QString &botName);
     static void requestBaritoneCommands(const QString &botName);
     static void sendBaritoneCommand(const QString &botName, const QString &commandText);
-    static void sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QString &value);
+    static void sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QVariant &value);
+    static void sendMeteorSettingChange(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
 
     static QString getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting);
 
@@ -195,7 +270,8 @@ private:
     void requestBaritoneSettingsImpl(const QString &botName);
     void requestBaritoneCommandsImpl(const QString &botName);
     void sendBaritoneCommandImpl(const QString &botName, const QString &commandText);
-    void sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QString &value);
+    void sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QVariant &value);
+    void sendMeteorSettingChangeImpl(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
 
     QVector<BotInstance> botInstances;
 };

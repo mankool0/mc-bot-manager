@@ -120,13 +120,13 @@ private:
     void onMeteorModulesReceived(const QString &botName);
     void onMeteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
     void onMeteorModuleToggled(const QString &moduleName, bool enabled);
-    void onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QString &value);
+    void onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QVariant &value);
 
     void setupBaritoneTab();
     void onBaritoneSettingsReceived(const QString &botName);
     void onBaritoneCommandsReceived(const QString &botName);
     void onBaritoneSingleSettingUpdated(const QString &botName, const QString &settingName);
-    void onBaritoneSettingChanged(const QString &settingName, const QString &value);
+    void onBaritoneSettingChanged(const QString &settingName, const QVariant &value);
 
     static QString statusToString(BotStatus status);
 };

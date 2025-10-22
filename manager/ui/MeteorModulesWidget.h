@@ -17,6 +17,7 @@
 
 struct MeteorModuleData;
 struct MeteorSettingData;
+struct RGBAColor;
 
 class MeteorModulesWidget : public QWidget
 {
@@ -32,12 +33,14 @@ public:
 
 signals:
     void moduleToggled(const QString &moduleName, bool enabled);
-    void settingChanged(const QString &moduleName, const QString &settingPath, const QString &value);
+    void settingChanged(const QString &moduleName, const QString &settingPath, const QVariant &value);
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
     void onItemChanged(QTreeWidgetItem *item, int column);
-    void onFilterTextChanged(const QString &text);
-    void onCategoryFilterChanged(const QString &category);
+    void applyFilters();
 
 private:
     enum UserDataRole {
@@ -58,6 +61,7 @@ private:
     QWidget* createSettingEditor(const MeteorSettingData &setting,
                                    const QString &moduleName,
                                    const QString &settingPath);
+    QLabel* createColorLabel(const RGBAColor &color, QWidget *parent);
 
     QVBoxLayout *mainLayout;
     QLineEdit *filterEdit;

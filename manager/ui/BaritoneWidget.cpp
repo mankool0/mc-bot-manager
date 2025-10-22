@@ -1,6 +1,10 @@
 #include "BaritoneWidget.h"
+#include "SettingEditorFactory.h"
 #include "bot/BotManager.h"
+#include "logging/LogManager.h"
 #include <QHeaderView>
+#include <QColorDialog>
+#include <QEvent>
 #include <algorithm>
 
 BaritoneWidget::BaritoneWidget(QWidget *parent)
@@ -42,7 +46,7 @@ void BaritoneWidget::setupUI()
     settingTree->setRootIsDecorated(false);
     mainLayout->addWidget(settingTree);
 
-    connect(filterEdit, &QLineEdit::textChanged, this, &BaritoneWidget::onFilterTextChanged);
+    connect(filterEdit, &QLineEdit::textChanged, this, &BaritoneWidget::applyFilter);
 }
 
 void BaritoneWidget::updateSettings(const QMap<QString, BaritoneSettingData> &settings)
@@ -82,9 +86,6 @@ void BaritoneWidget::populateTree()
     settingTree->clear();
     settingItems.clear();
 
-    QString filterText = filterEdit->text().toLower();
-
-    // Convert map to sorted vector for display
     QVector<BaritoneSettingData> sortedSettings;
     for (auto it = allSettings.constBegin(); it != allSettings.constEnd(); ++it) {
         sortedSettings.append(it.value());
@@ -96,9 +97,6 @@ void BaritoneWidget::populateTree()
 
     for (const auto &setting : sortedSettings) {
         QString settingName = setting.name.trimmed();
-        if (!filterText.isEmpty() && !settingName.toLower().contains(filterText)) {
-            continue;
-        }
 
         QTreeWidgetItem *item = createSettingItem(setting);
         settingTree->addTopLevelItem(item);
@@ -107,8 +105,13 @@ void BaritoneWidget::populateTree()
         QWidget *editor = createSettingEditor(setting, settingName);
         if (editor) {
             settingTree->setItemWidget(item, 1, editor);
+        } else {
+            // No editor widget - display value as text in the tree item
+            item->setText(1, setting.currentValue.toString());
         }
     }
+
+    applyFilter();
 }
 
 QTreeWidgetItem* BaritoneWidget::createSettingItem(const BaritoneSettingData &setting)
@@ -118,14 +121,14 @@ QTreeWidgetItem* BaritoneWidget::createSettingItem(const BaritoneSettingData &se
     QString settingName = setting.name.trimmed();
     settingItem->setText(0, settingName);
     settingItem->setData(0, SettingNameRole, settingName);
-    settingItem->setData(0, SettingTypeRole, setting.type);
+    settingItem->setData(0, SettingTypeRole, static_cast<int>(setting.type));
 
     QString tooltip = settingName;
     if (!setting.description.isEmpty()) {
         tooltip += "\n" + setting.description;
     }
-    if (!setting.defaultValue.isEmpty()) {
-        tooltip += "\nDefault: " + setting.defaultValue;
+    if (setting.defaultValue.isValid() && !setting.defaultValue.isNull()) {
+        tooltip += "\nDefault: " + setting.defaultValue.toString();
     }
     settingItem->setToolTip(0, tooltip);
 
@@ -137,135 +140,108 @@ void BaritoneWidget::updateSettingWidget(QTreeWidgetItem *settingItem,
 {
     QWidget *widget = settingTree->itemWidget(settingItem, 1);
     if (!widget) {
-        settingItem->setText(1, setting.currentValue);
+        settingItem->setText(1, setting.currentValue.toString());
         return;
     }
 
-    QString type = setting.type.toLower();
+    SettingEditorContext context;
+    context.name = setting.name;
+    context.description = setting.description;
+    context.defaultValue = setting.defaultValue;
+    context.parent = this;
 
-    if (type == "boolean" || type == "java.lang.boolean") {
-        if (QCheckBox *checkBox = qobject_cast<QCheckBox*>(widget)) {
-            checkBox->setChecked(setting.currentValue.toLower() == "true");
-        }
-    } else if (type == "integer" || type == "java.lang.integer" || type == "int") {
-        if (QSpinBox *spinBox = qobject_cast<QSpinBox*>(widget)) {
-            bool ok;
-            int value = setting.currentValue.toInt(&ok);
-            if (ok) {
-                spinBox->setValue(value);
-            }
-        }
-    } else if (type == "double" || type == "java.lang.double" || type == "float" || type == "java.lang.float") {
-        if (QDoubleSpinBox *spinBox = qobject_cast<QDoubleSpinBox*>(widget)) {
-            bool ok;
-            double value = setting.currentValue.toDouble(&ok);
-            if (ok) {
-                spinBox->setValue(value);
-            }
-        }
-    } else if (type == "long" || type == "java.lang.long") {
-        if (QSpinBox *spinBox = qobject_cast<QSpinBox*>(widget)) {
-            bool ok;
-            int value = setting.currentValue.toInt(&ok);
-            if (ok) {
-                spinBox->setValue(value);
-            }
-        }
-    } else {
-        // String or other types
-        if (QLineEdit *lineEdit = qobject_cast<QLineEdit*>(widget)) {
-            lineEdit->setText(setting.currentValue);
-            lineEdit->setProperty("originalValue", setting.currentValue);
-        }
-    }
+    SettingEditorFactory::instance().updateWidget(
+        SettingSystemType::Baritone,
+        static_cast<int>(setting.type),
+        widget,
+        setting.currentValue,
+        context
+    );
 }
 
 QWidget* BaritoneWidget::createSettingEditor(const BaritoneSettingData &setting,
                                                const QString &settingName)
 {
-    QString type = setting.type.toLower();
+    SettingEditorContext context;
+    context.name = setting.name;
+    context.description = setting.description;
+    context.defaultValue = setting.defaultValue;
+    context.parent = this;
 
-    if (type == "boolean" || type == "java.lang.boolean") {
-        QCheckBox *checkBox = new QCheckBox(this);
-        checkBox->setChecked(setting.currentValue.toLower() == "true");
-        connect(checkBox, &QCheckBox::toggled, this, [this, settingName](bool checked) {
-            if (!updatingFromCode) {
-                emit settingChanged(settingName, checked ? "true" : "false");
-            }
-        });
-        return checkBox;
-    } else if (type == "integer" || type == "java.lang.integer" || type == "int") {
-        QSpinBox *spinBox = new QSpinBox(this);
-        spinBox->setMinimum(std::numeric_limits<int>::min());
-        spinBox->setMaximum(std::numeric_limits<int>::max());
-        bool ok;
-        int value = setting.currentValue.toInt(&ok);
-        if (ok) {
-            spinBox->setValue(value);
+    auto onChange = [this, settingName](const QVariant& value) {
+        if (!updatingFromCode) {
+            emit settingChanged(settingName, value);
         }
-        connect(spinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
-                [this, settingName](int value) {
-            if (!updatingFromCode) {
-                emit settingChanged(settingName, QString::number(value));
+    };
+
+    QWidget* widget = SettingEditorFactory::instance().createEditor(
+        SettingSystemType::Baritone,
+        static_cast<int>(setting.type),
+        setting.currentValue,
+        context,
+        onChange
+    );
+
+    if (widget) {
+        if (QLabel* label = qobject_cast<QLabel*>(widget)) {
+            if (label->property("isBaritoneRGB").toBool()) {
+                label->setProperty("settingName", settingName);
+                label->installEventFilter(this);
             }
-        });
-        return spinBox;
-    } else if (type == "double" || type == "java.lang.double" || type == "float" || type == "java.lang.float") {
-        QDoubleSpinBox *spinBox = new QDoubleSpinBox(this);
-        spinBox->setMinimum(-999999.0);
-        spinBox->setMaximum(999999.0);
-        spinBox->setDecimals(4);
-        spinBox->setSingleStep(0.1);
-        bool ok;
-        double value = setting.currentValue.toDouble(&ok);
-        if (ok) {
-            spinBox->setValue(value);
         }
-        connect(spinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-                [this, settingName](double value) {
-            if (!updatingFromCode) {
-                emit settingChanged(settingName, QString::number(value));
-            }
-        });
-        return spinBox;
-    } else if (type == "long" || type == "java.lang.long") {
-        // Use QSpinBox for long values (limited to int range)
-        QSpinBox *spinBox = new QSpinBox(this);
-        spinBox->setMinimum(std::numeric_limits<int>::min());
-        spinBox->setMaximum(std::numeric_limits<int>::max());
-        bool ok;
-        int value = setting.currentValue.toInt(&ok);
-        if (ok) {
-            spinBox->setValue(value);
-        }
-        connect(spinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
-                [this, settingName](int value) {
-            if (!updatingFromCode) {
-                emit settingChanged(settingName, QString::number(value));
-            }
-        });
-        return spinBox;
-    } else {
-        // String or other types - use QLineEdit
-        QLineEdit *lineEdit = new QLineEdit(this);
-        lineEdit->setText(setting.currentValue);
-        lineEdit->setProperty("originalValue", setting.currentValue);
-        connect(lineEdit, &QLineEdit::editingFinished, this, [this, lineEdit, settingName]() {
-            if (!updatingFromCode) {
-                QString newValue = lineEdit->text();
-                QString originalValue = lineEdit->property("originalValue").toString();
-                if (newValue != originalValue) {
-                    lineEdit->setProperty("originalValue", newValue);
-                    emit settingChanged(settingName, newValue);
-                }
-            }
-        });
-        return lineEdit;
+    }
+
+    return widget;
+}
+
+void BaritoneWidget::applyFilter()
+{
+    QString filterText = filterEdit->text().toLower();
+
+    for (auto it = settingItems.constBegin(); it != settingItems.constEnd(); ++it) {
+        const QString &settingName = it.key();
+        QTreeWidgetItem *item = it.value();
+
+        bool matches = filterText.isEmpty() || settingName.toLower().contains(filterText);
+        item->setHidden(!matches);
     }
 }
 
-void BaritoneWidget::onFilterTextChanged(const QString &text)
+bool BaritoneWidget::eventFilter(QObject *obj, QEvent *event)
 {
-    Q_UNUSED(text);
-    populateTree();
+    if (event->type() == QEvent::MouseButtonPress) {
+        QLabel *label = qobject_cast<QLabel*>(obj);
+        if (label && label->property("isBaritoneRGB").toBool()) {
+            // Get current color from properties
+            int r = label->property("colorR").toInt();
+            int g = label->property("colorG").toInt();
+            int b = label->property("colorB").toInt();
+
+            QColor currentColor(r, g, b);
+            QColor newColor = QColorDialog::getColor(currentColor, this, "Select Color");
+
+            if (newColor.isValid()) {
+                // Update the pixmap with new color
+                QPixmap colorPixmap(60, 25);
+                colorPixmap.fill(newColor);
+
+                label->setPixmap(colorPixmap);
+                label->setProperty("colorR", newColor.red());
+                label->setProperty("colorG", newColor.green());
+                label->setProperty("colorB", newColor.blue());
+
+                auto callback = label->property("changeCallback").value<SettingEditorFactory::ChangeCallback>();
+                if (callback) {
+                    RGBColor rgbColor{
+                        static_cast<uint32_t>(newColor.red()),
+                        static_cast<uint32_t>(newColor.green()),
+                        static_cast<uint32_t>(newColor.blue())
+                    };
+                    callback(QVariant::fromValue(rgbColor));
+                }
+            }
+            return true;
+        }
+    }
+    return QWidget::eventFilter(obj, event);
 }
