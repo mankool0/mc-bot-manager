@@ -6,6 +6,8 @@
 #include <QMap>
 #include <functional>
 
+struct MapMetadata;
+
 enum class SettingSystemType {
     Baritone,
     Meteor
@@ -21,6 +23,8 @@ struct SettingEditorContext {
     bool hasMin = false;
     bool hasMax = false;
     QStringList possibleValues;
+    QStringList mapPossibleKeys;
+    QStringList mapPossibleValues;
     QWidget* parent = nullptr;
 };
 

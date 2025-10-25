@@ -1,5 +1,7 @@
 #include "BaritoneWidget.h"
 #include "SettingEditorFactory.h"
+#include "MapEditorDialog.h"
+#include "ListEditorDialog.h"
 #include "bot/BotManager.h"
 #include "logging/LogManager.h"
 #include <QHeaderView>
@@ -148,6 +150,9 @@ void BaritoneWidget::updateSettingWidget(QTreeWidgetItem *settingItem,
     context.name = setting.name;
     context.description = setting.description;
     context.defaultValue = setting.defaultValue;
+    context.possibleValues = setting.possibleValues;
+    context.mapPossibleKeys = setting.mapMetadata.possibleKeys;
+    context.mapPossibleValues = setting.mapMetadata.possibleValues;
     context.parent = this;
 
     SettingEditorFactory::instance().updateWidget(
@@ -166,6 +171,9 @@ QWidget* BaritoneWidget::createSettingEditor(const BaritoneSettingData &setting,
     context.name = setting.name;
     context.description = setting.description;
     context.defaultValue = setting.defaultValue;
+    context.possibleValues = setting.possibleValues;
+    context.mapPossibleKeys = setting.mapMetadata.possibleKeys;
+    context.mapPossibleValues = setting.mapMetadata.possibleValues;
     context.parent = this;
 
     auto onChange = [this, settingName](const QVariant& value) {
@@ -184,7 +192,9 @@ QWidget* BaritoneWidget::createSettingEditor(const BaritoneSettingData &setting,
 
     if (widget) {
         if (QLabel* label = qobject_cast<QLabel*>(widget)) {
-            if (label->property("isBaritoneRGB").toBool()) {
+            if (label->property("isBaritoneRGB").toBool() ||
+                label->property("isMapBlockToBlockList").toBool() ||
+                label->property("isListWithPossibleValues").toBool()) {
                 label->setProperty("settingName", settingName);
                 label->installEventFilter(this);
             }
@@ -239,6 +249,49 @@ bool BaritoneWidget::eventFilter(QObject *obj, QEvent *event)
                     };
                     callback(QVariant::fromValue(rgbColor));
                 }
+            }
+            return true;
+        }
+
+        // Handle MAP_BLOCK_TO_BLOCK_LIST label clicks
+        if (label && label->property("isMapBlockToBlockList").toBool()) {
+            QString settingName = label->property("settingName").toString();
+            QStringList possibleKeys = label->property("mapPossibleKeys").toStringList();
+            QStringList possibleValues = label->property("mapPossibleValues").toStringList();
+
+            auto callback = label->property("changeCallback").value<SettingEditorFactory::ChangeCallback>();
+            if (!callback) return true;
+
+            StringListMap currentMap;
+            if (allSettings.contains(settingName)) {
+                currentMap = allSettings[settingName].currentValue.value<StringListMap>();
+            }
+
+            MapEditorDialog dialog(settingName, possibleKeys, possibleValues, currentMap, this);
+            if (dialog.exec() == QDialog::Accepted) {
+                StringListMap newMap = dialog.getMap();
+                callback(QVariant::fromValue(newMap));
+            }
+            return true;
+        }
+
+        // Handle LIST label clicks
+        if (label && label->property("isListWithPossibleValues").toBool()) {
+            QString settingName = label->property("settingName").toString();
+            QStringList possibleValues = label->property("possibleValues").toStringList();
+
+            auto callback = label->property("changeCallback").value<SettingEditorFactory::ChangeCallback>();
+            if (!callback) return true;
+
+            QStringList currentList;
+            if (allSettings.contains(settingName)) {
+                currentList = allSettings[settingName].currentValue.toStringList();
+            }
+
+            ListEditorDialog dialog(settingName, possibleValues, currentList, this);
+            if (dialog.exec() == QDialog::Accepted) {
+                QStringList newList = dialog.getSelectedItems();
+                callback(QVariant(newList));
             }
             return true;
         }

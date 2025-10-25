@@ -1,8 +1,6 @@
 #include "SettingEditorFactory.h"
-#include "ListEditorDialog.h"
-#include "StringListEditorDialog.h"
+#include "ESPBlockDataMapEditorDialog.h"
 #include "bot/BotManager.h"
-#include "logging/LogManager.h"
 #include <QCheckBox>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
@@ -173,8 +171,6 @@ void SettingEditorFactory::registerAllTypes()
 
     // STRING handler (also used for KEYBIND, POTION, GENERIC in Meteor)
     auto stringCreator = [](const QVariant& value, const SettingEditorContext& context, ChangeCallback onChange) -> QWidget* {
-        LogManager::log(QString("STRING creator: value.isValid()=%1, type=%2, value='%3'")
-            .arg(value.isValid()).arg(value.typeName()).arg(value.toString()), LogManager::Debug);
         QLineEdit* lineEdit = new QLineEdit(context.parent);
         QString displayValue = value.toString();
         lineEdit->setText(displayValue);
@@ -187,7 +183,6 @@ void SettingEditorFactory::registerAllTypes()
                 onChange(QVariant(newValue));
             }
         });
-        LogManager::log("STRING creator: Returning QLineEdit", LogManager::Debug);
         return lineEdit;
     };
 
@@ -241,10 +236,74 @@ void SettingEditorFactory::registerAllTypes()
         }
     };
 
-    registerType(SettingSystemType::Baritone, static_cast<int>(BaritoneSettingType::LIST), readOnlyCreator, readOnlyUpdater);
-    registerType(SettingSystemType::Baritone, static_cast<int>(BaritoneSettingType::MAP), readOnlyCreator, readOnlyUpdater);
     registerType(SettingSystemType::Baritone, static_cast<int>(BaritoneSettingType::BI_CONSUMER), readOnlyCreator, readOnlyUpdater);
     registerType(SettingSystemType::Baritone, static_cast<int>(BaritoneSettingType::CONSUMER), readOnlyCreator, readOnlyUpdater);
+
+    // MAP_BLOCK_TO_BLOCK_LIST handler
+    auto mapBlockToBlockListCreator = [](const QVariant& value, const SettingEditorContext& context, ChangeCallback onChange) -> QWidget* {
+        StringListMap map = value.value<StringListMap>();
+        QLabel* label = new QLabel(context.parent);
+
+        QString displayValue;
+        if (map.isEmpty()) {
+            displayValue = "(empty - click to edit)";
+        } else {
+            QStringList entries;
+            for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+                entries.append(QString("%1 → [%2]").arg(it.key(), it.value().join(", ")));
+            }
+            displayValue = QString("%1 entries: %2").arg(map.size()).arg(entries.join("; "));
+        }
+
+        if (displayValue.length() > MAX_DISPLAY_LENGTH) {
+            label->setText(displayValue.left(TRUNCATE_LENGTH) + "...");
+            label->setToolTip(displayValue + "\n\nClick to edit");
+        } else {
+            label->setText(displayValue);
+            label->setToolTip("Click to edit");
+        }
+
+        label->setStyleSheet("QLabel { padding: 2px; }");
+        label->setCursor(Qt::PointingHandCursor);
+        label->setFrameStyle(QFrame::Box);
+        label->setLineWidth(1);
+
+        label->setProperty("isMapBlockToBlockList", true);
+        label->setProperty("mapPossibleKeys", context.mapPossibleKeys);
+        label->setProperty("mapPossibleValues", context.mapPossibleValues);
+        label->setProperty("settingName", context.name);
+        label->setProperty("changeCallback", QVariant::fromValue(onChange));
+
+        return label;
+    };
+
+    auto mapBlockToBlockListUpdater = [](QWidget* widget, const QVariant& value, const SettingEditorContext&) {
+        if (QLabel* label = qobject_cast<QLabel*>(widget)) {
+            StringListMap map = value.value<StringListMap>();
+
+            QString displayValue;
+            if (map.isEmpty()) {
+                displayValue = "(empty - click to edit)";
+            } else {
+                QStringList entries;
+                for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+                    entries.append(QString("%1 → [%2]").arg(it.key(), it.value().join(", ")));
+                }
+                displayValue = QString("%1 entries: %2").arg(map.size()).arg(entries.join("; "));
+            }
+
+            if (displayValue.length() > MAX_DISPLAY_LENGTH) {
+                label->setText(displayValue.left(TRUNCATE_LENGTH) + "...");
+                label->setToolTip(displayValue + "\n\nClick to edit");
+            } else {
+                label->setText(displayValue);
+                label->setToolTip("Click to edit");
+            }
+        }
+    };
+
+    registerType(SettingSystemType::Baritone, static_cast<int>(BaritoneSettingType::MAP_BLOCK_TO_BLOCK_LIST),
+                 mapBlockToBlockListCreator, mapBlockToBlockListUpdater);
 
     // COLOR (RGB) handler - uses QLabel with pixmap
     auto colorRGBCreator = [](const QVariant& value, const SettingEditorContext& context, ChangeCallback onChange) -> QWidget* {
@@ -612,6 +671,7 @@ void SettingEditorFactory::registerAllTypes()
     };
 
     // Register all list types that use ListEditorDialog
+    registerType(SettingSystemType::Baritone, static_cast<int>(BaritoneSettingType::LIST), listWithValuesCreator, listWithValuesUpdater);
     registerType(SettingSystemType::Meteor, static_cast<int>(MeteorSettingType::BLOCK_LIST), listWithValuesCreator, listWithValuesUpdater);
     registerType(SettingSystemType::Meteor, static_cast<int>(MeteorSettingType::ITEM_LIST), listWithValuesCreator, listWithValuesUpdater);
     registerType(SettingSystemType::Meteor, static_cast<int>(MeteorSettingType::ENTITY_TYPE_LIST), listWithValuesCreator, listWithValuesUpdater);
@@ -654,13 +714,13 @@ void SettingEditorFactory::registerAllTypes()
 
     registerType(SettingSystemType::Meteor, static_cast<int>(MeteorSettingType::STRING_LIST), stringListCreator, listWithValuesUpdater);
 
-    // BLOCK_ESP_CONFIG_MAP - read-only (for now)
-    auto espMapCreator = [](const QVariant& value, const SettingEditorContext& context, ChangeCallback) -> QWidget* {
+    // BLOCK_ESP_CONFIG_MAP
+    auto espMapCreator = [](const QVariant& value, const SettingEditorContext& context, ChangeCallback onChange) -> QWidget* {
         ESPBlockDataMap configMap = value.value<ESPBlockDataMap>();
         QLabel* label = new QLabel(context.parent);
         QString displayValue;
         if (configMap.isEmpty()) {
-            displayValue = "(empty map)";
+            displayValue = "(empty - click to add)";
         } else {
             QStringList blockNames;
             for (auto it = configMap.constBegin(); it != configMap.constEnd(); ++it) {
@@ -671,13 +731,22 @@ void SettingEditorFactory::registerAllTypes()
 
         if (displayValue.length() > MAX_DISPLAY_LENGTH) {
             label->setText(displayValue.left(TRUNCATE_LENGTH) + "...");
-            label->setToolTip(displayValue + "\n\n(View/edit this setting in-game - complex map type)");
+            label->setToolTip(displayValue + "\n\nClick to edit");
         } else {
             label->setText(displayValue);
-            label->setToolTip("View/edit this setting in-game - complex map type");
+            label->setToolTip("Click to edit");
         }
 
         label->setStyleSheet("QLabel { padding: 2px; }");
+        label->setCursor(Qt::PointingHandCursor);
+        label->setFrameStyle(QFrame::Box);
+        label->setLineWidth(1);
+
+        label->setProperty("isESPBlockDataMap", true);
+        label->setProperty("settingName", context.name);
+        label->setProperty("possibleBlockNames", context.possibleValues);
+        label->setProperty("changeCallback", QVariant::fromValue(onChange));
+
         return label;
     };
 
@@ -686,7 +755,7 @@ void SettingEditorFactory::registerAllTypes()
             ESPBlockDataMap configMap = value.value<ESPBlockDataMap>();
             QString displayValue;
             if (configMap.isEmpty()) {
-                displayValue = "(empty map)";
+                displayValue = "(empty - click to add)";
             } else {
                 QStringList blockNames;
                 for (auto it = configMap.constBegin(); it != configMap.constEnd(); ++it) {
@@ -697,9 +766,10 @@ void SettingEditorFactory::registerAllTypes()
 
             if (displayValue.length() > MAX_DISPLAY_LENGTH) {
                 label->setText(displayValue.left(TRUNCATE_LENGTH) + "...");
-                label->setToolTip(displayValue + "\n\n(View/edit this setting in-game - complex map type)");
+                label->setToolTip(displayValue + "\n\nClick to edit");
             } else {
                 label->setText(displayValue);
+                label->setToolTip("Click to edit");
             }
         }
     };

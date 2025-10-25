@@ -52,6 +52,11 @@ enum class BlockMirror {
     FrontBack = 2
 };
 
+struct MapMetadata {
+    QStringList possibleKeys;
+    QStringList possibleValues;
+};
+
 // Custom types for Meteor settings
 struct RGBAColor {
     uint32_t red = 0;
@@ -85,6 +90,7 @@ struct ESPBlockData {
 
 // Type aliases for QMap types (needed for Q_DECLARE_METATYPE)
 using StringMap = QMap<QString, QString>;
+using StringListMap = QMap<QString, QStringList>;
 using ESPBlockDataMap = QMap<QString, ESPBlockData>;
 
 // Declare metatypes for QVariant
@@ -92,11 +98,13 @@ Q_DECLARE_METATYPE(RGBColor)
 Q_DECLARE_METATYPE(Vec3i)
 Q_DECLARE_METATYPE(BlockRotation)
 Q_DECLARE_METATYPE(BlockMirror)
+Q_DECLARE_METATYPE(MapMetadata)
 Q_DECLARE_METATYPE(RGBAColor)
 Q_DECLARE_METATYPE(Vector3d)
 Q_DECLARE_METATYPE(Keybind)
 Q_DECLARE_METATYPE(ESPBlockData)
 Q_DECLARE_METATYPE(StringMap)
+Q_DECLARE_METATYPE(StringListMap)
 Q_DECLARE_METATYPE(ESPBlockDataMap)
 
 enum class BotStatus {
@@ -134,6 +142,8 @@ struct BaritoneSettingData {
     QVariant currentValue;
     QVariant defaultValue;
     QString description;
+    QStringList possibleValues;
+    MapMetadata mapMetadata;
 };
 
 struct BaritoneCommandData {

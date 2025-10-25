@@ -337,6 +337,11 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                         builder.addPossibleValues(Registries.SCREEN_HANDLER.getId(screenHandlerType).toString());
                     }
                 }
+                case BlockDataSetting<?> ignored -> {
+                    for (Block block : Registries.BLOCK) {
+                        builder.addPossibleValues(Registries.BLOCK.getId(block).toString());
+                    }
+                }
                 default -> {
                 }
             }
@@ -543,7 +548,6 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case BlockDataSetting<?> blockDataSetting -> {
                     // Only handle ESPBlockData BlockDataSettings
-                    // TODO: Untested so far
                     if (protoValue.hasBlockEspConfigMapValue()) {
                         try {
                             java.util.Map<Block, meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData> espMap =
@@ -565,6 +569,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                                             );
                                     fromProtoESPBlockData(entry.getValue(), espData);
                                     espMap.put(block, espData);
+                                    espData.changed();
                                 }
                             }
                             blockDataSetting.onChanged();
@@ -956,7 +961,6 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                         .setModuleStateChanged(notification)
                         .build();
 
-        LOGGER.info("sendModuleStateChanged: {}", message);
         connection.sendMessage(message);
     }
 }

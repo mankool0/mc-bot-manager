@@ -35,6 +35,10 @@ message StringMap {
   map<string, string> entries = 1;
 }
 
+message BlockToBlockListMap {
+  map<string, StringList> entries = 1;
+}
+
 message BaritoneSettingValue {
   oneof value {
     bool bool_value = 1;
@@ -49,7 +53,13 @@ message BaritoneSettingValue {
     Vec3i vec3i_value = 10;
     BlockRotation rotation_value = 11;
     BlockMirror mirror_value = 12;
+    BlockToBlockListMap block_to_block_list_map_value = 13;
   }
+}
+
+message MapMetadata {
+  repeated string possible_keys = 1;
+  repeated string possible_list_values = 2;
 }
 
 message BaritoneSettingInfo {
@@ -64,7 +74,7 @@ message BaritoneSettingInfo {
     LIST = 5;
     FLOAT = 6;
     STRING = 7;
-    MAP = 8;
+    MAP_BLOCK_TO_BLOCK_LIST = 8;
     BI_CONSUMER = 9;
     VEC3I = 10;
     BLOCK_MIRROR = 11;
@@ -76,6 +86,8 @@ message BaritoneSettingInfo {
   optional string description = 3;
   BaritoneSettingValue current_value = 4;
   optional BaritoneSettingValue default_value = 5;
+  repeated string possible_values = 6;
+  optional MapMetadata map_metadata = 7;
 }
 
 // Command information

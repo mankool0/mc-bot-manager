@@ -2,6 +2,7 @@
 #include "SettingEditorFactory.h"
 #include "ListEditorDialog.h"
 #include "StringListEditorDialog.h"
+#include "ESPBlockDataMapEditorDialog.h"
 #include "bot/BotManager.h"
 #include <QHeaderView>
 #include <QGroupBox>
@@ -475,6 +476,39 @@ bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
                         // Emit setting changed signal
                         emit settingChanged(moduleName, settingPath, QVariant(newItems));
                     }
+                }
+
+                return true;
+            }
+
+            // Check if this is an ESP block data map (uses ESPBlockDataMapEditorDialog)
+            if (label->property("isESPBlockDataMap").toBool()) {
+                QString moduleName = label->property("moduleName").toString();
+                QString settingPath = label->property("settingPath").toString();
+                QString settingName = label->property("settingName").toString();
+                QStringList possibleBlockNames = label->property("possibleBlockNames").toStringList();
+
+                auto callback = label->property("changeCallback").value<SettingEditorFactory::ChangeCallback>();
+                if (!callback) return true;
+
+                ESPBlockDataMap currentMap;
+                if (allModules.contains(moduleName)) {
+                    const MeteorModuleData &module = allModules[moduleName];
+                    for (const auto &setting : module.settings) {
+                        if (setting.name == settingName ||
+                            (!setting.groupName.isEmpty() && (setting.groupName + "." + setting.name) == settingPath)) {
+                            if (setting.currentValue.canConvert<ESPBlockDataMap>()) {
+                                currentMap = setting.currentValue.value<ESPBlockDataMap>();
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                ESPBlockDataMapEditorDialog dialog(settingName, possibleBlockNames, currentMap, this);
+                if (dialog.exec() == QDialog::Accepted) {
+                    ESPBlockDataMap newMap = dialog.getMap();
+                    callback(QVariant::fromValue(newMap));
                 }
 
                 return true;

@@ -36,11 +36,11 @@ static QVariant baritoneProtoToVariant(
             });
         case BaritoneSettingType::LIST:
             return QVariant::fromValue(value.listValue().items());
-        case BaritoneSettingType::MAP: {
-            QMap<QString, QString> map;
-            for (auto it = value.mapValue().entries().constBegin();
-                 it != value.mapValue().entries().constEnd(); ++it) {
-                map[it.key()] = it.value();
+        case BaritoneSettingType::MAP_BLOCK_TO_BLOCK_LIST: {
+            StringListMap map;
+            for (auto it = value.blockToBlockListMapValue().entries().constBegin();
+                 it != value.blockToBlockListMapValue().entries().constEnd(); ++it) {
+                map[it.key()] = it.value().items();
             }
             return QVariant::fromValue(map);
         }
@@ -241,15 +241,17 @@ static mankool::mcbot::protocol::BaritoneSettingValue variantToBaritoneProto(
             protoValue.setListValue(list);
             break;
         }
-        case BaritoneSettingType::MAP: {
-            QMap<QString, QString> map = variant.value<QMap<QString, QString>>();
-            mankool::mcbot::protocol::StringMap protoMap;
-            QHash<QString, QString> hash;
+        case BaritoneSettingType::MAP_BLOCK_TO_BLOCK_LIST: {
+            StringListMap map = variant.value<StringListMap>();
+            mankool::mcbot::protocol::BlockToBlockListMap protoMap;
+            QHash<QString, mankool::mcbot::protocol::StringList> hash;
             for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
-                hash.insert(it.key(), it.value());
+                mankool::mcbot::protocol::StringList list;
+                list.setItems(it.value());
+                hash.insert(it.key(), list);
             }
             protoMap.setEntries(hash);
-            protoValue.setMapValue(protoMap);
+            protoValue.setBlockToBlockListMapValue(protoMap);
             break;
         }
         case BaritoneSettingType::VEC3I: {
@@ -1365,6 +1367,14 @@ void BotManager::handleBaritoneSettingsResponseImpl(int connectionId, const mank
         }
         settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
 
+        settingData.possibleValues = protoSetting.possibleValues();
+
+        if (protoSetting.hasMapMetadata()) {
+            const auto &protoMetadata = protoSetting.mapMetadata();
+            settingData.mapMetadata.possibleKeys = protoMetadata.possibleKeys();
+            settingData.mapMetadata.possibleValues = protoMetadata.possibleListValues();
+        }
+
         bot->baritoneSettings.insert(settingData.name, settingData);
     }
 
@@ -1439,6 +1449,12 @@ void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const m
                 settingData.type = protoSetting.type();
                 if (protoSetting.hasDescription()) {
                     settingData.description = protoSetting.description();
+                }
+                settingData.possibleValues = protoSetting.possibleValues();
+                if (protoSetting.hasMapMetadata()) {
+                    const auto &protoMetadata = protoSetting.mapMetadata();
+                    settingData.mapMetadata.possibleKeys = protoMetadata.possibleKeys();
+                    settingData.mapMetadata.possibleValues = protoMetadata.possibleListValues();
                 }
                 emit baritoneSingleSettingUpdated(bot->name, protoSetting.name());
             }

@@ -5,6 +5,7 @@ import baritone.api.IBaritone;
 import baritone.api.Settings;
 import baritone.api.command.ICommand;
 import baritone.api.command.manager.ICommandManager;
+import baritone.api.utils.SettingsUtil;
 import mankool.mcbot.protocol.Baritone;
 import mankool.mcbot.protocol.Baritone.*;
 import mankool.mcbot.protocol.Protocol;
@@ -101,7 +102,7 @@ public class BaritoneHandler extends BaseInboundHandler {
             LOGGER.debug("Baritone setting changed: {} = {} (was: {})",
                     setting.getName(), newValue, oldValue);
 
-            BaritoneSettingValue value = toProtoValue(setting.value);
+            BaritoneSettingValue value = toProtoValue(setting.value, setting);
             if (value == null) {
                 LOGGER.warn("Unable to serialize Baritone setting value for {}", setting.getName());
                 return;
@@ -202,6 +203,18 @@ public class BaritoneHandler extends BaseInboundHandler {
             }
 
             boolean success = errors.isEmpty();
+
+            if (success && !updatedSettings.isEmpty()) {
+                try {
+                    SettingsUtil.save(settings);
+                    LOGGER.info("Saved {} Baritone settings to file", updatedSettings.size());
+                } catch (Exception e) {
+                    LOGGER.error("Failed to save Baritone settings to file", e);
+                    success = false;
+                    errors.append("Settings applied but failed to save to file: ").append(e.getMessage());
+                }
+            }
+
             String message = success ? "Settings updated successfully" : errors.toString();
             sendBaritoneSettingsSetResponse(messageId, success, message, updatedSettings);
 
@@ -250,17 +263,97 @@ public class BaritoneHandler extends BaseInboundHandler {
                 .setName(setting.getName())
                 .setType(type);
 
-        BaritoneSettingValue currentValue = toProtoValue(setting.value);
+        BaritoneSettingValue currentValue = toProtoValue(setting.value, setting);
         if (currentValue != null) {
             builder.setCurrentValue(currentValue);
         }
 
-        BaritoneSettingValue defaultValue = toProtoValue(setting.defaultValue);
+        BaritoneSettingValue defaultValue = toProtoValue(setting.defaultValue, setting);
         if (defaultValue != null) {
             builder.setDefaultValue(defaultValue);
         }
 
+        if (type == BaritoneSettingInfo.SettingType.LIST) {
+            addPossibleValues(setting, builder);
+        } else if (type == BaritoneSettingInfo.SettingType.MAP_BLOCK_TO_BLOCK_LIST) {
+            addMapBlockToBlockListMetadata(setting, builder);
+        }
+
         return builder.build();
+    }
+
+    private void addPossibleValues(Settings.Setting<?> setting, BaritoneSettingInfo.Builder builder) {
+        try {
+            java.lang.reflect.Type elementType = getSettingTypeArgument(setting, 0);
+
+            if (elementType == net.minecraft.block.Block.class) {
+                for (net.minecraft.block.Block block : net.minecraft.registry.Registries.BLOCK) {
+                    builder.addPossibleValues(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+                }
+            } else if (elementType == net.minecraft.item.Item.class) {
+                for (net.minecraft.item.Item item : net.minecraft.registry.Registries.ITEM) {
+                    builder.addPossibleValues(net.minecraft.registry.Registries.ITEM.getId(item).toString());
+                }
+            } else if (elementType == String.class) {
+                // String lists (like buildIgnoreProperties) - no predefined values
+                LOGGER.debug("Skipping possible values for String list setting '{}'", setting.getName());
+            } else if (elementType != null) {
+                LOGGER.warn("Unsupported List element type for setting '{}': List<{}> - add proto support and manual handling",
+                        setting.getName(), elementType);
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Failed to add possible values for setting {}", setting.getName(), e);
+        }
+    }
+
+    private void addMapBlockToBlockListMetadata(Settings.Setting<?> setting, BaritoneSettingInfo.Builder builder) {
+        try {
+            MapMetadata.Builder metadataBuilder = MapMetadata.newBuilder();
+
+            for (net.minecraft.block.Block block : net.minecraft.registry.Registries.BLOCK) {
+                metadataBuilder.addPossibleKeys(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+                metadataBuilder.addPossibleListValues(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+            }
+
+            builder.setMapMetadata(metadataBuilder.build());
+        } catch (Exception e) {
+            LOGGER.debug("Failed to add map metadata for setting {}", setting.getName(), e);
+        }
+    }
+
+    private java.lang.reflect.Type getSettingTypeArgument(Settings.Setting<?> setting, int index) {
+        try {
+            Settings settings = BaritoneAPI.getSettings();
+            java.lang.reflect.Type type = settings.settingTypes.get(setting);
+
+            if (type instanceof java.lang.reflect.ParameterizedType paramType) {
+                java.lang.reflect.Type[] args = paramType.getActualTypeArguments();
+                if (args.length > index) {
+                    return args[index];
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.info("Failed to get type argument {} for {}", index, setting.getName(), e);
+        }
+        return null;
+    }
+
+    private boolean isMapBlockToBlockList(Settings.Setting<?> setting) {
+        try {
+            java.lang.reflect.Type keyType = getSettingTypeArgument(setting, 0);
+            java.lang.reflect.Type valueType = getSettingTypeArgument(setting, 1);
+
+            boolean result = keyType == net.minecraft.block.Block.class &&
+                   valueType instanceof java.lang.reflect.ParameterizedType valueParamType &&
+                   valueParamType.getRawType() == List.class &&
+                   valueParamType.getActualTypeArguments().length > 0 &&
+                   valueParamType.getActualTypeArguments()[0] == net.minecraft.block.Block.class;
+
+            return result;
+        } catch (Exception e) {
+            LOGGER.info("Failed to check map type for {}", setting.getName(), e);
+            return false;
+        }
     }
 
     private BaritoneCommandInfo toProtoCommandInfo(ICommand command) {
@@ -312,10 +405,60 @@ public class BaritoneHandler extends BaseInboundHandler {
                 parsedValue = new Color(color.getRed(), color.getGreen(), color.getBlue());
             } else if (type == List.class) {
                 if (!protoValue.hasListValue()) return false;
-                parsedValue = new ArrayList<>(protoValue.getListValue().getItemsList());
+                java.lang.reflect.Type elementType = getSettingTypeArgument(setting, 0);
+                List<Object> list = new ArrayList<>();
+
+                for (String item : protoValue.getListValue().getItemsList()) {
+                    if (elementType == net.minecraft.block.Block.class) {
+                        net.minecraft.util.Identifier id = net.minecraft.util.Identifier.tryParse(item);
+                        if (id != null) {
+                            list.add(net.minecraft.registry.Registries.BLOCK.get(id));
+                        }
+                    } else if (elementType == net.minecraft.item.Item.class) {
+                        net.minecraft.util.Identifier id = net.minecraft.util.Identifier.tryParse(item);
+                        if (id != null) {
+                            list.add(net.minecraft.registry.Registries.ITEM.get(id));
+                        }
+                    } else {
+                        list.add(item);
+                    }
+                }
+                parsedValue = list;
             } else if (type == Map.class) {
-                if (!protoValue.hasMapValue()) return false;
-                parsedValue = new HashMap<>(protoValue.getMapValue().getEntriesMap());
+                // Check if it's Map<Block, List<Block>>
+                if (isMapBlockToBlockList(setting)) {
+                    if (!protoValue.hasBlockToBlockListMapValue()) return false;
+                    Map<net.minecraft.block.Block, List<net.minecraft.block.Block>> blockMap = new HashMap<>();
+                    for (var entry : protoValue.getBlockToBlockListMapValue().getEntriesMap().entrySet()) {
+                        String keyId = entry.getKey();
+                        StringList valueList = entry.getValue();
+
+                        net.minecraft.util.Identifier keyIdentifier = net.minecraft.util.Identifier.tryParse(keyId);
+                        if (keyIdentifier == null) {
+                            LOGGER.warn("Invalid block ID for map key: {}", keyId);
+                            continue;
+                        }
+                        net.minecraft.block.Block keyBlock = net.minecraft.registry.Registries.BLOCK.get(keyIdentifier);
+
+                        List<net.minecraft.block.Block> valueBlocks = new ArrayList<>();
+                        for (String blockId : valueList.getItemsList()) {
+                            net.minecraft.util.Identifier blockIdentifier = net.minecraft.util.Identifier.tryParse(blockId);
+                            if (blockIdentifier != null) {
+                                net.minecraft.block.Block block = net.minecraft.registry.Registries.BLOCK.get(blockIdentifier);
+                                valueBlocks.add(block);
+                            } else {
+                                LOGGER.warn("Invalid block ID in map value: {}", blockId);
+                            }
+                        }
+
+                        blockMap.put(keyBlock, valueBlocks);
+                    }
+                    parsedValue = blockMap;
+                } else {
+                    // Generic string map
+                    if (!protoValue.hasMapValue()) return false;
+                    parsedValue = new HashMap<>(protoValue.getMapValue().getEntriesMap());
+                }
             } else if (type == BlockPos.class) {
                 if (!protoValue.hasVec3IValue()) return false;
                 Baritone.Vec3i vec = protoValue.getVec3IValue();
@@ -357,7 +500,15 @@ public class BaritoneHandler extends BaseInboundHandler {
         if (type == String.class) return BaritoneSettingInfo.SettingType.STRING;
         if (type == Color.class) return BaritoneSettingInfo.SettingType.COLOR;
         if (type == List.class) return BaritoneSettingInfo.SettingType.LIST;
-        if (type == Map.class) return BaritoneSettingInfo.SettingType.MAP;
+        if (type == Map.class) {
+            if (isMapBlockToBlockList(setting)) {
+                return BaritoneSettingInfo.SettingType.MAP_BLOCK_TO_BLOCK_LIST;
+            } else {
+                LOGGER.warn("Unrecognized Map type for setting '{}' - add proto support and handling",
+                        setting.getName());
+                return BaritoneSettingInfo.SettingType.UNRECOGNIZED;
+            }
+        }
         if (type == BlockPos.class) return BaritoneSettingInfo.SettingType.VEC3I;
         if (type == Vec3i.class) return BaritoneSettingInfo.SettingType.VEC3I;
         if (type == BlockRotation.class) return BaritoneSettingInfo.SettingType.BLOCK_ROTATION;
@@ -369,7 +520,7 @@ public class BaritoneHandler extends BaseInboundHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private BaritoneSettingValue toProtoValue(Object value) {
+    private BaritoneSettingValue toProtoValue(Object value, Settings.Setting<?> setting) {
         try {
             if (value == null) return null;
 
@@ -388,17 +539,41 @@ public class BaritoneHandler extends BaseInboundHandler {
                         .setBlue(color.getBlue())
                         .build());
                 case List<?> list -> {
-                    List<String> strings = list.stream()
-                            .map(Object::toString)
-                            .collect(Collectors.toList());
+                    List<String> strings = new ArrayList<>();
+                    for (Object item : list) {
+                        if (item instanceof net.minecraft.block.Block block) {
+                            strings.add(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+                        } else if (item instanceof net.minecraft.item.Item itemObj) {
+                            strings.add(net.minecraft.registry.Registries.ITEM.getId(itemObj).toString());
+                        } else {
+                            strings.add(item.toString());
+                        }
+                    }
                     builder.setListValue(StringList.newBuilder().addAllItems(strings).build());
                 }
                 case Map<?, ?> map -> {
-                    Map<String, String> stringMap = new HashMap<>();
-                    for (Map.Entry<?, ?> entry : map.entrySet()) {
-                        stringMap.put(entry.getKey().toString(), entry.getValue().toString());
+                    if (setting != null && isMapBlockToBlockList(setting)) {
+                        BlockToBlockListMap.Builder mapBuilder = BlockToBlockListMap.newBuilder();
+                        for (Map.Entry<?, ?> entry : map.entrySet()) {
+                            net.minecraft.block.Block keyBlock = (net.minecraft.block.Block) entry.getKey();
+                            @SuppressWarnings("unchecked")
+                            List<net.minecraft.block.Block> valueBlocks = (List<net.minecraft.block.Block>) entry.getValue();
+
+                            String keyId = net.minecraft.registry.Registries.BLOCK.getId(keyBlock).toString();
+                            StringList.Builder listBuilder = StringList.newBuilder();
+                            for (net.minecraft.block.Block block : valueBlocks) {
+                                listBuilder.addItems(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+                            }
+                            mapBuilder.putEntries(keyId, listBuilder.build());
+                        }
+                        builder.setBlockToBlockListMapValue(mapBuilder.build());
+                    } else {
+                        Map<String, String> stringMap = new HashMap<>();
+                        for (Map.Entry<?, ?> entry : map.entrySet()) {
+                            stringMap.put(entry.getKey().toString(), entry.getValue().toString());
+                        }
+                        builder.setMapValue(StringMap.newBuilder().putAllEntries(stringMap).build());
                     }
-                    builder.setMapValue(StringMap.newBuilder().putAllEntries(stringMap).build());
                 }
                 case BlockPos pos -> builder.setVec3IValue(Baritone.Vec3i.newBuilder()
                         .setX(pos.getX())
