@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "mc-bot-client",
+  "version": "${version}",
+  "name": "mc-bot-client",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "GPL-3.0",
+  "icon": "assets/mc-bot-client/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "me.mankool.mcBotClient.client.McBotClientDataGenerator"
+    ],
+    "client": [
+      "me.mankool.mcBotClient.McBotClient"
+    ]
+  },
+  "mixins": [
+    "mc-bot-client.mixins.json",
+    {
+      "config": "mc-bot-client.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
