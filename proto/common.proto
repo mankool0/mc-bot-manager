@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Core data types used across all message types
+
+message Vec3f {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message Vec3d {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message BlockPos {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
+message ItemStack {
+  int32 slot = 1;
+  string item_id = 2;      // minecraft:diamond_sword
+  int32 count = 3;
+  int32 damage = 4;        // Durability damage (0 = undamaged)
+  int32 max_damage = 5;    // Maximum durability
+  string display_name = 6; // Display name of the item
+  string nbt = 7;          // NBT as JSON string
+  repeated string enchantments = 8;
+}
+
+enum Hand {
+  MAIN_HAND = 0;
+  OFF_HAND = 1;
+}

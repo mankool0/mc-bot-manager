@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Connection and server status messages
+
+// Initial handshake when client starts (Client -> Manager)
+message ConnectionInfo {
+  string client_version = 1;    // Minecraft version (e.g., "1.21.8")
+  string mod_version = 2;       // Bot mod version
+  string player_name = 3;
+  string player_uuid = 4;
+  int64 startup_time = 5;       // Unix timestamp when client started
+  int32 process_id = 6;         // Process ID of the Minecraft client
+  int64 max_memory = 7;         // Maximum memory available to JVM in bytes
+}
+
+// Regular heartbeat (bidirectional)
+message HeartbeatMessage {
+  int64 current_memory = 1;  // Current memory usage in bytes
+}
+
+// Server connection status (Client -> Manager) - matches Minecraft's ServerData structure
+message ServerConnectionStatus {
+  // Server connection state (matches ServerData.Status from ServerData.java)
+  enum Status {
+    INITIAL = 0;        // Not connected
+    PINGING = 1;        // Attempting to ping server
+    UNREACHABLE = 2;    // Server is unreachable
+    INCOMPATIBLE = 3;   // Protocol version mismatch
+    SUCCESSFUL = 4;     // Successfully connected
+  }
+
+  // Server type (matches ServerData.Type from ServerData.java)
+  enum ServerType {
+    LAN = 0;            // LAN server (discovered via local network)
+    REALM = 1;          // Minecraft Realm
+    OTHER = 2;          // Standard multiplayer server (manually added/connected)
+  }
+
+  Status status = 1;
+  string server_address = 2;    // Server IP/address (ServerData.ip)
+  string server_name = 3;       // Display name (ServerData.name)
+  string motd = 4;              // Message of the day (ServerData.motd)
+  int64 ping = 5;               // Ping in milliseconds (ServerData.ping)
+
+  // Server version info (from ServerStatus.Version in ServerStatus.java:71-77)
+  string version_name = 6;      // e.g., "1.21.8"
+  int32 protocol_version = 7;   // Protocol version number
+
+  // Player information (from ServerStatus.Players in ServerStatus.java:54-68)
+  int32 players_online = 8;     // Current player count
+  int32 players_max = 9;        // Maximum players
+
+  ServerType server_type = 10;
+  bool enforces_secure_chat = 11; // ServerStatus.enforcesSecureChat
+  string disconnect_reason = 12;  // Reason if disconnected/failed
+}

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Chat-related messages
+
+// Chat message (Bidirectional)
+// Based on ChatListener.java and PlayerChatMessage.java
+message ChatMessage {
+  enum Type {
+    PLAYER_CHAT = 0;        // Regular player chat
+    SYSTEM_MESSAGE = 1;     // System/server messages
+    COMMAND_RESULT = 2;     // Command feedback
+    ERROR = 3;              // Error messages
+  }
+
+  Type type = 1;
+  string content = 2;
+  string sender = 3;            // Player name or "SYSTEM"
+  int64 timestamp = 4;          // Unix timestamp in milliseconds
+  bool is_signed = 5;           // Whether the message was cryptographically signed (from PlayerChatMessage)
+}

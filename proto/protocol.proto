@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+import "connection.proto";
+import "player.proto";
+import "chat.proto";
+import "commands.proto";
+import "inventory.proto";
+import "meteor.proto";
+import "baritone.proto";
+
+// Main protocol definition that ties everything together
+
+// Client -> Manager messages
+message ClientToManagerMessage {
+  // Message identification
+  string message_id = 1;        // Unique ID for tracking
+  int64 timestamp = 2;          // Unix timestamp in milliseconds
+
+  oneof payload {
+    // Connection & status messages
+    ConnectionInfo connection_info = 3;
+    HeartbeatMessage heartbeat = 4;
+    ServerConnectionStatus server_status = 5;
+
+    // Player updates
+    PlayerStateUpdate player_state = 6;
+
+    // Inventory updates
+    InventoryUpdate inventory = 7;
+
+    // Chat messages from game
+    ChatMessage chat = 8;
+
+    // Command responses
+    CommandResponse command_response = 9;
+
+    // Meteor module responses
+    GetModulesResponse modules_response = 10;
+    SetModuleConfigResponse module_config_response = 11;
+    ModuleStateChanged module_state_changed = 12;
+
+    // Baritone responses
+    GetBaritoneSettingsResponse baritone_settings_response = 13;
+    GetBaritoneCommandsResponse baritone_commands_response = 14;
+    SetBaritoneSettingsResponse baritone_settings_set_response = 15;
+    ExecuteBaritoneCommandResponse baritone_command_response = 16;
+    BaritoneSettingUpdate baritone_setting_update = 17;
+  }
+}
+
+// Manager -> Client commands
+message ManagerToClientMessage {
+  // Message identification
+  string message_id = 1;        // Unique ID for tracking
+  int64 timestamp = 2;          // Unix timestamp in milliseconds
+
+  oneof payload {
+    // Connection & status messages
+    HeartbeatMessage heartbeat = 3;
+
+    // Server commands
+    ConnectToServerCommand connect_server = 4;
+    DisconnectCommand disconnect = 5;
+
+    // Chat/communication
+    SendChatCommand send_chat = 6;
+
+    // Movement/actions
+    MoveToCommand move_to = 7;
+    LookAtCommand look_at = 8;
+    SetRotationCommand set_rotation = 9;
+
+    // Inventory
+    SwitchHotbarSlotCommand switch_hotbar = 10;
+    UseItemCommand use_item = 11;
+    DropItemCommand drop_item = 12;
+
+    // Process control
+    ShutdownCommand shutdown = 13;
+
+    // Meteor module management
+    GetModulesRequest get_modules = 14;
+    SetModuleConfigCommand set_module_config = 15;
+
+    // Baritone control
+    GetBaritoneSettingsRequest get_baritone_settings = 16;
+    GetBaritoneCommandsRequest get_baritone_commands = 17;
+    SetBaritoneSettingsCommand set_baritone_settings = 18;
+    ExecuteBaritoneCommand execute_baritone_command = 19;
+  }
+}
