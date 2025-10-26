@@ -11,9 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Treat warnings as errors
 if(MSVC)
-    add_compile_options(/W4 /WX)
-    # Disable specific warnings from third-party headers
-    add_compile_options(/wd4702)  # Unreachable code
+    add_compile_options(/W4)
 else()
     add_compile_options(-Wall -Wextra -Werror)
 endif()
