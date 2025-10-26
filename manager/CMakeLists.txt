@@ -10,7 +10,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Treat warnings as errors
-add_compile_options(-Wall -Wextra -Werror)
+if(MSVC)
+    add_compile_options(/W4 /WX)
+else()
+    add_compile_options(-Wall -Wextra -Werror)
+endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf)
 
