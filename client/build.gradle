@@ -37,7 +37,7 @@ sourceSets {
     main {
         proto {
             //noinspection GroovyAssignabilityCheck
-            srcDir 'submodules/mc-bot-proto/proto'
+            srcDir '../proto'
         }
     }
 }

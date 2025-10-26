@@ -14,9 +14,9 @@ add_compile_options(-Wall -Wextra -Werror)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf)
 
-# Generate QtProtobuf files from submodule
+# Generate QtProtobuf files from proto directory
 file(GLOB PROTO_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/submodules/mc-bot-proto/proto/*.proto
+    ${CMAKE_CURRENT_SOURCE_DIR}/../proto/*.proto
 )
 
 qt_add_protobuf(mc-bot-manager-proto
