@@ -1,0 +1,323 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - 'master'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - 'master'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create release'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  QT_VERSION: 6.10.0
+  APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
+  WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
+
+jobs:
+  build-client:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        working-directory: client
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        working-directory: client
+        run: ./gradlew build -Pmod_version="$(git describe --always --tags --first-parent | sed 's/^v//')"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-mod
+          path: client/build/libs/*.jar
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtgrpc
+
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Download linuxdeploy tools
+        run: |
+          wget -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -O linuxdeploy-plugin-qt-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+          mv linuxdeploy*.AppImage manager/
+
+      - name: Build AppImage
+        run: |
+          cd manager
+          mkdir -p build-appimage
+          cd build-appimage
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build . -j$(nproc)
+          strip mc-bot-manager
+          mv ../linuxdeploy*.AppImage .
+          export PATH=$PWD:$PATH
+          cmake --build . --target appimage
+          mv MC_Bot_Manager*.AppImage ../../${{ env.APPIMAGE_ARTIFACT }}
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: ${{ env.APPIMAGE_ARTIFACT }}
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtgrpc
+
+      - name: Install protobuf
+        shell: cmd
+        run: choco install protoc -y
+
+      - name: Set up Visual Studio shell
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        shell: cmd
+        run: |
+          cd manager
+          mkdir build
+          cd build
+          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+
+      - name: Deploy Qt dependencies
+        working-directory: manager/build
+        shell: cmd
+        run: |
+          mkdir mc-bot-manager
+          copy mc-bot-manager.exe mc-bot-manager\
+          copy mc-bot-manager-proto.dll mc-bot-manager\
+          windeployqt mc-bot-manager\mc-bot-manager.exe --release
+
+      - name: Package Windows build
+        working-directory: manager/build
+        shell: cmd
+        run: 7z a ..\..\${{ env.WINDOWS_ARTIFACT }} mc-bot-manager\
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: ${{ env.WINDOWS_ARTIFACT }}
+
+  # Snapshot release - only runs on master branch pushes
+  snapshot-release:
+    needs: [build-client, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Download client artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: client-mod
+          path: ./client-mod
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: linux-appimage
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-zip
+
+      - name: Delete previous snapshot release
+        run: gh release delete snapshot --cleanup-tag || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create snapshot release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: snapshot
+          name: Snapshot Build
+          body: |
+            Snapshot build from commit [${{ github.sha }}](${{ github.event.repository.html_url }}/commit/${{ github.sha }})
+
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.event.head_commit.message }}
+          files: |
+            client-mod/*.jar
+            ${{ env.APPIMAGE_ARTIFACT }}
+            ${{ env.WINDOWS_ARTIFACT }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Tagged release - only runs on version tags (v*)
+  tagged-release:
+    needs: [build-client, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Extract version info
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          COMMIT_SHORT=$(git rev-parse --short HEAD)
+          COMMIT_DATE=$(git show -s --format=%ci HEAD | cut -d' ' -f1)
+          
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "COMMIT_SHORT=$COMMIT_SHORT" >> $GITHUB_OUTPUT
+          echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          CURRENT_TAG="${{ steps.version.outputs.TAG }}"
+          PREV_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          
+          if [ -n "$PREV_TAG" ]; then
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            echo "## Changes since $PREV_TAG" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            git log $PREV_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download client artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: client-mod
+          path: ./client-mod
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: linux-appimage
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-zip
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            client-mod/*.jar
+            ${{ env.APPIMAGE_ARTIFACT }}
+            ${{ env.WINDOWS_ARTIFACT }}
+          body: |
+            **Version**: ${{ steps.version.outputs.TAG }}
+            **Commit**: ${{ steps.version.outputs.COMMIT_SHORT }}
+            **Date**: ${{ steps.version.outputs.COMMIT_DATE }}
+
+            ## Installation
+
+            ### Manager (Desktop Application)
+            **Linux**: Download and run `${{ env.APPIMAGE_ARTIFACT }}`
+            **Windows**: Download `${{ env.WINDOWS_ARTIFACT }}`, extract, and run `mc-bot-manager.exe`
+
+            ### Client Mod (Minecraft)
+            Place the JAR file in your Minecraft instance mods folder
+
+            ${{ steps.changelog.outputs.CHANGELOG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Manual release - only runs on workflow_dispatch with create_release=true
+  manual-release:
+    needs: [build-client, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Download client artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: client-mod
+          path: ./client-mod
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: linux-appimage
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-zip
+
+      - name: Create manual release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: manual-release
+          name: Manual Release
+          body: Manual release build from ${{ github.sha }}
+          files: |
+            client-mod/*.jar
+            ${{ env.APPIMAGE_ARTIFACT }}
+            ${{ env.WINDOWS_ARTIFACT }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
