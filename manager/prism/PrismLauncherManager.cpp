@@ -1,6 +1,7 @@
 #include "PrismLauncherManager.h"
 #include "logging/LogManager.h"
 #include "ui/ManagerMainWindow.h"
+#include "bot/BotManager.h"
 #include <QTimer>
 
 #ifdef Q_OS_UNIX
@@ -295,14 +296,51 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
 
         LogManager::logPrism(cleanLine);
 
-        if (cleanLine.contains("org.prismlauncher.EntryPoint") ||
-            cleanLine.contains("net.minecraft.client.main.Main") ||
-            cleanLine.contains("cpw.mods.modlauncher.Launcher")) {
-            emit minecraftLaunching(""); // TODO: Identify which bot
+        if (cleanLine.contains("org.prismlauncher.EntryPoint")
+            || cleanLine.contains("net.minecraft.client.main.Main")
+            || cleanLine.contains("cpw.mods.modlauncher.Launcher")) {
+            // Find the bot currently in Starting status (only one bot launches at a time)
+            QVector<BotInstance> &bots = BotManager::getBots();
+            for (const BotInstance &bot : bots) {
+                if (bot.status == BotStatus::Starting) {
+                    emit minecraftLaunching(bot.name);
+                    break;
+                }
+            }
         }
 
         if (cleanLine.contains("Profile") && cleanLine.contains("is now in use")) {
-            emit minecraftStarting(""); // TODO: Identify which bot
+            static QRegularExpression profileInUseReg("Profile \"([^\"]+)\" is now in use");
+            QRegularExpressionMatch match = profileInUseReg.match(cleanLine);
+
+            if (match.hasMatch()) {
+                QString profileId = match.captured(1);
+
+                QVector<BotInstance> &bots = BotManager::getBots();
+                for (const BotInstance &bot : bots) {
+                    if (bot.accountId == profileId && bot.status == BotStatus::Starting) {
+                        emit minecraftStarting(bot.name);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (cleanLine.contains("Profile") && cleanLine.contains("is no longer in use")) {
+            static QRegularExpression profileNotInUseReg("Profile \"([^\"]+)\" is no longer in use");
+            QRegularExpressionMatch match = profileNotInUseReg.match(cleanLine);
+
+            if (match.hasMatch()) {
+                QString profileId = match.captured(1);
+
+                QVector<BotInstance> &bots = BotManager::getBots();
+                for (const BotInstance &bot : bots) {
+                    if (bot.accountId == profileId) {
+                        emit minecraftStopped(bot.name);
+                        break;
+                    }
+                }
+            }
         }
     }
 }

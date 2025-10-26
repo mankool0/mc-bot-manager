@@ -9,6 +9,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Treat warnings as errors
+add_compile_options(-Wall -Wextra -Werror)
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf)
 
 # Generate QtProtobuf files from submodule

@@ -32,23 +32,41 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftLaunching,
             this,
-            [this](const QString &botName) {
-                QVector<BotInstance> &bots = BotManager::getBots();
-                for (BotInstance &bot : bots) {
-                    if (bot.status == BotStatus::Starting) {
-                        LogManager::log(QString("Minecraft launching for bot '%1'").arg(bot.name), LogManager::Success);
-                        break;
-                    }
+            [](const QString &botName) {
+                if (!botName.isEmpty()) {
+                    LogManager::log(QString("Minecraft process started for bot '%1'").arg(botName), LogManager::Success);
                 }
             });
 
     connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftStarting,
             this,
+            [](const QString &botName) {
+                if (!botName.isEmpty()) {
+                    LogManager::log(QString("Profile locked for bot '%1'").arg(botName), LogManager::Info);
+                }
+            });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::minecraftStopped,
+            this,
             [this](const QString &botName) {
-                // Minecraft process started - bot remains in Starting status
-                // until client connection is established
-                LogManager::log("Minecraft process detected starting", LogManager::Info);
+                if (!botName.isEmpty()) {
+                    BotInstance *bot = BotManager::getBotByName(botName);
+                    if (bot) {
+                        if (bot->status == BotStatus::Starting) {
+                            LogManager::log(QString("Bot '%1' crashed during startup").arg(botName), LogManager::Error);
+                            bot->status = BotStatus::Error;
+                            updateInstancesTable();
+                        } else if (bot->status == BotStatus::Online) {
+                            LogManager::log(QString("Bot '%1' stopped unexpectedly").arg(botName), LogManager::Warning);
+                            bot->status = BotStatus::Offline;
+                            bot->connectionId = -1;
+                            bot->minecraftPid = 0;
+                            updateInstancesTable();
+                        }
+                    }
+                }
             });
 
     setupUI();
@@ -215,6 +233,7 @@ void ManagerMainWindow::addNewBot()
 
         newBot.instance = "";
         newBot.account = "";
+        newBot.accountId = "";
         newBot.server = "";
         newBot.connectionId = -1;
         newBot.maxMemory = 4096;
@@ -485,7 +504,9 @@ void ManagerMainWindow::onConfigurationChanged()
         BotInstance *bot = BotManager::getBotByName(selectedBotName);
         if (bot) {
             bot->instance = ui->instanceComboBox->currentText() == "(None)" ? "" : ui->instanceComboBox->currentText();
-            bot->account = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
+            QString selectedAccount = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
+            bot->account = selectedAccount;
+            bot->accountId = selectedAccount.isEmpty() ? "" : prismConfig.accountIdToNameMap.key(selectedAccount, "");
             bot->server = ui->serverLineEdit->text();
             bot->maxMemory = ui->memorySpinBox->value();
             bot->restartThreshold = ui->restartThresholdSpinBox->value();
@@ -556,12 +577,11 @@ void ManagerMainWindow::updateStatusDisplay()
             .arg(selectedBot->status == BotStatus::Online ? "Connected" : "Not Connected"));
 
         bool isOnline = (selectedBot->status == BotStatus::Online);
-        bool isStarting = (selectedBot->status == BotStatus::Starting);
-        bool isOffline = (selectedBot->status == BotStatus::Offline);
+        bool canLaunch = (selectedBot->status == BotStatus::Offline || selectedBot->status == BotStatus::Error);
         bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
                                           [this](const ScheduledLaunch &s) { return s.botName == selectedBotName; });
 
-        ui->launchBotButton->setEnabled(isOffline && !inLaunchQueue);
+        ui->launchBotButton->setEnabled(canLaunch && !inLaunchQueue);
         ui->stopBotButton->setEnabled(isOnline);
         ui->restartBotButton->setEnabled(isOnline);
         ui->instanceComboBox->setEnabled(!isOnline);
@@ -632,7 +652,7 @@ void ManagerMainWindow::stopBot()
             BotManager::sendShutdownCommand(bot->name, "Stopped by manager");
 
             // Force kill after 5 seconds if not shut down
-            QTimer::singleShot(5000, this, [this, botName = bot->name, pid = bot->minecraftPid]() {
+            QTimer::singleShot(5000, this, [botName = bot->name, pid = bot->minecraftPid]() {
                 BotInstance *b = BotManager::getBotByName(botName);
                 // Only kill if bot is still offline AND the PID hasn't changed (no restart)
                 if (b && b->status != BotStatus::Offline && b->minecraftPid == pid && pid > 0) {
@@ -681,7 +701,9 @@ void ManagerMainWindow::loadSettingsFromFile()
         BotInstance *bot = BotManager::getBotByName(selectedBotName);
         if (bot) {
             bot->instance = ui->instanceComboBox->currentText() == "(None)" ? "" : ui->instanceComboBox->currentText();
-            bot->account = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
+            QString selectedAccount = ui->accountComboBox->currentText() == "(None)" ? "" : ui->accountComboBox->currentText();
+            bot->account = selectedAccount;
+            bot->accountId = selectedAccount.isEmpty() ? "" : prismConfig.accountIdToNameMap.key(selectedAccount, "");
             bot->server = ui->serverLineEdit->text();
             bot->maxMemory = ui->memorySpinBox->value();
             bot->restartThreshold = ui->restartThresholdSpinBox->value();
@@ -775,7 +797,7 @@ void ManagerMainWindow::configurePrismLauncher()
     if (!pathWasDetected && !prismConfig.prismPath.isEmpty()) {
         dialog.setExecutable(prismConfig.prismExecutable);
         dialog.setInstances(prismConfig.instances);
-        dialog.setAccounts(prismConfig.accounts);
+        dialog.setAccountIdToNameMap(prismConfig.accountIdToNameMap);
     }
 
     if (dialog.exec() == QDialog::Accepted) {
@@ -786,6 +808,7 @@ void ManagerMainWindow::configurePrismLauncher()
             prismConfig.prismPath = newPath;
             prismConfig.instances = dialog.getInstances();
             prismConfig.accounts = dialog.getAccounts();
+            prismConfig.accountIdToNameMap = dialog.getAccountIdToNameMap();
 
             updateInstanceComboBox();
             updateAccountComboBox();
@@ -849,15 +872,7 @@ void ManagerMainWindow::loadSettings()
     settings.beginGroup("PrismLauncher");
     prismConfig.prismPath = settings.value("path", "").toString();
     prismConfig.prismExecutable = settings.value("executable", "").toString();
-    prismConfig.instances = settings.value("instances", QStringList()).toStringList();
-    prismConfig.accounts = settings.value("accounts", QStringList()).toStringList();
     settings.endGroup();
-
-    // Re-parse PrismLauncher directory if path exists to get latest instances/accounts
-    if (!prismConfig.prismPath.isEmpty()) {
-        prismConfig.instances = PrismSettingsDialog::parsePrismInstances(prismConfig.prismPath);
-        prismConfig.accounts = PrismSettingsDialog::parsePrismAccounts(prismConfig.prismPath);
-    }
 
     // Load bot instances
     settings.beginGroup("Bots");
@@ -871,6 +886,35 @@ void ManagerMainWindow::loadSettings()
         }
     }
     settings.endGroup();
+
+    // Parse fresh Prism data and update loaded bots
+    if (!prismConfig.prismPath.isEmpty()) {
+        prismConfig.instances = PrismSettingsDialog::parsePrismInstances(prismConfig.prismPath);
+        prismConfig.accountIdToNameMap = PrismSettingsDialog::parsePrismAccounts(prismConfig.prismPath);
+        prismConfig.accounts = prismConfig.accountIdToNameMap.values();
+        prismConfig.accounts.sort();
+
+        QVector<BotInstance> &bots = BotManager::getBots();
+        for (BotInstance &bot : bots) {
+            if (!bot.account.isEmpty()) {
+                QString foundId = prismConfig.accountIdToNameMap.key(bot.account, "");
+                if (!foundId.isEmpty()) {
+                    bot.accountId = foundId;
+                } else {
+                    LogManager::log(QString("Account '%1' no longer exists for bot '%2', clearing")
+                                        .arg(bot.account, bot.name), LogManager::Warning);
+                    bot.account = "";
+                    bot.accountId = "";
+                }
+            }
+
+            if (!bot.instance.isEmpty() && !prismConfig.instances.contains(bot.instance)) {
+                LogManager::log(QString("Instance '%1' no longer exists for bot '%2', clearing")
+                                    .arg(bot.instance, bot.name), LogManager::Warning);
+                bot.instance = "";
+            }
+        }
+    }
 
     setupConsoleTab();
     setupMeteorTab();
@@ -898,6 +942,7 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("name", bot.name);
     settings.setValue("instance", bot.instance);
     settings.setValue("account", bot.account);
+    settings.setValue("accountId", bot.accountId);
     settings.setValue("server", bot.server);
     settings.setValue("connectionId", bot.connectionId);
     settings.setValue("maxMemory", bot.maxMemory);
@@ -918,6 +963,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.status = BotStatus::Offline;  // Always start as offline
     bot.instance = settings.value("instance", "").toString();
     bot.account = settings.value("account", "").toString();
+    bot.accountId = settings.value("accountId", "").toString();
     bot.server = settings.value("server", "").toString();
     bot.connectionId = settings.value("connectionId", -1).toInt();
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
@@ -986,7 +1032,7 @@ void ManagerMainWindow::stopAllBots()
 
                 QString botName = bot.name;
                 qint64 pid = bot.minecraftPid;
-                QTimer::singleShot(5000, this, [this, botName, pid]() {
+                QTimer::singleShot(5000, this, [botName, pid]() {
                     BotInstance *b = BotManager::getBotByName(botName);
                     if (b && b->status != BotStatus::Offline) {
                         LogManager::log(QString("Force killing bot '%1' (PID: %2)").arg(botName).arg(pid), LogManager::Warning);
@@ -1123,7 +1169,7 @@ void ManagerMainWindow::setupPipeServer()
 void ManagerMainWindow::onClientConnected(int connectionId, const QString &botName)
 {
     if (!botName.isEmpty()) {
-        BotInstance *bot = BotManager::getBotByName(botName);
+        BotInstance *bot = BotManager::getBotByConnectionId(connectionId);
         if (bot) {
             updateInstancesTable();
             updateStatusDisplay();

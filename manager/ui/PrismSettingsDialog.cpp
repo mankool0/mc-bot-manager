@@ -76,15 +76,25 @@ void PrismSettingsDialog::setInstances(const QStringList &inst)
     }
 }
 
-void PrismSettingsDialog::setAccounts(const QStringList &acc)
+void PrismSettingsDialog::setAccountIdToNameMap(const QMap<QString, QString> &idToNameMap)
 {
-    accounts = acc;
+    accountIdToNameMap = idToNameMap;
+
+    QStringList accountNames = accountIdToNameMap.values();
+    accountNames.sort();
 
     ui->accountsList->clear();
-    ui->accountsList->addItem(QString("Accounts (%1):").arg(accounts.size()));
-    for (const QString &account : std::as_const(accounts)) {
+    ui->accountsList->addItem(QString("Accounts (%1):").arg(accountNames.size()));
+    for (const QString &account : std::as_const(accountNames)) {
         ui->accountsList->addItem("  • " + account);
     }
+}
+
+QStringList PrismSettingsDialog::getAccounts() const
+{
+    QStringList accountNames = accountIdToNameMap.values();
+    accountNames.sort();
+    return accountNames;
 }
 
 void PrismSettingsDialog::onBrowseClicked()
@@ -119,14 +129,14 @@ void PrismSettingsDialog::updateStatistics()
         ui->statusValueLabel->setText("Configured");
         ui->statusValueLabel->setStyleSheet("color: #4CAF50; font-weight: bold;");
         ui->instancesCountLabel->setText(QString::number(instances.size()));
-        ui->accountsCountLabel->setText(QString::number(accounts.size()));
+        ui->accountsCountLabel->setText(QString::number(accountIdToNameMap.size()));
     }
 }
 
 void PrismSettingsDialog::parsePrismDirectory(const QString &path)
 {
     setInstances(parsePrismInstances(path));
-    setAccounts(parsePrismAccounts(path));
+    setAccountIdToNameMap(parsePrismAccounts(path));
 }
 
 QStringList PrismSettingsDialog::parsePrismInstances(const QString &path)
@@ -158,12 +168,12 @@ QStringList PrismSettingsDialog::parsePrismInstances(const QString &path)
     return instances;
 }
 
-QStringList PrismSettingsDialog::parsePrismAccounts(const QString &path)
+QMap<QString, QString> PrismSettingsDialog::parsePrismAccounts(const QString &path)
 {
-    QStringList accounts;
+    QMap<QString, QString> accountIdToName;
 
     if (path.isEmpty()) {
-        return accounts;
+        return accountIdToName;
     }
 
     QString accountsPath = path + "/accounts.json";
@@ -183,18 +193,17 @@ QStringList PrismSettingsDialog::parsePrismAccounts(const QString &path)
             for (const QJsonValue &value : std::as_const(accountsArray)) {
                 QJsonObject accountObj = value.toObject();
                 QJsonObject profileObj = accountObj["profile"].toObject();
+                QString accountId = profileObj["id"].toString();
                 QString accountName = profileObj["name"].toString();
 
-                if (!accountName.isEmpty()) {
-                    accounts.append(accountName);
+                if (!accountId.isEmpty() && !accountName.isEmpty()) {
+                    accountIdToName.insert(accountId, accountName);
                 }
             }
-
-            accounts.sort();
         }
     }
 
-    return accounts;
+    return accountIdToName;
 }
 
 void PrismSettingsDialog::onBrowseExeClicked()

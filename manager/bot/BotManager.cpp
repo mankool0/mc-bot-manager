@@ -741,9 +741,27 @@ void BotManager::handleInventoryUpdate(int connectionId, const mankool::mcbot::p
 void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
 
-    if (bot && bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] InventoryUpdate received").arg(bot->name), LogManager::Debug);
+    bot->selectedSlot = inventory.selectedSlot();
+
+    if (bot->inventory.isEmpty()) {
+        bot->inventory.resize(41);
+    }
+
+    for (const auto &item : inventory.items()) {
+        int slot = item.slot();
+        if (slot >= 0 && slot < bot->inventory.size()) {
+            bot->inventory[slot] = item;
+        }
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[DEBUG %1] InventoryUpdate received: %2 items, selected slot %3")
+                            .arg(bot->name)
+                            .arg(inventory.items().size())
+                            .arg(inventory.selectedSlot()),
+                        LogManager::Debug);
     }
 }
 
@@ -755,9 +773,32 @@ void BotManager::handleChatMessage(int connectionId, const mankool::mcbot::proto
 void BotManager::handleChatMessageImpl(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
 
-    if (bot && bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] ChatMessage received").arg(bot->name), LogManager::Debug);
+    QString typePrefix;
+    switch (chat.type()) {
+        case mankool::mcbot::protocol::ChatMessage::Type::PLAYER_CHAT:
+            typePrefix = QString("[%1]").arg(chat.sender());
+            break;
+        case mankool::mcbot::protocol::ChatMessage::Type::SYSTEM_MESSAGE:
+            typePrefix = "[SYSTEM]";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::Type::COMMAND_RESULT:
+            typePrefix = "[COMMAND]";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::Type::ERROR:
+            typePrefix = "[ERROR]";
+            break;
+    }
+
+    QString output = QString("%1 %2").arg(typePrefix, chat.content());
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(true, output);
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[DEBUG %1] ChatMessage received: %2").arg(bot->name, output), LogManager::Debug);
     }
 }
 
@@ -769,8 +810,37 @@ void BotManager::handleCommandResponse(int connectionId, const mankool::mcbot::p
 void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::CommandResponse &response)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
 
-    if (bot && bot->debugLogging) {
+    QString statusText;
+    bool success = false;
+    switch (response.status()) {
+        case mankool::mcbot::protocol::CommandResponse::Status::SUCCESS:
+            statusText = "SUCCESS";
+            success = true;
+            break;
+        case mankool::mcbot::protocol::CommandResponse::Status::FAILED:
+            statusText = "FAILED";
+            break;
+        case mankool::mcbot::protocol::CommandResponse::Status::IN_PROGRESS:
+            statusText = "IN_PROGRESS";
+            success = true;
+            break;
+        case mankool::mcbot::protocol::CommandResponse::Status::CANCELLED:
+            statusText = "CANCELLED";
+            break;
+    }
+
+    QString output = QString("[%1] %2").arg(statusText, response.message());
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendResponse(success, output);
+    }
+
+    LogManager::log(QString("[%1] Command response: %2").arg(bot->name, output),
+                    success ? LogManager::Info : LogManager::Warning);
+
+    if (bot->debugLogging) {
         LogManager::log(QString("[DEBUG %1] CommandResponse received").arg(bot->name), LogManager::Debug);
     }
 }

@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QString>
 #include <QStringList>
+#include <QMap>
 
 #include "ui_PrismSettingsDialog.h"
 
@@ -22,16 +23,17 @@ public:
     QString getExecutable() const;
 
     void setInstances(const QStringList &instances);
-    void setAccounts(const QStringList &accounts);
+    void setAccountIdToNameMap(const QMap<QString, QString> &idToNameMap);
 
     QStringList getInstances() const { return instances; }
-    QStringList getAccounts() const { return accounts; }
+    QStringList getAccounts() const;
+    QMap<QString, QString> getAccountIdToNameMap() const { return accountIdToNameMap; }
 
     // Static utility methods for parsing PrismLauncher data
     static QString detectPrismLauncherPath();
     static QString detectPrismLauncherExecutable(const QString &prismPath);
     static QStringList parsePrismInstances(const QString &prismPath);
-    static QStringList parsePrismAccounts(const QString &prismPath);
+    static QMap<QString, QString> parsePrismAccounts(const QString &prismPath);
 
 private slots:
     void onBrowseClicked();
@@ -43,7 +45,7 @@ private:
     QString currentPath;
     QString currentExecutable;
     QStringList instances;
-    QStringList accounts;
+    QMap<QString, QString> accountIdToNameMap;
 
     void parsePrismDirectory(const QString &path);
     static bool isFlatpakPath(const QString &path);

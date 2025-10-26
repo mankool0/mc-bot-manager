@@ -35,6 +35,7 @@ struct PrismConfig {
     QString prismExecutable;
     QStringList instances;
     QStringList accounts;
+    QMap<QString, QString> accountIdToNameMap;
 };
 
 class ManagerMainWindow : public QMainWindow

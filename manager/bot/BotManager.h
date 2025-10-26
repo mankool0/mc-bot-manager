@@ -158,6 +158,7 @@ struct BotInstance {
     BotStatus status = BotStatus::Offline;
     QString instance;
     QString account;
+    QString accountId;
     QString server;
     int connectionId = -1;
     int maxMemory;
@@ -171,6 +172,9 @@ struct BotInstance {
 
     QVector3D position;
     QString dimension;
+
+    QVector<mankool::mcbot::protocol::ItemStack> inventory;
+    int selectedSlot = 0;
 
     QProcess* process = nullptr;
     qint64 minecraftPid = 0;

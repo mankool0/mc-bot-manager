@@ -30,6 +30,7 @@ public:
 signals:
     void minecraftLaunching(const QString &botName);
     void minecraftStarting(const QString &botName);
+    void minecraftStopped(const QString &botName);
     void prismGUIStarted();
     void prismGUIStopped();
 
