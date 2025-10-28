@@ -17,12 +17,9 @@ base {
 }
 
 loom {
-    splitEnvironmentSourceSets()
-
     mods {
         "mc-bot-client" {
             sourceSet sourceSets.main
-            sourceSet sourceSets.client
         }
     }
 }
