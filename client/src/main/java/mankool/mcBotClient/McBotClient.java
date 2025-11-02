@@ -28,7 +28,7 @@ public class McBotClient implements ClientModInitializer {
         // Register lambda factory for Orbit event bus (required for @EventHandler annotations)
         try {
             meteordevelopment.meteorclient.MeteorClient.EVENT_BUS.registerLambdaFactory(
-                "me.mankool.mcBotClient",
+                "mankool.mcBotClient",
                 (lookupInMethod, klass) -> (MethodHandles.Lookup) lookupInMethod.invoke(null, klass, MethodHandles.lookup())
             );
             LOGGER.info("Registered Orbit lambda factory for event handlers");

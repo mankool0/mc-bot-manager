@@ -11,10 +11,10 @@
   "environment": "client",
   "entrypoints": {
     "fabric-datagen": [
-      "me.mankool.mcBotClient.client.McBotClientDataGenerator"
+      "mankool.mcBotClient.client.McBotClientDataGenerator"
     ],
     "client": [
-      "me.mankool.mcBotClient.McBotClient"
+      "mankool.mcBotClient.McBotClient"
     ]
   },
   "mixins": [

@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "me.mankool.mcBotClient.mixin.client",
+  "package": "mankool.mcBotClient.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ClientPlayNetworkHandlerAccessor",
