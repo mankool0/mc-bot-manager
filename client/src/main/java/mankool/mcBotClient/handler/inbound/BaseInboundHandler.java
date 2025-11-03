@@ -2,16 +2,15 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Protocol;
+import net.minecraft.client.Minecraft;
 import mankool.mcBotClient.connection.PipeConnection;
-import net.minecraft.client.MinecraftClient;
-
 import java.util.UUID;
 
 public abstract class BaseInboundHandler {
-    protected final MinecraftClient client;
+    protected final Minecraft client;
     protected final PipeConnection connection;
 
-    public BaseInboundHandler(MinecraftClient client, PipeConnection connection) {
+    public BaseInboundHandler(Minecraft client, PipeConnection connection) {
         this.client = client;
         this.connection = connection;
     }

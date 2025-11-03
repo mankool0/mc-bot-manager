@@ -6,20 +6,19 @@ import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.mixin.client.ClientPlayNetworkHandlerAccessor;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.MinecraftClient;
-
+import net.minecraft.client.Minecraft;
 import java.util.UUID;
 
 public class ServerOutbound extends BaseOutbound {
     private int tickCounter = 0;
 
-    public ServerOutbound(MinecraftClient client, PipeConnection connection) {
+    public ServerOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
 
     @Override
-    protected void onClientTick(MinecraftClient client) {
-        if (client.player == null || client.world == null) {
+    protected void onClientTick(Minecraft client) {
+        if (client.player == null || client.level == null) {
             return;
         }
 
@@ -38,16 +37,16 @@ public class ServerOutbound extends BaseOutbound {
             .orElse("unknown");
 
         // Get player info from session (available even before joining a server)
-        var session = client.getSession();
-        String playerName = session.getUsername();
-        String playerUuid = session.getUuidOrNull() != null ?
-            session.getUuidOrNull().toString() : "unknown";
+        var session = client.getUser();
+        String playerName = session.getName();
+        String playerUuid = session.getProfileId() != null ?
+            session.getProfileId().toString() : "unknown";
 
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
 
         Connection.ConnectionInfo infoBuilder = Connection.ConnectionInfo.newBuilder()
-            .setClientVersion(client.getGameVersion())
+            .setClientVersion(client.getLaunchedVersion())
             .setModVersion(modVersion)
             .setPlayerName(playerName)
             .setPlayerUuid(playerUuid)
@@ -67,7 +66,7 @@ public class ServerOutbound extends BaseOutbound {
     }
 
     public void sendStatusUpdate() {
-        var networkHandler = client.getNetworkHandler();
+        var networkHandler = client.getConnection();
         boolean connected = networkHandler != null;
 
         String serverAddress = "Unknown";
@@ -82,10 +81,10 @@ public class ServerOutbound extends BaseOutbound {
 
         if (connected) {
             // Determine server address and name
-            if (client.getCurrentServerEntry() != null) {
-                serverAddress = client.getCurrentServerEntry().address;
-                serverName = client.getCurrentServerEntry().name;
-            } else if (client.isInSingleplayer()) {
+            if (client.getCurrentServer() != null) {
+                serverAddress = client.getCurrentServer().ip;
+                serverName = client.getCurrentServer().name;
+            } else if (client.isLocalServer()) {
                 serverAddress = "Singleplayer";
                 serverName = "Singleplayer";
             } else {
@@ -94,17 +93,17 @@ public class ServerOutbound extends BaseOutbound {
             }
 
             // Get player count from the current world
-            if (client.world != null) {
-                playerCount = client.world.getPlayers().size();
+            if (client.level != null) {
+                playerCount = client.level.players().size();
             }
 
             // Get server metadata
-            var serverInfo = networkHandler.getServerInfo();
+            var serverInfo = networkHandler.getServerData();
             if (serverInfo != null) {
-                serverStatus = Connection.ServerConnectionStatus.Status.forNumber(serverInfo.getStatus().ordinal());
+                serverStatus = Connection.ServerConnectionStatus.Status.forNumber(serverInfo.state().ordinal());
 
-                if (serverInfo.label != null) {
-                    motd = serverInfo.label.getString();
+                if (serverInfo.motd != null) {
+                    motd = serverInfo.motd.getString();
                 }
 
                 if (serverInfo.version != null) {
@@ -114,14 +113,14 @@ public class ServerOutbound extends BaseOutbound {
 
             // Get player ping
             if (client.player != null) {
-                var playerListEntry = networkHandler.getPlayerListEntry(client.player.getUuid());
+                var playerListEntry = networkHandler.getPlayerInfo(client.player.getUUID());
                 if (playerListEntry != null) {
                     ping = playerListEntry.getLatency();
                 }
             }
 
             // Check if server enforces secure chat
-            enforcesSecureChat = ((ClientPlayNetworkHandlerAccessor) networkHandler).callIsSecureChatEnforced();
+            enforcesSecureChat = ((ClientPlayNetworkHandlerAccessor) networkHandler).callEnforcesSecureChat();
         } else {
             serverAddress = "Disconnected";
             serverName = "Disconnected";

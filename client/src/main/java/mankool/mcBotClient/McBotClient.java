@@ -5,7 +5,7 @@ import mankool.mcBotClient.handler.MessageHandler;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,19 +44,19 @@ public class McBotClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
     }
 
-    private void onClientStarted(MinecraftClient client) {
+    private void onClientStarted(Minecraft client) {
         LOGGER.info("Client started, initializing pipe connection");
         initializeConnection(client);
     }
 
-    private void onClientStopping(MinecraftClient client) {
+    private void onClientStopping(Minecraft client) {
         LOGGER.info("Client stopping, disconnecting pipe");
         disconnect();
     }
 
-    private void onClientTick(MinecraftClient client) {
+    private void onClientTick(Minecraft client) {
         // Check if we're in a world and need to connect
-        if (!initialized && client.player != null && client.world != null) {
+        if (!initialized && client.player != null && client.level != null) {
             initializeConnection(client);
         }
 
@@ -67,7 +67,7 @@ public class McBotClient implements ClientModInitializer {
         }
     }
 
-    private void initializeConnection(MinecraftClient client) {
+    private void initializeConnection(Minecraft client) {
         if (pipeConnection != null && pipeConnection.isConnected()) {
             return;
         }
@@ -89,7 +89,7 @@ public class McBotClient implements ClientModInitializer {
             } else {
                 LOGGER.error("Failed to connect to manager pipe");
                 pipeConnection = null;
-                client.stop();
+                client.destroy();
             }
         } catch (Exception e) {
             LOGGER.error("Error initializing connection", e);

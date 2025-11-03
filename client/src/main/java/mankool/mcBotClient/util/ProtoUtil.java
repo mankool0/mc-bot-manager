@@ -1,11 +1,11 @@
 package mankool.mcBotClient.util;
 
 import mankool.mcbot.protocol.Common;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 public class ProtoUtil {
 
-    public static Common.Vec3d toProtoVec3d(Vec3d vec) {
+    public static Common.Vec3d toProtoVec3d(Vec3 vec) {
         return Common.Vec3d.newBuilder()
             .setX(vec.x)
             .setY(vec.y)
