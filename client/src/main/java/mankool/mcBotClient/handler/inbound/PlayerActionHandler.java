@@ -2,23 +2,23 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Common;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import mankool.mcBotClient.connection.PipeConnection;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 
 public class PlayerActionHandler extends BaseInboundHandler {
 
-    public PlayerActionHandler(MinecraftClient client, PipeConnection connection) {
+    public PlayerActionHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
 
     public void handleMoveTo(String messageId, Commands.MoveToCommand command) {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) {
             sendFailure(messageId, "Not in game");
             return;
@@ -32,7 +32,7 @@ public class PlayerActionHandler extends BaseInboundHandler {
     }
 
     public void handleLookAt(String messageId, Commands.LookAtCommand command) {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) {
             sendFailure(messageId, "Not in game");
             return;
@@ -43,35 +43,35 @@ public class PlayerActionHandler extends BaseInboundHandler {
                 Common.Vec3d pos = command.getPosition();
                 BlockPos blockPos = new BlockPos((int) pos.getX(), (int) pos.getY(), (int) pos.getZ());
 
-                Vec3d eyePos = player.getEyePos();
+                Vec3 eyePos = player.getEyePosition();
 
-                Vec3d[] faceCenters = new Vec3d[]{
-                    new Vec3d(blockPos.getX() + 0.5, blockPos.getY(), blockPos.getZ() + 0.5),      // Down
-                    new Vec3d(blockPos.getX() + 0.5, blockPos.getY() + 1, blockPos.getZ() + 0.5),  // Up
-                    new Vec3d(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ()),      // North
-                    new Vec3d(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 1),  // South
-                    new Vec3d(blockPos.getX(), blockPos.getY() + 0.5, blockPos.getZ() + 0.5),      // West
-                    new Vec3d(blockPos.getX() + 1, blockPos.getY() + 0.5, blockPos.getZ() + 0.5)   // East
+                Vec3[] faceCenters = new Vec3[]{
+                    new Vec3(blockPos.getX() + 0.5, blockPos.getY(), blockPos.getZ() + 0.5),      // Down
+                    new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 1, blockPos.getZ() + 0.5),  // Up
+                    new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ()),      // North
+                    new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 1),  // South
+                    new Vec3(blockPos.getX(), blockPos.getY() + 0.5, blockPos.getZ() + 0.5),      // West
+                    new Vec3(blockPos.getX() + 1, blockPos.getY() + 0.5, blockPos.getZ() + 0.5)   // East
                 };
 
                 Direction[] directions = new Direction[]{
                     Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST
                 };
 
-                Vec3d targetPos = null;
+                Vec3 targetPos = null;
                 Direction bestFace = null;
 
                 for (int i = 0; i < faceCenters.length; i++) {
-                    Vec3d faceCenter = faceCenters[i];
+                    Vec3 faceCenter = faceCenters[i];
 
-                    Vec3d direction = faceCenter.subtract(eyePos).normalize();
-                    Vec3d extendedTarget = eyePos.add(direction.multiply(eyePos.distanceTo(faceCenter) + 0.5));
+                    Vec3 direction = faceCenter.subtract(eyePos).normalize();
+                    Vec3 extendedTarget = eyePos.add(direction.scale(eyePos.distanceTo(faceCenter) + 0.5));
 
-                    BlockHitResult hitResult = player.getWorld().raycast(new net.minecraft.world.RaycastContext(
+                    BlockHitResult hitResult = player.level().clip(new net.minecraft.world.level.ClipContext(
                         eyePos,
                         extendedTarget,
-                        net.minecraft.world.RaycastContext.ShapeType.OUTLINE,
-                        net.minecraft.world.RaycastContext.FluidHandling.NONE,
+                        net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                        net.minecraft.world.level.ClipContext.Fluid.NONE,
                         player
                     ));
 
@@ -83,7 +83,7 @@ public class PlayerActionHandler extends BaseInboundHandler {
                 }
 
                 if (targetPos == null) {
-                    targetPos = Vec3d.ofCenter(blockPos);
+                    targetPos = Vec3.atCenterOf(blockPos);
                     bestFace = null;
                 }
 
@@ -95,12 +95,12 @@ public class PlayerActionHandler extends BaseInboundHandler {
                 float yaw = (float) (Math.atan2(-dx, dz) * 180 / Math.PI);
                 float pitch = (float) (Math.atan2(-dy, distance) * 180 / Math.PI);
 
-                player.setYaw(yaw);
-                player.setPitch(pitch);
+                player.setYRot(yaw);
+                player.setXRot(pitch);
 
                 if (bestFace != null) {
                     sendSuccess(messageId, String.format("Looking at block %.0f, %.0f, %.0f (%s face)",
-                        pos.getX(), pos.getY(), pos.getZ(), bestFace.asString()));
+                        pos.getX(), pos.getY(), pos.getZ(), bestFace.getSerializedName()));
                 } else {
                     sendSuccess(messageId, String.format("Looking at block %.0f, %.0f, %.0f (center, no face reachable)",
                         pos.getX(), pos.getY(), pos.getZ()));
@@ -118,15 +118,15 @@ public class PlayerActionHandler extends BaseInboundHandler {
     }
 
     public void handleSetRotation(String messageId, Commands.SetRotationCommand command) {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) {
             sendFailure(messageId, "Not in game");
             return;
         }
 
         try {
-            player.setYaw(command.getYaw());
-            player.setPitch(command.getPitch());
+            player.setYRot(command.getYaw());
+            player.setXRot(command.getPitch());
             sendSuccess(messageId, String.format("Rotation set to yaw=%.2f, pitch=%.2f", command.getYaw(), command.getPitch()));
         } catch (Exception e) {
             sendFailure(messageId, "Failed to set rotation: " + e.getMessage());

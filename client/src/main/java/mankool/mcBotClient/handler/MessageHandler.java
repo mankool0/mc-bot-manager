@@ -5,15 +5,14 @@ import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.handler.inbound.*;
 import mankool.mcBotClient.handler.outbound.*;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.MinecraftClient;
-
+import net.minecraft.client.Minecraft;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
 public class MessageHandler {
     private final PipeConnection connection;
-    private final MinecraftClient client;
+    private final Minecraft client;
     private volatile boolean running = false;
     private int tick = 0;
 
@@ -32,7 +31,7 @@ public class MessageHandler {
     private final PlayerOutbound playerOutbound;
     private final InventoryOutbound inventoryOutbound;
 
-    public MessageHandler(PipeConnection connection, MinecraftClient client) {
+    public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
         this.client = client;
 
@@ -118,7 +117,7 @@ public class MessageHandler {
         }
     }
 
-    private void onClientTick(MinecraftClient client) {
+    private void onClientTick(Minecraft client) {
         if (!running) {
             return;
         }

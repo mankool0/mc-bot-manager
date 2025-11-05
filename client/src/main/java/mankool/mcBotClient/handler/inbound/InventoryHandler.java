@@ -2,19 +2,19 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Common;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.InteractionHand;
 import mankool.mcBotClient.connection.PipeConnection;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.Hand;
 
 public class InventoryHandler extends BaseInboundHandler {
 
-    public InventoryHandler(MinecraftClient client, PipeConnection connection) {
+    public InventoryHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
 
     public void handleSwitchHotbar(String messageId, Commands.SwitchHotbarSlotCommand command) {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) {
             sendFailure(messageId, "Not in game");
             return;
@@ -36,17 +36,17 @@ public class InventoryHandler extends BaseInboundHandler {
     }
 
     public void handleUseItem(String messageId, Commands.UseItemCommand command) {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) {
             sendFailure(messageId, "Not in game");
             return;
         }
 
         try {
-            Hand hand = command.getHand() == Common.Hand.OFF_HAND ? Hand.OFF_HAND : Hand.MAIN_HAND;
+            InteractionHand hand = command.getHand() == Common.Hand.OFF_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
 
-            if (client.interactionManager != null) {
-                client.interactionManager.interactItem(player, hand);
+            if (client.gameMode != null) {
+                client.gameMode.useItem(player, hand);
                 sendSuccess(messageId, "Used item in " + hand + " hand");
             } else {
                 sendFailure(messageId, "Interaction manager not available");
@@ -58,7 +58,7 @@ public class InventoryHandler extends BaseInboundHandler {
     }
 
     public void handleDropItem(String messageId, Commands.DropItemCommand command) {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) {
             sendFailure(messageId, "Not in game");
             return;
@@ -66,7 +66,7 @@ public class InventoryHandler extends BaseInboundHandler {
 
         try {
             boolean dropAll = command.getDropAll();
-            boolean dropped = player.dropSelectedItem(dropAll);
+            boolean dropped = player.drop(dropAll);
 
             if (dropped) {
                 sendSuccess(messageId, "Dropped item" + (dropAll ? " stack" : ""));

@@ -9,13 +9,13 @@ import baritone.api.utils.SettingsUtil;
 import mankool.mcbot.protocol.Baritone;
 import mankool.mcbot.protocol.Baritone.*;
 import mankool.mcbot.protocol.Protocol;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.api.baritone.IBaritoneSettingChangeListener;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.BlockMirror;
-import net.minecraft.util.BlockRotation;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +31,7 @@ public class BaritoneHandler extends BaseInboundHandler {
     private boolean listenersInstalled = false;
     private int tickCounter = 0;
 
-    public BaritoneHandler(MinecraftClient client, PipeConnection connection) {
+    public BaritoneHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
         LOGGER.info("Initialized with Mixin-based setting change notifications");
     }
@@ -286,13 +286,13 @@ public class BaritoneHandler extends BaseInboundHandler {
         try {
             java.lang.reflect.Type elementType = getSettingTypeArgument(setting, 0);
 
-            if (elementType == net.minecraft.block.Block.class) {
-                for (net.minecraft.block.Block block : net.minecraft.registry.Registries.BLOCK) {
-                    builder.addPossibleValues(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+            if (elementType == net.minecraft.world.level.block.Block.class) {
+                for (net.minecraft.world.level.block.Block block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+                    builder.addPossibleValues(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
                 }
-            } else if (elementType == net.minecraft.item.Item.class) {
-                for (net.minecraft.item.Item item : net.minecraft.registry.Registries.ITEM) {
-                    builder.addPossibleValues(net.minecraft.registry.Registries.ITEM.getId(item).toString());
+            } else if (elementType == net.minecraft.world.item.Item.class) {
+                for (net.minecraft.world.item.Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+                    builder.addPossibleValues(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString());
                 }
             } else if (elementType == String.class) {
                 // String lists (like buildIgnoreProperties) - no predefined values
@@ -310,9 +310,9 @@ public class BaritoneHandler extends BaseInboundHandler {
         try {
             MapMetadata.Builder metadataBuilder = MapMetadata.newBuilder();
 
-            for (net.minecraft.block.Block block : net.minecraft.registry.Registries.BLOCK) {
-                metadataBuilder.addPossibleKeys(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
-                metadataBuilder.addPossibleListValues(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+            for (net.minecraft.world.level.block.Block block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+                metadataBuilder.addPossibleKeys(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
+                metadataBuilder.addPossibleListValues(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
             }
 
             builder.setMapMetadata(metadataBuilder.build());
@@ -343,11 +343,11 @@ public class BaritoneHandler extends BaseInboundHandler {
             java.lang.reflect.Type keyType = getSettingTypeArgument(setting, 0);
             java.lang.reflect.Type valueType = getSettingTypeArgument(setting, 1);
 
-            boolean result = keyType == net.minecraft.block.Block.class &&
+            boolean result = keyType == net.minecraft.world.level.block.Block.class &&
                    valueType instanceof java.lang.reflect.ParameterizedType valueParamType &&
                    valueParamType.getRawType() == List.class &&
                    valueParamType.getActualTypeArguments().length > 0 &&
-                   valueParamType.getActualTypeArguments()[0] == net.minecraft.block.Block.class;
+                   valueParamType.getActualTypeArguments()[0] == net.minecraft.world.level.block.Block.class;
 
             return result;
         } catch (Exception e) {
@@ -409,15 +409,15 @@ public class BaritoneHandler extends BaseInboundHandler {
                 List<Object> list = new ArrayList<>();
 
                 for (String item : protoValue.getListValue().getItemsList()) {
-                    if (elementType == net.minecraft.block.Block.class) {
-                        net.minecraft.util.Identifier id = net.minecraft.util.Identifier.tryParse(item);
+                    if (elementType == net.minecraft.world.level.block.Block.class) {
+                        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(item);
                         if (id != null) {
-                            list.add(net.minecraft.registry.Registries.BLOCK.get(id));
+                            list.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(id));
                         }
-                    } else if (elementType == net.minecraft.item.Item.class) {
-                        net.minecraft.util.Identifier id = net.minecraft.util.Identifier.tryParse(item);
+                    } else if (elementType == net.minecraft.world.item.Item.class) {
+                        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(item);
                         if (id != null) {
-                            list.add(net.minecraft.registry.Registries.ITEM.get(id));
+                            list.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(id));
                         }
                     } else {
                         list.add(item);
@@ -428,23 +428,23 @@ public class BaritoneHandler extends BaseInboundHandler {
                 // Check if it's Map<Block, List<Block>>
                 if (isMapBlockToBlockList(setting)) {
                     if (!protoValue.hasBlockToBlockListMapValue()) return false;
-                    Map<net.minecraft.block.Block, List<net.minecraft.block.Block>> blockMap = new HashMap<>();
+                    Map<net.minecraft.world.level.block.Block, List<net.minecraft.world.level.block.Block>> blockMap = new HashMap<>();
                     for (var entry : protoValue.getBlockToBlockListMapValue().getEntriesMap().entrySet()) {
                         String keyId = entry.getKey();
                         StringList valueList = entry.getValue();
 
-                        net.minecraft.util.Identifier keyIdentifier = net.minecraft.util.Identifier.tryParse(keyId);
+                        net.minecraft.resources.ResourceLocation keyIdentifier = net.minecraft.resources.ResourceLocation.tryParse(keyId);
                         if (keyIdentifier == null) {
                             LOGGER.warn("Invalid block ID for map key: {}", keyId);
                             continue;
                         }
-                        net.minecraft.block.Block keyBlock = net.minecraft.registry.Registries.BLOCK.get(keyIdentifier);
+                        net.minecraft.world.level.block.Block keyBlock = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(keyIdentifier);
 
-                        List<net.minecraft.block.Block> valueBlocks = new ArrayList<>();
+                        List<net.minecraft.world.level.block.Block> valueBlocks = new ArrayList<>();
                         for (String blockId : valueList.getItemsList()) {
-                            net.minecraft.util.Identifier blockIdentifier = net.minecraft.util.Identifier.tryParse(blockId);
+                            net.minecraft.resources.ResourceLocation blockIdentifier = net.minecraft.resources.ResourceLocation.tryParse(blockId);
                             if (blockIdentifier != null) {
-                                net.minecraft.block.Block block = net.minecraft.registry.Registries.BLOCK.get(blockIdentifier);
+                                net.minecraft.world.level.block.Block block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(blockIdentifier);
                                 valueBlocks.add(block);
                             } else {
                                 LOGGER.warn("Invalid block ID in map value: {}", blockId);
@@ -467,10 +467,10 @@ public class BaritoneHandler extends BaseInboundHandler {
                 if (!protoValue.hasVec3IValue()) return false;
                 Baritone.Vec3i vec = protoValue.getVec3IValue();
                 parsedValue = new Vec3i(vec.getX(), vec.getY(), vec.getZ());
-            } else if (type == BlockRotation.class) {
+            } else if (type == Rotation.class) {
                 if (!protoValue.hasRotationValue()) return false;
                 parsedValue = fromProtoRotation(protoValue.getRotationValue());
-            } else if (type == BlockMirror.class) {
+            } else if (type == Mirror.class) {
                 if (!protoValue.hasMirrorValue()) return false;
                 parsedValue = fromProtoMirror(protoValue.getMirrorValue());
             } else {
@@ -511,8 +511,8 @@ public class BaritoneHandler extends BaseInboundHandler {
         }
         if (type == BlockPos.class) return BaritoneSettingInfo.SettingType.VEC3I;
         if (type == Vec3i.class) return BaritoneSettingInfo.SettingType.VEC3I;
-        if (type == BlockRotation.class) return BaritoneSettingInfo.SettingType.BLOCK_ROTATION;
-        if (type == BlockMirror.class) return BaritoneSettingInfo.SettingType.BLOCK_MIRROR;
+        if (type == Rotation.class) return BaritoneSettingInfo.SettingType.BLOCK_ROTATION;
+        if (type == Mirror.class) return BaritoneSettingInfo.SettingType.BLOCK_MIRROR;
 
         LOGGER.warn("Unrecognized Baritone setting type for '{}': {} - add support or explicitly ignore this type",
                 setting.getName(), type.getSimpleName());
@@ -541,10 +541,10 @@ public class BaritoneHandler extends BaseInboundHandler {
                 case List<?> list -> {
                     List<String> strings = new ArrayList<>();
                     for (Object item : list) {
-                        if (item instanceof net.minecraft.block.Block block) {
-                            strings.add(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
-                        } else if (item instanceof net.minecraft.item.Item itemObj) {
-                            strings.add(net.minecraft.registry.Registries.ITEM.getId(itemObj).toString());
+                        if (item instanceof net.minecraft.world.level.block.Block block) {
+                            strings.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
+                        } else if (item instanceof net.minecraft.world.item.Item itemObj) {
+                            strings.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(itemObj).toString());
                         } else {
                             strings.add(item.toString());
                         }
@@ -555,14 +555,14 @@ public class BaritoneHandler extends BaseInboundHandler {
                     if (setting != null && isMapBlockToBlockList(setting)) {
                         BlockToBlockListMap.Builder mapBuilder = BlockToBlockListMap.newBuilder();
                         for (Map.Entry<?, ?> entry : map.entrySet()) {
-                            net.minecraft.block.Block keyBlock = (net.minecraft.block.Block) entry.getKey();
+                            net.minecraft.world.level.block.Block keyBlock = (net.minecraft.world.level.block.Block) entry.getKey();
                             @SuppressWarnings("unchecked")
-                            List<net.minecraft.block.Block> valueBlocks = (List<net.minecraft.block.Block>) entry.getValue();
+                            List<net.minecraft.world.level.block.Block> valueBlocks = (List<net.minecraft.world.level.block.Block>) entry.getValue();
 
-                            String keyId = net.minecraft.registry.Registries.BLOCK.getId(keyBlock).toString();
+                            String keyId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(keyBlock).toString();
                             StringList.Builder listBuilder = StringList.newBuilder();
-                            for (net.minecraft.block.Block block : valueBlocks) {
-                                listBuilder.addItems(net.minecraft.registry.Registries.BLOCK.getId(block).toString());
+                            for (net.minecraft.world.level.block.Block block : valueBlocks) {
+                                listBuilder.addItems(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString());
                             }
                             mapBuilder.putEntries(keyId, listBuilder.build());
                         }
@@ -585,8 +585,8 @@ public class BaritoneHandler extends BaseInboundHandler {
                         .setY(vec.getY())
                         .setZ(vec.getZ())
                         .build());
-                case BlockRotation rotation -> builder.setRotationValue(toProtoRotation(rotation));
-                case BlockMirror mirror -> builder.setMirrorValue(toProtoMirror(mirror));
+                case Rotation rotation -> builder.setRotationValue(toProtoRotation(rotation));
+                case Mirror mirror -> builder.setMirrorValue(toProtoMirror(mirror));
                 default -> {
                     LOGGER.warn("Unsupported Baritone setting type for serialization: {}", value.getClass());
                     return null;
@@ -600,16 +600,16 @@ public class BaritoneHandler extends BaseInboundHandler {
         }
     }
 
-    private BlockRotation fromProtoRotation(Baritone.BlockRotation rotation) {
+    private Rotation fromProtoRotation(Baritone.BlockRotation rotation) {
         return switch (rotation) {
-            case BLOCK_ROTATION_CLOCKWISE_90 -> BlockRotation.CLOCKWISE_90;
-            case BLOCK_ROTATION_CLOCKWISE_180 -> BlockRotation.CLOCKWISE_180;
-            case BLOCK_ROTATION_COUNTERCLOCKWISE_90 -> BlockRotation.COUNTERCLOCKWISE_90;
-            default -> BlockRotation.NONE;
+            case BLOCK_ROTATION_CLOCKWISE_90 -> Rotation.CLOCKWISE_90;
+            case BLOCK_ROTATION_CLOCKWISE_180 -> Rotation.CLOCKWISE_180;
+            case BLOCK_ROTATION_COUNTERCLOCKWISE_90 -> Rotation.COUNTERCLOCKWISE_90;
+            default -> Rotation.NONE;
         };
     }
 
-    private Baritone.BlockRotation toProtoRotation(BlockRotation rotation) {
+    private Baritone.BlockRotation toProtoRotation(Rotation rotation) {
         return switch (rotation) {
             case CLOCKWISE_90 -> Baritone.BlockRotation.BLOCK_ROTATION_CLOCKWISE_90;
             case CLOCKWISE_180 -> Baritone.BlockRotation.BLOCK_ROTATION_CLOCKWISE_180;
@@ -619,15 +619,15 @@ public class BaritoneHandler extends BaseInboundHandler {
         };
     }
 
-    private BlockMirror fromProtoMirror(Baritone.BlockMirror mirror) {
+    private Mirror fromProtoMirror(Baritone.BlockMirror mirror) {
         return switch (mirror) {
-            case BLOCK_MIRROR_LEFT_RIGHT -> BlockMirror.LEFT_RIGHT;
-            case BLOCK_MIRROR_FRONT_BACK -> BlockMirror.FRONT_BACK;
-            default -> BlockMirror.NONE;
+            case BLOCK_MIRROR_LEFT_RIGHT -> Mirror.LEFT_RIGHT;
+            case BLOCK_MIRROR_FRONT_BACK -> Mirror.FRONT_BACK;
+            default -> Mirror.NONE;
         };
     }
 
-    private Baritone.BlockMirror toProtoMirror(BlockMirror mirror) {
+    private Baritone.BlockMirror toProtoMirror(Mirror mirror) {
         return switch (mirror) {
             case LEFT_RIGHT -> Baritone.BlockMirror.BLOCK_MIRROR_LEFT_RIGHT;
             case FRONT_BACK -> Baritone.BlockMirror.BLOCK_MIRROR_FRONT_BACK;

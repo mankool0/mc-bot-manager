@@ -3,22 +3,21 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Inventory;
 import mankool.mcbot.protocol.Protocol;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import mankool.mcBotClient.connection.PipeConnection;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-
 import java.util.UUID;
 
 public class InventoryOutbound extends BaseOutbound {
     private int tickCounter = 0;
 
-    public InventoryOutbound(MinecraftClient client, PipeConnection connection) {
+    public InventoryOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
 
     @Override
-    protected void onClientTick(MinecraftClient client) {
-        if (client.player == null || client.world == null) {
+    protected void onClientTick(Minecraft client) {
+        if (client.player == null || client.level == null) {
             return;
         }
 
@@ -31,23 +30,23 @@ public class InventoryOutbound extends BaseOutbound {
     }
 
     private void sendUpdate() {
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) return;
 
         Inventory.InventoryUpdate.Builder inventoryBuilder = Inventory.InventoryUpdate.newBuilder()
             .setSelectedSlot(player.getInventory().getSelectedSlot());
 
         // Add all inventory items
-        for (int i = 0; i < player.getInventory().size(); i++) {
-            net.minecraft.item.ItemStack itemStack = player.getInventory().getStack(i);
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            net.minecraft.world.item.ItemStack itemStack = player.getInventory().getItem(i);
             if (!itemStack.isEmpty()) {
                 Common.ItemStack protoItem = Common.ItemStack.newBuilder()
                     .setSlot(i)
                     .setItemId(itemStack.getItem().toString())
                     .setCount(itemStack.getCount())
-                    .setDamage(itemStack.getDamage())
+                    .setDamage(itemStack.getDamageValue())
                     .setMaxDamage(itemStack.getMaxDamage())
-                    .setDisplayName(itemStack.getName().getString())
+                    .setDisplayName(itemStack.getHoverName().getString())
                     .build();
                 inventoryBuilder.addItems(protoItem);
             }

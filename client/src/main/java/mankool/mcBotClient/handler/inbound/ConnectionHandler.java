@@ -1,16 +1,15 @@
 package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.common.ClientboundDisconnectPacket;
 import mankool.mcBotClient.connection.PipeConnection;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
 
 public class ConnectionHandler extends BaseInboundHandler {
 
-    public ConnectionHandler(MinecraftClient client, PipeConnection connection) {
+    public ConnectionHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
 
@@ -20,20 +19,20 @@ public class ConnectionHandler extends BaseInboundHandler {
 
         try {
             // Disconnect from current server if connected
-            if (client.getNetworkHandler() != null) {
-                client.world.disconnect(Text.literal("Connecting to another server"));
+            if (client.getConnection() != null) {
+                client.level.disconnect(Component.literal("Connecting to another server"));
                 client.disconnect(null, false);
             }
 
             // Parse the server address
-            net.minecraft.client.network.ServerAddress address =
-                net.minecraft.client.network.ServerAddress.parse(serverAddress);
+            net.minecraft.client.multiplayer.resolver.ServerAddress address =
+                net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(serverAddress);
 
             // Create server info
-            ServerInfo serverInfo = new ServerInfo(serverAddress, serverAddress, ServerInfo.ServerType.OTHER);
+            ServerData serverInfo = new ServerData(serverAddress, serverAddress, ServerData.Type.OTHER);
 
             // Connect to the server
-            net.minecraft.client.gui.screen.multiplayer.ConnectScreen.connect(
+            net.minecraft.client.gui.screens.ConnectScreen.startConnecting(
                 null, // parent screen
                 client,
                 address,
@@ -54,8 +53,8 @@ public class ConnectionHandler extends BaseInboundHandler {
         System.out.println("Disconnect requested: " + reason);
 
         try {
-            if (client.getNetworkHandler() != null) {
-                client.getNetworkHandler().onDisconnect(new DisconnectS2CPacket(Text.literal(reason)));
+            if (client.getConnection() != null) {
+                client.getConnection().handleDisconnect(new ClientboundDisconnectPacket(Component.literal(reason)));
                 sendSuccess(messageId, "Disconnected: " + reason);
             } else {
                 sendFailure(messageId, "Not connected to any server");
@@ -69,6 +68,6 @@ public class ConnectionHandler extends BaseInboundHandler {
     public void handleShutdown(String messageId, Commands.ShutdownCommand command) {
         System.out.println("Shutdown requested: " + command.getReason());
         sendSuccess(messageId, "Shutting down");
-        client.stop();
+        client.destroy();
     }
 }

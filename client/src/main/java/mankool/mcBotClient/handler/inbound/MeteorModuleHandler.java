@@ -7,19 +7,29 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.registry.BuiltinRegistries;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.Registry;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.data.registries.VanillaRegistries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.network.protocol.Packet;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.joml.Vector3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
@@ -32,7 +42,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(MeteorModuleHandler.class);
     private boolean hooksInstalled = false;
 
-    public MeteorModuleHandler(MinecraftClient client, PipeConnection connection) {
+    public MeteorModuleHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
         LOGGER.info("Initialized (hooks will be installed on first use)");
     }
@@ -268,46 +278,46 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     }
                 }
                 case BlockListSetting blockListSetting -> {
-                    for (Block block : Registries.BLOCK) {
+                    for (Block block : BuiltInRegistries.BLOCK) {
                         if (blockListSetting.filter == null || blockListSetting.filter.test(block)) {
-                            builder.addPossibleValues(Registries.BLOCK.getId(block).toString());
+                            builder.addPossibleValues(BuiltInRegistries.BLOCK.getKey(block).toString());
                         }
                     }
                 }
                 case ItemListSetting itemListSetting -> {
-                    for (net.minecraft.item.Item item : Registries.ITEM) {
+                    for (Item item : BuiltInRegistries.ITEM) {
                         if (itemListSetting.filter == null || itemListSetting.filter.test(item)) {
-                            builder.addPossibleValues(Registries.ITEM.getId(item).toString());
+                            builder.addPossibleValues(BuiltInRegistries.ITEM.getKey(item).toString());
                         }
                     }
                 }
                 case EntityTypeListSetting entityTypeListSetting -> {
-                    for (net.minecraft.entity.EntityType<?> entityType : Registries.ENTITY_TYPE) {
+                    for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
                         if (entityTypeListSetting.filter == null || entityTypeListSetting.filter.test(entityType)) {
-                            builder.addPossibleValues(Registries.ENTITY_TYPE.getId(entityType).toString());
+                            builder.addPossibleValues(BuiltInRegistries.ENTITY_TYPE.getKey(entityType).toString());
                         }
                     }
                 }
                 case PacketListSetting packetListSetting -> {
-                    for (Class<? extends net.minecraft.network.packet.Packet<?>> packet : meteordevelopment.meteorclient.utils.network.PacketUtils.getC2SPackets()) {
+                    for (Class<? extends Packet<?>> packet : meteordevelopment.meteorclient.utils.network.PacketUtils.getC2SPackets()) {
                         if (packetListSetting.filter == null || packetListSetting.filter.test(packet)) {
                             builder.addPossibleValues(meteordevelopment.meteorclient.utils.network.PacketUtils.getName(packet));
                         }
                     }
-                    for (Class<? extends net.minecraft.network.packet.Packet<?>> packet : meteordevelopment.meteorclient.utils.network.PacketUtils.getS2CPackets()) {
+                    for (Class<? extends Packet<?>> packet : meteordevelopment.meteorclient.utils.network.PacketUtils.getS2CPackets()) {
                         if (packetListSetting.filter == null || packetListSetting.filter.test(packet)) {
                             builder.addPossibleValues(meteordevelopment.meteorclient.utils.network.PacketUtils.getName(packet));
                         }
                     }
                 }
                 case StatusEffectListSetting ignored -> {
-                    for (net.minecraft.entity.effect.StatusEffect effect : Registries.STATUS_EFFECT) {
-                        builder.addPossibleValues(Registries.STATUS_EFFECT.getId(effect).toString());
+                    for (MobEffect effect : BuiltInRegistries.MOB_EFFECT) {
+                        builder.addPossibleValues(BuiltInRegistries.MOB_EFFECT.getKey(effect).toString());
                     }
                 }
                 case ParticleTypeListSetting ignored -> {
-                    for (net.minecraft.particle.ParticleType<?> particleType : Registries.PARTICLE_TYPE) {
-                        builder.addPossibleValues(Registries.PARTICLE_TYPE.getId(particleType).toString());
+                    for (ParticleType<?> particleType : BuiltInRegistries.PARTICLE_TYPE) {
+                        builder.addPossibleValues(BuiltInRegistries.PARTICLE_TYPE.getKey(particleType).toString());
                     }
                 }
                 case ModuleListSetting ignored -> {
@@ -315,31 +325,32 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                         builder.addPossibleValues(module.name);
                     }
                 }
-                case EnchantmentListSetting ignored ->
-                        BuiltinRegistries.createWrapperLookup()
-                                .getOptional(RegistryKeys.ENCHANTMENT)
-                                .ifPresent(enchantmentRegistry -> enchantmentRegistry.streamKeys().forEach(key -> builder.addPossibleValues(key.getValue().toString())));
+                case EnchantmentListSetting ignored -> {
+                    VanillaRegistries.createLookup().lookup(Registries.ENCHANTMENT).ifPresent(enchantmentRegistry ->
+                            enchantmentRegistry.listElements().forEach(holder ->
+                                    builder.addPossibleValues(holder.key().location().toString())));
+                }
                 case StorageBlockListSetting ignored -> {
                     for (BlockEntityType<?> blockEntityType : StorageBlockListSetting.STORAGE_BLOCKS) {
-                        net.minecraft.util.Identifier id = Registries.BLOCK_ENTITY_TYPE.getId(blockEntityType);
+                        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(blockEntityType);
                         if (id != null) {
                             builder.addPossibleValues(id.toString());
                         }
                     }
                 }
                 case SoundEventListSetting ignored -> {
-                    for (net.minecraft.sound.SoundEvent soundEvent : Registries.SOUND_EVENT) {
-                        builder.addPossibleValues(Registries.SOUND_EVENT.getId(soundEvent).toString());
+                    for (SoundEvent soundEvent : BuiltInRegistries.SOUND_EVENT) {
+                        builder.addPossibleValues(BuiltInRegistries.SOUND_EVENT.getKey(soundEvent).toString());
                     }
                 }
                 case ScreenHandlerListSetting ignored -> {
-                    for (net.minecraft.screen.ScreenHandlerType<?> screenHandlerType : Registries.SCREEN_HANDLER) {
-                        builder.addPossibleValues(Registries.SCREEN_HANDLER.getId(screenHandlerType).toString());
+                    for (MenuType<?> screenHandlerType : BuiltInRegistries.MENU) {
+                        builder.addPossibleValues(BuiltInRegistries.MENU.getKey(screenHandlerType).toString());
                     }
                 }
                 case BlockDataSetting<?> ignored -> {
-                    for (Block block : Registries.BLOCK) {
-                        builder.addPossibleValues(Registries.BLOCK.getId(block).toString());
+                    for (Block block : BuiltInRegistries.BLOCK) {
+                        builder.addPossibleValues(BuiltInRegistries.BLOCK.getKey(block).toString());
                     }
                 }
                 default -> {
@@ -462,7 +473,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case KeybindSetting keybindSetting -> {
                     if (protoValue.hasKeybindValue()) {
                         mankool.mcbot.protocol.Meteor.Keybind kb = protoValue.getKeybindValue();
-                        keybindSetting.set(Keybind.fromKey(net.minecraft.client.util.InputUtil.fromTranslationKey(kb.getKeyName()).getCode()));
+                        keybindSetting.set(Keybind.fromKey(InputConstants.getKey(kb.getKeyName()).getValue()));
                     } else {
                         LOGGER.error("Type mismatch for {}.{}: expected KEYBIND but got {}", moduleName, settingPath, protoValue.getValueCase());
                         return false;
@@ -471,7 +482,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case BlockListSetting blockListSetting -> {
                     if (protoValue.hasBlockListValue()) {
                         List<Block> blocks = protoValue.getBlockListValue().getBlocksList().stream()
-                                .map(name -> Registries.BLOCK.get(net.minecraft.util.Identifier.of(name)))
+                                .map(name -> BuiltInRegistries.BLOCK.getValue(ResourceLocation.parse(name)))
                                 .filter(block -> block != Blocks.AIR)
                                 .collect(Collectors.toList());
                         blockListSetting.set(blocks);
@@ -482,9 +493,9 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case ItemListSetting itemListSetting -> {
                     if (protoValue.hasItemListValue()) {
-                        List<net.minecraft.item.Item> items = protoValue.getItemListValue().getItemsList().stream()
-                                .map(name -> Registries.ITEM.get(net.minecraft.util.Identifier.of(name)))
-                                .filter(item -> item != net.minecraft.item.Items.AIR)
+                        List<Item> items = protoValue.getItemListValue().getItemsList().stream()
+                                .map(name -> BuiltInRegistries.ITEM.getValue(ResourceLocation.parse(name)))
+                                .filter(item -> item != Items.AIR)
                                 .collect(Collectors.toList());
                         itemListSetting.set(items);
                     } else {
@@ -494,8 +505,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case EntityTypeListSetting entityTypeListSetting -> {
                     if (protoValue.hasEntityTypeListValue()) {
-                        java.util.Set<net.minecraft.entity.EntityType<?>> entities = protoValue.getEntityTypeListValue().getEntityTypesList().stream()
-                                .map(name -> Registries.ENTITY_TYPE.get(net.minecraft.util.Identifier.of(name)))
+                        java.util.Set<EntityType<?>> entities = protoValue.getEntityTypeListValue().getEntityTypesList().stream()
+                                .map(name -> BuiltInRegistries.ENTITY_TYPE.getValue(ResourceLocation.parse(name)))
                                 .collect(Collectors.toSet());
                         entityTypeListSetting.set(entities);
                     } else {
@@ -505,8 +516,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case StatusEffectListSetting statusEffectListSetting -> {
                     if (protoValue.hasStatusEffectListValue()) {
-                        List<net.minecraft.entity.effect.StatusEffect> effects = protoValue.getStatusEffectListValue().getEffectsList().stream()
-                                .map(name -> Registries.STATUS_EFFECT.get(net.minecraft.util.Identifier.of(name)))
+                        List<MobEffect> effects = protoValue.getStatusEffectListValue().getEffectsList().stream()
+                                .map(name -> BuiltInRegistries.MOB_EFFECT.getValue(ResourceLocation.parse(name)))
                                 .collect(Collectors.toList());
                         statusEffectListSetting.set(effects);
                     } else {
@@ -557,7 +568,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
 
                             BlockESPConfigMap configMap = protoValue.getBlockEspConfigMapValue();
                             for (var entry : configMap.getConfigsMap().entrySet()) {
-                                Block block = Registries.BLOCK.get(net.minecraft.util.Identifier.of(entry.getKey()));
+                                Block block = BuiltInRegistries.BLOCK.getValue(ResourceLocation.parse(entry.getKey()));
                                 if (block != Blocks.AIR) {
                                     meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData espData =
                                             new meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData(
@@ -584,8 +595,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case ParticleTypeListSetting particleTypeListSetting -> {
                     if (protoValue.hasParticleTypeListValue()) {
-                        List<net.minecraft.particle.ParticleType<?>> particles = protoValue.getParticleTypeListValue().getParticlesList().stream()
-                                .map(name -> Registries.PARTICLE_TYPE.get(net.minecraft.util.Identifier.of(name)))
+                        List<ParticleType<?>> particles = protoValue.getParticleTypeListValue().getParticlesList().stream()
+                                .map(name -> BuiltInRegistries.PARTICLE_TYPE.getValue(ResourceLocation.parse(name)))
                                 .collect(Collectors.toList());
                         particleTypeListSetting.set(particles);
                     } else {
@@ -607,7 +618,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case PacketListSetting packetListSetting -> {
                     if (protoValue.hasPacketListValue()) {
-                        java.util.Set<Class<? extends net.minecraft.network.packet.Packet<?>>> packets = protoValue.getPacketListValue().getPacketsList().stream()
+                        java.util.Set<Class<? extends Packet<?>>> packets = protoValue.getPacketListValue().getPacketsList().stream()
                                 .map(meteordevelopment.meteorclient.utils.network.PacketUtils::getPacket)
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.toSet());
@@ -619,11 +630,11 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case EnchantmentListSetting enchantmentListSetting -> {
                     if (protoValue.hasEnchantmentListValue()) {
-                        java.util.Set<RegistryKey<Enchantment>> enchantments =
+                        java.util.Set<ResourceKey<Enchantment>> enchantments =
                                 protoValue.getEnchantmentListValue().getEnchantmentsList().stream()
-                                .map(id -> RegistryKey.of(
-                                        RegistryKeys.ENCHANTMENT,
-                                        net.minecraft.util.Identifier.of(id)))
+                                .map(id -> ResourceKey.create(
+                                        Registries.ENCHANTMENT,
+                                        ResourceLocation.parse(id)))
                                 .collect(Collectors.toSet());
                         enchantmentListSetting.set(enchantments);
                     } else {
@@ -635,7 +646,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     if (protoValue.hasStorageBlockListValue()) {
                         List<BlockEntityType<?>> storageBlocks =
                                 protoValue.getStorageBlockListValue().getStorageBlocksList().stream()
-                                .map(name -> Registries.BLOCK_ENTITY_TYPE.get(net.minecraft.util.Identifier.of(name)))
+                                .map(name -> BuiltInRegistries.BLOCK_ENTITY_TYPE.getValue(ResourceLocation.parse(name)))
                                 .collect(Collectors.toList());
                         storageBlockListSetting.set(storageBlocks);
                     } else {
@@ -645,8 +656,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case SoundEventListSetting soundEventListSetting -> {
                     if (protoValue.hasSoundEventListValue()) {
-                        List<net.minecraft.sound.SoundEvent> sounds = protoValue.getSoundEventListValue().getSoundsList().stream()
-                                .map(name -> Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of(name)))
+                        List<SoundEvent> sounds = protoValue.getSoundEventListValue().getSoundsList().stream()
+                                .map(name -> BuiltInRegistries.SOUND_EVENT.getValue(ResourceLocation.parse(name)))
                                 .collect(Collectors.toList());
                         soundEventListSetting.set(sounds);
                     } else {
@@ -656,8 +667,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case ScreenHandlerListSetting screenHandlerListSetting -> {
                     if (protoValue.hasScreenHandlerListValue()) {
-                        List<net.minecraft.screen.ScreenHandlerType<?>> handlers = protoValue.getScreenHandlerListValue().getHandlersList().stream()
-                                .map(name -> Registries.SCREEN_HANDLER.get(net.minecraft.util.Identifier.of(name)))
+                        List<MenuType<?>> handlers = protoValue.getScreenHandlerListValue().getHandlersList().stream()
+                                .map(name -> BuiltInRegistries.MENU.getValue(ResourceLocation.parse(name)))
                                 .collect(Collectors.toList());
                         screenHandlerListSetting.set(handlers);
                     } else {
@@ -741,36 +752,36 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case KeybindSetting keybindSetting -> {
                     Keybind kb = keybindSetting.get();
                     builder.setKeybindValue(mankool.mcbot.protocol.Meteor.Keybind.newBuilder()
-                            .setKeyName(net.minecraft.client.util.InputUtil.Type.KEYSYM.createFromCode(kb.getValue()).getTranslationKey())
+                            .setKeyName(InputConstants.getKey(InputConstants.Type.KEYSYM.ordinal(), kb.getValue()).getName())
                             .build());
                 }
                 case BlockListSetting blockListSetting -> {
                     List<String> blockIds = blockListSetting.get().stream()
-                            .map(block -> Registries.BLOCK.getId(block).toString())
+                            .map(block -> BuiltInRegistries.BLOCK.getKey(block).toString())
                             .collect(Collectors.toList());
                     builder.setBlockListValue(BlockList.newBuilder().addAllBlocks(blockIds).build());
                 }
                 case ItemListSetting itemListSetting -> {
                     List<String> itemIds = itemListSetting.get().stream()
-                            .map(item -> Registries.ITEM.getId(item).toString())
+                            .map(item -> BuiltInRegistries.ITEM.getKey(item).toString())
                             .collect(Collectors.toList());
                     builder.setItemListValue(ItemList.newBuilder().addAllItems(itemIds).build());
                 }
                 case EntityTypeListSetting entityTypeListSetting -> {
                     List<String> entityIds = entityTypeListSetting.get().stream()
-                            .map(type -> Registries.ENTITY_TYPE.getId(type).toString())
+                            .map(type -> BuiltInRegistries.ENTITY_TYPE.getKey(type).toString())
                             .collect(Collectors.toList());
                     builder.setEntityTypeListValue(EntityTypeList.newBuilder().addAllEntityTypes(entityIds).build());
                 }
                 case StatusEffectListSetting statusEffectListSetting -> {
                     List<String> effectIds = statusEffectListSetting.get().stream()
-                            .map(effect -> Registries.STATUS_EFFECT.getId(effect).toString())
+                            .map(effect -> BuiltInRegistries.MOB_EFFECT.getKey(effect).toString())
                             .collect(Collectors.toList());
                     builder.setStatusEffectListValue(StatusEffectList.newBuilder().addAllEffects(effectIds).build());
                 }
                 case ParticleTypeListSetting particleTypeListSetting -> {
                     List<String> particleIds = particleTypeListSetting.get().stream()
-                            .map(particle -> Registries.PARTICLE_TYPE.getId(particle).toString())
+                            .map(particle -> BuiltInRegistries.PARTICLE_TYPE.getKey(particle).toString())
                             .collect(Collectors.toList());
                     builder.setParticleTypeListValue(ParticleTypeList.newBuilder().addAllParticles(particleIds).build());
                 }
@@ -788,25 +799,25 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case EnchantmentListSetting enchantmentListSetting -> {
                     List<String> enchantmentIds = enchantmentListSetting.get().stream()
-                            .map(key -> key.getValue().toString())
+                            .map(key -> key.location().toString())
                             .collect(Collectors.toList());
                     builder.setEnchantmentListValue(EnchantmentList.newBuilder().addAllEnchantments(enchantmentIds).build());
                 }
                 case StorageBlockListSetting storageBlockListSetting -> {
                     List<String> blockIds = storageBlockListSetting.get().stream()
-                            .map(blockEntityType -> Registries.BLOCK_ENTITY_TYPE.getId(blockEntityType).toString())
+                            .map(blockEntityType -> BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(blockEntityType).toString())
                             .collect(Collectors.toList());
                     builder.setStorageBlockListValue(StorageBlockList.newBuilder().addAllStorageBlocks(blockIds).build());
                 }
                 case SoundEventListSetting soundEventListSetting -> {
                     List<String> soundIds = soundEventListSetting.get().stream()
-                            .map(sound -> Registries.SOUND_EVENT.getId(sound).toString())
+                            .map(sound -> BuiltInRegistries.SOUND_EVENT.getKey(sound).toString())
                             .collect(Collectors.toList());
                     builder.setSoundEventListValue(SoundEventList.newBuilder().addAllSounds(soundIds).build());
                 }
                 case ScreenHandlerListSetting screenHandlerListSetting -> {
                     List<String> handlerIds = screenHandlerListSetting.get().stream()
-                            .map(handler -> Registries.SCREEN_HANDLER.getId(handler).toString())
+                            .map(handler -> BuiltInRegistries.MENU.getKey(handler).toString())
                             .collect(Collectors.toList());
                     builder.setScreenHandlerListValue(ScreenHandlerList.newBuilder().addAllHandlers(handlerIds).build());
                 }
@@ -838,7 +849,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
 
                         BlockESPConfigMap.Builder mapBuilder = BlockESPConfigMap.newBuilder();
                         for (var entry : espMap.entrySet()) {
-                            String blockId = Registries.BLOCK.getId(entry.getKey()).toString();
+                            String blockId = BuiltInRegistries.BLOCK.getKey(entry.getKey()).toString();
                             mapBuilder.putConfigs(blockId, toProtoESPBlockData(entry.getValue()));
                         }
                         builder.setBlockEspConfigMapValue(mapBuilder.build());

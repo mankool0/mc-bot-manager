@@ -1,11 +1,11 @@
 package mankool.mcBotClient.mixin.client;
 
-import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin(ClientPlayNetworkHandler.class)
+@Mixin(ClientPacketListener.class)
 public interface ClientPlayNetworkHandlerAccessor {
-    @Invoker("isSecureChatEnforced")
-    boolean callIsSecureChatEnforced();
+    @Invoker("enforcesSecureChat")
+    boolean callEnforcesSecureChat();
 }
