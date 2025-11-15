@@ -166,7 +166,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
         ensureHooksInstalled();
 
         try {
-            GetModulesResponse.Builder response = GetModulesResponse.newBuilder();
+            GetModulesResponse.Builder response = GetModulesResponse.newBuilder()
+                    .setRequestId(messageId);
 
             Collection<Module> modules = Modules.get().getAll();
             for (Module module : modules) {
@@ -190,7 +191,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
         try {
             Module module = Modules.get().get(command.getModuleName());
             if (module == null) {
-                sendModuleConfigResponse(false, "Module not found: " + command.getModuleName(), null);
+                sendModuleConfigResponse(messageId, false, "Module not found: " + command.getModuleName(), null);
                 return;
             }
 
@@ -205,16 +206,16 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 MeteorSettingValue value = entry.getValue();
 
                 if (!applyProtoSetting(module, settingName, value)) {
-                    sendModuleConfigResponse(false, "Failed to apply setting: " + settingName, null);
+                    sendModuleConfigResponse(messageId, false, "Failed to apply setting: " + settingName, null);
                     return;
                 }
             }
 
             ModuleInfo updatedInfo = toProtoModuleInfo(module);
-            sendModuleConfigResponse(true, "Module configured successfully", updatedInfo);
+            sendModuleConfigResponse(messageId, true, "Module configured successfully", updatedInfo);
 
         } catch (Exception e) {
-            sendModuleConfigResponse(false, "Error: " + e.getMessage(), null);
+            sendModuleConfigResponse(messageId, false, "Error: " + e.getMessage(), null);
         }
     }
 
@@ -945,8 +946,9 @@ public class MeteorModuleHandler extends BaseInboundHandler {
         connection.sendMessage(message);
     }
 
-    private void sendModuleConfigResponse(boolean success, String message, ModuleInfo updatedModule) {
+    private void sendModuleConfigResponse(String requestId, boolean success, String message, ModuleInfo updatedModule) {
         SetModuleConfigResponse.Builder response = SetModuleConfigResponse.newBuilder()
+                .setRequestId(requestId)
                 .setSuccess(success)
                 .setErrorMessage(message);
 
