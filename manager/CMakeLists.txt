@@ -8,6 +8,7 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Treat warnings as errors
 if(MSVC)
@@ -17,6 +18,28 @@ else()
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG        v3.0.1
+)
+FetchContent_MakeAvailable(pybind11)
+set(PYBIND11_FINDPYTHON ON)
+
+FetchContent_Declare(
+    qutepart
+    GIT_REPOSITORY https://github.com/diegoiast/qutepart-cpp.git
+    GIT_TAG        main
+    PATCH_COMMAND sed -i "103,104d" CMakeLists.txt || true
+)
+
+FetchContent_MakeAvailable(qutepart)
+set(DISABLE_QUTEPART_TESTS ON CACHE BOOL "Disable qutepart tests" FORCE)
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 # Generate QtProtobuf files from proto directory
 file(GLOB PROTO_FILES
@@ -41,6 +64,8 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "network/*.h"
     "bot/*.cpp"
     "bot/*.h"
+    "scripting/*.cpp"
+    "scripting/*.h"
 )
 
 # Windows resource file for application icon
@@ -59,12 +84,16 @@ target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Network
     Qt6::Protobuf
     mc-bot-manager-proto
+    pybind11::embed
+    Python3::Python
+    qutepart
 )
 
 # Add current directory and generated proto directory to include path
 target_include_directories(mc-bot-manager PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/generated
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/qutepart-src/include
 )
 
 # Define version for use in code

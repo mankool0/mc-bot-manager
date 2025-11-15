@@ -58,7 +58,7 @@ void NetworkStatsWidget::updateStats()
     totalBytesSent = 0;
 
     for (int i = 0; i < bots.size(); ++i) {
-        const BotInstance &bot = bots[i];
+        BotInstance &bot = bots[i];
 
         BotRateData &rateData = botRateData[bot.name];
 
@@ -68,6 +68,9 @@ void NetworkStatsWidget::updateStats()
             rateIn = (bot.bytesReceived - rateData.lastBytesReceived) / elapsed;
             rateOut = (bot.bytesSent - rateData.lastBytesSent) / elapsed;
         }
+
+        bot.dataRateIn = rateIn;
+        bot.dataRateOut = rateOut;
 
         rateData.lastBytesReceived = bot.bytesReceived;
         rateData.lastBytesSent = bot.bytesSent;
@@ -121,14 +124,18 @@ void NetworkStatsWidget::updateStats()
     }
 
     qint64 uptime = startTime.secsTo(QDateTime::currentDateTime());
-    QString uptimeStr = QTime(0, 0).addSecs(uptime).toString("hh:mm:ss");
+    qint64 days = uptime / 86400;
+    qint64 hours = (uptime % 86400) / 3600;
+    qint64 minutes = (uptime % 3600) / 60;
+    qint64 seconds = uptime % 60;
+    QString uptimeStr = QString("%1d %2h %3m %4s").arg(days).arg(hours).arg(minutes).arg(seconds);
 
-    totalStatsLabel->setText(QString(
-        "Uptime: %1 | Total Received: %2 | Total Sent: %3 | Combined: %4"
-    ).arg(uptimeStr)
-     .arg(formatBytes(totalBytesReceived))
-     .arg(formatBytes(totalBytesSent))
-     .arg(formatBytes(totalBytesReceived + totalBytesSent)));
+    totalStatsLabel->setText(
+        QString("Uptime: %1 | Total Received: %2 | Total Sent: %3 | Combined: %4")
+            .arg(uptimeStr,
+                 formatBytes(totalBytesReceived),
+                 formatBytes(totalBytesSent),
+                 formatBytes(totalBytesReceived + totalBytesSent)));
 }
 
 QString NetworkStatsWidget::formatBytes(qint64 bytes)

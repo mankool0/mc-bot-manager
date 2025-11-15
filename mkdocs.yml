@@ -1,0 +1,42 @@
+site_name: MC Bot Manager - Python Scripting API
+site_description: Python API documentation for mc-bot-manager scripting system
+site_author: mc-bot-manager contributors
+site_url: https://mankool0.github.io/mc-bot-manager/
+
+repo_name: mankool0/mc-bot-manager
+repo_url: https://github.com/mankool0/mc-bot-manager
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - tables
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started.md
+    - Your First Script: first-script.md
+    - Event Handlers: event-handlers.md
+  - API Reference:
+    - Overview: api/index.md
+    - bot: api/bot.md
+    - baritone: api/baritone.md
+    - meteor: api/meteor.md
+    - utils: api/utils.md
+  - Examples: examples.md
+  - Events: events.md

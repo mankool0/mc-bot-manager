@@ -8,6 +8,10 @@
 #include <QProcess>
 #include <QDateTime>
 #include <QMap>
+#include <QSet>
+#include <QMutex>
+#include <QPointer>
+#include <memory>
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -25,6 +29,8 @@ class LogManager;
 class BotConsoleWidget;
 class MeteorModulesWidget;
 class BaritoneWidget;
+class ScriptEngine;
+class ScriptsWidget;
 
 // Custom types for Baritone settings
 struct RGBColor {
@@ -173,6 +179,13 @@ struct BotInstance {
     QVector3D position;
     QString dimension;
 
+    float health = 0.0f;
+    int foodLevel = 0;
+    float saturation = 0.0f;
+    int air = 0;
+    int experienceLevel = 0;
+    float experienceProgress = 0.0f;
+
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
     int selectedSlot = 0;
 
@@ -185,9 +198,11 @@ struct BotInstance {
     double dataRateIn = 0.0;   // bytes/sec
     double dataRateOut = 0.0;  // bytes/sec
 
-    BotConsoleWidget* consoleWidget = nullptr;
-    MeteorModulesWidget* meteorWidget = nullptr;
-    BaritoneWidget* baritoneWidget = nullptr;
+    QPointer<BotConsoleWidget> consoleWidget;
+    QPointer<MeteorModulesWidget> meteorWidget;
+    QPointer<BaritoneWidget> baritoneWidget;
+    ScriptEngine* scriptEngine = nullptr;
+    QPointer<ScriptsWidget> scriptsWidget;
 
     // Meteor modules data
     QMap<QString, MeteorModuleData> meteorModules;
@@ -195,6 +210,8 @@ struct BotInstance {
     // Baritone data
     QMap<QString, BaritoneSettingData> baritoneSettings;
     QMap<QString, BaritoneCommandData> baritoneCommands;
+
+    std::shared_ptr<QMutex> dataMutex = std::make_shared<QMutex>();
 };
 
 class BotManager : public QObject
@@ -235,7 +252,7 @@ public:
     static void handleBaritoneCommandResponse(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     static void handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
 
-    static void sendCommand(const QString &botName, const QString &commandText);
+    static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
     static void requestBaritoneSettings(const QString &botName);
     static void requestBaritoneCommands(const QString &botName);
@@ -279,7 +296,7 @@ private:
     void handleBaritoneSettingsSetResponseImpl(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
     void handleBaritoneCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
-    void sendCommandImpl(const QString &botName, const QString &commandText);
+    void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);
     void requestBaritoneCommandsImpl(const QString &botName);
@@ -288,6 +305,7 @@ private:
     void sendMeteorSettingChangeImpl(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
 
     QVector<BotInstance> botInstances;
+    QSet<QString> silentMessageIds;
 };
 
 #endif // BOTMANAGER_H

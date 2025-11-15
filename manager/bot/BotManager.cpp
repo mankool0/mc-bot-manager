@@ -4,8 +4,10 @@
 #include "ui/BotConsoleWidget.h"
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
+#include "scripting/ScriptEngine.h"
 #include <QDateTime>
 #include <QDataStream>
+#include <QUuid>
 #include <QtProtobuf/QProtobufSerializer>
 
 static QVariant baritoneProtoToVariant(
@@ -719,13 +721,50 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
+        float oldHealth = bot->health;
+        int oldFoodLevel = bot->foodLevel;
+
         if (state.hasPosition()) {
             bot->position = QVector3D(state.position().x(), state.position().y(), state.position().z());
         }
         if (!state.dimension().isEmpty()) {
             bot->dimension = state.dimension();
         }
+
+        bot->health = state.health();
+        bot->foodLevel = state.foodLevel();
+        bot->saturation = state.saturation();
+        bot->air = state.air();
+        bot->experienceLevel = state.experienceLevel();
+        bot->experienceProgress = state.experienceProgress();
+
         emit botUpdated(bot->name);
+
+        if (bot->scriptEngine) {
+            QVariantMap stateMap;
+            stateMap["x"] = bot->position.x();
+            stateMap["y"] = bot->position.y();
+            stateMap["z"] = bot->position.z();
+            stateMap["health"] = bot->health;
+            stateMap["hunger"] = bot->foodLevel;
+            stateMap["dimension"] = bot->dimension;
+
+            QVariantList args;
+            args << stateMap;
+            bot->scriptEngine->fireEvent("player_state", args);
+
+            if (oldHealth != bot->health) {
+                QVariantList healthArgs;
+                healthArgs << oldHealth << bot->health;
+                bot->scriptEngine->fireEvent("health_change", healthArgs);
+            }
+
+            if (oldFoodLevel != bot->foodLevel) {
+                QVariantList hungerArgs;
+                hungerArgs << oldFoodLevel << bot->foodLevel;
+                bot->scriptEngine->fireEvent("hunger_change", hungerArgs);
+            }
+        }
     }
 
     if (bot && bot->debugLogging) {
@@ -754,6 +793,24 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
         if (slot >= 0 && slot < bot->inventory.size()) {
             bot->inventory[slot] = item;
         }
+    }
+
+    if (bot->scriptEngine) {
+        QVariantList inventoryList;
+        for (const auto &item : bot->inventory) {
+            if (!item.itemId().isEmpty()) {
+                QVariantMap itemMap;
+                itemMap["slot"] = static_cast<int>(item.slot());
+                itemMap["item_id"] = item.itemId();
+                itemMap["count"] = static_cast<int>(item.count());
+                itemMap["display_name"] = item.displayName();
+                inventoryList.append(itemMap);
+            }
+        }
+
+        QVariantList args;
+        args << static_cast<int>(inventory.selectedSlot()) << QVariant(inventoryList);
+        bot->scriptEngine->fireEvent("inventory_update", args);
     }
 
     if (bot->debugLogging) {
@@ -797,6 +854,12 @@ void BotManager::handleChatMessageImpl(int connectionId, const mankool::mcbot::p
         bot->consoleWidget->appendResponse(true, output);
     }
 
+    if (bot->scriptEngine) {
+        QVariantList args;
+        args << chat.sender() << chat.content() << static_cast<int>(chat.type());
+        bot->scriptEngine->fireEvent("chat_message", args);
+    }
+
     if (bot->debugLogging) {
         LogManager::log(QString("[DEBUG %1] ChatMessage received: %2").arg(bot->name, output), LogManager::Debug);
     }
@@ -811,6 +874,8 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
+
+    bool isSilent = silentMessageIds.remove(response.commandId());
 
     QString statusText;
     bool success = false;
@@ -831,14 +896,16 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
             break;
     }
 
-    QString output = QString("[%1] %2").arg(statusText, response.message());
+    if (!isSilent) {
+        QString output = QString("[%1] %2").arg(statusText, response.message());
 
-    if (bot->consoleWidget) {
-        bot->consoleWidget->appendResponse(success, output);
+        if (bot->consoleWidget) {
+            bot->consoleWidget->appendResponse(success, output);
+        }
+
+        LogManager::log(QString("[%1] Command response: %2").arg(bot->name, output),
+                        success ? LogManager::Info : LogManager::Warning);
     }
-
-    LogManager::log(QString("[%1] Command response: %2").arg(bot->name, output),
-                    success ? LogManager::Info : LogManager::Warning);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[DEBUG %1] CommandResponse received").arg(bot->name), LogManager::Debug);
@@ -923,11 +990,15 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
         output += "\n";
     }
 
-    if (bot->consoleWidget) {
-        bot->consoleWidget->appendResponse(true, output);
-    }
+    bool isSilent = silentMessageIds.remove(response.requestId());
 
-    LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
+    if (!isSilent) {
+        if (bot->consoleWidget) {
+            bot->consoleWidget->appendResponse(true, output);
+        }
+
+        LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
+    }
 
     emit meteorModulesReceived(bot->name);
 }
@@ -1009,12 +1080,16 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
         output = QString("Error: %1").arg(response.errorMessage());
     }
 
-    if (bot->consoleWidget) {
-        bot->consoleWidget->appendResponse(response.success(), output);
-    }
+    bool isSilent = silentMessageIds.remove(response.requestId());
 
-    LogManager::log(QString("[%1] %2").arg(bot->name, output),
-                    response.success() ? LogManager::Info : LogManager::Warning);
+    if (!isSilent) {
+        if (bot->consoleWidget) {
+            bot->consoleWidget->appendResponse(response.success(), output);
+        }
+
+        LogManager::log(QString("[%1] %2").arg(bot->name, output),
+                        response.success() ? LogManager::Info : LogManager::Warning);
+    }
 
     if (moduleFound) {
         emit meteorSingleModuleUpdated(bot->name, updatedModuleName);
@@ -1089,9 +1164,9 @@ static QStringList parseCommandWithQuotes(const QString &commandText)
     return result;
 }
 
-void BotManager::sendCommand(const QString &botName, const QString &commandText)
+void BotManager::sendCommand(const QString &botName, const QString &commandText, bool silent)
 {
-    instance().sendCommandImpl(botName, commandText);
+    instance().sendCommandImpl(botName, commandText, silent);
 }
 
 void BotManager::sendShutdownCommand(const QString &botName, const QString &reason)
@@ -1113,7 +1188,7 @@ void BotManager::sendShutdownCommandImpl(const QString &botName, const QString &
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::ShutdownCommand shutdown;
@@ -1139,7 +1214,7 @@ void BotManager::sendShutdownCommandImpl(const QString &botName, const QString &
     LogManager::log(QString("Sent graceful shutdown command to bot '%1'").arg(botName), LogManager::Info);
 }
 
-void BotManager::sendCommandImpl(const QString &botName, const QString &commandText)
+void BotManager::sendCommandImpl(const QString &botName, const QString &commandText, bool silent)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -1160,8 +1235,13 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
     QString cmd = parts[0].toLower();
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    QString messageId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    msg.setMessageId(messageId);
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    if (silent) {
+        silentMessageIds.insert(messageId);
+    }
 
     if (cmd == "connect") {
         if (parts.size() < 2) {
@@ -1593,7 +1673,7 @@ void BotManager::requestBaritoneSettingsImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::GetBaritoneSettingsRequest request;
@@ -1634,7 +1714,7 @@ void BotManager::requestBaritoneCommandsImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::GetBaritoneCommandsRequest request;
@@ -1675,7 +1755,7 @@ void BotManager::sendBaritoneCommandImpl(const QString &botName, const QString &
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::ExecuteBaritoneCommand execCmd;
@@ -1724,7 +1804,7 @@ void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QSt
     BaritoneSettingType type = bot->baritoneSettings[settingName].type;
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::SetBaritoneSettingsCommand setCmd;
@@ -1783,7 +1863,7 @@ void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QStri
     SettingType type = module.settings[settingPath].type;
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QString::number(QDateTime::currentMSecsSinceEpoch()));
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
     msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
 
     mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
