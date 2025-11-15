@@ -129,6 +129,10 @@ private:
     void onBaritoneSingleSettingUpdated(const QString &botName, const QString &settingName);
     void onBaritoneSettingChanged(const QString &settingName, const QVariant &value);
 
+    void setupScriptsTab();
+    void setupCodeEditorThemeMenu();
+    void onEditorThemeChanged(const QString &themeName);
+
     static QString statusToString(BotStatus status);
 };
 #endif // MANAGERMAINWINDOW_H

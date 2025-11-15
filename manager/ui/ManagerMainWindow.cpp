@@ -2,11 +2,13 @@
 #include "BotConsoleWidget.h"
 #include "MeteorModulesWidget.h"
 #include "BaritoneWidget.h"
+#include "ScriptsWidget.h"
 #include "PrismSettingsDialog.h"
 #include "NetworkStatsWidget.h"
 #include "logging/LogManager.h"
 #include "prism/PrismLauncherManager.h"
 #include "network/PipeServer.h"
+#include "scripting/ScriptEngine.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTimer>
@@ -172,6 +174,7 @@ void ManagerMainWindow::setupUI()
     uptimeCheckTimer->start(60000);
 
     setupPipeServer();
+    setupCodeEditorThemeMenu();
 
     LogManager::log("MC Bot Manager started", LogManager::Info);
 }
@@ -284,6 +287,21 @@ void ManagerMainWindow::addNewBot()
                 QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->baritoneTab->layout());
                 if (layout) {
                     layout->addWidget(bot->baritoneWidget);
+                }
+            }
+
+            if (!bot->scriptEngine) {
+                bot->scriptEngine = new ScriptEngine(bot, this);
+                bot->scriptEngine->loadScriptsFromDisk();
+            }
+
+            if (!bot->scriptsWidget) {
+                bot->scriptsWidget = new ScriptsWidget(bot->scriptEngine, this);
+                bot->scriptsWidget->hide();
+
+                QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->scriptsTab->layout());
+                if (layout) {
+                    layout->addWidget(bot->scriptsWidget);
                 }
             }
         }
@@ -464,6 +482,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         if (bot.baritoneWidget) {
             bot.baritoneWidget->hide();
         }
+        if (bot.scriptsWidget) {
+            bot.scriptsWidget->hide();
+        }
     }
 
     if (selectedItems.isEmpty()) {
@@ -492,6 +513,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         }
         if (bot.baritoneWidget) {
             bot.baritoneWidget->show();
+        }
+        if (bot.scriptsWidget) {
+            bot.scriptsWidget->show();
         }
     }
 }
@@ -919,6 +943,7 @@ void ManagerMainWindow::loadSettings()
     setupConsoleTab();
     setupMeteorTab();
     setupBaritoneTab();
+    setupScriptsTab();
 
     settings.beginGroup("Window");
     restoreGeometry(settings.value("geometry").toByteArray());
@@ -1175,7 +1200,7 @@ void ManagerMainWindow::onClientConnected(int connectionId, const QString &botNa
             updateStatusDisplay();
 
             // Request Meteor modules list
-            BotManager::sendCommand(botName, "meteor list");
+            BotManager::sendCommand(botName, "meteor list", true);
 
             BotManager::requestBaritoneSettings(botName);
             BotManager::requestBaritoneCommands(botName);
@@ -1408,6 +1433,29 @@ void ManagerMainWindow::onBaritoneSettingChanged(const QString &settingName, con
     BotManager::sendBaritoneSettingChange(selectedBotName, settingName, value);
 }
 
+void ManagerMainWindow::setupScriptsTab()
+{
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->scriptsTab->layout());
+    if (!layout) {
+        layout = new QVBoxLayout(ui->scriptsTab);
+        layout->setContentsMargins(0, 0, 0, 0);
+    }
+
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (!bot.scriptEngine) {
+            bot.scriptEngine = new ScriptEngine(&bot, this);
+            bot.scriptEngine->loadScriptsFromDisk();
+        }
+
+        if (!bot.scriptsWidget) {
+            bot.scriptsWidget = new ScriptsWidget(bot.scriptEngine, this);
+            bot.scriptsWidget->hide();
+            layout->addWidget(bot.scriptsWidget);
+        }
+    }
+}
+
 void ManagerMainWindow::showNetworkStats(bool show)
 {
     if (show) {
@@ -1438,4 +1486,61 @@ void ManagerMainWindow::showAboutDialog()
     ).arg(QT_VERSION_STR);
 
     QMessageBox::about(this, "About MC Bot Manager", aboutText);
+}
+
+void ManagerMainWindow::setupCodeEditorThemeMenu()
+{
+    QMenu *themeMenu = new QMenu("Code Editor Theme", this);
+    ui->menuTools->insertMenu(ui->actionPrismSettings, themeMenu);
+
+    QActionGroup *themeGroup = new QActionGroup(this);
+    themeGroup->setExclusive(true);
+
+    QAction *followSystemAction = new QAction("Follow System", this);
+    followSystemAction->setCheckable(true);
+    followSystemAction->setData("Follow System");
+    themeGroup->addAction(followSystemAction);
+    themeMenu->addAction(followSystemAction);
+
+    themeMenu->addSeparator();
+
+    QSettings settings;
+    QString currentTheme = settings.value("editor/theme", "Follow System").toString();
+
+    QStringList themes = ScriptsWidget::getAvailableThemes();
+    for (const QString &theme : themes) {
+        QAction *themeAction = new QAction(theme, this);
+        themeAction->setCheckable(true);
+        themeAction->setData(theme);
+        themeGroup->addAction(themeAction);
+        themeMenu->addAction(themeAction);
+
+        if (theme == currentTheme) {
+            themeAction->setChecked(true);
+        }
+    }
+
+    if (currentTheme == "Follow System") {
+        followSystemAction->setChecked(true);
+    }
+
+    connect(themeGroup, &QActionGroup::triggered, this, [this](QAction *action) {
+        QString themeName = action->data().toString();
+        onEditorThemeChanged(themeName);
+    });
+}
+
+void ManagerMainWindow::onEditorThemeChanged(const QString &themeName)
+{
+    QSettings settings;
+    settings.setValue("editor/theme", themeName);
+
+    LogManager::log(QString("Editor theme changed to: %1").arg(themeName), LogManager::Info);
+
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (bot.scriptsWidget) {
+            bot.scriptsWidget->reloadTheme();
+        }
+    }
 }

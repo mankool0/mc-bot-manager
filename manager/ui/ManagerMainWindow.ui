@@ -529,6 +529,11 @@
           <string>Baritone</string>
          </attribute>
         </widget>
+        <widget class="QWidget" name="scriptsTab">
+         <attribute name="title">
+          <string>Scripts</string>
+         </attribute>
+        </widget>
        </widget>
       </widget>
      </widget>
