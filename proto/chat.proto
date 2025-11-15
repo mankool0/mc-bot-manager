@@ -19,4 +19,5 @@ message ChatMessage {
   string sender = 3;            // Player name or "SYSTEM"
   int64 timestamp = 4;          // Unix timestamp in milliseconds
   bool is_signed = 5;           // Whether the message was cryptographically signed (from PlayerChatMessage)
+  optional string sender_uuid = 6;  // Player UUID (present for PLAYER_CHAT, absent for system messages)
 }

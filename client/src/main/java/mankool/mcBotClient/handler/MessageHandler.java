@@ -30,6 +30,7 @@ public class MessageHandler {
     private final ServerOutbound serverOutbound;
     private final PlayerOutbound playerOutbound;
     private final InventoryOutbound inventoryOutbound;
+    private final ChatOutbound chatOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -47,6 +48,7 @@ public class MessageHandler {
         this.serverOutbound = new ServerOutbound(this.client, connection);
         this.playerOutbound = new PlayerOutbound(this.client, connection);
         this.inventoryOutbound = new InventoryOutbound(this.client, connection);
+        this.chatOutbound = new ChatOutbound(this.client, connection);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
