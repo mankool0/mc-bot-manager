@@ -8,16 +8,26 @@ package mankool.mcbot.protocol;
 // Based on ChatListener.java and PlayerChatMessage.java
 message ChatMessage {
   enum Type {
-    PLAYER_CHAT = 0;        // Regular player chat
-    SYSTEM_MESSAGE = 1;     // System/server messages
-    COMMAND_RESULT = 2;     // Command feedback
-    ERROR = 3;              // Error messages
+    PLAYER_CHAT = 0;        // Player chat packet 
+    SYSTEM_MESSAGE = 1;     // System chat packet
+  }
+
+  enum MinecraftChatType {
+    CHAT = 0;                        // Normal player chat (minecraft:chat)
+    MSG_COMMAND_INCOMING = 1;        // Received whisper (minecraft:msg_command_incoming)
+    MSG_COMMAND_OUTGOING = 2;        // Sent whisper (minecraft:msg_command_outgoing)
+    EMOTE_COMMAND = 3;               // Emote /me command (minecraft:emote_command)
+    SAY_COMMAND = 4;                 // Server /say command (minecraft:say_command)
+    TEAM_MSG_COMMAND_INCOMING = 5;   // Received team message (minecraft:team_msg_command_incoming)
+    TEAM_MSG_COMMAND_OUTGOING = 6;   // Sent team message (minecraft:team_msg_command_outgoing)
+    UNKNOWN = 7;                     // Unknown
   }
 
   Type type = 1;
   string content = 2;
-  string sender = 3;            // Player name or "SYSTEM"
-  int64 timestamp = 4;          // Unix timestamp in milliseconds
-  bool is_signed = 5;           // Whether the message was cryptographically signed (from PlayerChatMessage)
-  optional string sender_uuid = 6;  // Player UUID (present for PLAYER_CHAT, absent for system messages)
+  string sender = 3;                        // Player name or "SYSTEM"
+  int64 timestamp = 4;                      // Unix timestamp in milliseconds
+  bool is_signed = 5;                       // Whether the message was cryptographically signed
+  optional string sender_uuid = 6;          // Player UUID (present for PLAYER_CHAT, absent for SYSTEM_MESSAGE)
+  optional MinecraftChatType minecraft_chat_type = 7;  // Minecraft chat type (only for PLAYER_CHAT)
 }

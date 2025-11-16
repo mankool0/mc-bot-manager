@@ -833,30 +833,97 @@ void BotManager::handleChatMessageImpl(int connectionId, const mankool::mcbot::p
     if (!bot) return;
 
     QString typePrefix;
+    QString chatTypeStr;
+    QString minecraftTypePrefix;
+
     switch (chat.type()) {
         case mankool::mcbot::protocol::ChatMessage::Type::PLAYER_CHAT:
             typePrefix = QString("[%1]").arg(chat.sender());
+            chatTypeStr = "PLAYER_CHAT";
             break;
         case mankool::mcbot::protocol::ChatMessage::Type::SYSTEM_MESSAGE:
             typePrefix = "[SYSTEM]";
-            break;
-        case mankool::mcbot::protocol::ChatMessage::Type::COMMAND_RESULT:
-            typePrefix = "[COMMAND]";
-            break;
-        case mankool::mcbot::protocol::ChatMessage::Type::ERROR:
-            typePrefix = "[ERROR]";
+            chatTypeStr = "SYSTEM_MESSAGE";
             break;
     }
 
-    QString output = QString("%1 %2").arg(typePrefix, chat.content());
+    if (chat.hasMinecraftChatType()) {
+        switch (chat.minecraftChatType()) {
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_INCOMING:
+            minecraftTypePrefix = "[WHISPER] ";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_OUTGOING:
+            minecraftTypePrefix = "[WHISPER OUT] ";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::EMOTE_COMMAND:
+            minecraftTypePrefix = "[EMOTE] ";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::SAY_COMMAND:
+            minecraftTypePrefix = "[SAY] ";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_INCOMING:
+            minecraftTypePrefix = "[TEAM] ";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_OUTGOING:
+            minecraftTypePrefix = "[TEAM OUT] ";
+            break;
+        default:
+            minecraftTypePrefix = "";
+            break;
+        }
+    }
+
+    QString output = QString("%1%2 %3").arg(minecraftTypePrefix, typePrefix, chat.content());
 
     if (bot->consoleWidget) {
         bot->consoleWidget->appendResponse(true, output);
     }
 
     if (bot->scriptEngine) {
+        QVariantMap chatData;
+        chatData["sender"] = chat.sender();
+        chatData["content"] = chat.content();
+        chatData["type"] = chatTypeStr;
+        chatData["timestamp"] = static_cast<long long>(chat.timestamp());
+        chatData["is_signed"] = chat.isSigned();
+
+        if (chat.hasSenderUuid()) {
+            chatData["sender_uuid"] = chat.senderUuid();
+        }
+
+        if (chat.hasMinecraftChatType()) {
+            QString minecraftType;
+            switch (chat.minecraftChatType()) {
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::CHAT:
+                minecraftType = "CHAT";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_INCOMING:
+                minecraftType = "MSG_COMMAND_INCOMING";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_OUTGOING:
+                minecraftType = "MSG_COMMAND_OUTGOING";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::EMOTE_COMMAND:
+                minecraftType = "EMOTE_COMMAND";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::SAY_COMMAND:
+                minecraftType = "SAY_COMMAND";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_INCOMING:
+                minecraftType = "TEAM_MSG_COMMAND_INCOMING";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_OUTGOING:
+                minecraftType = "TEAM_MSG_COMMAND_OUTGOING";
+                break;
+            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::UNKNOWN:
+                minecraftType = "UNKNOWN";
+                break;
+            }
+            chatData["minecraft_chat_type"] = minecraftType;
+        }
+
         QVariantList args;
-        args << chat.sender() << chat.content() << static_cast<int>(chat.type());
+        args << chatData;
         bot->scriptEngine->fireEvent("chat_message", args);
     }
 

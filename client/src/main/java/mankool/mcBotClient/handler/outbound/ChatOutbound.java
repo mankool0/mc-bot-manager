@@ -52,20 +52,39 @@ public class ChatOutbound {
                 Component message = Component.literal(content);
                 boolean isSigned = packet.signature() != null;
 
-                onChatMessage(message, senderName, senderUuidStr, false, isSigned);
+                long timestamp = packet.body().timeStamp().toEpochMilli();
+
+                String chatTypeStr = packet.chatType().chatType().unwrapKey()
+                    .map(key -> key.location().toString())
+                    .orElse("minecraft:chat");
+
+                Chat.ChatMessage.MinecraftChatType chatType = switch (chatTypeStr) {
+                    case "minecraft:chat" -> Chat.ChatMessage.MinecraftChatType.CHAT;
+                    case "minecraft:msg_command_incoming" -> Chat.ChatMessage.MinecraftChatType.MSG_COMMAND_INCOMING;
+                    case "minecraft:msg_command_outgoing" -> Chat.ChatMessage.MinecraftChatType.MSG_COMMAND_OUTGOING;
+                    case "minecraft:emote_command" -> Chat.ChatMessage.MinecraftChatType.EMOTE_COMMAND;
+                    case "minecraft:say_command" -> Chat.ChatMessage.MinecraftChatType.SAY_COMMAND;
+                    case "minecraft:team_msg_command_incoming" -> Chat.ChatMessage.MinecraftChatType.TEAM_MSG_COMMAND_INCOMING;
+                    case "minecraft:team_msg_command_outgoing" -> Chat.ChatMessage.MinecraftChatType.TEAM_MSG_COMMAND_OUTGOING;
+                    default -> Chat.ChatMessage.MinecraftChatType.UNKNOWN;
+                };
+
+                onChatMessage(message, senderName, senderUuidStr, false, isSigned, chatType, timestamp);
             } catch (Exception e) {
                 LOGGER.error("Failed to process player chat packet", e);
             }
         } else if (event.packet instanceof ClientboundSystemChatPacket packet) {
             try {
-                onChatMessage(packet.content(), "SYSTEM", null, true, false);
+                // System messages don't have a timestamp in the packet, use current time
+                long timestamp = System.currentTimeMillis();
+                onChatMessage(packet.content(), "SYSTEM", null, true, false, null, timestamp);
             } catch (Exception e) {
                 LOGGER.error("Failed to process system chat packet", e);
             }
         }
     }
 
-    public void onChatMessage(Component message, String sender, String senderUuid, boolean isSystem, boolean isSigned) {
+    public void onChatMessage(Component message, String sender, String senderUuid, boolean isSystem, boolean isSigned, Chat.ChatMessage.MinecraftChatType minecraftChatType, long timestamp) {
         try {
             String content = message.getString();
 
@@ -80,11 +99,15 @@ public class ChatOutbound {
                     .setType(type)
                     .setContent(content)
                     .setSender(sender != null ? sender : "SYSTEM")
-                    .setTimestamp(System.currentTimeMillis())
+                    .setTimestamp(timestamp)
                     .setIsSigned(isSigned);
 
             if (senderUuid != null && !senderUuid.isEmpty()) {
                 builder.setSenderUuid(senderUuid);
+            }
+
+            if (minecraftChatType != null) {
+                builder.setMinecraftChatType(minecraftChatType);
             }
 
             Chat.ChatMessage chatMessage = builder.build();
