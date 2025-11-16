@@ -19,15 +19,36 @@ Fired when a chat message is received.
 
 **Parameters:**
 
-- `sender` (`str`) - Player who sent the message
-- `message` (`str`) - Message content
-- `msg_type` (`str`) - Message type
+- `chat_data` (`dict`) - Dictionary containing chat message details with the following keys:
+  - `sender` (`str`) - Player who sent the message or "SYSTEM" for system messages
+  - `content` (`str`) - Message content
+  - `type` (`str`) - Message type: `"PLAYER_CHAT"` or `"SYSTEM_MESSAGE"`
+  - `timestamp` (`int`) - Unix timestamp in milliseconds
+  - `is_signed` (`bool`) - Whether the message was signed
+  - `sender_uuid` (`str`, optional) - Player UUID (present for PLAYER_CHAT, absent for SYSTEM_MESSAGE)
+  - `minecraft_chat_type` (`str`, optional) - Minecraft chat type (only for PLAYER_CHAT), one of:
+    - `"CHAT"` - Normal player chat
+    - `"MSG_COMMAND_INCOMING"` - Received whisper
+    - `"MSG_COMMAND_OUTGOING"` - Sent whisper
+    - `"EMOTE_COMMAND"` - /me command
+    - `"SAY_COMMAND"` - /say command
+    - `"TEAM_MSG_COMMAND_INCOMING"` - Received team message
+    - `"TEAM_MSG_COMMAND_OUTGOING"` - Sent team message
+    - `"UNKNOWN"` - Unknown chat type
 
 ```python
 @on("chat_message")
-def handle_chat(sender, message, msg_type):
+def handle_chat(chat_data):
+    sender = chat_data["sender"]
+    message = chat_data["content"]
+    msg_type = chat_data["type"]
+
     if message == "!help":
         bot.chat("Available commands: !help, !goto")
+
+    # Check if it's a whisper
+    if chat_data.get("minecraft_chat_type") == "MSG_COMMAND_INCOMING":
+        utils.log(f"Received whisper from {sender}: {message}")
 ```
 
 ### `health_change`
