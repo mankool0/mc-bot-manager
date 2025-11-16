@@ -239,6 +239,8 @@ py::object PythonAPI::qVariantToPyObject(const QVariant &value)
             return py::cast(value.toBool());
         case QMetaType::Int:
             return py::cast(value.toInt());
+        case QMetaType::LongLong:
+            return py::cast(value.toLongLong());
         case QMetaType::Float:
             return py::cast(value.toFloat());
         case QMetaType::Double:
