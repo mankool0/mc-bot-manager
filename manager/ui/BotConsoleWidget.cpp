@@ -187,7 +187,8 @@ void BotConsoleWidget::appendOutput(const QString &text, const QColor &color)
 void BotConsoleWidget::appendResponse(bool success, const QString &message)
 {
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    QColor color = success ? QColor("#006600") : QColor("#cc0000");
+    QColor color = success ? QColor(0, 102, 0)  // dark green
+                           : QColor(204, 0, 0); // red
     QString prefix = success ? "✓" : "✗";
 
     appendOutput(QString("[%1] %2 %3").arg(timestamp, prefix, message), color);
@@ -196,7 +197,7 @@ void BotConsoleWidget::appendResponse(bool success, const QString &message)
 void BotConsoleWidget::clearOutput()
 {
     outputEdit->clear();
-    appendOutput("Console cleared.", QColor("#0066cc"));
+    appendOutput("Console cleared.", QColor(0, 102, 204)); // blue
 }
 
 void BotConsoleWidget::setCommandHistory(const QStringList &history)

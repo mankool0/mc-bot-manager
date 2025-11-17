@@ -371,11 +371,11 @@ void ManagerMainWindow::updateInstancesTable()
 
         QColor statusColor;
         if (bot.status == BotStatus::Online) {
-            statusColor = QColor(0x4CAF50);
+            statusColor = QColor(76, 175, 80); // green
         } else if (bot.status == BotStatus::Offline) {
-            statusColor = QColor(0x9E9E9E);
+            statusColor = QColor(158, 158, 158); // gray
         } else {
-            statusColor = QColor(0xFF9800);
+            statusColor = QColor(255, 152, 0); // orange
         }
         if (statusItem->foreground().color() != statusColor) {
             statusItem->setForeground(statusColor);

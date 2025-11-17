@@ -400,12 +400,10 @@ QLabel* MeteorModulesWidget::createColorLabel(const RGBAColor &color, QWidget *p
     QPainter painter(&colorPixmap);
 
     // Draw checkerboard background
-    QColor lightGray(204, 204, 204);
-    QColor darkGray(255, 255, 255);
     for (int y = 0; y < 25; y += 10) {
         for (int x = 0; x < 60; x += 10) {
             bool isLight = ((x / 10) + (y / 10)) % 2 == 0;
-            painter.fillRect(x, y, 10, 10, isLight ? lightGray : darkGray);
+            painter.fillRect(x, y, 10, 10, isLight ? Qt::lightGray : Qt::darkGray);
         }
     }
 
@@ -576,12 +574,10 @@ bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
                     QPainter painter(&colorPixmap);
 
                     // Draw checkerboard background
-                    QColor lightGray(204, 204, 204);
-                    QColor darkGray(255, 255, 255);
                     for (int y = 0; y < 25; y += 10) {
                         for (int x = 0; x < 60; x += 10) {
                             bool isLight = ((x / 10) + (y / 10)) % 2 == 0;
-                            painter.fillRect(x, y, 10, 10, isLight ? lightGray : darkGray);
+                            painter.fillRect(x, y, 10, 10, isLight ? Qt::lightGray : Qt::darkGray);
                         }
                     }
 
