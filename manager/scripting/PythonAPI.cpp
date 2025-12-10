@@ -949,6 +949,9 @@ py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, dou
     QVector3D center(centerX, centerY, centerZ);
     QString blockTypeQ = QString::fromStdString(blockType);
 
+    // Extract search ID once (part before '[' for block states)
+    QString searchId = blockTypeQ.contains('[') ? blockTypeQ.left(blockTypeQ.indexOf('[')) : blockTypeQ;
+
     QVector<QVector3D> results;
 
     // Release GIL for the entire search operation to avoid blocking main thread
@@ -1014,8 +1017,12 @@ py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, dou
                     if (distSq > radiusSq) continue;
 
                     auto block = chunkCopy.getBlock(x, y, z);
-                    if (block && block->startsWith(blockTypeQ)) {
-                        results.append(QVector3D(worldX, y, worldZ));
+                    if (block) {
+                        // Extract block ID (part before '[' for block states)
+                        QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
+                        if (blockId == searchId) {
+                            results.append(QVector3D(worldX, y, worldZ));
+                        }
                     }
                 }
             }
@@ -1037,10 +1044,14 @@ py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistan
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    // Convert Python list to QStringList
+    // Convert Python list to QStringList and extract block IDs
     QStringList types;
+    QStringList searchIds;
     for (const auto &item : blockTypes) {
-        types.append(QString::fromStdString(item.cast<std::string>()));
+        QString type = QString::fromStdString(item.cast<std::string>());
+        types.append(type);
+        // Extract ID (part before '[' for block states)
+        searchIds.append(type.contains('[') ? type.left(type.indexOf('[')) : type);
     }
 
     std::optional<QVector3D> nearest;
@@ -1117,8 +1128,10 @@ py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistan
 
                     auto block = chunkCopy.getBlock(x, y, z);
                     if (block) {
-                        for (const QString& type : types) {
-                            if (block->startsWith(type)) {
+                        // Extract block ID (part before '[' for block states)
+                        QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
+                        for (const QString& searchId : searchIds) {
+                            if (blockId == searchId) {
                                 nearest = QVector3D(worldX, y, worldZ);
                                 nearestDistSq = distSq;
                                 break;
