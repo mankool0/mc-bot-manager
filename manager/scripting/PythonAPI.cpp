@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QCoreApplication>
 #include <QThread>
+#include <QReadWriteLock>
 #include <pybind11/stl.h>
 
 thread_local QString PythonAPI::currentBot;
@@ -916,5 +917,271 @@ void PythonAPI::error(const std::string &message)
             }, Qt::QueuedConnection);
         }
     }
+}
+
+// ============================================================================
+// World Data API
+// ============================================================================
+
+py::object PythonAPI::getBlock(int x, int y, int z, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    std::optional<QString> blockOpt;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        blockOpt = botInstance->worldData.getBlock(x, y, z);
+    }
+
+    if (blockOpt.has_value()) {
+        return py::str(blockOpt.value().toStdString());
+    }
+    return py::none();
+}
+
+py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
+                                int radius, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QVector3D center(centerX, centerY, centerZ);
+    QString blockTypeQ = QString::fromStdString(blockType);
+
+    QVector<QVector3D> results;
+
+    // Release GIL for the entire search operation to avoid blocking main thread
+    {
+        py::gil_scoped_release release;
+
+        // Calculate chunk bounds
+        int minChunkX = static_cast<int>(qFloor((centerX - radius) / 16.0));
+        int maxChunkX = static_cast<int>(qFloor((centerX + radius) / 16.0));
+        int minChunkZ = static_cast<int>(qFloor((centerZ - radius) / 16.0));
+        int maxChunkZ = static_cast<int>(qFloor((centerZ + radius) / 16.0));
+
+        // Get list of chunks to search (brief lock)
+        QVector<ChunkPos> chunksToSearch;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
+                for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
+                    if (botInstance->worldData.isChunkLoaded(cx, cz)) {
+                        chunksToSearch.append(ChunkPos{cx, cz});
+                    }
+                }
+            }
+        }
+
+    // Now search each chunk with fine-grained locking
+    for (const ChunkPos &chunkPos : chunksToSearch) {
+        // Copy chunk data under lock
+        ChunkData chunkCopy;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            const ChunkData* chunk = botInstance->worldData.getChunk(chunkPos.x, chunkPos.z);
+            if (chunk) {
+                chunkCopy = *chunk;
+            } else {
+                continue;  // Chunk unloaded between checks
+            }
+        }
+        // Lock released - now search the copy without holding lock
+
+        // Search this chunk
+        int minY = qMax(static_cast<int>(centerY - radius), -64);
+        int maxY = qMin(static_cast<int>(centerY + radius), 320);
+        double radiusSq = static_cast<double>(radius) * radius;
+
+        for (int x = 0; x < 16; ++x) {
+            int worldX = chunkPos.x * 16 + x;
+            double dx = worldX - centerX;
+            double dxSq = dx * dx;
+
+            for (int z = 0; z < 16; ++z) {
+                int worldZ = chunkPos.z * 16 + z;
+                double dz = worldZ - centerZ;
+                double dzSq = dz * dz;
+                double horizDistSq = dxSq + dzSq;
+
+                if (horizDistSq > radiusSq) continue;
+
+                for (int y = minY; y <= maxY; ++y) {
+                    double dy = y - centerY;
+                    double distSq = horizDistSq + dy*dy;
+
+                    if (distSq > radiusSq) continue;
+
+                    auto block = chunkCopy.getBlock(x, y, z);
+                    if (block && block->startsWith(blockTypeQ)) {
+                        results.append(QVector3D(worldX, y, worldZ));
+                    }
+                }
+            }
+        }
+    }
+    } // Release GIL scope ends - reacquire for Python object creation
+
+    py::list positions;
+    for (const QVector3D &pos : results) {
+        py::tuple coord = py::make_tuple(pos.x(), pos.y(), pos.z());
+        positions.append(coord);
+    }
+
+    return positions;
+}
+
+py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    // Convert Python list to QStringList
+    QStringList types;
+    for (const auto &item : blockTypes) {
+        types.append(QString::fromStdString(item.cast<std::string>()));
+    }
+
+    std::optional<QVector3D> nearest;
+
+    // Release GIL for the entire search operation to avoid blocking main thread
+    {
+        py::gil_scoped_release release;
+
+        // Get bot position (brief lock)
+        QVector3D start;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            start = botInstance->position;
+        }
+
+    // Calculate chunk bounds
+    int minChunkX = static_cast<int>(qFloor((start.x() - maxDistance) / 16.0));
+    int maxChunkX = static_cast<int>(qFloor((start.x() + maxDistance) / 16.0));
+    int minChunkZ = static_cast<int>(qFloor((start.z() - maxDistance) / 16.0));
+    int maxChunkZ = static_cast<int>(qFloor((start.z() + maxDistance) / 16.0));
+
+    // Get list of chunks to search (brief lock)
+    QVector<ChunkPos> chunksToSearch;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
+            for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
+                if (botInstance->worldData.isChunkLoaded(cx, cz)) {
+                    chunksToSearch.append(ChunkPos{cx, cz});
+                }
+            }
+        }
+    }
+
+    // Search each chunk with fine-grained locking
+    double nearestDistSq = static_cast<double>(maxDistance) * maxDistance;
+
+    for (const ChunkPos &chunkPos : chunksToSearch) {
+        // Copy chunk data under lock
+        ChunkData chunkCopy;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            const ChunkData* chunk = botInstance->worldData.getChunk(chunkPos.x, chunkPos.z);
+            if (chunk) {
+                chunkCopy = *chunk;
+            } else {
+                continue;
+            }
+        }
+        // Lock released
+
+        // Search this chunk
+        int minY = qMax(static_cast<int>(start.y() - maxDistance), -64);
+        int maxY = qMin(static_cast<int>(start.y() + maxDistance), 320);
+
+        for (int x = 0; x < 16; ++x) {
+            int worldX = chunkPos.x * 16 + x;
+            double dx = worldX - start.x();
+            double dxSq = dx * dx;
+
+            for (int z = 0; z < 16; ++z) {
+                int worldZ = chunkPos.z * 16 + z;
+                double dz = worldZ - start.z();
+                double dzSq = dz * dz;
+                double horizDistSq = dxSq + dzSq;
+
+                if (horizDistSq >= nearestDistSq) continue;
+
+                for (int y = minY; y <= maxY; ++y) {
+                    double dy = y - start.y();
+                    double distSq = horizDistSq + dy*dy;
+
+                    if (distSq >= nearestDistSq) continue;
+
+                    auto block = chunkCopy.getBlock(x, y, z);
+                    if (block) {
+                        for (const QString& type : types) {
+                            if (block->startsWith(type)) {
+                                nearest = QVector3D(worldX, y, worldZ);
+                                nearestDistSq = distSq;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    } // Release GIL scope ends - reacquire for Python object creation
+
+    if (nearest.has_value()) {
+        return py::make_tuple(nearest.value().x(), nearest.value().y(), nearest.value().z());
+    }
+
+    return py::none();
+}
+
+int PythonAPI::getLoadedChunkCount(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QReadLocker locker(botInstance->worldDataLock.get());
+    return botInstance->worldData.chunkCount();
+}
+
+size_t PythonAPI::getWorldMemoryUsage(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QReadLocker locker(botInstance->worldDataLock.get());
+    return botInstance->worldData.totalMemoryUsage();
+}
+
+py::list PythonAPI::getLoadedChunks(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QVector<ChunkPos> chunks;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        chunks = botInstance->worldData.getLoadedChunks();
+    }
+
+    py::list chunkList;
+    for (const ChunkPos &pos : chunks) {
+        py::tuple coord = py::make_tuple(pos.x, pos.z);
+        chunkList.append(coord);
+    }
+
+    return chunkList;
+}
+
+void PythonAPI::interactBlock(int x, int y, int z, bool sneak, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendInteractWithBlock(botName, x, y, z,
+                                      mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak);
 }
 

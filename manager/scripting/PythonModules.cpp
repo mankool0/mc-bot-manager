@@ -148,6 +148,42 @@ PYBIND11_EMBEDDED_MODULE(meteor, m) {
           py::arg("bot") = "");
 }
 
+PYBIND11_EMBEDDED_MODULE(world, m) {
+    m.doc() = "World data queries and interaction";
+
+    // World queries
+    m.def("get_block", &PythonAPI::getBlock,
+          "Get block state at position, returns block ID string or None if chunk not loaded",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("bot") = "");
+    m.def("find_blocks", &PythonAPI::findBlocks,
+          "Find all blocks of type within radius of center, returns list of (x,y,z) tuples",
+          py::arg("block_type"), py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
+          py::arg("radius"),
+          py::arg("bot") = "");
+    m.def("find_nearest", &PythonAPI::findNearestBlock,
+          "Find nearest block matching any type in list, returns (x,y,z) tuple or None",
+          py::arg("block_types"), py::arg("max_distance") = 128,
+          py::arg("bot") = "");
+    m.def("loaded_chunk_count", &PythonAPI::getLoadedChunkCount,
+          "Get number of loaded chunks",
+          py::arg("bot") = "");
+    m.def("memory_usage", &PythonAPI::getWorldMemoryUsage,
+          "Get world data memory usage in bytes",
+          py::arg("bot") = "");
+    m.def("loaded_chunks", &PythonAPI::getLoadedChunks,
+          "Get list of loaded chunk positions as (x,z) tuples",
+          py::arg("bot") = "");
+
+    // World interaction
+    m.def("interact_block", &PythonAPI::interactBlock,
+          "Right-click/interact with block at position",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("sneak") = false,
+          py::arg("bot") = "");
+
+}
+
 PYBIND11_EMBEDDED_MODULE(utils, m) {
     m.doc() = "Utility functions";
 

@@ -65,6 +65,18 @@ public:
     static py::dict meteorGetModule(const std::string &module, const std::string &bot = "");
     static py::list meteorListModules(const std::string &bot = "");
 
+    // World queries
+    static py::object getBlock(int x, int y, int z, const std::string &bot = "");
+    static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
+                                int radius, const std::string &bot = "");
+    static py::object findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot = "");
+    static int getLoadedChunkCount(const std::string &bot = "");
+    static size_t getWorldMemoryUsage(const std::string &bot = "");
+    static py::list getLoadedChunks(const std::string &bot = "");
+
+    // World interaction
+    static void interactBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
+
     static void log(const std::string &message);
     static void error(const std::string &message);
 
