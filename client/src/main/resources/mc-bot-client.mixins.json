@@ -5,6 +5,10 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ClientPlayNetworkHandlerAccessor",
+    "ClientPacketListenerMixin",
+    "ClientboundSectionBlocksUpdatePacketAccessor",
+    "ContainerMixin",
+    "AbstractContainerMenuAccessor",
     "baritone.BaritoneSettingMixin"
   ],
   "injectors": {

@@ -112,7 +112,6 @@ public class WorldOutbound extends BaseOutbound {
         ChunkPos pos = new ChunkPos(chunkX, chunkZ);
 
         LevelChunk chunk = level.getChunk(chunkX, chunkZ);
-        if (chunk == null) return;
 
         sendChunkData(chunk);
         sentChunks.add(pos);

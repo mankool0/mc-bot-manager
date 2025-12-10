@@ -1,0 +1,264 @@
+package mankool.mcBotClient.handler.outbound;
+
+import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.mixin.client.AbstractContainerMenuAccessor;
+import mankool.mcbot.protocol.Common;
+import mankool.mcbot.protocol.Inventory;
+import mankool.mcbot.protocol.Protocol;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public class ContainerOutbound extends BaseOutbound {
+
+    // Static instance for access from mixin
+    private static ContainerOutbound instance;
+
+    // Currently open container (null if no container is open)
+    private ContainerState currentContainer = null;
+
+    public ContainerOutbound(Minecraft client, PipeConnection connection) {
+        super(client, connection);
+        instance = this;
+    }
+
+    public static ContainerOutbound getInstance() {
+        return instance;
+    }
+
+    @Override
+    protected void onClientTick(Minecraft client) {
+        // Check if container contents have changed
+        if (currentContainer != null && client.player != null) {
+            AbstractContainerMenu menu = client.player.containerMenu;
+            if (menu.containerId == currentContainer.containerId) {
+                if (hasContainerChanged(menu)) {
+                    sendContainerUpdate();
+                }
+            }
+        }
+    }
+
+    public void onContainerOpened(int containerId, String containerType, BlockPos position) {
+        System.out.println("Container opened: " + containerType + " at " + position + " (id=" + containerId + ")");
+
+        currentContainer = new ContainerState(containerId, containerType, position);
+
+        sendContainerUpdate();
+    }
+
+    public void onContainerClosed(int containerId) {
+        if (currentContainer != null && currentContainer.containerId == containerId) {
+            System.out.println("Container closed: id=" + containerId);
+
+            // Send container closed message (is_open = false, no items)
+            Inventory.ContainerUpdate.Builder containerBuilder = Inventory.ContainerUpdate.newBuilder()
+                .setContainerId(containerId)
+                .setIsOpen(false);
+
+            Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+                .setMessageId(UUID.randomUUID().toString())
+                .setTimestamp(System.currentTimeMillis())
+                .setContainer(containerBuilder.build())
+                .build();
+
+            connection.sendMessage(message);
+
+            currentContainer = null;
+        }
+    }
+
+
+    public void onContainerContentSet(int containerId) {
+        if (currentContainer != null && currentContainer.containerId == containerId) {
+            sendContainerUpdate();
+        }
+    }
+
+
+    public void onContainerSlotChanged(int containerId, int slot) {
+        if (currentContainer != null && currentContainer.containerId == containerId) {
+            // Send full container update (could optimize to just slot in the future)
+            sendContainerUpdate();
+        }
+    }
+
+    private void sendContainerUpdate() {
+        if (currentContainer == null || client.player == null) return;
+
+        AbstractContainerMenu menu = client.player.containerMenu;
+        if (menu.containerId != currentContainer.containerId) return;
+
+        Inventory.ContainerUpdate.Builder containerBuilder = Inventory.ContainerUpdate.newBuilder()
+            .setType(mapContainerType(currentContainer.containerType))
+            .setContainerId(currentContainer.containerId)
+            .setIsOpen(true);
+
+        if (currentContainer.position != null) {
+            containerBuilder.setPosition(Common.BlockPos.newBuilder()
+                .setX(currentContainer.position.getX())
+                .setY(currentContainer.position.getY())
+                .setZ(currentContainer.position.getZ())
+                .build());
+        }
+
+        for (int i = 0; i < menu.slots.size(); i++) {
+            ItemStack itemStack = menu.getSlot(i).getItem();
+            if (!itemStack.isEmpty()) {
+                Common.ItemStack protoItem = Common.ItemStack.newBuilder()
+                    .setSlot(i)
+                    .setItemId(itemStack.getItem().toString())
+                    .setCount(itemStack.getCount())
+                    .setDamage(itemStack.getDamageValue())
+                    .setMaxDamage(itemStack.getMaxDamage())
+                    .setDisplayName(itemStack.getHoverName().getString())
+                    .build();
+                containerBuilder.addItems(protoItem);
+            }
+        }
+
+        addContainerProperties(menu, containerBuilder);
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setContainer(containerBuilder.build())
+            .build();
+
+        connection.sendMessage(message);
+
+        currentContainer.updateCache(menu);
+    }
+
+    private boolean hasContainerChanged(AbstractContainerMenu menu) {
+        if (currentContainer.cachedItems.size() != menu.slots.size()) {
+            return true;
+        }
+
+        for (int i = 0; i < menu.slots.size(); i++) {
+            ItemStack current = menu.getSlot(i).getItem();
+            ItemStack cached = currentContainer.cachedItems.get(i);
+
+            if (!ItemStack.matches(current, cached)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Maps Minecraft container type string to proto enum.
+     */
+    private Inventory.ContainerUpdate.ContainerType mapContainerType(String typeString) {
+        if (typeString == null) return Inventory.ContainerUpdate.ContainerType.OTHER;
+
+        return switch (typeString.toLowerCase()) {
+            case "minecraft:chest" -> Inventory.ContainerUpdate.ContainerType.CHEST;
+            case "minecraft:ender_chest" -> Inventory.ContainerUpdate.ContainerType.ENDER_CHEST;
+            case "minecraft:shulker_box" -> Inventory.ContainerUpdate.ContainerType.SHULKER_BOX;
+            case "minecraft:furnace" -> Inventory.ContainerUpdate.ContainerType.FURNACE;
+            case "minecraft:blast_furnace" -> Inventory.ContainerUpdate.ContainerType.BLAST_FURNACE;
+            case "minecraft:smoker" -> Inventory.ContainerUpdate.ContainerType.SMOKER;
+            case "minecraft:crafting_table" -> Inventory.ContainerUpdate.ContainerType.CRAFTING_TABLE;
+            case "minecraft:enchanting_table" -> Inventory.ContainerUpdate.ContainerType.ENCHANTING_TABLE;
+            case "minecraft:anvil" -> Inventory.ContainerUpdate.ContainerType.ANVIL;
+            case "minecraft:brewing_stand" -> Inventory.ContainerUpdate.ContainerType.BREWING_STAND;
+            case "minecraft:hopper" -> Inventory.ContainerUpdate.ContainerType.HOPPER;
+            case "minecraft:dispenser" -> Inventory.ContainerUpdate.ContainerType.DISPENSER;
+            case "minecraft:dropper" -> Inventory.ContainerUpdate.ContainerType.DROPPER;
+            case "minecraft:beacon" -> Inventory.ContainerUpdate.ContainerType.BEACON;
+            default -> Inventory.ContainerUpdate.ContainerType.OTHER;
+        };
+    }
+
+    private void addContainerProperties(AbstractContainerMenu menu, Inventory.ContainerUpdate.Builder builder) {
+        var dataSlots = ((AbstractContainerMenuAccessor) menu).getDataSlots();
+
+        // Map each data slot to its NBT field name based on container type
+        Inventory.ContainerUpdate.ContainerType containerType = mapContainerType(currentContainer.containerType);
+
+        for (int i = 0; i < dataSlots.size(); i++) {
+            int value = dataSlots.get(i).get();
+            String fieldName = getDataSlotNBTFieldName(containerType, i);
+            builder.putProperties(fieldName, value);
+        }
+    }
+
+    private String getDataSlotNBTFieldName(Inventory.ContainerUpdate.ContainerType type, int slotIndex) {
+        return switch (type) {
+            case FURNACE, BLAST_FURNACE, SMOKER -> switch (slotIndex) {
+                case 0 -> "lit_time_remaining";    // litTimeRemaining field
+                case 1 -> "lit_total_time";        // litTotalTime field
+                case 2 -> "cooking_time_spent";    // cookingTimer field
+                case 3 -> "cooking_total_time";    // cookingTotalTime field
+                default -> "data_" + slotIndex;
+            };
+
+            case BREWING_STAND -> switch (slotIndex) {
+                case 0 -> "BrewTime";              // brewTime field
+                case 1 -> "Fuel";                  // fuel field
+                default -> "data_" + slotIndex;
+            };
+
+            // Note: primary_effect and secondary_effect are stored as strings in NBT,
+            // but synchronized as integer effect IDs in data slots
+            case BEACON -> switch (slotIndex) {
+                case 0 -> "Levels";                // levels field
+                case 1 -> "primary_effect";        // primaryPower field (effect ID as int)
+                case 2 -> "secondary_effect";      // secondaryPower field (effect ID as int)
+                default -> "data_" + slotIndex;
+            };
+
+            case ENCHANTING_TABLE -> switch (slotIndex) {
+                case 0 -> "costs_0";               // costs[0]
+                case 1 -> "costs_1";               // costs[1]
+                case 2 -> "costs_2";               // costs[2]
+                case 3 -> "enchantmentSeed";       // enchantmentSeed field
+                case 4 -> "enchantClue_0";         // enchantClue[0]
+                case 5 -> "enchantClue_1";         // enchantClue[1]
+                case 6 -> "enchantClue_2";         // enchantClue[2]
+                case 7 -> "levelClue_0";           // levelClue[0]
+                case 8 -> "levelClue_1";           // levelClue[1]
+                case 9 -> "levelClue_2";           // levelClue[2]
+                default -> "data_" + slotIndex;
+            };
+
+            case ANVIL -> switch (slotIndex) {
+                case 0 -> "cost";
+                default -> "data_" + slotIndex;
+            };
+
+            // Containers with no data slots (only items)
+            case CHEST, ENDER_CHEST, SHULKER_BOX, DISPENSER, DROPPER,
+                 CRAFTING_TABLE, VILLAGER_TRADE, HORSE_INVENTORY, HOPPER, OTHER,
+                 PLAYER_INVENTORY, UNRECOGNIZED ->
+                "data_" + slotIndex;  // Should never be called for these types
+        };
+    }
+
+    private static class ContainerState {
+        final int containerId;
+        final String containerType;
+        final BlockPos position;
+        final Map<Integer, ItemStack> cachedItems = new HashMap<>();
+
+        ContainerState(int containerId, String containerType, BlockPos position) {
+            this.containerId = containerId;
+            this.containerType = containerType;
+            this.position = position;
+        }
+
+        void updateCache(AbstractContainerMenu menu) {
+            cachedItems.clear();
+            for (int i = 0; i < menu.slots.size(); i++) {
+                cachedItems.put(i, menu.getSlot(i).getItem().copy());
+            }
+        }
+    }
+}
