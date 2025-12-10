@@ -39,6 +39,15 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(qutepart)
 set(DISABLE_QUTEPART_TESTS ON CACHE BOOL "Disable qutepart tests" FORCE)
 
+# For NBT file handling
+set(NBT_BUILD_TESTS OFF CACHE BOOL "Disable libnbtplusplus tests" FORCE)
+FetchContent_Declare(
+    libnbtplusplus
+    GIT_REPOSITORY https://github.com/PrismLauncher/libnbtplusplus.git
+    GIT_TAG        master
+)
+FetchContent_MakeAvailable(libnbtplusplus)
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 # Generate QtProtobuf files from proto directory
@@ -64,8 +73,12 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "network/*.h"
     "bot/*.cpp"
     "bot/*.h"
+    "world/*.cpp"
+    "world/*.h"
     "scripting/*.cpp"
     "scripting/*.h"
+    "saving/*.cpp"
+    "saving/*.h"
 )
 
 # Windows resource file for application icon
@@ -87,6 +100,7 @@ target_link_libraries(mc-bot-manager PRIVATE
     pybind11::embed
     Python3::Python
     qutepart
+    nbt++
 )
 
 # Add current directory and generated proto directory to include path
@@ -94,6 +108,7 @@ target_include_directories(mc-bot-manager PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${CMAKE_CURRENT_BINARY_DIR}/_deps/qutepart-src/include
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
 )
 
 # Define version for use in code
