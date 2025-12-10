@@ -1721,6 +1721,113 @@ void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool
     }
 }
 
+// Block Registry Handlers
+
+void BotManager::handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)
+{
+    instance().handleQueryRegistryImpl(connectionId, query);
+}
+
+void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int dataVersion = query.dataVersion();
+    bot->dataVersion = dataVersion;
+
+    LogManager::log(QString("Bot '%1': Query for block registry data version %2")
+                   .arg(bot->name).arg(dataVersion), LogManager::Info);
+
+    // Check if we have this registry cached
+    bool haveCached = BlockRegistry::cacheExists(dataVersion);
+
+    // If we have it cached, load it for this bot
+    if (haveCached) {
+        bot->blockRegistry = std::make_shared<BlockRegistry>();
+        if (bot->blockRegistry->loadFromCache(dataVersion)) {
+            LogManager::log(QString("Bot '%1': Loaded block registry from cache for data version %2")
+                           .arg(bot->name).arg(dataVersion), LogManager::Success);
+        } else {
+            LogManager::log(QString("Bot '%1': Failed to load cached registry for data version %2")
+                           .arg(bot->name).arg(dataVersion), LogManager::Warning);
+            haveCached = false;  // Failed to load, need it from client
+        }
+    } else {
+        LogManager::log(QString("Bot '%1': Block registry cache not found for data version %2")
+                       .arg(bot->name).arg(dataVersion), LogManager::Info);
+    }
+
+    // Send response
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::BlockRegistryResponse response;
+    response.setStatus(haveCached ? mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::HAVE_IT
+                                   : mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::NEED_IT);
+    msg.setRegistryResponse(response);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize block registry response for bot '%1'")
+                       .arg(bot->name), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(connectionId, message);
+
+    LogManager::log(QString("Bot '%1': Sent registry response: %2")
+                   .arg(bot->name)
+                   .arg(haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
+
+    // Try to initialize WorldAutoSaver now that we have dataVersion
+    tryInitializeWorldAutoSaver(bot);
+}
+
+void BotManager::handleBlockRegistry(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry)
+{
+    instance().handleBlockRegistryImpl(connectionId, registry);
+}
+
+void BotManager::handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int dataVersion = registry.dataVersion();
+
+    LogManager::log(QString("Bot '%1': Receiving block registry for data version %2 (%3 states)")
+                   .arg(bot->name).arg(dataVersion).arg(registry.stateMap().size()),
+                   LogManager::Info);
+
+    // Create new registry
+    bot->blockRegistry = std::make_shared<BlockRegistry>();
+    bot->blockRegistry->loadFromCache(dataVersion);  // Initialize with data version
+
+    // Add all block states
+    const auto &stateMap = registry.stateMap();
+    for (auto it = stateMap.constBegin(); it != stateMap.constEnd(); ++it) {
+        bot->blockRegistry->addBlockState(it.key(), it.value());
+    }
+
+    // Save to cache
+    bot->blockRegistry->saveToCache();
+
+    LogManager::log(QString("Bot '%1': Block registry saved to cache")
+                   .arg(bot->name), LogManager::Success);
+
+    // Try to initialize WorldAutoSaver now that we have dataVersion
+    tryInitializeWorldAutoSaver(bot);
+}
+
 void BotManager::requestBaritoneSettings(const QString &botName)
 {
     instance().requestBaritoneSettingsImpl(botName);

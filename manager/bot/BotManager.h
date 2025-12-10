@@ -21,6 +21,7 @@
 #include "common.qpb.h"
 #include "meteor.qpb.h"
 #include "baritone.qpb.h"
+#include "world/BlockRegistry.h"
 
 using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
 using BaritoneSettingType = mankool::mcbot::protocol::BaritoneSettingInfo::SettingType;
@@ -210,6 +211,9 @@ struct BotInstance {
     // Baritone data
     QMap<QString, BaritoneSettingData> baritoneSettings;
     QMap<QString, BaritoneCommandData> baritoneCommands;
+    // World data
+    BotWorldData worldData;
+    std::shared_ptr<BlockRegistry> blockRegistry;
 
     std::shared_ptr<QMutex> dataMutex = std::make_shared<QMutex>();
 };
@@ -251,6 +255,10 @@ public:
     static void handleBaritoneSettingsSetResponse(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
     static void handleBaritoneCommandResponse(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     static void handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
+
+    // Block registry handlers
+    static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
+    static void handleBlockRegistry(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -296,6 +304,8 @@ private:
     void handleBaritoneSettingsSetResponseImpl(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
     void handleBaritoneCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
+    void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
+    void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);
@@ -306,6 +316,9 @@ private:
 
     QVector<BotInstance> botInstances;
     QSet<QString> silentMessageIds;
+
+    // Block state registry cache: data_version -> (state_id -> block_state_string)
+    QMap<int, QMap<quint32, QString>> blockRegistryCache;
 };
 
 #endif // BOTMANAGER_H
