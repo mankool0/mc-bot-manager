@@ -10,6 +10,7 @@
 #include <QMap>
 #include <QSet>
 #include <QMutex>
+#include <QReadWriteLock>
 #include <QPointer>
 #include <memory>
 #include "protocol.qpb.h"
@@ -21,7 +22,10 @@
 #include "common.qpb.h"
 #include "meteor.qpb.h"
 #include "baritone.qpb.h"
+#include "world.qpb.h"
+#include "WorldData.h"
 #include "world/BlockRegistry.h"
+#include "saving/WorldAutoSaver.h"
 
 using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
 using BaritoneSettingType = mankool::mcbot::protocol::BaritoneSettingInfo::SettingType;
@@ -211,11 +215,17 @@ struct BotInstance {
     // Baritone data
     QMap<QString, BaritoneSettingData> baritoneSettings;
     QMap<QString, BaritoneCommandData> baritoneCommands;
+
     // World data
     BotWorldData worldData;
     std::shared_ptr<BlockRegistry> blockRegistry;
+    int dataVersion = 0;  // Minecraft data version for this bot
+    std::shared_ptr<WorldAutoSaver> worldAutoSaver;
+    QString worldAutoSaverServerIp;
+    QVector<ChunkData> earlyChunkQueue;
 
     std::shared_ptr<QMutex> dataMutex = std::make_shared<QMutex>();
+    std::shared_ptr<QReadWriteLock> worldDataLock = std::make_shared<QReadWriteLock>();
 };
 
 class BotManager : public QObject
@@ -259,6 +269,18 @@ public:
     // Block registry handlers
     static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     static void handleBlockRegistry(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
+
+    // World data handlers
+    static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
+    static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
+    static void handleMultiBlockUpdate(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
+    static void handleChunkUnload(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
+    static void handleContainerUpdate(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
+
+    // World interaction commands
+    static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
+                                      mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
+                                      bool sneak = false);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -306,6 +328,13 @@ private:
     void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
     void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
+    void handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
+    void handleBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
+    void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
+    void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
+    void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
+    void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
+                                   mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);
@@ -313,6 +342,9 @@ private:
     void sendBaritoneCommandImpl(const QString &botName, const QString &commandText);
     void sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QVariant &value);
     void sendMeteorSettingChangeImpl(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
+
+    // Helper to initialize WorldAutoSaver when both server and dataVersion are available
+    void tryInitializeWorldAutoSaver(BotInstance* bot);
 
     QVector<BotInstance> botInstances;
     QSet<QString> silentMessageIds;
