@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QPlainTextEdit>
 #include <QTextCursor>
+#include <QPointer>
 
 class LogManager : public QObject
 {
@@ -34,23 +35,29 @@ public:
     }
 
     static void log(const QString &message, LogLevel level = Info) {
-        instance().logImpl(message, level);
+        emit instance().logRequested(message, level);
     }
     static void logPrism(const QString &message) {
-        instance().logPrismImpl(message);
+        emit instance().logPrismRequested(message);
     }
     static void clearManagerLog() {
-        instance().clearManagerLogImpl();
+        emit instance().clearManagerLogRequested();
     }
     static void clearPrismLog() {
-        instance().clearPrismLogImpl();
+        emit instance().clearPrismLogRequested();
     }
+
+signals:
+    void logRequested(const QString &message, LogLevel level);
+    void logPrismRequested(const QString &message);
+    void clearManagerLogRequested();
+    void clearPrismLogRequested();
 
 private:
     explicit LogManager(QObject *parent = nullptr);
 
-    QPlainTextEdit *managerLogWidget = nullptr;
-    QPlainTextEdit *prismLogWidget = nullptr;
+    QPointer<QPlainTextEdit> managerLogWidget;
+    QPointer<QPlainTextEdit> prismLogWidget;
     bool autoScroll = true;
 
     void logImpl(const QString &message, LogLevel level);
