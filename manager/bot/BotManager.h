@@ -280,7 +280,8 @@ public:
     // World interaction commands
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
-                                      bool sneak = false);
+                                      bool sneak = false,
+                                      bool lookAtBlock = true);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -334,7 +335,7 @@ private:
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
-                                   mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak);
+                                   mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);

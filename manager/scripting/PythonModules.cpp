@@ -180,6 +180,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           "Right-click/interact with block at position",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("sneak") = false,
+          py::arg("look_at_block") = true,
           py::arg("bot") = "");
 
 }

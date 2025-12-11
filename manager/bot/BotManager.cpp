@@ -2412,13 +2412,13 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
 // ============================================================================
 
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,
-                                        mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak)
+                                        mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
 {
-    instance().sendInteractWithBlockImpl(botName, x, y, z, hand, sneak);
+    instance().sendInteractWithBlockImpl(botName, x, y, z, hand, sneak, lookAtBlock);
 }
 
 void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
-                                            mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak)
+                                            mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -2443,6 +2443,7 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
     cmd.setPosition(pos);
     cmd.setHand(hand);
     cmd.setSneak(sneak);
+    cmd.setLookAtBlock(lookAtBlock);
     msg.setInteractWithBlock(cmd);
 
     QProtobufSerializer serializer;
@@ -2452,6 +2453,10 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
         return;
     }
 
+    LogManager::log(QString("[DEBUG %1] Serialized interact command: %2 bytes")
+                   .arg(botName).arg(protoData.size()),
+                   LogManager::Debug);
+
     QByteArray message;
     QDataStream stream(&message, QIODevice::WriteOnly);
     stream.setByteOrder(QDataStream::LittleEndian);
@@ -2460,9 +2465,7 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
 
     PipeServer::sendToClient(bot->connectionId, message);
 
-    if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] Sent interact with block at (%2, %3, %4)")
-                       .arg(botName).arg(x).arg(y).arg(z),
-                       LogManager::Debug);
-    }
+    LogManager::log(QString("[DEBUG %1] Sent interact with block at (%2, %3, %4), total message size: %5")
+                   .arg(botName).arg(x).arg(y).arg(z).arg(message.size()),
+                   LogManager::Debug);
 }

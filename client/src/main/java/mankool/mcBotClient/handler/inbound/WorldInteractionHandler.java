@@ -75,14 +75,20 @@ public class WorldInteractionHandler extends BaseInboundHandler {
                 return;
             }
 
+            // Rotate to look at the block if requested
+            if (command.getLookAtBlock()) {
+                ctx.player().setYRot(rot.get().getYaw());
+                ctx.player().setXRot(rot.get().getPitch());
+            }
+
             HitResult rayTraceResult = RayTraceUtils.rayTraceTowards(player, rot.get(), blockReachDistance, command.getSneak());
             if (!(rayTraceResult instanceof BlockHitResult hitResult)) {
                 sendFailure(messageId, "Could not ray trace to block");
                 return;
             }
 
-            LOGGER.debug("Interacting with {} - hit: {}, face: {}",
-                blockPos.toShortString(), hitResult.getLocation(), hitResult.getDirection());
+            LOGGER.debug("Interacting with {} - hit: {}, face: {}, looked: {}",
+                blockPos.toShortString(), hitResult.getLocation(), hitResult.getDirection(), command.getLookAtBlock());
 
             var interactionResult = client.gameMode.useItemOn(player, hand, hitResult);
 

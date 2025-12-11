@@ -75,7 +75,7 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
-    static void interactBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
+    static void interactBlock(int x, int y, int z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
 
     static void log(const std::string &message);
     static void error(const std::string &message);

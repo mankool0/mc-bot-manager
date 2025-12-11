@@ -1189,12 +1189,12 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     return chunkList;
 }
 
-void PythonAPI::interactBlock(int x, int y, int z, bool sneak, const std::string &bot)
+void PythonAPI::interactBlock(int x, int y, int z, bool sneak, bool lookAtBlock, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
     BotManager::sendInteractWithBlock(botName, x, y, z,
-                                      mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak);
+                                      mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock);
 }
 
