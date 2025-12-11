@@ -75,7 +75,7 @@ private:
                                     std::unordered_map<RegionPos, std::unique_ptr<RegionFile>>& regionCache);
 
     static QString getRegionFilePath(const QString& outputPath, int regionX, int regionZ);
-    static nbt::tag_compound createVoidDimension();
+    static nbt::tag_compound createVoidDimension(const std::string& dimensionType);
 };
 
 #endif // WORLDEXPORTER_H

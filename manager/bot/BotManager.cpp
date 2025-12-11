@@ -617,9 +617,15 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
                        .arg(bot->name).arg(bot->worldAutoSaverServerIp).arg(bot->server), LogManager::Info);
     }
 
-    LogManager::log(QString("Bot '%1': Creating WorldAutoSaver for %2 with data version %3")
-                   .arg(bot->name).arg(bot->server).arg(bot->dataVersion), LogManager::Info);
-    bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, bot->dataVersion);
+    MinecraftVersion version;
+    version.dataVersion = bot->dataVersion;
+    version.versionName = bot->versionName;
+    version.series = bot->versionSeries;
+    version.isSnapshot = bot->versionIsSnapshot;
+
+    LogManager::log(QString("Bot '%1': Creating WorldAutoSaver for %2 with version %3 (data version %4)")
+                   .arg(bot->name).arg(bot->server).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
+    bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version);
     bot->worldAutoSaverServerIp = bot->server;
 
     // Process any chunks that were queued before the saver was ready
@@ -713,6 +719,12 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         if (info.maxMemory() > 0) {
             bot->maxMemory = info.maxMemory() / (1024 * 1024);
         }
+
+        // Store version info
+        bot->dataVersion = info.dataVersion();
+        bot->versionName = info.clientVersion();
+        bot->versionSeries = info.versionSeries();
+        bot->versionIsSnapshot = info.versionIsSnapshot();
 
         emit botUpdated(bot->name);
 

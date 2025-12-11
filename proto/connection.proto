@@ -6,13 +6,16 @@ package mankool.mcbot.protocol;
 
 // Initial handshake when client starts (Client -> Manager)
 message ConnectionInfo {
-  string client_version = 1;    // Minecraft version (e.g., "1.21.8")
+  string client_version = 1;    // Minecraft version name (e.g., "1.21.8")
   string mod_version = 2;       // Bot mod version
   string player_name = 3;
   string player_uuid = 4;
   int64 startup_time = 5;       // Unix timestamp when client started
   int32 process_id = 6;         // Process ID of the Minecraft client
   int64 max_memory = 7;         // Maximum memory available to JVM in bytes
+  int32 data_version = 8;       // Minecraft data version (e.g., 3465 for 1.20.1)
+  string version_series = 9;    // Version series (usually "main", or "ccpreview" for experimental)
+  bool version_is_snapshot = 10; // Whether this is a snapshot version
 }
 
 // Regular heartbeat (bidirectional)

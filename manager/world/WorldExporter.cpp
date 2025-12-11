@@ -298,11 +298,11 @@ QString WorldExporter::getRegionFilePath(const QString& outputPath, int regionX,
     return QString("%1/region/r.%2.%3.mca").arg(outputPath).arg(regionX).arg(regionZ);
 }
 
-nbt::tag_compound WorldExporter::createVoidDimension() {
+nbt::tag_compound WorldExporter::createVoidDimension(const std::string& dimensionType) {
     nbt::tag_compound dim;
 
     // Type
-    dim.insert("type", nbt::tag_string("minecraft:overworld"));
+    dim.insert("type", nbt::tag_string(dimensionType));
 
     // Chunk generator - flat with no layers (void)
     nbt::tag_compound generator;

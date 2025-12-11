@@ -219,7 +219,10 @@ struct BotInstance {
     // World data
     BotWorldData worldData;
     std::shared_ptr<BlockRegistry> blockRegistry;
-    int dataVersion = 0;  // Minecraft data version for this bot
+    int dataVersion = 0;
+    QString versionName;
+    QString versionSeries = "main";
+    bool versionIsSnapshot = false;
     std::shared_ptr<WorldAutoSaver> worldAutoSaver;
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;
