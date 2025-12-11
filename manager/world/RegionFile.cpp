@@ -65,6 +65,10 @@ bool RegionFile::loadHeaders() {
     }
 
     headersLoaded = true;
+
+    // Build the free sector map from the loaded headers
+    buildFreeSectorMap();
+
     return true;
 }
 
@@ -98,12 +102,129 @@ bool RegionFile::initializeNewFile() {
     timestamps.fill(0);
 
     headersLoaded = true;
+
+    // Build initial free sector map (only headers are used)
+    buildFreeSectorMap();
+
     return saveHeaders();
+}
+
+void RegionFile::buildFreeSectorMap() {
+    if (!file.isOpen()) {
+        return;
+    }
+
+    // Calculate number of sectors in the file
+    qint64 fileSize = file.size();
+    size_t numSectors = static_cast<size_t>((fileSize + 4095) / 4096);
+
+    // Ensure we have at least 2 sectors for headers
+    if (numSectors < 2) {
+        numSectors = 2;
+    }
+
+    // Initialize all sectors as free
+    sectorFree.assign(numSectors, true);
+
+    // Mark first 2 sectors (8KB headers) as used
+    sectorFree[0] = false;
+    sectorFree[1] = false;
+
+    // Scan all chunk locations and mark their sectors as used
+    for (int i = 0; i < 1024; i++) {
+        uint32_t location = locations[i];
+        if (location == 0) {
+            continue;  // Chunk doesn't exist
+        }
+
+        uint32_t offset = (location >> 8) & 0xFFFFFF;
+        uint32_t sectorCount = location & 0xFF;
+
+        if (offset < 2 || sectorCount == 0) {
+            continue;  // Invalid location
+        }
+
+        // Mark these sectors as used
+        for (uint32_t j = 0; j < sectorCount; j++) {
+            uint32_t sector = offset + j;
+            if (sector < sectorFree.size()) {
+                sectorFree[sector] = false;
+            }
+        }
+    }
+}
+
+uint32_t RegionFile::findFreeSectors(size_t count) {
+    if (count == 0 || sectorFree.empty()) {
+        return 0;
+    }
+
+    // Search for a contiguous run of free sectors
+    size_t runStart = 0;
+    size_t runLength = 0;
+
+    for (size_t i = 0; i < sectorFree.size(); i++) {
+        if (sectorFree[i]) {
+            // Found a free sector
+            if (runLength == 0) {
+                runStart = i;
+            }
+            runLength++;
+
+            if (runLength >= count) {
+                // Found enough contiguous free sectors
+                return static_cast<uint32_t>(runStart);
+            }
+        } else {
+            // Used sector, reset the run
+            runLength = 0;
+        }
+    }
+
+    // No suitable run found
+    return 0;
+}
+
+void RegionFile::markSectorsUsed(uint32_t offset, size_t count) {
+    // Expand the vector if necessary
+    size_t requiredSize = offset + count;
+    if (requiredSize > sectorFree.size()) {
+        sectorFree.resize(requiredSize, true);
+    }
+
+    // Mark sectors as used
+    for (size_t i = 0; i < count; i++) {
+        sectorFree[offset + i] = false;
+    }
+}
+
+void RegionFile::markSectorsFree(uint32_t offset, size_t count) {
+    // Mark sectors as free (don't expand the vector)
+    for (size_t i = 0; i < count; i++) {
+        size_t sector = offset + i;
+        if (sector < sectorFree.size()) {
+            sectorFree[sector] = true;
+        }
+    }
 }
 
 bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chunkNBT) {
     if (!isValid() || !headersLoaded) {
         return false;
+    }
+
+    // Check if chunk already exists and free old sectors
+    int index = getHeaderIndex(localX, localZ);
+    uint32_t oldLocation = locations[index];
+
+    if (oldLocation != 0) {
+        uint32_t oldOffset = (oldLocation >> 8) & 0xFFFFFF;
+        uint32_t oldSectorCount = oldLocation & 0xFF;
+
+        if (oldOffset >= 2 && oldSectorCount > 0) {
+            // Free the old sectors
+            markSectorsFree(oldOffset, oldSectorCount);
+        }
     }
 
     // Serialize NBT to bytes
@@ -146,7 +267,6 @@ bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chu
     }
 
     // Update header
-    int index = getHeaderIndex(localX, localZ);
     locations[index] = (offset << 8) | (sectorsNeeded & 0xFF);
     timestamps[index] = static_cast<uint32_t>(std::time(nullptr));
 
@@ -218,17 +338,33 @@ void RegionFile::flush() {
 }
 
 uint32_t RegionFile::allocateSectors(size_t dataSize) {
-    // Simple allocation: always append to end of file
-    // In a real implementation, we'd track free sectors and reuse them
-    (void)dataSize;  // Currently unused
+    // Calculate sectors needed (round up to 4KB)
+    size_t sectorsNeeded = (dataSize + 4095) / 4096;
 
+    if (sectorsNeeded == 0) {
+        return 0;
+    }
+
+    // Try to find free sectors in existing file
+    uint32_t offset = findFreeSectors(sectorsNeeded);
+
+    if (offset != 0) {
+        // Found free sectors, mark them as used
+        markSectorsUsed(offset, sectorsNeeded);
+        return offset;
+    }
+
+    // No free sectors found, append to end of file
     qint64 fileSize = file.size();
-    uint32_t offset = static_cast<uint32_t>((fileSize + 4095) / 4096);
+    offset = static_cast<uint32_t>((fileSize + 4095) / 4096);
 
     // Ensure offset is at least 2 (after headers)
     if (offset < 2) {
         offset = 2;
     }
+
+    // Mark new sectors as used (this will expand the bitmap)
+    markSectorsUsed(offset, sectorsNeeded);
 
     return offset;
 }
