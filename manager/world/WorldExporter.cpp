@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <zlib.h>
+#include <chrono>
 
 bool WorldExporter::exportWorld(const BotWorldData& worldData,
                                 const QString& outputPath,
@@ -164,12 +165,14 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
     data.insert("SpawnX", nbt::tag_int(spawnX));
     data.insert("SpawnY", nbt::tag_int(spawnY));
     data.insert("SpawnZ", nbt::tag_int(spawnZ));
+    data.insert("SpawnAngle", nbt::tag_float(0.0f));
 
     // Disable features in new chunks
     data.insert("MapFeatures", nbt::tag_byte(0));
 
     // Game settings
     data.insert("Difficulty", nbt::tag_byte(2));  // Normal
+    data.insert("DifficultyLocked", nbt::tag_byte(0));
     data.insert("GameType", nbt::tag_int(1));  // Creative
     data.insert("hardcore", nbt::tag_byte(0));
     data.insert("allowCommands", nbt::tag_byte(1));
@@ -182,7 +185,9 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
 
     // Dimensions with void generator
     nbt::tag_compound dimensions;
-    dimensions.insert("minecraft:overworld", createVoidDimension());
+    dimensions.insert("minecraft:overworld", createVoidDimension("minecraft:overworld"));
+    dimensions.insert("minecraft:the_nether", createVoidDimension("minecraft:the_nether"));
+    dimensions.insert("minecraft:the_end", createVoidDimension("minecraft:the_end"));
     worldGen.insert("dimensions", std::move(dimensions));
 
     data.insert("WorldGenSettings", std::move(worldGen));
@@ -190,6 +195,33 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
     // Time settings
     data.insert("Time", nbt::tag_long(6000));  // Noon
     data.insert("DayTime", nbt::tag_long(6000));
+
+    // Weather settings - clear weather for ~3.4 years of gameplay (max int32)
+    data.insert("raining", nbt::tag_byte(0));
+    data.insert("rainTime", nbt::tag_int(2147483647));  // Max int32 - never rain
+    data.insert("thundering", nbt::tag_byte(0));
+    data.insert("thunderTime", nbt::tag_int(2147483647));  // Max int32 - never thunder
+    data.insert("clearWeatherTime", nbt::tag_int(2147483647));  // Keep clear weather indefinitely
+
+    // World border settings
+    data.insert("BorderCenterX", nbt::tag_double(0.0));
+    data.insert("BorderCenterZ", nbt::tag_double(0.0));
+    data.insert("BorderSize", nbt::tag_double(60000000.0));
+    data.insert("BorderSizeLerpTarget", nbt::tag_double(60000000.0));
+    data.insert("BorderSizeLerpTime", nbt::tag_long(0));
+    data.insert("BorderWarningBlocks", nbt::tag_double(5.0));
+    data.insert("BorderWarningTime", nbt::tag_double(15.0));
+    data.insert("BorderDamagePerBlock", nbt::tag_double(0.2));
+    data.insert("BorderSafeZone", nbt::tag_double(5.0));
+
+    // World state
+    data.insert("initialized", nbt::tag_byte(1));
+    data.insert("WasModded", nbt::tag_byte(0));
+
+    // Current timestamp in milliseconds since epoch
+    auto now = std::chrono::system_clock::now();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    data.insert("LastPlayed", nbt::tag_long(millis));
 
     // Wrap in root compound
     nbt::tag_compound root;
