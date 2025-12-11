@@ -601,6 +601,11 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
 {
     if (!bot) return;
 
+    // Skip if world saving is disabled for this bot
+    if (!bot->saveWorldToDisk) {
+        return;
+    }
+
     // Check if we have both requirements: server address and data version
     if (bot->server.isEmpty() || bot->dataVersion == 0) {
         return;
@@ -2183,11 +2188,13 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         bot->worldData.loadChunk(chunk);
     }
 
-    // Save the chunk to disk or queue it if the saver isn't ready
-    if (bot->worldAutoSaver) {
-        bot->worldAutoSaver->saveChunkAsync(chunk);
-    } else {
-        bot->earlyChunkQueue.append(chunk);
+    // Save the chunk to disk or queue it if the saver isn't ready (only if saving is enabled)
+    if (bot->saveWorldToDisk) {
+        if (bot->worldAutoSaver) {
+            bot->worldAutoSaver->saveChunkAsync(chunk);
+        } else {
+            bot->earlyChunkQueue.append(chunk);
+        }
     }
 
     if (bot->debugLogging) {

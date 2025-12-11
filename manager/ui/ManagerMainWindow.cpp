@@ -121,6 +121,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->autoRestartCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->tokenRefreshCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->debugModeCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->saveWorldToDiskCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
 
     ui->detailsStackedWidget->setCurrentIndex(0);
     ui->detailsStackedWidget->hide();
@@ -537,6 +538,7 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->autoRestart = ui->autoRestartCheckBox->isChecked();
             bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
             bot->debugLogging = ui->debugModeCheckBox->isChecked();
+            bot->saveWorldToDisk = ui->saveWorldToDiskCheckBox->isChecked();
             updateInstancesTable();
         }
     }
@@ -581,6 +583,7 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     ui->autoRestartCheckBox->setChecked(bot.autoRestart);
     ui->tokenRefreshCheckBox->setChecked(bot.tokenRefresh);
     ui->debugModeCheckBox->setChecked(bot.debugLogging);
+    ui->saveWorldToDiskCheckBox->setChecked(bot.saveWorldToDisk);
 
     // Clear flag to allow user changes to sync to memory
     loadingConfiguration = false;
@@ -975,6 +978,7 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("autoRestart", bot.autoRestart);
     settings.setValue("tokenRefresh", bot.tokenRefresh);
     settings.setValue("debugLogging", bot.debugLogging);
+    settings.setValue("saveWorldToDisk", bot.saveWorldToDisk);
 
     settings.endGroup();
 }
@@ -997,6 +1001,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.autoRestart = settings.value("autoRestart", true).toBool();
     bot.tokenRefresh = settings.value("tokenRefresh", true).toBool();
     bot.debugLogging = settings.value("debugLogging", false).toBool();
+    bot.saveWorldToDisk = settings.value("saveWorldToDisk", true).toBool();
 
     bot.position = QVector3D(0, 0, 0);
     bot.dimension = "";
