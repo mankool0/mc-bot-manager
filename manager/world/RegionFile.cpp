@@ -252,27 +252,40 @@ std::vector<uint8_t> RegionFile::zlibCompress(const std::vector<uint8_t>& data) 
 }
 
 std::vector<uint8_t> RegionFile::zlibDecompress(const std::vector<uint8_t>& data) {
-    std::vector<uint8_t> decompressed;
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+    stream.avail_in = data.size();
+    stream.next_in = const_cast<uint8_t*>(data.data());
 
-    // Try decompressing with increasingly larger buffers
-    for (size_t bufferSize = data.size() * 4; bufferSize < data.size() * 1024; bufferSize *= 2) {
-        decompressed.resize(bufferSize);
-        uLongf decompressedSize = bufferSize;
-
-        int result = uncompress(decompressed.data(), &decompressedSize,
-                              data.data(), data.size());
-
-        if (result == Z_OK) {
-            decompressed.resize(decompressedSize);
-            return decompressed;
-        }
-
-        if (result != Z_BUF_ERROR) {
-            return {};
-        }
+    if (inflateInit(&stream) != Z_OK) {
+        return {};
     }
 
-    return {};
+    std::vector<uint8_t> decompressed;
+    const size_t CHUNK_SIZE = 256 * 1024; // 256KB chunks
+
+    int result;
+    do {
+        size_t oldSize = decompressed.size();
+        decompressed.resize(oldSize + CHUNK_SIZE);
+
+        stream.avail_out = CHUNK_SIZE;
+        stream.next_out = decompressed.data() + oldSize;
+
+        result = inflate(&stream, Z_NO_FLUSH);
+
+        if (result != Z_OK && result != Z_STREAM_END) {
+            inflateEnd(&stream);
+            return {};
+        }
+
+        decompressed.resize(stream.total_out);
+    } while (result != Z_STREAM_END);
+
+    inflateEnd(&stream);
+    return decompressed;
 }
 
 std::vector<uint8_t> RegionFile::serializeNBT(const nbt::tag_compound& nbt) {
