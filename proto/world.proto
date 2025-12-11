@@ -34,6 +34,7 @@ message InteractWithBlockCommand {
   BlockPos position = 1;
   Hand hand = 2;                  // Which hand to use (from common.proto)
   bool sneak = 3;                 // Whether to sneak while interacting
+  bool look_at_block = 4;         // Whether to rotate to look at the block before interacting
 }
 
 // Chunk data synchronization (Client -> Manager)
