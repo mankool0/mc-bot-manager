@@ -56,8 +56,8 @@ nbt::tag_compound NBTSerializer::sectionToNBT(const ChunkSection& section) {
 
     // Convert indices if not uniform
     if (!section.uniform && !section.blockIndices.isEmpty()) {
-        // Pack indices into long array (Minecraft's format)
-        // For now, use simple packing with 8 bits per entry (supports up to 256 palette entries)
+        // Pack indices into long array using Minecraft's variable-width format
+        // Uses 4-8 bits per entry for indirect palette, or 15 bits for direct palette
         int bitsPerEntry = std::max(4, static_cast<int>(std::ceil(std::log2(section.palette.size()))));
         if (bitsPerEntry > 8) {
             bitsPerEntry = 15;  // Direct palette
