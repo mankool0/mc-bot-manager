@@ -10,6 +10,7 @@ import "commands.proto";
 import "inventory.proto";
 import "meteor.proto";
 import "baritone.proto";
+import "world.proto";
 
 // Main protocol definition that ties everything together
 
@@ -30,6 +31,7 @@ message ClientToManagerMessage {
 
     // Inventory updates
     InventoryUpdate inventory = 7;
+    ContainerUpdate container = 24;
 
     // Chat messages from game
     ChatMessage chat = 8;
@@ -48,6 +50,16 @@ message ClientToManagerMessage {
     SetBaritoneSettingsResponse baritone_settings_set_response = 15;
     ExecuteBaritoneCommandResponse baritone_command_response = 16;
     BaritoneSettingUpdate baritone_setting_update = 17;
+
+    // World data
+    ChunkDataMessage chunk_data = 18;
+    BlockUpdateMessage block_update = 19;
+    MultiBlockUpdateMessage multi_block_update = 20;
+    ChunkUnloadMessage chunk_unload = 21;
+
+    // Block registry
+    QueryBlockRegistryMessage query_registry = 22;
+    BlockRegistryMessage block_registry = 23;
   }
 }
 
@@ -90,5 +102,11 @@ message ManagerToClientMessage {
     GetBaritoneCommandsRequest get_baritone_commands = 17;
     SetBaritoneSettingsCommand set_baritone_settings = 18;
     ExecuteBaritoneCommand execute_baritone_command = 19;
+
+    // World interaction
+    InteractWithBlockCommand interact_with_block = 20;
+
+    // Block registry response
+    BlockRegistryResponse registry_response = 21;
   }
 }

@@ -89,9 +89,8 @@ void NetworkStatsWidget::updateStats()
         }
         QString statusText = bot.status == BotStatus::Online ? "Online" : "Offline";
         statusItem->setText(statusText);
-        statusItem->setForeground(bot.status == BotStatus::Online
-                                      ? QColor(76, 175, 80)       // green
-                                      : QColor(0x158, 158, 158)); // gray
+        statusItem->setForeground(bot.status == BotStatus::Online ? QColor(76, 175, 80)     // green
+                                                                  : QColor(158, 158, 158)); // gray
 
         QTableWidgetItem *receivedItem = statsTable->item(i, 2);
         if (!receivedItem) {

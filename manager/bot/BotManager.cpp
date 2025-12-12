@@ -597,6 +597,54 @@ BotInstance* BotManager::getBotByNameImpl(const QString &name)
     return nullptr;
 }
 
+void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
+{
+    if (!bot) return;
+
+    // Skip if world saving is disabled for this bot
+    if (!bot->saveWorldToDisk) {
+        return;
+    }
+
+    // Check if we have both requirements: server address and data version
+    if (bot->server.isEmpty() || bot->dataVersion == 0) {
+        return;
+    }
+
+    // Check if WorldAutoSaver already exists for this server
+    if (bot->worldAutoSaver && bot->worldAutoSaverServerIp == bot->server) {
+        return;
+    }
+
+    // Check if server changed
+    if (bot->worldAutoSaver && bot->worldAutoSaverServerIp != bot->server) {
+        LogManager::log(QString("Bot '%1': Server changed from %2 to %3 - creating new WorldAutoSaver")
+                       .arg(bot->name).arg(bot->worldAutoSaverServerIp).arg(bot->server), LogManager::Info);
+    }
+
+    MinecraftVersion version;
+    version.dataVersion = bot->dataVersion;
+    version.versionName = bot->versionName;
+    version.series = bot->versionSeries;
+    version.isSnapshot = bot->versionIsSnapshot;
+
+    LogManager::log(QString("Bot '%1': Creating WorldAutoSaver for %2 with version %3 (data version %4)")
+                   .arg(bot->name).arg(bot->server).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
+    bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version);
+    bot->worldAutoSaverServerIp = bot->server;
+
+    // Process any chunks that were queued before the saver was ready
+    if (!bot->earlyChunkQueue.isEmpty()) {
+        LogManager::log(QString("Bot '%1': Processing %2 early chunks...")
+                       .arg(bot->name).arg(bot->earlyChunkQueue.size()), LogManager::Info);
+        for (const auto& earlyChunk : bot->earlyChunkQueue) {
+            bot->worldAutoSaver->saveChunkAsync(earlyChunk);
+        }
+        bot->earlyChunkQueue.clear();
+        LogManager::log(QString("Bot '%1': Finished processing early chunks").arg(bot->name), LogManager::Success);
+    }
+}
+
 void BotManager::addBot(const BotInstance &bot)
 {
     instance().addBotImpl(bot);
@@ -677,6 +725,12 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
             bot->maxMemory = info.maxMemory() / (1024 * 1024);
         }
 
+        // Store version info
+        bot->dataVersion = info.dataVersion();
+        bot->versionName = info.clientVersion();
+        bot->versionSeries = info.versionSeries();
+        bot->versionIsSnapshot = info.versionIsSnapshot();
+
         emit botUpdated(bot->name);
 
         LogManager::log(QString("Bot '%1' connected (Connection ID: %2)")
@@ -704,6 +758,10 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
         bot->server = serverAddr;
+
+        // Try to initialize WorldAutoSaver now that we have server address
+        tryInitializeWorldAutoSaver(bot);
+
         emit botUpdated(bot->name);
     }
 
@@ -1721,6 +1779,113 @@ void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool
     }
 }
 
+// Block Registry Handlers
+
+void BotManager::handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)
+{
+    instance().handleQueryRegistryImpl(connectionId, query);
+}
+
+void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int dataVersion = query.dataVersion();
+    bot->dataVersion = dataVersion;
+
+    LogManager::log(QString("Bot '%1': Query for block registry data version %2")
+                   .arg(bot->name).arg(dataVersion), LogManager::Info);
+
+    // Check if we have this registry cached
+    bool haveCached = BlockRegistry::cacheExists(dataVersion);
+
+    // If we have it cached, load it for this bot
+    if (haveCached) {
+        bot->blockRegistry = std::make_shared<BlockRegistry>();
+        if (bot->blockRegistry->loadFromCache(dataVersion)) {
+            LogManager::log(QString("Bot '%1': Loaded block registry from cache for data version %2")
+                           .arg(bot->name).arg(dataVersion), LogManager::Success);
+        } else {
+            LogManager::log(QString("Bot '%1': Failed to load cached registry for data version %2")
+                           .arg(bot->name).arg(dataVersion), LogManager::Warning);
+            haveCached = false;  // Failed to load, need it from client
+        }
+    } else {
+        LogManager::log(QString("Bot '%1': Block registry cache not found for data version %2")
+                       .arg(bot->name).arg(dataVersion), LogManager::Info);
+    }
+
+    // Send response
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::BlockRegistryResponse response;
+    response.setStatus(haveCached ? mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::HAVE_IT
+                                   : mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::NEED_IT);
+    msg.setRegistryResponse(response);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize block registry response for bot '%1'")
+                       .arg(bot->name), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(connectionId, message);
+
+    LogManager::log(QString("Bot '%1': Sent registry response: %2")
+                   .arg(bot->name)
+                   .arg(haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
+
+    // Try to initialize WorldAutoSaver now that we have dataVersion
+    tryInitializeWorldAutoSaver(bot);
+}
+
+void BotManager::handleBlockRegistry(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry)
+{
+    instance().handleBlockRegistryImpl(connectionId, registry);
+}
+
+void BotManager::handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int dataVersion = registry.dataVersion();
+
+    LogManager::log(QString("Bot '%1': Receiving block registry for data version %2 (%3 states)")
+                   .arg(bot->name).arg(dataVersion).arg(registry.stateMap().size()),
+                   LogManager::Info);
+
+    // Create new registry
+    bot->blockRegistry = std::make_shared<BlockRegistry>();
+    bot->blockRegistry->loadFromCache(dataVersion);  // Initialize with data version
+
+    // Add all block states
+    const auto &stateMap = registry.stateMap();
+    for (auto it = stateMap.constBegin(); it != stateMap.constEnd(); ++it) {
+        bot->blockRegistry->addBlockState(it.key(), it.value());
+    }
+
+    // Save to cache
+    bot->blockRegistry->saveToCache();
+
+    LogManager::log(QString("Bot '%1': Block registry saved to cache")
+                   .arg(bot->name), LogManager::Success);
+
+    // Try to initialize WorldAutoSaver now that we have dataVersion
+    tryInitializeWorldAutoSaver(bot);
+}
+
 void BotManager::requestBaritoneSettings(const QString &botName)
 {
     instance().requestBaritoneSettingsImpl(botName);
@@ -1959,3 +2124,367 @@ void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QStri
     PipeServer::sendToClient(bot->connectionId, message);
 }
 
+
+// ============================================================================
+// World Data Handlers
+// ============================================================================
+
+void BotManager::handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData)
+{
+    instance().handleChunkDataImpl(connectionId, chunkData);
+}
+
+void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    // Check if we have the block registry
+    if (!bot->blockRegistry || !bot->blockRegistry->isLoaded()) {
+        LogManager::log(QString("Bot '%1': Received chunk data but block registry not loaded yet!")
+                       .arg(bot->name), LogManager::Warning);
+        return;
+    }
+
+    // Convert protobuf message to ChunkData
+    ChunkData chunk;
+    chunk.chunkX = chunkData.chunkX();
+    chunk.chunkZ = chunkData.chunkZ();
+    chunk.dimension = chunkData.dimension();
+    chunk.minY = chunkData.minY();
+    chunk.maxY = chunkData.maxY();
+
+    // Convert sections
+    for (const auto &sectionProto : chunkData.sections()) {
+        ChunkSection section;
+        section.sectionY = sectionProto.sectionY();
+        section.uniform = sectionProto.uniform();
+
+        // Convert palette from IDs to strings using block registry
+        for (uint32_t stateId : sectionProto.palette()) {
+            auto blockState = bot->blockRegistry->getBlockState(stateId);
+            if (!blockState) {
+                LogManager::log(QString("[%1] Unknown block state ID %2 in chunk palette, defaulting to air")
+                               .arg(bot->name).arg(stateId), LogManager::Warning);
+                section.palette.append("minecraft:air");
+            } else {
+                section.palette.append(*blockState);
+            }
+        }
+
+        // Copy indices (only if not uniform)
+        if (!section.uniform) {
+            for (uint32_t index : sectionProto.blockIndices()) {
+                section.blockIndices.append(index);
+            }
+        }
+
+        chunk.sections[section.sectionY] = section;
+    }
+
+    // Load chunk into world data (with write lock)
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.loadChunk(chunk);
+    }
+
+    // Save the chunk to disk or queue it if the saver isn't ready (only if saving is enabled)
+    if (bot->saveWorldToDisk) {
+        if (bot->worldAutoSaver) {
+            bot->worldAutoSaver->saveChunkAsync(chunk);
+        } else {
+            bot->earlyChunkQueue.append(chunk);
+        }
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[DEBUG %1] Loaded chunk (%2, %3) with %4 sections")
+                       .arg(bot->name)
+                       .arg(chunk.chunkX)
+                       .arg(chunk.chunkZ)
+                       .arg(chunk.sections.size()),
+                       LogManager::Debug);
+    }
+
+    // Fire script event
+    if (bot->scriptEngine) {
+        QVariantList args;
+        args << chunk.chunkX << chunk.chunkZ << chunk.dimension;
+        bot->scriptEngine->fireEvent("chunk_loaded", args);
+    }
+}
+
+void BotManager::handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate)
+{
+    instance().handleBlockUpdateImpl(connectionId, blockUpdate);
+}
+
+void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    // Check if we have the block registry
+    if (!bot->blockRegistry || !bot->blockRegistry->isLoaded()) {
+        // Silently ignore - registry not ready yet
+        // TODO: Queue updates?
+        return;
+    }
+
+    int x = blockUpdate.position().x();
+    int y = blockUpdate.position().y();
+    int z = blockUpdate.position().z();
+    uint32_t stateId = blockUpdate.stateId();
+    auto blockState = bot->blockRegistry->getBlockState(stateId);
+
+    QString blockStr = blockState.value_or("minecraft:air");
+    if (!blockState) {
+        LogManager::log(QString("[%1] Unknown block state ID %2 in block update, defaulting to air")
+                       .arg(bot->name).arg(stateId), LogManager::Warning);
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.setBlock(x, y, z, blockStr);
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[DEBUG %1] Block update at (%2, %3, %4): %5")
+                       .arg(bot->name)
+                       .arg(x).arg(y).arg(z)
+                       .arg(blockStr),
+                       LogManager::Debug);
+    }
+
+    // Fire script event
+    if (bot->scriptEngine) {
+        QVariantList args;
+        args << x << y << z << blockStr;
+        bot->scriptEngine->fireEvent("block_update", args);
+    }
+}
+
+void BotManager::handleMultiBlockUpdate(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate)
+{
+    instance().handleMultiBlockUpdateImpl(connectionId, multiBlockUpdate);
+}
+
+void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    // Check if we have the block registry
+    if (!bot->blockRegistry || !bot->blockRegistry->isLoaded()) {
+        // Silently ignore - registry not ready yet
+        // TODO: Queue updates?
+        return;
+    }
+
+    int updateCount = qMin(multiBlockUpdate.positions().size(), multiBlockUpdate.stateIds().size());
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        for (int i = 0; i < updateCount; ++i) {
+            const auto &pos = multiBlockUpdate.positions()[i];
+            uint32_t stateId = multiBlockUpdate.stateIds()[i];
+            auto blockState = bot->blockRegistry->getBlockState(stateId);
+
+            if (!blockState) {
+                LogManager::log(QString("[%1] Unknown block state ID %2 in multi-block update, defaulting to air")
+                               .arg(bot->name).arg(stateId), LogManager::Warning);
+                bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), "minecraft:air");
+            } else {
+                bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), *blockState);
+            }
+        }
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[DEBUG %1] Multi-block update: %2 blocks")
+                       .arg(bot->name)
+                       .arg(updateCount),
+                       LogManager::Debug);
+    }
+
+    // Fire script event
+    if (bot->scriptEngine) {
+        QVariantList args;
+        args << updateCount;
+        bot->scriptEngine->fireEvent("multi_block_update", args);
+    }
+}
+
+void BotManager::handleChunkUnload(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload)
+{
+    instance().handleChunkUnloadImpl(connectionId, chunkUnload);
+}
+
+void BotManager::handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int chunkX = chunkUnload.chunkX();
+    int chunkZ = chunkUnload.chunkZ();
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.unloadChunk(chunkX, chunkZ);
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[DEBUG %1] Unloaded chunk (%2, %3)")
+                       .arg(bot->name)
+                       .arg(chunkX)
+                       .arg(chunkZ),
+                       LogManager::Debug);
+    }
+
+    // Fire script event
+    if (bot->scriptEngine) {
+        QVariantList args;
+        args << chunkX << chunkZ;
+        bot->scriptEngine->fireEvent("chunk_unloaded", args);
+    }
+}
+
+void BotManager::handleContainerUpdate(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate)
+{
+    instance().handleContainerUpdateImpl(connectionId, containerUpdate);
+}
+
+void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    bool isOpen = containerUpdate.isOpen();
+    int containerId = containerUpdate.containerId();
+
+    if (bot->debugLogging) {
+        if (isOpen) {
+            LogManager::log(QString("[DEBUG %1] Container update: ID=%2, Type=%3, Items=%4")
+                           .arg(bot->name)
+                           .arg(containerId)
+                           .arg(static_cast<int>(containerUpdate.type()))
+                           .arg(containerUpdate.items().size()),
+                           LogManager::Debug);
+        } else {
+            LogManager::log(QString("[DEBUG %1] Container closed: ID=%2")
+                           .arg(bot->name)
+                           .arg(containerId),
+                           LogManager::Debug);
+        }
+    }
+
+    // Fire script events
+    if (bot->scriptEngine) {
+        if (isOpen) {
+            // Build item list
+            QVariantList itemsList;
+            for (const auto &item : containerUpdate.items()) {
+                QVariantMap itemMap;
+                itemMap["slot"] = static_cast<int>(item.slot());
+                itemMap["item_id"] = item.itemId();
+                itemMap["count"] = static_cast<int>(item.count());
+                itemMap["damage"] = static_cast<int>(item.damage());
+                itemMap["max_damage"] = static_cast<int>(item.maxDamage());
+                itemMap["display_name"] = item.displayName();
+                itemsList.append(itemMap);
+            }
+
+            // Build container info map
+            QVariantMap containerInfo;
+            containerInfo["id"] = containerId;
+            containerInfo["type"] = static_cast<int>(containerUpdate.type());
+            containerInfo["items"] = itemsList;
+
+            if (containerUpdate.hasPosition()) {
+                containerInfo["x"] = static_cast<int>(containerUpdate.position().x());
+                containerInfo["y"] = static_cast<int>(containerUpdate.position().y());
+                containerInfo["z"] = static_cast<int>(containerUpdate.position().z());
+            }
+
+            if (!containerUpdate.properties().empty()) {
+                QVariantMap properties;
+                for (auto it = containerUpdate.properties().constBegin(); it != containerUpdate.properties().constEnd(); ++it) {
+                    properties[it.key()] = static_cast<int>(it.value());
+                }
+                containerInfo["properties"] = properties;
+            }
+
+            QVariantList args;
+            args << containerInfo;
+            bot->scriptEngine->fireEvent("container_update", args);
+        } else {
+            // Container closed
+            QVariantList args;
+            args << containerId;
+            bot->scriptEngine->fireEvent("container_closed", args);
+        }
+    }
+}
+
+// ============================================================================
+// World Interaction Commands
+// ============================================================================
+
+void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,
+                                        mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
+{
+    instance().sendInteractWithBlockImpl(botName, x, y, z, hand, sneak, lookAtBlock);
+}
+
+void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
+                                            mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot interact with block: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot interact with block: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::InteractWithBlockCommand cmd;
+    mankool::mcbot::protocol::BlockPos pos;
+    pos.setX(x);
+    pos.setY(y);
+    pos.setZ(z);
+    cmd.setPosition(pos);
+    cmd.setHand(hand);
+    cmd.setSneak(sneak);
+    cmd.setLookAtBlock(lookAtBlock);
+    msg.setInteractWithBlock(cmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize interact with block command for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    LogManager::log(QString("[DEBUG %1] Serialized interact command: %2 bytes")
+                   .arg(botName).arg(protoData.size()),
+                   LogManager::Debug);
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+
+    LogManager::log(QString("[DEBUG %1] Sent interact with block at (%2, %3, %4), total message size: %5")
+                   .arg(botName).arg(x).arg(y).arg(z).arg(message.size()),
+                   LogManager::Debug);
+}

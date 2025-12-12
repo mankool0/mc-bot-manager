@@ -25,12 +25,15 @@ public class MessageHandler {
     private final ChatHandler chatHandler;
     private final MeteorModuleHandler meteorModuleHandler;
     private final BaritoneHandler baritoneHandler;
+    private final WorldInteractionHandler worldInteractionHandler;
 
     // Outbound handlers (send data updates)
     private final ServerOutbound serverOutbound;
     private final PlayerOutbound playerOutbound;
     private final InventoryOutbound inventoryOutbound;
     private final ChatOutbound chatOutbound;
+    private final WorldOutbound worldOutbound;
+    private final ContainerOutbound containerOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -43,12 +46,15 @@ public class MessageHandler {
         this.chatHandler = new ChatHandler(this.client, connection);
         this.meteorModuleHandler = new MeteorModuleHandler(this.client, connection);
         this.baritoneHandler = new BaritoneHandler(this.client, connection);
+        this.worldInteractionHandler = new WorldInteractionHandler(this.client, connection);
 
         // Initialize outbound handlers
         this.serverOutbound = new ServerOutbound(this.client, connection);
         this.playerOutbound = new PlayerOutbound(this.client, connection);
         this.inventoryOutbound = new InventoryOutbound(this.client, connection);
         this.chatOutbound = new ChatOutbound(this.client, connection);
+        this.worldOutbound = new WorldOutbound(this.client, connection);
+        this.containerOutbound = new ContainerOutbound(this.client, connection);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
@@ -91,6 +97,10 @@ public class MessageHandler {
             msg -> baritoneHandler.handleSetBaritoneSettings(msg.getMessageId(), msg.getSetBaritoneSettings()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.EXECUTE_BARITONE_COMMAND,
             msg -> baritoneHandler.handleExecuteBaritoneCommand(msg.getMessageId(), msg.getExecuteBaritoneCommand()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.INTERACT_WITH_BLOCK,
+            msg -> worldInteractionHandler.handleInteractWithBlock(msg.getMessageId(), msg.getInteractWithBlock()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REGISTRY_RESPONSE,
+            msg -> worldOutbound.handleRegistryResponse(msg.getRegistryResponse()));
     }
 
     public void start() {
@@ -102,6 +112,9 @@ public class MessageHandler {
 
         // Send initial connection info
         serverOutbound.sendConnectionInfo();
+
+        // Send block registry query
+        worldOutbound.sendRegistryQuery();
 
         System.out.println("MessageHandler started, processing messages on game tick");
     }

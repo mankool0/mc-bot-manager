@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+
+// World-related messages for chunk data and block interactions
+
+// Block registry synchronization
+// Client queries manager to see if it has this data version
+message QueryBlockRegistryMessage {
+  int32 data_version = 1;         // Minecraft data version (e.g., 3465 for 1.20.1)
+  int32 protocol_version = 2;     // Minecraft protocol version (optional)
+}
+
+// Manager's response to block registry query
+enum RegistryStatus {
+  HAVE_IT = 0;                    // Manager already has this registry
+  NEED_IT = 1;                    // Manager needs the full registry
+}
+
+message BlockRegistryResponse {
+  RegistryStatus status = 1;
+}
+
+// Full block state registry (sent if manager doesn't have it)
+message BlockRegistryMessage {
+  int32 data_version = 1;         // Data version for this registry
+  map<uint32, string> state_map = 2;  // state_id -> "minecraft:stone[facing=north]"
+}
+
+// Command to interact with a block (right-click)
+message InteractWithBlockCommand {
+  BlockPos position = 1;
+  Hand hand = 2;                  // Which hand to use (from common.proto)
+  bool sneak = 3;                 // Whether to sneak while interacting
+  bool look_at_block = 4;         // Whether to rotate to look at the block before interacting
+}
+
+// Chunk data synchronization (Client -> Manager)
+message ChunkDataMessage {
+  int32 chunk_x = 1;              // Chunk X coordinate
+  int32 chunk_z = 2;              // Chunk Z coordinate
+  string dimension = 3;           // Dimension ID (e.g., "minecraft:overworld")
+  int32 min_y = 4;                // Minimum Y for this world
+  int32 max_y = 5;                // Maximum Y for this world
+  repeated ChunkSection sections = 6;  // All sections in this chunk
+}
+
+// Single chunk section (16x16x16 blocks)
+message ChunkSection {
+  int32 section_y = 1;            // Y index of this section
+  repeated uint32 palette = 2 [packed = true];    // Block state IDs from Minecraft's global registry
+  repeated uint32 block_indices = 3 [packed = true];  // Indices into palette (YZX order: y*256 + z*16 + x)
+  bool uniform = 4;               // If true, entire section is palette[0]
+}
+
+// Single block update (Client -> Manager)
+message BlockUpdateMessage {
+  BlockPos position = 1;
+  uint32 state_id = 2;            // Block state ID from Minecraft's global registry
+  string dimension = 3;           // Dimension ID
+}
+
+// Multi-block update (Client -> Manager)
+message MultiBlockUpdateMessage {
+  repeated BlockPos positions = 1;
+  repeated uint32 state_ids = 2 [packed = true];  // Same length as positions
+  string dimension = 3;
+}
+
+// Chunk unload notification (Client -> Manager)
+message ChunkUnloadMessage {
+  int32 chunk_x = 1;
+  int32 chunk_z = 2;
+  string dimension = 3;
+}

@@ -3,6 +3,11 @@
 LogManager::LogManager(QObject *parent)
     : QObject(parent)
 {
+    // Connect signals to slots for thread-safe GUI updates
+    connect(this, &LogManager::logRequested, this, &LogManager::logImpl, Qt::QueuedConnection);
+    connect(this, &LogManager::logPrismRequested, this, &LogManager::logPrismImpl, Qt::QueuedConnection);
+    connect(this, &LogManager::clearManagerLogRequested, this, &LogManager::clearManagerLogImpl, Qt::QueuedConnection);
+    connect(this, &LogManager::clearPrismLogRequested, this, &LogManager::clearPrismLogImpl, Qt::QueuedConnection);
 }
 
 void LogManager::logImpl(const QString &message, LogLevel level)

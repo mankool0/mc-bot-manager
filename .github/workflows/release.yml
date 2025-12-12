@@ -114,9 +114,16 @@ jobs:
           arch: win64_msvc2022_64
           modules: qtgrpc
 
-      - name: Install protobuf
+      - name: Install protobuf compiler
         shell: cmd
         run: choco install protoc -y
+
+      - name: Setup vcpkg and install zlib
+        shell: pwsh
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+          C:\vcpkg\vcpkg install zlib:x64-windows
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
@@ -129,7 +136,7 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
           cmake --build . --config Release
 
       - name: Deploy Qt dependencies

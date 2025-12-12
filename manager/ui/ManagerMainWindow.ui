@@ -355,6 +355,16 @@
                    </property>
                   </widget>
                  </item>
+                 <item>
+                  <widget class="QCheckBox" name="saveWorldToDiskCheckBox">
+                   <property name="text">
+                    <string>Save world data to disk</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </widget>
               </item>
@@ -570,6 +580,7 @@
      <string>Tools</string>
     </property>
     <addaction name="actionPrismSettings"/>
+    <addaction name="actionWorldSavePath"/>
     <addaction name="actionNetworkStats"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -767,6 +778,11 @@
   <action name="actionPrismSettings">
    <property name="text">
     <string>&amp;Prism Launcher Settings...</string>
+   </property>
+  </action>
+  <action name="actionWorldSavePath">
+   <property name="text">
+    <string>&amp;World Save Path...</string>
    </property>
   </action>
   <action name="actionNetworkStats">

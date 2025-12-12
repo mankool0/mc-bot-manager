@@ -39,20 +39,29 @@ public class ServerOutbound extends BaseOutbound {
         // Get player info from session (available even before joining a server)
         var session = client.getUser();
         String playerName = session.getName();
-        String playerUuid = session.getProfileId() != null ?
-            session.getProfileId().toString() : "unknown";
+        String playerUuid = session.getProfileId().toString();
 
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
 
+        // Get version info
+        var worldVersion = SharedConstants.getCurrentVersion();
+        int dataVersion = worldVersion.dataVersion().version();
+        String versionName = worldVersion.name();
+        String versionSeries = worldVersion.dataVersion().series();
+        boolean isSnapshot = !worldVersion.stable();
+
         Connection.ConnectionInfo infoBuilder = Connection.ConnectionInfo.newBuilder()
-            .setClientVersion(client.getLaunchedVersion())
+            .setClientVersion(versionName)
             .setModVersion(modVersion)
             .setPlayerName(playerName)
             .setPlayerUuid(playerUuid)
             .setStartupTime(System.currentTimeMillis())
             .setProcessId((int) ProcessHandle.current().pid())
             .setMaxMemory(maxMemory)
+            .setDataVersion(dataVersion)
+            .setVersionSeries(versionSeries)
+            .setVersionIsSnapshot(isSnapshot)
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
@@ -63,6 +72,7 @@ public class ServerOutbound extends BaseOutbound {
 
         connection.sendMessage(message);
         System.out.println("Connection info sent to manager");
+        System.out.println("  Version: " + versionName + " (data version: " + dataVersion + ", series: " + versionSeries + ", snapshot: " + isSnapshot + ")");
     }
 
     public void sendStatusUpdate() {

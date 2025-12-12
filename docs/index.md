@@ -15,15 +15,6 @@ def handle_commands(sender, message, msg_type):
         bot.chat("Going to spawn!")
 ```
 
-## API Modules
-
-| Module | Description |
-|--------|-------------|
-| [`bot`](api/bot.md) | Bot state queries and commands |
-| [`baritone`](api/baritone.md) | Baritone |
-| [`meteor`](api/meteor.md) | Client module control |
-| [`utils`](api/utils.md) | Utilities |
-
 ## Documentation
 
 - [Getting Started](getting-started.md) - Create your first script

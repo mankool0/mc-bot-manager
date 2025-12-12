@@ -18,6 +18,9 @@
 #include <QRegularExpression>
 #include <QActionGroup>
 
+// Initialize static member
+QString ManagerMainWindow::worldSaveBasePath = "worldSaves";
+
 ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ManagerMainWindow)
@@ -81,6 +84,16 @@ ManagerMainWindow::~ManagerMainWindow()
     delete ui;
 }
 
+QString ManagerMainWindow::getWorldSaveBasePath()
+{
+    return worldSaveBasePath;
+}
+
+void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
+{
+    worldSaveBasePath = path.isEmpty() ? "worldSaves" : path;
+}
+
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
 {
     QVector<BotInstance> &bots = BotManager::getBots();
@@ -106,6 +119,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
 
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
+    connect(ui->actionWorldSavePath, &QAction::triggered, this, &ManagerMainWindow::configureWorldSavePath);
     connect(ui->actionNetworkStats, &QAction::toggled, this, &ManagerMainWindow::showNetworkStats);
     connect(ui->actionSave, &QAction::triggered, this, &ManagerMainWindow::saveSettings);
     connect(ui->actionOpen, &QAction::triggered, this, &ManagerMainWindow::loadSettingsFromFile);
@@ -121,6 +135,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->autoRestartCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->tokenRefreshCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->debugModeCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->saveWorldToDiskCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
 
     ui->detailsStackedWidget->setCurrentIndex(0);
     ui->detailsStackedWidget->hide();
@@ -537,6 +552,7 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->autoRestart = ui->autoRestartCheckBox->isChecked();
             bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
             bot->debugLogging = ui->debugModeCheckBox->isChecked();
+            bot->saveWorldToDisk = ui->saveWorldToDiskCheckBox->isChecked();
             updateInstancesTable();
         }
     }
@@ -581,6 +597,7 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     ui->autoRestartCheckBox->setChecked(bot.autoRestart);
     ui->tokenRefreshCheckBox->setChecked(bot.tokenRefresh);
     ui->debugModeCheckBox->setChecked(bot.debugLogging);
+    ui->saveWorldToDiskCheckBox->setChecked(bot.saveWorldToDisk);
 
     // Clear flag to allow user changes to sync to memory
     loadingConfiguration = false;
@@ -843,6 +860,26 @@ void ManagerMainWindow::configurePrismLauncher()
     }
 }
 
+void ManagerMainWindow::configureWorldSavePath()
+{
+    QString currentPath = worldSaveBasePath;
+    if (currentPath == "worldSaves") {
+        currentPath = QDir::currentPath() + "/worldSaves";
+    }
+
+    QString newPath = QFileDialog::getExistingDirectory(
+        this,
+        "Select World Save Directory",
+        currentPath,
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+    );
+
+    if (!newPath.isEmpty() && newPath != currentPath) {
+        setWorldSaveBasePath(newPath);
+        LogManager::log(QString("World save path changed to: %1").arg(worldSaveBasePath), LogManager::Success);
+    }
+}
+
 QStringList ManagerMainWindow::getUsedInstances() const
 {
     QStringList used;
@@ -865,6 +902,11 @@ void ManagerMainWindow::saveSettings()
     settings.setValue("executable", prismConfig.prismExecutable);
     settings.setValue("instances", prismConfig.instances);
     settings.setValue("accounts", prismConfig.accounts);
+    settings.endGroup();
+
+    // Save world save path
+    settings.beginGroup("World");
+    settings.setValue("savePath", worldSaveBasePath);
     settings.endGroup();
 
     // Save bot instances
@@ -896,6 +938,11 @@ void ManagerMainWindow::loadSettings()
     settings.beginGroup("PrismLauncher");
     prismConfig.prismPath = settings.value("path", "").toString();
     prismConfig.prismExecutable = settings.value("executable", "").toString();
+    settings.endGroup();
+
+    // Load world save path
+    settings.beginGroup("World");
+    worldSaveBasePath = settings.value("savePath", "worldSaves").toString();
     settings.endGroup();
 
     // Load bot instances
@@ -975,6 +1022,7 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("autoRestart", bot.autoRestart);
     settings.setValue("tokenRefresh", bot.tokenRefresh);
     settings.setValue("debugLogging", bot.debugLogging);
+    settings.setValue("saveWorldToDisk", bot.saveWorldToDisk);
 
     settings.endGroup();
 }
@@ -997,6 +1045,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.autoRestart = settings.value("autoRestart", true).toBool();
     bot.tokenRefresh = settings.value("tokenRefresh", true).toBool();
     bot.debugLogging = settings.value("debugLogging", false).toBool();
+    bot.saveWorldToDisk = settings.value("saveWorldToDisk", true).toBool();
 
     bot.position = QVector3D(0, 0, 0);
     bot.dimension = "";

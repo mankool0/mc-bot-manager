@@ -284,8 +284,17 @@ void ScriptEngine::stopScript(const QString &filename)
 
 void ScriptEngine::stopAllScripts()
 {
+    // Signal all scripts to stop
     for (auto it = scripts.begin(); it != scripts.end(); ++it) {
         stopScript(it.key());
+    }
+
+    // Wait for all threads to finish
+    for (auto it = scripts.begin(); it != scripts.end(); ++it) {
+        ScriptContext *ctx = it.value();
+        if (ctx->thread && ctx->thread->isRunning()) {
+            ctx->thread->wait();
+        }
     }
 }
 

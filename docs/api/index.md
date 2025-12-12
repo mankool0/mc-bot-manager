@@ -7,6 +7,7 @@
 | [`bot`](bot.md) | Bot state queries and basic commands |
 | [`baritone`](baritone.md) | Pathfinding and automation |
 | [`meteor`](meteor.md) | Client module control |
+| [`world`](world.md) | World data queries and block interaction |
 | [`utils`](utils.md) | Logging utilities |
 
 ## Multi-Bot
