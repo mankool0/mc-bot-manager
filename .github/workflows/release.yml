@@ -114,9 +114,11 @@ jobs:
           arch: win64_msvc2022_64
           modules: qtgrpc
 
-      - name: Install protobuf
+      - name: Install dependencies
         shell: cmd
-        run: choco install protoc -y
+        run: |
+          choco install protoc -y
+          choco install zlib -y
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
