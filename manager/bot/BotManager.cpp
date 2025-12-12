@@ -611,6 +611,11 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         return;
     }
 
+    // Only initialize WorldAutoSaver when actually connected to a server
+    if (bot->serverConnectionStatus != mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status::SUCCESSFUL) {
+        return;
+    }
+
     // Check if WorldAutoSaver already exists for this server
     if (bot->worldAutoSaver && bot->worldAutoSaverServerIp == bot->server) {
         return;
@@ -758,6 +763,7 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
         bot->server = serverAddr;
+        bot->serverConnectionStatus = status.status();
 
         // Try to initialize WorldAutoSaver now that we have server address
         tryInitializeWorldAutoSaver(bot);

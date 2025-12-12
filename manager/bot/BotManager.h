@@ -171,6 +171,7 @@ struct BotInstance {
     QString account;
     QString accountId;
     QString server;
+    mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status serverConnectionStatus = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status::INITIAL;
     int connectionId = -1;
     int maxMemory;
     int currentMemory;
