@@ -18,6 +18,9 @@
 #include <QRegularExpression>
 #include <QActionGroup>
 
+// Initialize static member
+QString ManagerMainWindow::worldSaveBasePath = "worldSaves";
+
 ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ManagerMainWindow)
@@ -81,6 +84,16 @@ ManagerMainWindow::~ManagerMainWindow()
     delete ui;
 }
 
+QString ManagerMainWindow::getWorldSaveBasePath()
+{
+    return worldSaveBasePath;
+}
+
+void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
+{
+    worldSaveBasePath = path.isEmpty() ? "worldSaves" : path;
+}
+
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
 {
     QVector<BotInstance> &bots = BotManager::getBots();
@@ -106,6 +119,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
 
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
+    connect(ui->actionWorldSavePath, &QAction::triggered, this, &ManagerMainWindow::configureWorldSavePath);
     connect(ui->actionNetworkStats, &QAction::toggled, this, &ManagerMainWindow::showNetworkStats);
     connect(ui->actionSave, &QAction::triggered, this, &ManagerMainWindow::saveSettings);
     connect(ui->actionOpen, &QAction::triggered, this, &ManagerMainWindow::loadSettingsFromFile);
@@ -846,6 +860,26 @@ void ManagerMainWindow::configurePrismLauncher()
     }
 }
 
+void ManagerMainWindow::configureWorldSavePath()
+{
+    QString currentPath = worldSaveBasePath;
+    if (currentPath == "worldSaves") {
+        currentPath = QDir::currentPath() + "/worldSaves";
+    }
+
+    QString newPath = QFileDialog::getExistingDirectory(
+        this,
+        "Select World Save Directory",
+        currentPath,
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+    );
+
+    if (!newPath.isEmpty() && newPath != currentPath) {
+        setWorldSaveBasePath(newPath);
+        LogManager::log(QString("World save path changed to: %1").arg(worldSaveBasePath), LogManager::Success);
+    }
+}
+
 QStringList ManagerMainWindow::getUsedInstances() const
 {
     QStringList used;
@@ -868,6 +902,11 @@ void ManagerMainWindow::saveSettings()
     settings.setValue("executable", prismConfig.prismExecutable);
     settings.setValue("instances", prismConfig.instances);
     settings.setValue("accounts", prismConfig.accounts);
+    settings.endGroup();
+
+    // Save world save path
+    settings.beginGroup("World");
+    settings.setValue("savePath", worldSaveBasePath);
     settings.endGroup();
 
     // Save bot instances
@@ -899,6 +938,11 @@ void ManagerMainWindow::loadSettings()
     settings.beginGroup("PrismLauncher");
     prismConfig.prismPath = settings.value("path", "").toString();
     prismConfig.prismExecutable = settings.value("executable", "").toString();
+    settings.endGroup();
+
+    // Load world save path
+    settings.beginGroup("World");
+    worldSaveBasePath = settings.value("savePath", "worldSaves").toString();
     settings.endGroup();
 
     // Load bot instances

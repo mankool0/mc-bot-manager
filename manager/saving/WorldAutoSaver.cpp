@@ -3,6 +3,7 @@
 #include "world/WorldExporter.h"
 #include "saving/ChunkSavingWorker.h"
 #include "logging/LogManager.h"
+#include "ui/ManagerMainWindow.h"
 #include <QDir>
 
 WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& version)
@@ -12,7 +13,8 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
     QString sanitizedIp = serverIp;
     sanitizedIp.replace(":", "_"); // e.g., 127.0.0.1:25565 -> 127.0.0.1_25565
 
-    m_worldPath = "worldSaves/" + sanitizedIp;
+    QString basePath = ManagerMainWindow::getWorldSaveBasePath();
+    m_worldPath = basePath + "/" + sanitizedIp;
     LogManager::log(QString("WorldAutoSaver initialized for %1 with version %2 (data version %3). Saving to: %4")
                    .arg(serverIp).arg(version.versionName).arg(version.dataVersion).arg(m_worldPath), LogManager::Info);
 

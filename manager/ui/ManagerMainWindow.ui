@@ -580,6 +580,7 @@
      <string>Tools</string>
     </property>
     <addaction name="actionPrismSettings"/>
+    <addaction name="actionWorldSavePath"/>
     <addaction name="actionNetworkStats"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -777,6 +778,11 @@
   <action name="actionPrismSettings">
    <property name="text">
     <string>&amp;Prism Launcher Settings...</string>
+   </property>
+  </action>
+  <action name="actionWorldSavePath">
+   <property name="text">
+    <string>&amp;World Save Path...</string>
    </property>
   </action>
   <action name="actionNetworkStats">

@@ -46,6 +46,9 @@ public:
     ManagerMainWindow(QWidget *parent = nullptr);
     ~ManagerMainWindow();
 
+    static QString getWorldSaveBasePath();
+    static void setWorldSaveBasePath(const QString &path);
+
 protected:
     void closeEvent(QCloseEvent *event) override;
 
@@ -58,6 +61,7 @@ private slots:
     void stopBot();
     void restartBot();
     void configurePrismLauncher();
+    void configureWorldSavePath();
     void loadSettingsFromFile();
     void onConfigurationChanged();
     void launchAllBots();
@@ -71,6 +75,7 @@ private:
     PrismConfig prismConfig;
     bool loadingConfiguration;
     bool detailsPinned;
+    static QString worldSaveBasePath;
 
     struct ScheduledLaunch {
         QString botName;
