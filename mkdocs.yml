@@ -37,6 +37,7 @@ nav:
     - bot: api/bot.md
     - baritone: api/baritone.md
     - meteor: api/meteor.md
+    - world: api/world.md
     - utils: api/utils.md
   - Examples: examples.md
   - Events: events.md
