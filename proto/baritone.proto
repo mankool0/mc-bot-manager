@@ -163,11 +163,6 @@ enum PathEventType {
   PATH_EVENT_CANCELED = 11;
 }
 
-// Information about the current goal
-message BaritoneGoalInfo {
-  string goal_description = 1;         // Human-readable goal description (includes position if applicable)
-}
-
 // Information about the active process
 message BaritoneProcessInfo {
   string process_name = 1;             // Name of the active process (e.g., "CustomGoalProcess")
@@ -182,7 +177,7 @@ message BaritoneProcessInfo {
 message BaritoneProcessStatusUpdate {
   PathEventType event_type = 1;                     // Type of path event that occurred
   bool is_pathing = 2;                              // Whether actively pathing
-  optional BaritoneGoalInfo goal = 3;               // Current goal information
+  optional string goal_description = 3;             // Current goal description (includes position if applicable)
   optional BaritoneProcessInfo active_process = 4;  // Active process information
   optional double estimated_ticks_to_goal = 5;      // Estimated ticks remaining to goal
   optional double ticks_remaining_in_segment = 6;   // Ticks remaining in current path segment

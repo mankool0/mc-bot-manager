@@ -799,7 +799,7 @@ public class BaritoneHandler extends BaseInboundHandler {
 
             // Build and send the status update
             BaritoneProcessStatusUpdate status = buildStatusUpdate(
-                event, isPathing, goal, goalDescription,
+                event, isPathing, goalDescription,
                 controlManager.mostRecentInControl(), pathingBehavior
             );
 
@@ -835,7 +835,6 @@ public class BaritoneHandler extends BaseInboundHandler {
     private BaritoneProcessStatusUpdate buildStatusUpdate(
             PathEvent event,
             boolean isPathing,
-            Goal goal,
             String goalDescription,
             Optional<IBaritoneProcess> activeProcess,
             IPathingBehavior pathingBehavior
@@ -844,10 +843,8 @@ public class BaritoneHandler extends BaseInboundHandler {
                 .setEventType(toProtoPathEventType(event))
                 .setIsPathing(isPathing);
 
-        if (goal != null) {
-            builder.setGoal(BaritoneGoalInfo.newBuilder()
-                    .setGoalDescription(goalDescription)
-                    .build());
+        if (goalDescription != null) {
+            builder.setGoalDescription(goalDescription);
         }
 
         activeProcess.ifPresent(process -> {
