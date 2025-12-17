@@ -50,6 +50,7 @@ message ClientToManagerMessage {
     SetBaritoneSettingsResponse baritone_settings_set_response = 15;
     ExecuteBaritoneCommandResponse baritone_command_response = 16;
     BaritoneSettingUpdate baritone_setting_update = 17;
+    BaritoneProcessStatusUpdate baritone_process_status = 25;
 
     // World data
     ChunkDataMessage chunk_data = 18;
