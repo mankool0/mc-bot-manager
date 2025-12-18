@@ -113,3 +113,34 @@ def inv_update(selected_slot, inventory):
     for item in inventory:
         utils.log(f"  {item['display_name']} x{item['count']} in slot {item['slot']}")
 ```
+
+### `baritone_status_update`
+
+Fired when baritone pathfinding status changes.
+
+**Parameters:**
+
+- `status` (`dict`) - Baritone status information with keys:
+  - `is_pathing` (`bool`) - Whether currently pathfinding
+  - `event_type` (`PathEventType`) - Path event type (see `baritone.PathEventType` enum)
+  - `goal_description` (`str`, optional) - Description of current goal
+  - `active_process` (`dict`, optional) - Active process info
+  - `estimated_ticks_to_goal` (`float`, optional) - ETA in ticks
+  - `ticks_remaining_in_segment` (`float`, optional) - Ticks remaining in segment
+
+```python
+from baritone import PathEventType
+
+@on("baritone_status_update")
+def on_baritone_update(status):
+    if status['is_pathing']:
+        if 'estimated_ticks_to_goal' in status:
+            seconds = status['estimated_ticks_to_goal'] / 20.0
+            utils.log(f"Pathfinding - ETA: {seconds:.1f}s")
+
+        # Check if reached goal
+        if status['event_type'] == PathEventType.AT_GOAL:
+            utils.log("Reached destination!")
+        elif status['event_type'] == PathEventType.CALC_FAILED:
+            utils.log("Pathfinding failed!")
+```

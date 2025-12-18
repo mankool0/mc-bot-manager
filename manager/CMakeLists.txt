@@ -12,9 +12,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Treat warnings as errors
 if(MSVC)
-    add_compile_options(/W4)
+    set(PROJECT_WARNING_FLAGS /W4)
 else()
-    add_compile_options(-Wall -Wextra -Werror)
+    set(PROJECT_WARNING_FLAGS -Wall -Wextra -Werror)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf)
@@ -26,6 +26,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
     GIT_TAG        v3.0.1
 )
+set(PYBIND11_TEST OFF CACHE BOOL "Disable pybind11 tests" FORCE)
 FetchContent_MakeAvailable(pybind11)
 set(PYBIND11_FINDPYTHON ON)
 
@@ -33,11 +34,9 @@ FetchContent_Declare(
     qutepart
     GIT_REPOSITORY https://github.com/diegoiast/qutepart-cpp.git
     GIT_TAG        main
-    PATCH_COMMAND sed -i "103,104d" CMakeLists.txt || true
 )
-
+set(QUTEPART_TESTS OFF CACHE BOOL "Disable qutepart tests" FORCE)
 FetchContent_MakeAvailable(qutepart)
-set(DISABLE_QUTEPART_TESTS ON CACHE BOOL "Disable qutepart tests" FORCE)
 
 # For NBT file handling
 set(NBT_BUILD_TESTS OFF CACHE BOOL "Disable libnbtplusplus tests" FORCE)
@@ -59,6 +58,7 @@ qt_add_protobuf(mc-bot-manager-proto
     PROTO_FILES ${PROTO_FILES}
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
+target_compile_options(mc-bot-manager-proto PRIVATE ${PROJECT_WARNING_FLAGS})
 
 file(GLOB_RECURSE PROJECT_SOURCES
     "main.cpp"
@@ -102,6 +102,7 @@ target_link_libraries(mc-bot-manager PRIVATE
     qutepart
     nbt++
 )
+target_compile_options(mc-bot-manager PRIVATE ${PROJECT_WARNING_FLAGS})
 
 # Add current directory and generated proto directory to include path
 target_include_directories(mc-bot-manager PRIVATE

@@ -3,8 +3,14 @@ package mankool.mcBotClient.handler.inbound;
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
 import baritone.api.Settings;
+import baritone.api.behavior.IPathingBehavior;
 import baritone.api.command.ICommand;
 import baritone.api.command.manager.ICommandManager;
+import baritone.api.event.events.*;
+import baritone.api.event.listener.IGameEventListener;
+import baritone.api.pathing.calc.IPathingControlManager;
+import baritone.api.pathing.goals.Goal;
+import baritone.api.process.IBaritoneProcess;
 import baritone.api.utils.SettingsUtil;
 import mankool.mcbot.protocol.Baritone;
 import mankool.mcbot.protocol.Baritone.*;
@@ -21,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class BaritoneHandler extends BaseInboundHandler {
 
@@ -29,11 +34,20 @@ public class BaritoneHandler extends BaseInboundHandler {
     private static final int CHECK_INTERVAL_TICKS = 20;
 
     private boolean listenersInstalled = false;
+    private boolean pathEventListenerInstalled = false;
     private int tickCounter = 0;
+
+    // Track last sent state to avoid spam
+    private PathEvent lastPathEvent = null;
+    private boolean lastIsPathing = false;
+    private String lastGoalDescription = null;
+    private Double lastEstimatedTicksToGoal = null;
+    private Double lastTicksRemainingInSegment = null;
 
     public BaritoneHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
         LOGGER.info("Initialized with Mixin-based setting change notifications");
+        installPathEventListener();
     }
 
     public void tick() {
@@ -45,6 +59,7 @@ public class BaritoneHandler extends BaseInboundHandler {
         if (tickCounter >= CHECK_INTERVAL_TICKS) {
             tickCounter = 0;
             pollForChanges();
+            pollBaritoneStatus();
         }
     }
 
@@ -691,6 +706,238 @@ public class BaritoneHandler extends BaseInboundHandler {
                 .setMessageId(UUID.randomUUID().toString())
                 .setTimestamp(System.currentTimeMillis())
                 .setBaritoneSettingUpdate(notification)
+                .build();
+
+        connection.sendMessage(message);
+    }
+
+    private void installPathEventListener() {
+        if (pathEventListenerInstalled) return;
+
+        try {
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            baritone.getGameEventHandler().registerEventListener(new PathEventListenerAdapter());
+            pathEventListenerInstalled = true;
+            LOGGER.info("Registered Baritone path event listener");
+        } catch (Exception e) {
+            LOGGER.error("Failed to install path event listener", e);
+        }
+    }
+
+    private class PathEventListenerAdapter implements IGameEventListener {
+        @Override
+        public void onTick(TickEvent event) {}
+
+        @Override
+        public void onPostTick(TickEvent event) {}
+
+        @Override
+        public void onPlayerUpdate(PlayerUpdateEvent event) {}
+
+        @Override
+        public void onSendChatMessage(ChatEvent event) {}
+
+        @Override
+        public void onPreTabComplete(TabCompleteEvent event) {}
+
+        @Override
+        public void onChunkEvent(ChunkEvent event) {}
+
+        @Override
+        public void onBlockChange(BlockChangeEvent event) {}
+
+        @Override
+        public void onRenderPass(RenderEvent event) {}
+
+        @Override
+        public void onWorldEvent(WorldEvent event) {}
+
+        @Override
+        public void onSendPacket(PacketEvent event) {}
+
+        @Override
+        public void onReceivePacket(PacketEvent event) {}
+
+        @Override
+        public void onPlayerRotationMove(RotationMoveEvent event) {}
+
+        @Override
+        public void onPlayerSprintState(SprintStateEvent event) {}
+
+        @Override
+        public void onBlockInteract(BlockInteractEvent event) {}
+
+        @Override
+        public void onPlayerDeath() {}
+
+        @Override
+        public void onPathEvent(PathEvent event) {
+            handlePathEvent(event);
+        }
+    }
+
+    private void pollBaritoneStatus() {
+        try {
+            if (client.player == null) {
+                return;
+            }
+
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
+
+            // Only send updates if actively pathing
+            if (!pathingBehavior.isPathing()) {
+                return;
+            }
+
+            Double currentEstimatedTicksToGoal = pathingBehavior.estimatedTicksToGoal().orElse(null);
+            Double currentTicksRemainingInSegment = pathingBehavior.ticksRemainingInSegment().orElse(null);
+
+            if (Objects.equals(currentEstimatedTicksToGoal, lastEstimatedTicksToGoal) &&
+                Objects.equals(currentTicksRemainingInSegment, lastTicksRemainingInSegment)) {
+                return;
+            }
+
+            lastEstimatedTicksToGoal = currentEstimatedTicksToGoal;
+            lastTicksRemainingInSegment = currentTicksRemainingInSegment;
+
+            sendCurrentStatus(lastPathEvent);
+        } catch (Exception e) {
+            LOGGER.debug("Error polling Baritone status: {}", e.getMessage());
+        }
+    }
+
+    private void sendCurrentStatus(PathEvent event) {
+        try {
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
+            IPathingControlManager controlManager = baritone.getPathingControlManager();
+
+            boolean isPathing = pathingBehavior.isPathing();
+            Goal goal = pathingBehavior.getGoal();
+            String goalDescription = goal != null ? goal.toString() : null;
+
+            BaritoneProcessStatusUpdate status = buildStatusUpdate(
+                    event, isPathing, goalDescription,
+                    controlManager.mostRecentInControl(), pathingBehavior
+            );
+
+            lastPathEvent = event;
+            lastIsPathing = isPathing;
+            lastGoalDescription = goalDescription;
+
+            sendBaritoneProcessStatusUpdate(status);
+            LOGGER.debug("Sent status update: event={}, ETA={}", event, status.getEstimatedTicksToGoal());
+        } catch (Exception e) {
+            LOGGER.error("Failed to send current status", e);
+        }
+    }
+
+    private void handlePathEvent(PathEvent event) {
+        try {
+            LOGGER.debug("Baritone path event: {}", event);
+
+            // Check if player is in world before proceeding
+            if (client.player == null) {
+                LOGGER.debug("Skipping path event {} - player not in world", event);
+                return;
+            }
+
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
+
+            // Get current state for duplicate check
+            boolean isPathing = pathingBehavior.isPathing();
+            Goal goal = pathingBehavior.getGoal();
+            String goalDescription = goal != null ? goal.toString() : null;
+
+            // Skip duplicate CANCELED events with no meaningful state change
+            if (shouldSkipDuplicateCanceledEvent(event, isPathing, goalDescription)) {
+                return;
+            }
+
+            // Send status update
+            sendCurrentStatus(event);
+            LOGGER.info("Sent path event update: {}", event);
+        } catch (Exception e) {
+            LOGGER.error("Failed to handle path event", e);
+        }
+    }
+
+    private boolean shouldSkipDuplicateCanceledEvent(PathEvent event, boolean isPathing, String goalDescription) {
+        if (event != PathEvent.CANCELED || lastPathEvent != PathEvent.CANCELED) {
+            return false;
+        }
+
+        // Already sent a CANCELED event - only send another if something meaningful changed
+        boolean stateUnchanged = !isPathing && !lastIsPathing &&
+                                 Objects.equals(goalDescription, lastGoalDescription);
+
+        if (stateUnchanged) {
+            LOGGER.debug("Skipping duplicate CANCELED event");
+            return true;
+        }
+
+        return false;
+    }
+
+    private BaritoneProcessStatusUpdate buildStatusUpdate(
+            PathEvent event,
+            boolean isPathing,
+            String goalDescription,
+            Optional<IBaritoneProcess> activeProcess,
+            IPathingBehavior pathingBehavior
+    ) {
+        BaritoneProcessStatusUpdate.Builder builder = BaritoneProcessStatusUpdate.newBuilder()
+                .setEventType(toProtoPathEventType(event))
+                .setIsPathing(isPathing);
+
+        if (goalDescription != null) {
+            builder.setGoalDescription(goalDescription);
+        }
+
+        activeProcess.ifPresent(process -> {
+            builder.setActiveProcess(BaritoneProcessInfo.newBuilder()
+                    .setProcessName(process.getClass().getSimpleName())
+                    .setDisplayName(process.displayName())
+                    .setPriority(process.priority())
+                    .setIsActive(process.isActive())
+                    .setIsTemporary(process.isTemporary())
+                    .build());
+        });
+
+        try {
+            pathingBehavior.estimatedTicksToGoal().ifPresent(builder::setEstimatedTicksToGoal);
+            pathingBehavior.ticksRemainingInSegment().ifPresent(builder::setTicksRemainingInSegment);
+        } catch (Exception e) {
+            LOGGER.debug("Could not get progress information: {}", e.getMessage());
+        }
+
+        return builder.build();
+    }
+
+    private PathEventType toProtoPathEventType(PathEvent event) {
+        return switch (event) {
+            case CALC_STARTED -> PathEventType.PATH_EVENT_CALC_STARTED;
+            case CALC_FINISHED_NOW_EXECUTING -> PathEventType.PATH_EVENT_CALC_FINISHED_NOW_EXECUTING;
+            case CALC_FAILED -> PathEventType.PATH_EVENT_CALC_FAILED;
+            case NEXT_SEGMENT_CALC_STARTED -> PathEventType.PATH_EVENT_NEXT_SEGMENT_CALC_STARTED;
+            case NEXT_SEGMENT_CALC_FINISHED -> PathEventType.PATH_EVENT_NEXT_SEGMENT_CALC_FINISHED;
+            case CONTINUING_ONTO_PLANNED_NEXT -> PathEventType.PATH_EVENT_CONTINUING_ONTO_PLANNED_NEXT;
+            case SPLICING_ONTO_NEXT_EARLY -> PathEventType.PATH_EVENT_SPLICING_ONTO_NEXT_EARLY;
+            case AT_GOAL -> PathEventType.PATH_EVENT_AT_GOAL;
+            case PATH_FINISHED_NEXT_STILL_CALCULATING -> PathEventType.PATH_EVENT_PATH_FINISHED_NEXT_STILL_CALCULATING;
+            case NEXT_CALC_FAILED -> PathEventType.PATH_EVENT_NEXT_CALC_FAILED;
+            case DISCARD_NEXT -> PathEventType.PATH_EVENT_DISCARD_NEXT;
+            case CANCELED -> PathEventType.PATH_EVENT_CANCELED;
+        };
+    }
+
+    private void sendBaritoneProcessStatusUpdate(BaritoneProcessStatusUpdate status) {
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+                .setMessageId(UUID.randomUUID().toString())
+                .setTimestamp(System.currentTimeMillis())
+                .setBaritoneProcessStatus(status)
                 .build();
 
         connection.sendMessage(message);

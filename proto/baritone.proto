@@ -146,3 +146,39 @@ message BaritoneSettingUpdate {
   string setting_name = 1;
   BaritoneSettingValue new_value = 2;
 }
+
+// Path event types matching Baritone's PathEvent enum
+enum PathEventType {
+  PATH_EVENT_CALC_STARTED = 0;
+  PATH_EVENT_CALC_FINISHED_NOW_EXECUTING = 1;
+  PATH_EVENT_CALC_FAILED = 2;
+  PATH_EVENT_NEXT_SEGMENT_CALC_STARTED = 3;
+  PATH_EVENT_NEXT_SEGMENT_CALC_FINISHED = 4;
+  PATH_EVENT_CONTINUING_ONTO_PLANNED_NEXT = 5;
+  PATH_EVENT_SPLICING_ONTO_NEXT_EARLY = 6;
+  PATH_EVENT_AT_GOAL = 7;
+  PATH_EVENT_PATH_FINISHED_NEXT_STILL_CALCULATING = 8;
+  PATH_EVENT_NEXT_CALC_FAILED = 9;
+  PATH_EVENT_DISCARD_NEXT = 10;
+  PATH_EVENT_CANCELED = 11;
+}
+
+// Information about the active process
+message BaritoneProcessInfo {
+  string process_name = 1;             // Name of the active process (e.g., "CustomGoalProcess")
+  string display_name = 2;             // User-friendly display name
+  double priority = 3;                 // Process priority
+  bool is_active = 4;                  // Whether process is active
+  bool is_temporary = 5;               // Whether process is temporary
+}
+
+// Baritone process status update (Client -> Manager)
+// Sent whenever pathfinding state changes
+message BaritoneProcessStatusUpdate {
+  PathEventType event_type = 1;                     // Type of path event that occurred
+  bool is_pathing = 2;                              // Whether actively pathing
+  optional string goal_description = 3;             // Current goal description (includes position if applicable)
+  optional BaritoneProcessInfo active_process = 4;  // Active process information
+  optional double estimated_ticks_to_goal = 5;      // Estimated ticks remaining to goal
+  optional double ticks_remaining_in_segment = 6;   // Ticks remaining in current path segment
+}
