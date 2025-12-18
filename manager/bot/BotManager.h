@@ -164,6 +164,26 @@ struct BaritoneCommandData {
     QStringList longDesc;
 };
 
+struct BaritoneProcessInfo {
+    QString processName;
+    QString displayName;
+    double priority = 0.0;
+    bool isActive = false;
+    bool isTemporary = false;
+};
+
+struct BaritoneProcessStatus {
+    mankool::mcbot::protocol::PathEventTypeGadget::PathEventType eventType = mankool::mcbot::protocol::PathEventTypeGadget::PathEventType::PATH_EVENT_CALC_STARTED;
+    bool isPathing = false;
+    QString goalDescription;
+    BaritoneProcessInfo activeProcess;
+    bool hasActiveProcess = false;
+    double estimatedTicksToGoal = 0.0;
+    bool hasEstimatedTicks = false;
+    double ticksRemainingInSegment = 0.0;
+    bool hasTicksRemaining = false;
+};
+
 struct BotInstance {
     QString name;
     BotStatus status = BotStatus::Offline;
@@ -217,6 +237,7 @@ struct BotInstance {
     // Baritone data
     QMap<QString, BaritoneSettingData> baritoneSettings;
     QMap<QString, BaritoneCommandData> baritoneCommands;
+    BaritoneProcessStatus baritoneProcessStatus;
 
     // World data
     BotWorldData worldData;
@@ -270,6 +291,7 @@ public:
     static void handleBaritoneSettingsSetResponse(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
     static void handleBaritoneCommandResponse(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     static void handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
+    static void handleBaritoneProcessStatus(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
 
     // Block registry handlers
     static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
@@ -307,6 +329,7 @@ signals:
     void baritoneSettingsReceived(const QString &botName);
     void baritoneCommandsReceived(const QString &botName);
     void baritoneSingleSettingUpdated(const QString &botName, const QString &settingName);
+    void baritoneProcessStatusUpdated(const QString &botName);
 
 private:
     explicit BotManager(QObject *parent = nullptr);
@@ -332,6 +355,7 @@ private:
     void handleBaritoneSettingsSetResponseImpl(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
     void handleBaritoneCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
+    void handleBaritoneProcessStatusImpl(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
     void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
     void handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);

@@ -47,6 +47,7 @@ public:
     static void restartBot(const std::string &reason = "", const std::string &botName = "");
 
     static void baritoneGoto(double x, double y, double z, const std::string &bot = "");
+    static void baritoneGoto(double x, double z, const std::string &bot = "");
     static void baritoneFollow(const std::string &player, const std::string &bot = "");
     static void baritoneCancel(const std::string &bot = "");
     static void baritoneMine(const std::string &blockType, const std::string &bot = "");
@@ -54,6 +55,7 @@ public:
     static void baritoneCommand(const std::string &command, const std::string &bot = "");
     static void baritoneSetSetting(const std::string &setting, const py::object &value, const std::string &bot = "");
     static py::object baritoneGetSetting(const std::string &setting, const std::string &bot = "");
+    static py::dict baritoneGetProcessStatus(const std::string &bot = "");
 
     static void meteorToggle(const std::string &module, const std::string &bot = "");
     static void meteorEnable(const std::string &module, const std::string &bot = "");

@@ -1785,6 +1785,88 @@ void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool
     }
 }
 
+void BotManager::handleBaritoneProcessStatus(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status)
+{
+    instance().handleBaritoneProcessStatusImpl(connectionId, status);
+}
+
+void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    // Update the baritone process status
+    bot->baritoneProcessStatus.eventType = status.eventType();
+    bot->baritoneProcessStatus.isPathing = status.isPathing();
+
+    if (status.hasGoalDescription()) {
+        bot->baritoneProcessStatus.goalDescription = status.goalDescription();
+    } else {
+        bot->baritoneProcessStatus.goalDescription.clear();
+    }
+
+    if (status.hasActiveProcess()) {
+        const auto &procInfo = status.activeProcess();
+        bot->baritoneProcessStatus.activeProcess.processName = procInfo.processName();
+        bot->baritoneProcessStatus.activeProcess.displayName = procInfo.displayName();
+        bot->baritoneProcessStatus.activeProcess.priority = procInfo.priority();
+        bot->baritoneProcessStatus.activeProcess.isActive = procInfo.isActive();
+        bot->baritoneProcessStatus.activeProcess.isTemporary = procInfo.isTemporary();
+        bot->baritoneProcessStatus.hasActiveProcess = true;
+    } else {
+        bot->baritoneProcessStatus.hasActiveProcess = false;
+    }
+
+    if (status.hasEstimatedTicksToGoal()) {
+        bot->baritoneProcessStatus.estimatedTicksToGoal = status.estimatedTicksToGoal();
+        bot->baritoneProcessStatus.hasEstimatedTicks = true;
+    } else {
+        bot->baritoneProcessStatus.hasEstimatedTicks = false;
+    }
+
+    if (status.hasTicksRemainingInSegment()) {
+        bot->baritoneProcessStatus.ticksRemainingInSegment = status.ticksRemainingInSegment();
+        bot->baritoneProcessStatus.hasTicksRemaining = true;
+    } else {
+        bot->baritoneProcessStatus.hasTicksRemaining = false;
+    }
+
+    // Fire script event
+    if (bot->scriptEngine) {
+        QVariantMap statusData;
+        statusData["is_pathing"] = bot->baritoneProcessStatus.isPathing;
+        statusData["event_type"] = static_cast<int>(bot->baritoneProcessStatus.eventType);
+
+        if (!bot->baritoneProcessStatus.goalDescription.isEmpty()) {
+            statusData["goal_description"] = bot->baritoneProcessStatus.goalDescription;
+        }
+
+        if (bot->baritoneProcessStatus.hasActiveProcess) {
+            QVariantMap procInfo;
+            procInfo["process_name"] = bot->baritoneProcessStatus.activeProcess.processName;
+            procInfo["display_name"] = bot->baritoneProcessStatus.activeProcess.displayName;
+            procInfo["priority"] = bot->baritoneProcessStatus.activeProcess.priority;
+            procInfo["is_active"] = bot->baritoneProcessStatus.activeProcess.isActive;
+            procInfo["is_temporary"] = bot->baritoneProcessStatus.activeProcess.isTemporary;
+            statusData["active_process"] = procInfo;
+        }
+
+        if (bot->baritoneProcessStatus.hasEstimatedTicks) {
+            statusData["estimated_ticks_to_goal"] = bot->baritoneProcessStatus.estimatedTicksToGoal;
+        }
+
+        if (bot->baritoneProcessStatus.hasTicksRemaining) {
+            statusData["ticks_remaining_in_segment"] = bot->baritoneProcessStatus.ticksRemainingInSegment;
+        }
+
+        QVariantList args;
+        args << statusData;
+        bot->scriptEngine->fireEvent("baritone_status_update", args);
+    }
+
+    emit baritoneProcessStatusUpdated(bot->name);
+}
+
 // Block Registry Handlers
 
 void BotManager::handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)

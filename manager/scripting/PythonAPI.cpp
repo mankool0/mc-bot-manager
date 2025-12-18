@@ -700,6 +700,14 @@ void PythonAPI::baritoneGoto(double x, double y, double z, const std::string &bo
     BotManager::sendBaritoneCommand(name, QString("goto %1 %2 %3").arg(x).arg(y).arg(z));
 }
 
+void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
+{
+    QString name = resolveBotName(bot);
+    ensureBotOnline(name);
+
+    BotManager::sendBaritoneCommand(name, QString("goto %1 %2").arg(x).arg(z));
+}
+
 void PythonAPI::baritoneFollow(const std::string &player, const std::string &bot)
 {
     QString name = resolveBotName(bot);
@@ -765,6 +773,46 @@ py::object PythonAPI::baritoneGetSetting(const std::string &setting, const std::
     }
 
     return py::none();
+}
+
+py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
+{
+    QString name = resolveBotName(bot);
+
+    BotInstance *botInst = BotManager::getBotByName(name);
+    if (!botInst) {
+        return py::dict();
+    }
+
+    const BaritoneProcessStatus &status = botInst->baritoneProcessStatus;
+
+    py::dict result;
+    result["is_pathing"] = status.isPathing;
+    result["event_type"] = static_cast<int>(status.eventType);
+
+    if (!status.goalDescription.isEmpty()) {
+        result["goal_description"] = status.goalDescription.toStdString();
+    }
+
+    if (status.hasActiveProcess) {
+        py::dict procInfo;
+        procInfo["process_name"] = status.activeProcess.processName.toStdString();
+        procInfo["display_name"] = status.activeProcess.displayName.toStdString();
+        procInfo["priority"] = status.activeProcess.priority;
+        procInfo["is_active"] = status.activeProcess.isActive;
+        procInfo["is_temporary"] = status.activeProcess.isTemporary;
+        result["active_process"] = procInfo;
+    }
+
+    if (status.hasEstimatedTicks) {
+        result["estimated_ticks_to_goal"] = status.estimatedTicksToGoal;
+    }
+
+    if (status.hasTicksRemaining) {
+        result["ticks_remaining_in_segment"] = status.ticksRemainingInSegment;
+    }
+
+    return result;
 }
 
 void PythonAPI::meteorToggle(const std::string &module, const std::string &bot)

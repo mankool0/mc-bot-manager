@@ -84,9 +84,30 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
 PYBIND11_EMBEDDED_MODULE(baritone, m) {
     m.doc() = "Baritone";
 
-    m.def("goto", &PythonAPI::baritoneGoto,
-          "Navigate to coordinates",
+    // Path event type constants as a nested class
+    auto pathEventType = m.def_submodule("PathEventType", "Path event types");
+    pathEventType.attr("CALC_STARTED") = 0;
+    pathEventType.attr("CALC_FINISHED_NOW_EXECUTING") = 1;
+    pathEventType.attr("CALC_FAILED") = 2;
+    pathEventType.attr("NEXT_SEGMENT_CALC_STARTED") = 3;
+    pathEventType.attr("NEXT_SEGMENT_CALC_FINISHED") = 4;
+    pathEventType.attr("CONTINUING_ONTO_PLANNED_NEXT") = 5;
+    pathEventType.attr("SPLICING_ONTO_NEXT_EARLY") = 6;
+    pathEventType.attr("AT_GOAL") = 7;
+    pathEventType.attr("PATH_FINISHED_NEXT_STILL_CALCULATING") = 8;
+    pathEventType.attr("NEXT_CALC_FAILED") = 9;
+    pathEventType.attr("DISCARD_NEXT") = 10;
+    pathEventType.attr("CANCELED") = 11;
+
+    m.def("goto",
+          static_cast<void(*)(double, double, double, const std::string&)>(&PythonAPI::baritoneGoto),
+          "Navigate to X/Y/Z coordinates",
           py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("bot") = "");
+    m.def("goto",
+          static_cast<void(*)(double, double, const std::string&)>(&PythonAPI::baritoneGoto),
+          "Navigate to X/Z coordinates",
+          py::arg("x"), py::arg("z"),
           py::arg("bot") = "");
     m.def("follow", &PythonAPI::baritoneFollow,
           "Follow player",
@@ -113,6 +134,9 @@ PYBIND11_EMBEDDED_MODULE(baritone, m) {
     m.def("get_setting", &PythonAPI::baritoneGetSetting,
           "Get setting value",
           py::arg("setting"),
+          py::arg("bot") = "");
+    m.def("get_process_status", &PythonAPI::baritoneGetProcessStatus,
+          "Get current process status and pathfinding state",
           py::arg("bot") = "");
 }
 

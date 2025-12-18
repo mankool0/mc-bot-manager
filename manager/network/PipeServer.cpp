@@ -209,6 +209,8 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleBaritoneCommandResponse(connectionId, clientMsg.baritoneCommandResponse());
         } else if (clientMsg.hasBaritoneSettingUpdate()) {
             BotManager::handleBaritoneSettingUpdate(connectionId, clientMsg.baritoneSettingUpdate());
+        } else if (clientMsg.hasBaritoneProcessStatus()) {
+            BotManager::handleBaritoneProcessStatus(connectionId, clientMsg.baritoneProcessStatus());
         } else if (clientMsg.hasChunkData()) {
             BotManager::handleChunkData(connectionId, clientMsg.chunkData());
         } else if (clientMsg.hasBlockUpdate()) {
