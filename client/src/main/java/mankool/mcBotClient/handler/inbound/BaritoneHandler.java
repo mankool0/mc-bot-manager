@@ -41,6 +41,8 @@ public class BaritoneHandler extends BaseInboundHandler {
     private PathEvent lastPathEvent = null;
     private boolean lastIsPathing = false;
     private String lastGoalDescription = null;
+    private Double lastEstimatedTicksToGoal = null;
+    private Double lastTicksRemainingInSegment = null;
 
     public BaritoneHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -57,6 +59,7 @@ public class BaritoneHandler extends BaseInboundHandler {
         if (tickCounter >= CHECK_INTERVAL_TICKS) {
             tickCounter = 0;
             pollForChanges();
+            pollBaritoneStatus();
         }
     }
 
@@ -773,6 +776,63 @@ public class BaritoneHandler extends BaseInboundHandler {
         }
     }
 
+    private void pollBaritoneStatus() {
+        try {
+            if (client.player == null) {
+                return;
+            }
+
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
+
+            // Only send updates if actively pathing
+            if (!pathingBehavior.isPathing()) {
+                return;
+            }
+
+            Double currentEstimatedTicksToGoal = pathingBehavior.estimatedTicksToGoal().orElse(null);
+            Double currentTicksRemainingInSegment = pathingBehavior.ticksRemainingInSegment().orElse(null);
+
+            if (Objects.equals(currentEstimatedTicksToGoal, lastEstimatedTicksToGoal) &&
+                Objects.equals(currentTicksRemainingInSegment, lastTicksRemainingInSegment)) {
+                return;
+            }
+
+            lastEstimatedTicksToGoal = currentEstimatedTicksToGoal;
+            lastTicksRemainingInSegment = currentTicksRemainingInSegment;
+
+            sendCurrentStatus(lastPathEvent);
+        } catch (Exception e) {
+            LOGGER.debug("Error polling Baritone status: {}", e.getMessage());
+        }
+    }
+
+    private void sendCurrentStatus(PathEvent event) {
+        try {
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
+            IPathingControlManager controlManager = baritone.getPathingControlManager();
+
+            boolean isPathing = pathingBehavior.isPathing();
+            Goal goal = pathingBehavior.getGoal();
+            String goalDescription = goal != null ? goal.toString() : null;
+
+            BaritoneProcessStatusUpdate status = buildStatusUpdate(
+                    event, isPathing, goalDescription,
+                    controlManager.mostRecentInControl(), pathingBehavior
+            );
+
+            lastPathEvent = event;
+            lastIsPathing = isPathing;
+            lastGoalDescription = goalDescription;
+
+            sendBaritoneProcessStatusUpdate(status);
+            LOGGER.debug("Sent status update: event={}, ETA={}", event, status.getEstimatedTicksToGoal());
+        } catch (Exception e) {
+            LOGGER.error("Failed to send current status", e);
+        }
+    }
+
     private void handlePathEvent(PathEvent event) {
         try {
             LOGGER.debug("Baritone path event: {}", event);
@@ -785,9 +845,8 @@ public class BaritoneHandler extends BaseInboundHandler {
 
             IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
             IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
-            IPathingControlManager controlManager = baritone.getPathingControlManager();
 
-            // Get current state
+            // Get current state for duplicate check
             boolean isPathing = pathingBehavior.isPathing();
             Goal goal = pathingBehavior.getGoal();
             String goalDescription = goal != null ? goal.toString() : null;
@@ -797,19 +856,9 @@ public class BaritoneHandler extends BaseInboundHandler {
                 return;
             }
 
-            // Build and send the status update
-            BaritoneProcessStatusUpdate status = buildStatusUpdate(
-                event, isPathing, goalDescription,
-                controlManager.mostRecentInControl(), pathingBehavior
-            );
-
-            // Update last state
-            lastPathEvent = event;
-            lastIsPathing = isPathing;
-            lastGoalDescription = goalDescription;
-
-            sendBaritoneProcessStatusUpdate(status);
-            LOGGER.info(status.toString());
+            // Send status update
+            sendCurrentStatus(event);
+            LOGGER.info("Sent path event update: {}", event);
         } catch (Exception e) {
             LOGGER.error("Failed to handle path event", e);
         }
