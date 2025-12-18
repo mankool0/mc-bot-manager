@@ -185,8 +185,13 @@ import time
 # Start pathfinding to coordinates
 baritone.goto(500, 70, -300)
 
-# Wait for baritone to start calculating
-time.sleep(2)
+# Wait for pathfinding to start
+while True:
+    status = baritone.get_process_status()
+    if status['is_pathing']:
+        print("Pathfinding has started!")
+        break
+    time.sleep(0.1)
 
 # Monitor progress
 while True:
