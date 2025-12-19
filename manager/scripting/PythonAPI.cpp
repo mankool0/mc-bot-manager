@@ -569,6 +569,25 @@ py::object PythonAPI::getInventory(const std::string &botName)
     return result;
 }
 
+py::object PythonAPI::getScreen(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    QString screenClass = bot->currentScreenClass;
+
+    // Return None for empty screen (in-game, no GUI)
+    if (screenClass.isEmpty()) {
+        return py::none();
+    }
+
+    return py::cast(screenClass.toStdString());
+}
+
 py::dict PythonAPI::getNetworkStats(const std::string &botName)
 {
     QString name = resolveBotName(botName);

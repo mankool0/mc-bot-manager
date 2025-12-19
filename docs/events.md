@@ -114,6 +114,27 @@ def inv_update(selected_slot, inventory):
         utils.log(f"  {item['display_name']} x{item['count']} in slot {item['slot']}")
 ```
 
+### `screen_changed`
+
+Fired when the current GUI screen changes.
+
+**Parameters:**
+
+- `screen_class` (`str`) - Fully qualified class name of the new screen, or empty string if no screen (in-game)
+
+```python
+@on("screen_changed")
+def on_screen_change(screen_class):
+    if not screen_class:
+        utils.log("Back in-game")
+    elif "ChatScreen" in screen_class:
+        utils.log("Chat opened")
+    elif "DeathScreen" in screen_class:
+        bot.chat("I died!")
+    else:
+        utils.log(f"Screen: {screen_class}")
+```
+
 ### `baritone_status_update`
 
 Fired when baritone pathfinding status changes.

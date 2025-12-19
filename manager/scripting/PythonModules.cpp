@@ -53,6 +53,9 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.def("inventory", &PythonAPI::getInventory,
           "Get inventory as list of items",
           py::arg("bot_name") = "");
+    m.def("screen", &PythonAPI::getScreen,
+          "Get current screen class name (None if in-game)",
+          py::arg("bot_name") = "");
     m.def("network_stats", &PythonAPI::getNetworkStats,
           "Get network stats dict",
           py::arg("bot_name") = "");

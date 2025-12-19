@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     branches:
-      - 'master'
+      - '**'
     tags:
       - 'v*'
   pull_request:
@@ -114,15 +114,19 @@ jobs:
           arch: win64_msvc2022_64
           modules: qtgrpc
 
-      - name: Install protobuf compiler
+      - name: Install protobuf compiler and ninja
         shell: cmd
-        run: choco install protoc -y
+        run: choco install protoc ninja -y
 
       - name: Setup vcpkg and install zlib
         shell: pwsh
         run: |
-          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat
+          if (-Not (Test-Path C:\vcpkg)) {
+            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          }
+          if (-Not (Test-Path C:\vcpkg\vcpkg.exe)) {
+            C:\vcpkg\bootstrap-vcpkg.bat
+          }
           C:\vcpkg\vcpkg install zlib:x64-windows
 
       - name: Set up Visual Studio shell
@@ -136,8 +140,8 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
-          cmake --build . --config Release
+          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+          cmake --build . --config Release --parallel
 
       - name: Deploy Qt dependencies
         working-directory: manager/build

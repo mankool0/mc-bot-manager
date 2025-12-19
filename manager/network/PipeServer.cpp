@@ -221,6 +221,8 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleChunkUnload(connectionId, clientMsg.chunkUnload());
         } else if (clientMsg.hasContainer()) {
             BotManager::handleContainerUpdate(connectionId, clientMsg.container());
+        } else if (clientMsg.hasScreen()) {
+            BotManager::handleScreenUpdate(connectionId, clientMsg.screen());
         } else if (clientMsg.hasQueryRegistry()) {
             BotManager::handleQueryRegistry(connectionId, clientMsg.queryRegistry());
         } else if (clientMsg.hasBlockRegistry()) {
