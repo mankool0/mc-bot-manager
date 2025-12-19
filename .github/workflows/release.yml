@@ -114,9 +114,9 @@ jobs:
           arch: win64_msvc2022_64
           modules: qtgrpc
 
-      - name: Install protobuf compiler
+      - name: Install protobuf compiler and ninja
         shell: cmd
-        run: choco install protoc -y
+        run: choco install protoc ninja -y
 
       - name: Setup vcpkg and install zlib
         shell: pwsh
@@ -136,8 +136,8 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
-          cmake --build . --config Release
+          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+          cmake --build . --config Release --parallel
 
       - name: Deploy Qt dependencies
         working-directory: manager/build
