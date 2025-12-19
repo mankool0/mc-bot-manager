@@ -37,6 +37,7 @@ public:
     static std::string getStatus(const std::string &botName = "");
     static py::object getInventory(const std::string &botName = "");
     static py::dict getNetworkStats(const std::string &botName = "");
+    static py::object getScreen(const std::string &botName = "");
     static py::list listAllBots();
 
     static void sendChat(const std::string &message, const std::string &botName = "");

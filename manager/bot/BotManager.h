@@ -23,6 +23,7 @@
 #include "meteor.qpb.h"
 #include "baritone.qpb.h"
 #include "world.qpb.h"
+#include "screen.qpb.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
 #include "saving/WorldAutoSaver.h"
@@ -239,6 +240,8 @@ struct BotInstance {
     QMap<QString, BaritoneCommandData> baritoneCommands;
     BaritoneProcessStatus baritoneProcessStatus;
 
+    QString currentScreenClass;
+
     // World data
     BotWorldData worldData;
     std::shared_ptr<BlockRegistry> blockRegistry;
@@ -303,6 +306,7 @@ public:
     static void handleMultiBlockUpdate(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
     static void handleChunkUnload(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     static void handleContainerUpdate(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
+    static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
 
     // World interaction commands
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
@@ -363,6 +367,7 @@ private:
     void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
+    void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);

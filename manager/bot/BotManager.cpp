@@ -2514,6 +2514,30 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
     }
 }
 
+void BotManager::handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)
+{
+    instance().handleScreenUpdateImpl(connectionId, screen);
+}
+
+void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) {
+        return;
+    }
+
+    bot->currentScreenClass = screen.screenClass();
+
+    emit botUpdated(bot->name);
+
+    // Fire script event
+    if (bot->scriptEngine) {
+        QVariantList args;
+        args << bot->currentScreenClass;
+        bot->scriptEngine->fireEvent("screen_changed", args);
+    }
+}
+
 // ============================================================================
 // World Interaction Commands
 // ============================================================================
