@@ -121,8 +121,12 @@ jobs:
       - name: Setup vcpkg and install zlib
         shell: pwsh
         run: |
-          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-          C:\vcpkg\bootstrap-vcpkg.bat
+          if (-Not (Test-Path C:\vcpkg)) {
+            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          }
+          if (-Not (Test-Path C:\vcpkg\vcpkg.exe)) {
+            C:\vcpkg\bootstrap-vcpkg.bat
+          }
           C:\vcpkg\vcpkg install zlib:x64-windows
 
       - name: Set up Visual Studio shell
