@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Screen update message (Client -> Manager)
+message ScreenUpdate {
+  string screen_class = 1;  // Fully qualified class name (empty string = no screen)
+}

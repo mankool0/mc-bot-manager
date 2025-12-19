@@ -11,6 +11,7 @@ import "inventory.proto";
 import "meteor.proto";
 import "baritone.proto";
 import "world.proto";
+import "screen.proto";
 
 // Main protocol definition that ties everything together
 
@@ -61,6 +62,9 @@ message ClientToManagerMessage {
     // Block registry
     QueryBlockRegistryMessage query_registry = 22;
     BlockRegistryMessage block_registry = 23;
+
+    // Screen updates
+    ScreenUpdate screen = 26;
   }
 }
 
