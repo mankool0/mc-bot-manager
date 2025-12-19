@@ -140,6 +140,7 @@ Get network statistics.
 List all bots with their status.
 
 **Returns:** `list[dict]` where each dict has:
+
 - `name` (`str`) - Bot name
 - `status` (`str`) - Bot status ("Offline", "Starting", "Online", "Stopping", "Error")
 
