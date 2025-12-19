@@ -103,6 +103,32 @@ if items is not None:
         print(f"Slot {item['slot']}: {item['count']}x {item['item_id']} ({item['display_name']})")
 ```
 
+### `screen(bot_name="")`
+
+Get current screen class name.
+
+**Returns:** `str` - Fully qualified class name of the current screen, or `None` if no screen is open (in-game)
+
+```python
+current_screen = bot.screen()
+
+if current_screen is None:
+    print("In-game, no GUI open")
+elif "ChatScreen" in current_screen:
+    print("Chat is open")
+elif "InventoryScreen" in current_screen:
+    print("Inventory is open")
+elif "TitleScreen" in current_screen:
+    print("At main menu")
+else:
+    print(f"Screen: {current_screen}")
+```
+
+**Note:** Works with all vanilla and modded screens. Screen class names follow the pattern:
+
+- Vanilla: `net.minecraft.client.gui.screens.*`
+- Modded: `com.modname.gui.*` or similar
+
 ### `network_stats(bot_name="")`
 
 Get network statistics.
