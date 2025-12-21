@@ -3,6 +3,7 @@
 import urllib.request
 import urllib.error
 import json
+import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -61,11 +62,46 @@ VERSIONS = [
 OUTPUT_DIR = Path("recipes")
 
 
+def check_rate_limit_and_wait(response_headers):
+    remaining = response_headers.get('X-RateLimit-Remaining')
+    reset_time = response_headers.get('X-RateLimit-Reset')
+
+    if remaining and int(remaining) == 0 and reset_time:
+        reset_timestamp = int(reset_time)
+        wait_seconds = reset_timestamp - int(time.time())
+
+        if wait_seconds > 0:
+            print(f"\nGitHub API rate limit reached. Waiting {wait_seconds} seconds until reset...", flush=True)
+
+            # Show countdown every 10 seconds
+            while wait_seconds > 0:
+                mins, secs = divmod(wait_seconds, 60)
+                if mins > 0:
+                    print(f"  Waiting: {mins}m {secs}s remaining...", end='\r', flush=True)
+                else:
+                    print(f"  Waiting: {secs}s remaining...", end='\r', flush=True)
+
+                sleep_time = min(10, wait_seconds)
+                time.sleep(sleep_time)
+                wait_seconds -= sleep_time
+
+            print("\n  Rate limit reset! Resuming downloads...    ", flush=True)
+
+
+def normalize_recipe_data(recipe: dict) -> dict:
+    if isinstance(recipe, dict) and 'type' in recipe:
+        recipe_type = recipe['type']
+        if isinstance(recipe_type, str) and not recipe_type.startswith('minecraft:'):
+            recipe['type'] = f'minecraft:{recipe_type}'
+    return recipe
+
+
 def download_single_recipe(version: str, base_path: str, recipe_file: str) -> tuple:
     recipe_url = f"https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/refs/heads/{version}/{base_path}/{recipe_file}"
     try:
         with urllib.request.urlopen(recipe_url) as response:
             recipe_data = json.loads(response.read().decode('utf-8'))
+            recipe_data = normalize_recipe_data(recipe_data)
             recipe_name = recipe_file.replace('.json', '')
             return (f"minecraft:{recipe_name}", recipe_data)
     except:
@@ -75,33 +111,50 @@ def download_single_recipe(version: str, base_path: str, recipe_file: str) -> tu
 def download_individual_recipes(version: str, base_path: str) -> dict:
     api_url = f"https://api.github.com/repos/InventivetalentDev/minecraft-assets/contents/{base_path}?ref={version}"
 
-    try:
-        with urllib.request.urlopen(api_url) as response:
-            files = json.loads(response.read().decode('utf-8'))
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(api_url) as response:
+                files = json.loads(response.read().decode('utf-8'))
 
-        # Filter for .json files
-        recipe_files = [f['name'] for f in files if isinstance(f, dict) and f.get('name', '').endswith('.json')]
+            # Filter for .json files
+            recipe_files = [f['name'] for f in files if isinstance(f, dict) and f.get('name', '').endswith('.json')]
 
-        if not recipe_files:
+            if not recipe_files:
+                return None
+
+            # Download each recipe file in parallel
+            combined_recipes = {}
+            with ThreadPoolExecutor(max_workers=32) as executor:
+                futures = [executor.submit(download_single_recipe, version, base_path, recipe_file)
+                          for recipe_file in recipe_files]
+
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result:
+                        name, data = result
+                        combined_recipes[name] = data
+
+            return combined_recipes if combined_recipes else None
+
+        except urllib.error.HTTPError as e:
+            if e.code == 403 and 'rate limit' in str(e.reason).lower():
+                # Rate limit hit, check headers and wait
+                if e.headers:
+                    check_rate_limit_and_wait(e.headers)
+                    if attempt < max_retries - 1:
+                        print(f"  Retrying {version}...", flush=True)
+                        continue
+                return None
+            else:
+                return None
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            print(f"Error downloading individual recipes: {e}", flush=True)
             return None
 
-        # Download each recipe file in parallel
-        combined_recipes = {}
-        with ThreadPoolExecutor(max_workers=32) as executor:
-            futures = [executor.submit(download_single_recipe, version, base_path, recipe_file)
-                      for recipe_file in recipe_files]
-
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    name, data = result
-                    combined_recipes[name] = data
-
-        return combined_recipes if combined_recipes else None
-    except KeyboardInterrupt:
-        raise
-    except:
-        return None
+    return None
 
 
 def download_recipe(version: str, output_dir: Path) -> bool:
@@ -128,19 +181,20 @@ def download_recipe(version: str, output_dir: Path) -> bool:
                 data = response.read()
                 recipes = json.loads(data.decode('utf-8'))
 
-            # Ensure all recipe keys have the minecraft: prefix
+            # Ensure all recipe keys have the minecraft: prefix and normalize recipe data
             if isinstance(recipes, dict):
                 normalized_recipes = {}
                 for key, value in recipes.items():
                     if not key.startswith('minecraft:'):
-                        normalized_recipes[f'minecraft:{key}'] = value
+                        normalized_key = f'minecraft:{key}'
                     else:
-                        normalized_recipes[key] = value
+                        normalized_key = key
+                    normalized_recipes[normalized_key] = normalize_recipe_data(value)
                 recipes = normalized_recipes
 
             # Pretty print the JSON
             with open(output_file, 'w') as f:
-                json.dump(recipes, f, indent=2)
+                json.dump(recipes, f, indent=2, sort_keys=True)
 
             recipe_count = len(recipes) if isinstance(recipes, dict) else 0
             print(f"Success ({recipe_count} recipes, {len(data)} bytes)", flush=True)
@@ -159,7 +213,7 @@ def download_recipe(version: str, output_dir: Path) -> bool:
     for base_path in base_paths:
         recipes = download_individual_recipes(version, base_path)
         if recipes:
-            json_str = json.dumps(recipes, indent=2)
+            json_str = json.dumps(recipes, indent=2, sort_keys=True)
             json_bytes = len(json_str.encode('utf-8'))
 
             with open(output_file, 'w') as f:

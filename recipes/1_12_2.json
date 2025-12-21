@@ -14,7 +14,7 @@
     "result": {
       "item": "minecraft:acacia_boat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:acacia_door": {
     "group": "wooden_door",
@@ -33,7 +33,7 @@
       "count": 3,
       "item": "minecraft:acacia_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:acacia_fence": {
     "group": "wooden_fence",
@@ -54,7 +54,7 @@
       "count": 3,
       "item": "minecraft:acacia_fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:acacia_fence_gate": {
     "group": "wooden_fence_gate",
@@ -74,7 +74,7 @@
     "result": {
       "item": "minecraft:acacia_fence_gate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:acacia_planks": {
     "group": "planks",
@@ -92,7 +92,7 @@
       "data": 4,
       "item": "minecraft:planks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:acacia_stairs": {
     "group": "wooden_stairs",
@@ -111,7 +111,7 @@
       "count": 4,
       "item": "minecraft:acacia_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:acacia_wooden_slab": {
     "group": "wooden_slab",
@@ -129,7 +129,7 @@
       "data": 4,
       "item": "minecraft:wooden_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:activator_rail": {
     "key": {
@@ -152,7 +152,7 @@
       "count": 6,
       "item": "minecraft:activator_rail"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:andesite": {
     "ingredients": [
@@ -169,7 +169,7 @@
       "data": 5,
       "item": "minecraft:stone"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:anvil": {
     "key": {
@@ -189,7 +189,7 @@
       "data": 0,
       "item": "minecraft:anvil"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:armor_stand": {
     "key": {
@@ -209,7 +209,7 @@
     "result": {
       "item": "minecraft:armor_stand"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:arrow": {
     "key": {
@@ -232,7 +232,7 @@
       "count": 4,
       "item": "minecraft:arrow"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:beacon": {
     "key": {
@@ -254,7 +254,7 @@
     "result": {
       "item": "minecraft:beacon"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:beetroot_soup": {
     "key": {
@@ -273,7 +273,7 @@
     "result": {
       "item": "minecraft:beetroot_soup"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_boat": {
     "group": "boat",
@@ -290,7 +290,7 @@
     "result": {
       "item": "minecraft:birch_boat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_door": {
     "group": "wooden_door",
@@ -309,7 +309,7 @@
       "count": 3,
       "item": "minecraft:birch_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_fence": {
     "group": "wooden_fence",
@@ -330,7 +330,7 @@
       "count": 3,
       "item": "minecraft:birch_fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_fence_gate": {
     "group": "wooden_fence_gate",
@@ -350,7 +350,7 @@
     "result": {
       "item": "minecraft:birch_fence_gate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_planks": {
     "group": "planks",
@@ -368,7 +368,7 @@
       "data": 2,
       "item": "minecraft:planks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_stairs": {
     "group": "wooden_stairs",
@@ -387,7 +387,7 @@
       "count": 4,
       "item": "minecraft:birch_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:birch_wooden_slab": {
     "group": "wooden_slab",
@@ -405,7 +405,7 @@
       "data": 2,
       "item": "minecraft:wooden_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_banner": {
     "group": "banner",
@@ -427,7 +427,7 @@
       "data": 0,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_bed": {
     "group": "bed",
@@ -471,7 +471,7 @@
       "data": 15,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -489,7 +489,7 @@
       "data": 15,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:black_carpet": {
     "group": "carpet",
@@ -507,7 +507,7 @@
       "data": 15,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_concrete_powder": {
     "group": "concrete_powder",
@@ -550,7 +550,7 @@
       "data": 15,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:black_stained_glass": {
     "group": "stained_glass",
@@ -573,7 +573,7 @@
       "data": 15,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -592,7 +592,7 @@
       "data": 15,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -615,7 +615,7 @@
       "data": 15,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:black_wool": {
     "group": "wool",
@@ -633,7 +633,7 @@
       "data": 15,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:blaze_powder": {
     "ingredients": [
@@ -645,7 +645,7 @@
       "count": 2,
       "item": "minecraft:blaze_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:blue_banner": {
     "group": "banner",
@@ -667,7 +667,7 @@
       "data": 4,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:blue_bed": {
     "group": "bed",
@@ -711,7 +711,7 @@
       "data": 11,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:blue_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -729,7 +729,7 @@
       "data": 11,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:blue_carpet": {
     "group": "carpet",
@@ -747,7 +747,7 @@
       "data": 11,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:blue_concrete_powder": {
     "group": "concrete_powder",
@@ -790,7 +790,7 @@
       "data": 11,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:blue_stained_glass": {
     "group": "stained_glass",
@@ -813,7 +813,7 @@
       "data": 11,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:blue_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -832,7 +832,7 @@
       "data": 11,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:blue_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -855,7 +855,7 @@
       "data": 11,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:blue_wool": {
     "group": "wool",
@@ -873,7 +873,7 @@
       "data": 11,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:boat": {
     "group": "boat",
@@ -890,7 +890,7 @@
     "result": {
       "item": "minecraft:boat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:bone_block": {
     "key": {
@@ -907,7 +907,7 @@
     "result": {
       "item": "minecraft:bone_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:bone_meal_from_block": {
     "group": "bonemeal",
@@ -921,7 +921,7 @@
       "data": 15,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:bone_meal_from_bone": {
     "group": "bonemeal",
@@ -935,7 +935,7 @@
       "data": 15,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:book": {
     "ingredients": [
@@ -960,7 +960,7 @@
       "count": 1,
       "item": "minecraft:book"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:bookshelf": {
     "key": {
@@ -1002,7 +1002,7 @@
     "result": {
       "item": "minecraft:bookshelf"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:bow": {
     "key": {
@@ -1021,7 +1021,7 @@
     "result": {
       "item": "minecraft:bow"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:bowl": {
     "key": {
@@ -1060,7 +1060,7 @@
       "count": 4,
       "item": "minecraft:bowl"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:bread": {
     "key": {
@@ -1074,7 +1074,7 @@
     "result": {
       "item": "minecraft:bread"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brewing_stand": {
     "key": {
@@ -1092,7 +1092,7 @@
     "result": {
       "item": "minecraft:brewing_stand"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brick_block": {
     "key": {
@@ -1107,7 +1107,7 @@
     "result": {
       "item": "minecraft:brick_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brick_slab": {
     "key": {
@@ -1123,7 +1123,7 @@
       "data": 4,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brick_stairs": {
     "key": {
@@ -1140,7 +1140,7 @@
       "count": 4,
       "item": "minecraft:brick_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_banner": {
     "group": "banner",
@@ -1162,7 +1162,7 @@
       "data": 3,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_bed": {
     "group": "bed",
@@ -1206,7 +1206,7 @@
       "data": 12,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -1224,7 +1224,7 @@
       "data": 12,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:brown_carpet": {
     "group": "carpet",
@@ -1242,7 +1242,7 @@
       "data": 12,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_concrete_powder": {
     "group": "concrete_powder",
@@ -1285,7 +1285,7 @@
       "data": 12,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:brown_stained_glass": {
     "group": "stained_glass",
@@ -1308,7 +1308,7 @@
       "data": 12,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -1327,7 +1327,7 @@
       "data": 12,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -1350,7 +1350,7 @@
       "data": 12,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:brown_wool": {
     "group": "wool",
@@ -1368,7 +1368,7 @@
       "data": 12,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:bucket": {
     "key": {
@@ -1383,7 +1383,7 @@
     "result": {
       "item": "minecraft:bucket"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cake": {
     "key": {
@@ -1408,7 +1408,7 @@
     "result": {
       "item": "minecraft:cake"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:carrot_on_a_stick": {
     "key": {
@@ -1426,7 +1426,7 @@
     "result": {
       "item": "minecraft:carrot_on_a_stick"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cauldron": {
     "key": {
@@ -1442,7 +1442,7 @@
     "result": {
       "item": "minecraft:cauldron"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:chest": {
     "key": {
@@ -1481,7 +1481,7 @@
     "result": {
       "item": "minecraft:chest"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:chest_minecart": {
     "key": {
@@ -1499,7 +1499,7 @@
     "result": {
       "item": "minecraft:chest_minecart"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:chiseled_quartz_block": {
     "key": {
@@ -1516,7 +1516,7 @@
       "data": 1,
       "item": "minecraft:quartz_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:chiseled_red_sandstone": {
     "key": {
@@ -1533,7 +1533,7 @@
       "data": 1,
       "item": "minecraft:red_sandstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:chiseled_sandstone": {
     "key": {
@@ -1550,7 +1550,7 @@
       "data": 1,
       "item": "minecraft:sandstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:chiseled_stonebrick": {
     "key": {
@@ -1567,7 +1567,7 @@
       "data": 3,
       "item": "minecraft:stonebrick"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:clay": {
     "key": {
@@ -1582,7 +1582,7 @@
     "result": {
       "item": "minecraft:clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:clock": {
     "key": {
@@ -1601,7 +1601,7 @@
     "result": {
       "item": "minecraft:clock"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:coal": {
     "key": {
@@ -1617,7 +1617,7 @@
       "data": 0,
       "item": "minecraft:coal"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:coal_block": {
     "key": {
@@ -1634,7 +1634,7 @@
     "result": {
       "item": "minecraft:coal_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:coarse_dirt": {
     "key": {
@@ -1655,7 +1655,7 @@
       "data": 1,
       "item": "minecraft:dirt"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cobblestone_slab": {
     "key": {
@@ -1671,7 +1671,7 @@
       "data": 3,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cobblestone_wall": {
     "key": {
@@ -1688,7 +1688,7 @@
       "data": 0,
       "item": "minecraft:cobblestone_wall"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:comparator": {
     "key": {
@@ -1711,7 +1711,7 @@
     "result": {
       "item": "minecraft:comparator"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:compass": {
     "key": {
@@ -1730,7 +1730,7 @@
     "result": {
       "item": "minecraft:compass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cookie": {
     "key": {
@@ -1749,7 +1749,7 @@
       "count": 8,
       "item": "minecraft:cookie"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:crafting_table": {
     "key": {
@@ -1787,7 +1787,7 @@
     "result": {
       "item": "minecraft:crafting_table"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_banner": {
     "group": "banner",
@@ -1809,7 +1809,7 @@
       "data": 6,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_bed": {
     "group": "bed",
@@ -1853,7 +1853,7 @@
       "data": 9,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -1871,7 +1871,7 @@
       "data": 9,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:cyan_carpet": {
     "group": "carpet",
@@ -1889,7 +1889,7 @@
       "data": 9,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_concrete_powder": {
     "group": "concrete_powder",
@@ -1932,7 +1932,7 @@
       "data": 9,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:cyan_dye": {
     "ingredients": [
@@ -1950,7 +1950,7 @@
       "data": 6,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:cyan_stained_glass": {
     "group": "stained_glass",
@@ -1973,7 +1973,7 @@
       "data": 9,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -1992,7 +1992,7 @@
       "data": 9,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -2015,7 +2015,7 @@
       "data": 9,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:cyan_wool": {
     "group": "wool",
@@ -2033,7 +2033,7 @@
       "data": 9,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:dark_oak_boat": {
     "group": "boat",
@@ -2050,7 +2050,7 @@
     "result": {
       "item": "minecraft:dark_oak_boat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_oak_door": {
     "group": "wooden_door",
@@ -2069,7 +2069,7 @@
       "count": 3,
       "item": "minecraft:dark_oak_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_oak_fence": {
     "group": "wooden_fence",
@@ -2090,7 +2090,7 @@
       "count": 3,
       "item": "minecraft:dark_oak_fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_oak_fence_gate": {
     "group": "wooden_fence_gate",
@@ -2110,7 +2110,7 @@
     "result": {
       "item": "minecraft:dark_oak_fence_gate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_oak_planks": {
     "group": "planks",
@@ -2128,7 +2128,7 @@
       "data": 5,
       "item": "minecraft:planks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_oak_stairs": {
     "group": "wooden_stairs",
@@ -2147,7 +2147,7 @@
       "count": 4,
       "item": "minecraft:dark_oak_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_oak_wooden_slab": {
     "group": "wooden_slab",
@@ -2165,7 +2165,7 @@
       "data": 5,
       "item": "minecraft:wooden_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dark_prismarine": {
     "key": {
@@ -2186,7 +2186,7 @@
       "data": 2,
       "item": "minecraft:prismarine"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:daylight_detector": {
     "key": {
@@ -2231,7 +2231,7 @@
     "result": {
       "item": "minecraft:daylight_detector"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:detector_rail": {
     "key": {
@@ -2254,7 +2254,7 @@
       "count": 6,
       "item": "minecraft:detector_rail"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond": {
     "key": {
@@ -2269,7 +2269,7 @@
       "count": 9,
       "item": "minecraft:diamond"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_axe": {
     "key": {
@@ -2288,7 +2288,7 @@
     "result": {
       "item": "minecraft:diamond_axe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_block": {
     "key": {
@@ -2304,7 +2304,7 @@
     "result": {
       "item": "minecraft:diamond_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_boots": {
     "key": {
@@ -2319,7 +2319,7 @@
     "result": {
       "item": "minecraft:diamond_boots"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_chestplate": {
     "key": {
@@ -2335,7 +2335,7 @@
     "result": {
       "item": "minecraft:diamond_chestplate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_helmet": {
     "key": {
@@ -2350,7 +2350,7 @@
     "result": {
       "item": "minecraft:diamond_helmet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_hoe": {
     "key": {
@@ -2369,7 +2369,7 @@
     "result": {
       "item": "minecraft:diamond_hoe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_leggings": {
     "key": {
@@ -2385,7 +2385,7 @@
     "result": {
       "item": "minecraft:diamond_leggings"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_pickaxe": {
     "key": {
@@ -2404,7 +2404,7 @@
     "result": {
       "item": "minecraft:diamond_pickaxe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_shovel": {
     "key": {
@@ -2423,7 +2423,7 @@
     "result": {
       "item": "minecraft:diamond_shovel"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diamond_sword": {
     "key": {
@@ -2442,7 +2442,7 @@
     "result": {
       "item": "minecraft:diamond_sword"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:diorite": {
     "key": {
@@ -2462,7 +2462,7 @@
       "data": 3,
       "item": "minecraft:stone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dispenser": {
     "key": {
@@ -2484,7 +2484,7 @@
     "result": {
       "item": "minecraft:dispenser"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:dropper": {
     "key": {
@@ -2503,7 +2503,7 @@
     "result": {
       "item": "minecraft:dropper"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:emerald": {
     "key": {
@@ -2518,7 +2518,7 @@
       "count": 9,
       "item": "minecraft:emerald"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:emerald_block": {
     "key": {
@@ -2534,7 +2534,7 @@
     "result": {
       "item": "minecraft:emerald_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:enchanting_table": {
     "key": {
@@ -2556,7 +2556,7 @@
     "result": {
       "item": "minecraft:enchanting_table"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:end_bricks": {
     "key": {
@@ -2572,7 +2572,7 @@
       "count": 4,
       "item": "minecraft:end_bricks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:end_crystal": {
     "key": {
@@ -2594,7 +2594,7 @@
     "result": {
       "item": "minecraft:end_crystal"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:end_rod": {
     "key": {
@@ -2613,7 +2613,7 @@
       "count": 4,
       "item": "minecraft:end_rod"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:ender_chest": {
     "key": {
@@ -2632,7 +2632,7 @@
     "result": {
       "item": "minecraft:ender_chest"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:ender_eye": {
     "ingredients": [
@@ -2646,7 +2646,7 @@
     "result": {
       "item": "minecraft:ender_eye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:fence": {
     "group": "wooden_fence",
@@ -2667,7 +2667,7 @@
       "count": 3,
       "item": "minecraft:fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:fence_gate": {
     "group": "wooden_fence_gate",
@@ -2687,7 +2687,7 @@
     "result": {
       "item": "minecraft:fence_gate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:fermented_spider_eye": {
     "ingredients": [
@@ -2704,7 +2704,7 @@
     "result": {
       "item": "minecraft:fermented_spider_eye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:fire_charge": {
     "ingredients": [
@@ -2729,7 +2729,7 @@
       "count": 3,
       "item": "minecraft:fire_charge"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:fishing_rod": {
     "key": {
@@ -2748,7 +2748,7 @@
     "result": {
       "item": "minecraft:fishing_rod"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:flint_and_steel": {
     "ingredients": [
@@ -2762,7 +2762,7 @@
     "result": {
       "item": "minecraft:flint_and_steel"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:flower_pot": {
     "key": {
@@ -2777,7 +2777,7 @@
     "result": {
       "item": "minecraft:flower_pot"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:furnace": {
     "key": {
@@ -2793,7 +2793,7 @@
     "result": {
       "item": "minecraft:furnace"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:furnace_minecart": {
     "key": {
@@ -2811,7 +2811,7 @@
     "result": {
       "item": "minecraft:furnace_minecart"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:glass_bottle": {
     "key": {
@@ -2827,7 +2827,7 @@
       "count": 3,
       "item": "minecraft:glass_bottle"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:glass_pane": {
     "key": {
@@ -2843,7 +2843,7 @@
       "count": 16,
       "item": "minecraft:glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:glowstone": {
     "key": {
@@ -2858,7 +2858,7 @@
     "result": {
       "item": "minecraft:glowstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gold_block": {
     "key": {
@@ -2874,7 +2874,7 @@
     "result": {
       "item": "minecraft:gold_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gold_ingot_from_block": {
     "group": "gold_ingot",
@@ -2890,7 +2890,7 @@
       "count": 9,
       "item": "minecraft:gold_ingot"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gold_ingot_from_nuggets": {
     "group": "gold_ingot",
@@ -2907,7 +2907,7 @@
     "result": {
       "item": "minecraft:gold_ingot"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gold_nugget": {
     "key": {
@@ -2922,7 +2922,7 @@
       "count": 9,
       "item": "minecraft:gold_nugget"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_apple": {
     "key": {
@@ -2942,7 +2942,7 @@
       "data": 0,
       "item": "minecraft:golden_apple"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_axe": {
     "key": {
@@ -2961,7 +2961,7 @@
     "result": {
       "item": "minecraft:golden_axe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_boots": {
     "key": {
@@ -2976,7 +2976,7 @@
     "result": {
       "item": "minecraft:golden_boots"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_carrot": {
     "key": {
@@ -2995,7 +2995,7 @@
     "result": {
       "item": "minecraft:golden_carrot"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_chestplate": {
     "key": {
@@ -3011,7 +3011,7 @@
     "result": {
       "item": "minecraft:golden_chestplate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_helmet": {
     "key": {
@@ -3026,7 +3026,7 @@
     "result": {
       "item": "minecraft:golden_helmet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_hoe": {
     "key": {
@@ -3045,7 +3045,7 @@
     "result": {
       "item": "minecraft:golden_hoe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_leggings": {
     "key": {
@@ -3061,7 +3061,7 @@
     "result": {
       "item": "minecraft:golden_leggings"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_pickaxe": {
     "key": {
@@ -3080,7 +3080,7 @@
     "result": {
       "item": "minecraft:golden_pickaxe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_rail": {
     "key": {
@@ -3103,7 +3103,7 @@
       "count": 6,
       "item": "minecraft:golden_rail"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_shovel": {
     "key": {
@@ -3122,7 +3122,7 @@
     "result": {
       "item": "minecraft:golden_shovel"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:golden_sword": {
     "key": {
@@ -3141,7 +3141,7 @@
     "result": {
       "item": "minecraft:golden_sword"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:granite": {
     "ingredients": [
@@ -3157,7 +3157,7 @@
       "data": 1,
       "item": "minecraft:stone"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:gray_banner": {
     "group": "banner",
@@ -3179,7 +3179,7 @@
       "data": 8,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gray_bed": {
     "group": "bed",
@@ -3223,7 +3223,7 @@
       "data": 7,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gray_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -3241,7 +3241,7 @@
       "data": 7,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:gray_carpet": {
     "group": "carpet",
@@ -3259,7 +3259,7 @@
       "data": 7,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gray_concrete_powder": {
     "group": "concrete_powder",
@@ -3302,7 +3302,7 @@
       "data": 7,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:gray_dye": {
     "ingredients": [
@@ -3320,7 +3320,7 @@
       "data": 8,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:gray_stained_glass": {
     "group": "stained_glass",
@@ -3343,7 +3343,7 @@
       "data": 7,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gray_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -3362,7 +3362,7 @@
       "data": 7,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gray_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -3385,7 +3385,7 @@
       "data": 7,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:gray_wool": {
     "group": "wool",
@@ -3403,7 +3403,7 @@
       "data": 7,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:green_banner": {
     "group": "banner",
@@ -3425,7 +3425,7 @@
       "data": 2,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:green_bed": {
     "group": "bed",
@@ -3469,7 +3469,7 @@
       "data": 13,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:green_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -3487,7 +3487,7 @@
       "data": 13,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:green_carpet": {
     "group": "carpet",
@@ -3505,7 +3505,7 @@
       "data": 13,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:green_concrete_powder": {
     "group": "concrete_powder",
@@ -3548,7 +3548,7 @@
       "data": 13,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:green_stained_glass": {
     "group": "stained_glass",
@@ -3571,7 +3571,7 @@
       "data": 13,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:green_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -3590,7 +3590,7 @@
       "data": 13,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:green_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -3613,7 +3613,7 @@
       "data": 13,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:green_wool": {
     "group": "wool",
@@ -3631,7 +3631,7 @@
       "data": 13,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:hay_block": {
     "key": {
@@ -3647,7 +3647,7 @@
     "result": {
       "item": "minecraft:hay_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:heavy_weighted_pressure_plate": {
     "key": {
@@ -3661,7 +3661,7 @@
     "result": {
       "item": "minecraft:heavy_weighted_pressure_plate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:hopper": {
     "key": {
@@ -3680,7 +3680,7 @@
     "result": {
       "item": "minecraft:hopper"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:hopper_minecart": {
     "key": {
@@ -3698,7 +3698,7 @@
     "result": {
       "item": "minecraft:hopper_minecart"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_axe": {
     "key": {
@@ -3717,7 +3717,7 @@
     "result": {
       "item": "minecraft:iron_axe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_bars": {
     "key": {
@@ -3733,7 +3733,7 @@
       "count": 16,
       "item": "minecraft:iron_bars"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_block": {
     "key": {
@@ -3749,7 +3749,7 @@
     "result": {
       "item": "minecraft:iron_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_boots": {
     "key": {
@@ -3764,7 +3764,7 @@
     "result": {
       "item": "minecraft:iron_boots"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_chestplate": {
     "key": {
@@ -3780,7 +3780,7 @@
     "result": {
       "item": "minecraft:iron_chestplate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_door": {
     "key": {
@@ -3797,7 +3797,7 @@
       "count": 3,
       "item": "minecraft:iron_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_helmet": {
     "key": {
@@ -3812,7 +3812,7 @@
     "result": {
       "item": "minecraft:iron_helmet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_hoe": {
     "key": {
@@ -3831,7 +3831,7 @@
     "result": {
       "item": "minecraft:iron_hoe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_ingot_from_block": {
     "group": "iron_ingot",
@@ -3847,7 +3847,7 @@
       "count": 9,
       "item": "minecraft:iron_ingot"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_ingot_from_nuggets": {
     "group": "iron_ingot",
@@ -3864,7 +3864,7 @@
     "result": {
       "item": "minecraft:iron_ingot"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_leggings": {
     "key": {
@@ -3880,7 +3880,7 @@
     "result": {
       "item": "minecraft:iron_leggings"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_nugget": {
     "key": {
@@ -3895,7 +3895,7 @@
       "count": 9,
       "item": "minecraft:iron_nugget"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_pickaxe": {
     "key": {
@@ -3914,7 +3914,7 @@
     "result": {
       "item": "minecraft:iron_pickaxe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_shovel": {
     "key": {
@@ -3933,7 +3933,7 @@
     "result": {
       "item": "minecraft:iron_shovel"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_sword": {
     "key": {
@@ -3952,7 +3952,7 @@
     "result": {
       "item": "minecraft:iron_sword"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:iron_trapdoor": {
     "key": {
@@ -3967,7 +3967,7 @@
     "result": {
       "item": "minecraft:iron_trapdoor"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:item_frame": {
     "key": {
@@ -3986,7 +3986,7 @@
     "result": {
       "item": "minecraft:item_frame"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jukebox": {
     "key": {
@@ -4028,7 +4028,7 @@
     "result": {
       "item": "minecraft:jukebox"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_boat": {
     "group": "boat",
@@ -4045,7 +4045,7 @@
     "result": {
       "item": "minecraft:jungle_boat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_door": {
     "group": "wooden_door",
@@ -4064,7 +4064,7 @@
       "count": 3,
       "item": "minecraft:jungle_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_fence": {
     "group": "wooden_fence",
@@ -4085,7 +4085,7 @@
       "count": 3,
       "item": "minecraft:jungle_fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_fence_gate": {
     "group": "wooden_fence_gate",
@@ -4105,7 +4105,7 @@
     "result": {
       "item": "minecraft:jungle_fence_gate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_planks": {
     "group": "planks",
@@ -4123,7 +4123,7 @@
       "data": 3,
       "item": "minecraft:planks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_stairs": {
     "group": "wooden_stairs",
@@ -4142,7 +4142,7 @@
       "count": 4,
       "item": "minecraft:jungle_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:jungle_wooden_slab": {
     "group": "wooden_slab",
@@ -4160,7 +4160,7 @@
       "data": 3,
       "item": "minecraft:wooden_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:ladder": {
     "key": {
@@ -4177,7 +4177,7 @@
       "count": 3,
       "item": "minecraft:ladder"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lapis_block": {
     "key": {
@@ -4194,7 +4194,7 @@
     "result": {
       "item": "minecraft:lapis_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lapis_lazuli": {
     "key": {
@@ -4210,7 +4210,7 @@
       "data": 4,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lead": {
     "key": {
@@ -4230,7 +4230,7 @@
       "count": 2,
       "item": "minecraft:lead"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:leather": {
     "key": {
@@ -4245,7 +4245,7 @@
     "result": {
       "item": "minecraft:leather"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:leather_boots": {
     "key": {
@@ -4260,7 +4260,7 @@
     "result": {
       "item": "minecraft:leather_boots"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:leather_chestplate": {
     "key": {
@@ -4276,7 +4276,7 @@
     "result": {
       "item": "minecraft:leather_chestplate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:leather_helmet": {
     "key": {
@@ -4291,7 +4291,7 @@
     "result": {
       "item": "minecraft:leather_helmet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:leather_leggings": {
     "key": {
@@ -4307,7 +4307,7 @@
     "result": {
       "item": "minecraft:leather_leggings"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lever": {
     "key": {
@@ -4325,7 +4325,7 @@
     "result": {
       "item": "minecraft:lever"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_banner": {
     "group": "banner",
@@ -4347,7 +4347,7 @@
       "data": 12,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_bed": {
     "group": "bed",
@@ -4391,7 +4391,7 @@
       "data": 3,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -4409,7 +4409,7 @@
       "data": 3,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_blue_carpet": {
     "group": "carpet",
@@ -4427,7 +4427,7 @@
       "data": 3,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_concrete_powder": {
     "group": "concrete_powder",
@@ -4470,7 +4470,7 @@
       "data": 3,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_blue_dye_from_blue_orchid": {
     "group": "light_blue_dye",
@@ -4484,7 +4484,7 @@
       "data": 12,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_blue_dye_from_lapis_bonemeal": {
     "group": "light_blue_dye",
@@ -4503,7 +4503,7 @@
       "data": 12,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_blue_stained_glass": {
     "group": "stained_glass",
@@ -4526,7 +4526,7 @@
       "data": 3,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -4545,7 +4545,7 @@
       "data": 3,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -4568,7 +4568,7 @@
       "data": 3,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_blue_wool": {
     "group": "wool",
@@ -4586,7 +4586,7 @@
       "data": 3,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_banner": {
     "group": "banner",
@@ -4608,7 +4608,7 @@
       "data": 7,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_gray_bed": {
     "group": "bed",
@@ -4652,7 +4652,7 @@
       "data": 8,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_gray_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -4670,7 +4670,7 @@
       "data": 8,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_carpet": {
     "group": "carpet",
@@ -4688,7 +4688,7 @@
       "data": 8,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_gray_concrete_powder": {
     "group": "concrete_powder",
@@ -4731,7 +4731,7 @@
       "data": 8,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_dye_from_azure_bluet": {
     "group": "light_gray_dye",
@@ -4745,7 +4745,7 @@
       "data": 7,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_dye_from_gray_bonemeal": {
     "group": "light_gray_dye",
@@ -4764,7 +4764,7 @@
       "data": 7,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_dye_from_ink_bonemeal": {
     "group": "light_gray_dye",
@@ -4787,7 +4787,7 @@
       "data": 7,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_dye_from_oxeye_daisy": {
     "group": "light_gray_dye",
@@ -4801,7 +4801,7 @@
       "data": 7,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_dye_from_white_tulip": {
     "group": "light_gray_dye",
@@ -4815,7 +4815,7 @@
       "data": 7,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_gray_stained_glass": {
     "group": "stained_glass",
@@ -4838,7 +4838,7 @@
       "data": 8,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_gray_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -4857,7 +4857,7 @@
       "data": 8,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_gray_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -4880,7 +4880,7 @@
       "data": 8,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:light_gray_wool": {
     "group": "wool",
@@ -4898,7 +4898,7 @@
       "data": 8,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:light_weighted_pressure_plate": {
     "key": {
@@ -4912,7 +4912,7 @@
     "result": {
       "item": "minecraft:light_weighted_pressure_plate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_banner": {
     "group": "banner",
@@ -4934,7 +4934,7 @@
       "data": 10,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_bed": {
     "group": "bed",
@@ -4978,7 +4978,7 @@
       "data": 5,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -4996,7 +4996,7 @@
       "data": 5,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:lime_carpet": {
     "group": "carpet",
@@ -5014,7 +5014,7 @@
       "data": 5,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_concrete_powder": {
     "group": "concrete_powder",
@@ -5057,7 +5057,7 @@
       "data": 5,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:lime_dye": {
     "ingredients": [
@@ -5075,7 +5075,7 @@
       "data": 10,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:lime_stained_glass": {
     "group": "stained_glass",
@@ -5098,7 +5098,7 @@
       "data": 5,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -5117,7 +5117,7 @@
       "data": 5,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -5140,7 +5140,7 @@
       "data": 5,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:lime_wool": {
     "group": "wool",
@@ -5158,7 +5158,7 @@
       "data": 5,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:lit_pumpkin": {
     "key": {
@@ -5176,7 +5176,7 @@
     "result": {
       "item": "minecraft:lit_pumpkin"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_banner": {
     "group": "banner",
@@ -5198,7 +5198,7 @@
       "data": 13,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_bed": {
     "group": "bed",
@@ -5242,7 +5242,7 @@
       "data": 2,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -5260,7 +5260,7 @@
       "data": 2,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_carpet": {
     "group": "carpet",
@@ -5278,7 +5278,7 @@
       "data": 2,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_concrete_powder": {
     "group": "concrete_powder",
@@ -5321,7 +5321,7 @@
       "data": 2,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_dye_from_allium": {
     "group": "magenta_dye",
@@ -5335,7 +5335,7 @@
       "data": 13,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_dye_from_lapis_ink_bonemeal": {
     "group": "magenta_dye",
@@ -5362,7 +5362,7 @@
       "data": 13,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_dye_from_lapis_red_pink": {
     "group": "magenta_dye",
@@ -5385,7 +5385,7 @@
       "data": 13,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_dye_from_lilac": {
     "group": "magenta_dye",
@@ -5400,7 +5400,7 @@
       "data": 13,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_dye_from_purple_and_pink": {
     "group": "magenta_dye",
@@ -5419,7 +5419,7 @@
       "data": 13,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magenta_stained_glass": {
     "group": "stained_glass",
@@ -5442,7 +5442,7 @@
       "data": 2,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -5461,7 +5461,7 @@
       "data": 2,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -5484,7 +5484,7 @@
       "data": 2,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magenta_wool": {
     "group": "wool",
@@ -5502,7 +5502,7 @@
       "data": 2,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:magma": {
     "key": {
@@ -5517,7 +5517,7 @@
     "result": {
       "item": "minecraft:magma"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:magma_cream": {
     "ingredients": [
@@ -5531,7 +5531,7 @@
     "result": {
       "item": "minecraft:magma_cream"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:map": {
     "key": {
@@ -5550,7 +5550,7 @@
     "result": {
       "item": "minecraft:map"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:melon_block": {
     "key": {
@@ -5566,7 +5566,7 @@
     "result": {
       "item": "minecraft:melon_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:melon_seeds": {
     "key": {
@@ -5580,7 +5580,7 @@
     "result": {
       "item": "minecraft:melon_seeds"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:minecart": {
     "key": {
@@ -5595,7 +5595,7 @@
     "result": {
       "item": "minecraft:minecart"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:mossy_cobblestone": {
     "ingredients": [
@@ -5609,7 +5609,7 @@
     "result": {
       "item": "minecraft:mossy_cobblestone"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:mossy_cobblestone_wall": {
     "key": {
@@ -5626,7 +5626,7 @@
       "data": 1,
       "item": "minecraft:cobblestone_wall"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:mossy_stonebrick": {
     "ingredients": [
@@ -5642,7 +5642,7 @@
       "data": 1,
       "item": "minecraft:stonebrick"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:mushroom_stew": {
     "ingredients": [
@@ -5659,7 +5659,7 @@
     "result": {
       "item": "minecraft:mushroom_stew"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:nether_brick": {
     "key": {
@@ -5674,7 +5674,7 @@
     "result": {
       "item": "minecraft:nether_brick"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:nether_brick_fence": {
     "key": {
@@ -5690,7 +5690,7 @@
       "count": 6,
       "item": "minecraft:nether_brick_fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:nether_brick_slab": {
     "key": {
@@ -5706,7 +5706,7 @@
       "data": 6,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:nether_brick_stairs": {
     "key": {
@@ -5723,7 +5723,7 @@
       "count": 4,
       "item": "minecraft:nether_brick_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:nether_wart_block": {
     "key": {
@@ -5739,7 +5739,7 @@
     "result": {
       "item": "minecraft:nether_wart_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:noteblock": {
     "key": {
@@ -5781,7 +5781,7 @@
     "result": {
       "item": "minecraft:noteblock"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:oak_planks": {
     "group": "planks",
@@ -5799,7 +5799,7 @@
       "data": 0,
       "item": "minecraft:planks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:oak_stairs": {
     "group": "wooden_stairs",
@@ -5818,7 +5818,7 @@
       "count": 4,
       "item": "minecraft:oak_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:oak_wooden_slab": {
     "group": "wooden_slab",
@@ -5836,7 +5836,7 @@
       "data": 0,
       "item": "minecraft:wooden_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:observer": {
     "key": {
@@ -5858,7 +5858,7 @@
     "result": {
       "item": "minecraft:observer"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_banner": {
     "group": "banner",
@@ -5880,7 +5880,7 @@
       "data": 14,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_bed": {
     "group": "bed",
@@ -5924,7 +5924,7 @@
       "data": 1,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -5942,7 +5942,7 @@
       "data": 1,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:orange_carpet": {
     "group": "carpet",
@@ -5960,7 +5960,7 @@
       "data": 1,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_concrete_powder": {
     "group": "concrete_powder",
@@ -6003,7 +6003,7 @@
       "data": 1,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:orange_dye_from_orange_tulip": {
     "group": "orange_dye",
@@ -6017,7 +6017,7 @@
       "data": 14,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:orange_dye_from_red_yellow": {
     "group": "orange_dye",
@@ -6036,7 +6036,7 @@
       "data": 14,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:orange_stained_glass": {
     "group": "stained_glass",
@@ -6059,7 +6059,7 @@
       "data": 1,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -6078,7 +6078,7 @@
       "data": 1,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -6101,7 +6101,7 @@
       "data": 1,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:orange_wool": {
     "group": "wool",
@@ -6119,7 +6119,7 @@
       "data": 1,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:painting": {
     "key": {
@@ -6201,7 +6201,7 @@
     "result": {
       "item": "minecraft:painting"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:paper": {
     "key": {
@@ -6216,7 +6216,7 @@
       "count": 3,
       "item": "minecraft:paper"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pillar_quartz_block": {
     "key": {
@@ -6234,7 +6234,7 @@
       "data": 2,
       "item": "minecraft:quartz_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_banner": {
     "group": "banner",
@@ -6256,7 +6256,7 @@
       "data": 9,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_bed": {
     "group": "bed",
@@ -6300,7 +6300,7 @@
       "data": 6,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -6318,7 +6318,7 @@
       "data": 6,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:pink_carpet": {
     "group": "carpet",
@@ -6336,7 +6336,7 @@
       "data": 6,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_concrete_powder": {
     "group": "concrete_powder",
@@ -6379,7 +6379,7 @@
       "data": 6,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:pink_dye_from_peony": {
     "group": "pink_dye",
@@ -6394,7 +6394,7 @@
       "data": 9,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:pink_dye_from_pink_tulip": {
     "group": "pink_dye",
@@ -6408,7 +6408,7 @@
       "data": 9,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:pink_dye_from_red_bonemeal": {
     "group": "pink_dye",
@@ -6427,7 +6427,7 @@
       "data": 9,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:pink_stained_glass": {
     "group": "stained_glass",
@@ -6450,7 +6450,7 @@
       "data": 6,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -6469,7 +6469,7 @@
       "data": 6,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -6492,7 +6492,7 @@
       "data": 6,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pink_wool": {
     "group": "wool",
@@ -6510,7 +6510,7 @@
       "data": 6,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:piston": {
     "key": {
@@ -6558,7 +6558,7 @@
     "result": {
       "item": "minecraft:piston"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:polished_andesite": {
     "key": {
@@ -6576,7 +6576,7 @@
       "data": 6,
       "item": "minecraft:stone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:polished_diorite": {
     "key": {
@@ -6594,7 +6594,7 @@
       "data": 4,
       "item": "minecraft:stone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:polished_granite": {
     "key": {
@@ -6612,7 +6612,7 @@
       "data": 2,
       "item": "minecraft:stone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:prismarine": {
     "key": {
@@ -6628,7 +6628,7 @@
       "data": 0,
       "item": "minecraft:prismarine"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:prismarine_bricks": {
     "key": {
@@ -6645,7 +6645,7 @@
       "data": 1,
       "item": "minecraft:prismarine"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:pumpkin_pie": {
     "ingredients": [
@@ -6662,7 +6662,7 @@
     "result": {
       "item": "minecraft:pumpkin_pie"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:pumpkin_seeds": {
     "key": {
@@ -6677,7 +6677,7 @@
       "count": 4,
       "item": "minecraft:pumpkin_seeds"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_banner": {
     "group": "banner",
@@ -6699,7 +6699,7 @@
       "data": 5,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_bed": {
     "group": "bed",
@@ -6743,7 +6743,7 @@
       "data": 10,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -6761,7 +6761,7 @@
       "data": 10,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:purple_carpet": {
     "group": "carpet",
@@ -6779,7 +6779,7 @@
       "data": 10,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_concrete_powder": {
     "group": "concrete_powder",
@@ -6822,7 +6822,7 @@
       "data": 10,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:purple_dye": {
     "ingredients": [
@@ -6840,7 +6840,7 @@
       "data": 5,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:purple_shulker_box": {
     "key": {
@@ -6859,7 +6859,7 @@
     "result": {
       "item": "minecraft:purple_shulker_box"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_stained_glass": {
     "group": "stained_glass",
@@ -6882,7 +6882,7 @@
       "data": 10,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -6901,7 +6901,7 @@
       "data": 10,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -6924,7 +6924,7 @@
       "data": 10,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purple_wool": {
     "group": "wool",
@@ -6942,7 +6942,7 @@
       "data": 10,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:purpur_block": {
     "key": {
@@ -6958,7 +6958,7 @@
       "count": 4,
       "item": "minecraft:purpur_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purpur_pillar": {
     "key": {
@@ -6974,7 +6974,7 @@
     "result": {
       "item": "minecraft:purpur_pillar"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purpur_slab": {
     "key": {
@@ -6990,7 +6990,7 @@
       "data": 0,
       "item": "minecraft:purpur_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:purpur_stairs": {
     "key": {
@@ -7007,7 +7007,7 @@
       "count": 4,
       "item": "minecraft:purpur_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:quartz_block": {
     "key": {
@@ -7023,7 +7023,7 @@
       "data": 0,
       "item": "minecraft:quartz_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:quartz_slab": {
     "key": {
@@ -7050,7 +7050,7 @@
       "data": 7,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:quartz_stairs": {
     "key": {
@@ -7078,7 +7078,7 @@
       "count": 4,
       "item": "minecraft:quartz_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:rabbit_stew_from_brown_mushroom": {
     "group": "rabbit_stew",
@@ -7107,7 +7107,7 @@
     "result": {
       "item": "minecraft:rabbit_stew"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:rabbit_stew_from_red_mushroom": {
     "group": "rabbit_stew",
@@ -7136,7 +7136,7 @@
     "result": {
       "item": "minecraft:rabbit_stew"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:rail": {
     "key": {
@@ -7156,7 +7156,7 @@
       "count": 16,
       "item": "minecraft:rail"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_banner": {
     "group": "banner",
@@ -7178,7 +7178,7 @@
       "data": 1,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_bed": {
     "group": "bed",
@@ -7222,7 +7222,7 @@
       "data": 14,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -7240,7 +7240,7 @@
       "data": 14,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:red_carpet": {
     "group": "carpet",
@@ -7258,7 +7258,7 @@
       "data": 14,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_concrete_powder": {
     "group": "concrete_powder",
@@ -7301,7 +7301,7 @@
       "data": 14,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:red_dye_from_beetroot": {
     "group": "red_dye",
@@ -7314,7 +7314,7 @@
       "data": 1,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:red_dye_from_poppy": {
     "group": "red_dye",
@@ -7328,7 +7328,7 @@
       "data": 1,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:red_dye_from_rose_bush": {
     "group": "red_dye",
@@ -7343,7 +7343,7 @@
       "data": 1,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:red_dye_from_tulip": {
     "group": "red_dye",
@@ -7357,7 +7357,7 @@
       "data": 1,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:red_nether_brick": {
     "key": {
@@ -7375,7 +7375,7 @@
     "result": {
       "item": "minecraft:red_nether_brick"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_sandstone": {
     "key": {
@@ -7392,7 +7392,7 @@
       "data": 0,
       "item": "minecraft:red_sandstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_sandstone_slab": {
     "key": {
@@ -7419,7 +7419,7 @@
       "data": 0,
       "item": "minecraft:stone_slab2"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_sandstone_stairs": {
     "key": {
@@ -7447,7 +7447,7 @@
       "count": 4,
       "item": "minecraft:red_sandstone_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_stained_glass": {
     "group": "stained_glass",
@@ -7470,7 +7470,7 @@
       "data": 14,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -7489,7 +7489,7 @@
       "data": 14,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -7512,7 +7512,7 @@
       "data": 14,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:red_wool": {
     "group": "wool",
@@ -7530,7 +7530,7 @@
       "data": 14,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:redstone": {
     "key": {
@@ -7545,7 +7545,7 @@
       "count": 9,
       "item": "minecraft:redstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:redstone_block": {
     "key": {
@@ -7561,7 +7561,7 @@
     "result": {
       "item": "minecraft:redstone_block"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:redstone_lamp": {
     "key": {
@@ -7580,7 +7580,7 @@
     "result": {
       "item": "minecraft:redstone_lamp"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:redstone_torch": {
     "key": {
@@ -7598,7 +7598,7 @@
     "result": {
       "item": "minecraft:redstone_torch"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:repeater": {
     "key": {
@@ -7620,7 +7620,7 @@
     "result": {
       "item": "minecraft:repeater"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sandstone": {
     "key": {
@@ -7637,7 +7637,7 @@
       "data": 0,
       "item": "minecraft:sandstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sandstone_slab": {
     "key": {
@@ -7664,7 +7664,7 @@
       "data": 1,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sandstone_stairs": {
     "key": {
@@ -7692,7 +7692,7 @@
       "count": 4,
       "item": "minecraft:sandstone_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sea_lantern": {
     "key": {
@@ -7711,7 +7711,7 @@
     "result": {
       "item": "minecraft:sea_lantern"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:shears": {
     "key": {
@@ -7726,7 +7726,7 @@
     "result": {
       "item": "minecraft:shears"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:shield": {
     "key": {
@@ -7768,7 +7768,7 @@
     "result": {
       "item": "minecraft:shield"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sign": {
     "key": {
@@ -7811,7 +7811,7 @@
       "count": 3,
       "item": "minecraft:sign"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:slime": {
     "key": {
@@ -7827,7 +7827,7 @@
     "result": {
       "item": "minecraft:slime"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:slime_ball": {
     "key": {
@@ -7842,7 +7842,7 @@
       "count": 9,
       "item": "minecraft:slime_ball"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:smooth_red_sandstone": {
     "key": {
@@ -7860,7 +7860,7 @@
       "data": 2,
       "item": "minecraft:red_sandstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:smooth_sandstone": {
     "key": {
@@ -7878,7 +7878,7 @@
       "data": 2,
       "item": "minecraft:sandstone"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:snow": {
     "key": {
@@ -7893,7 +7893,7 @@
     "result": {
       "item": "minecraft:snow"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:snow_layer": {
     "key": {
@@ -7908,7 +7908,7 @@
       "count": 6,
       "item": "minecraft:snow_layer"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:speckled_melon": {
     "key": {
@@ -7927,7 +7927,7 @@
     "result": {
       "item": "minecraft:speckled_melon"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spectral_arrow": {
     "key": {
@@ -7947,7 +7947,7 @@
       "count": 2,
       "item": "minecraft:spectral_arrow"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_boat": {
     "group": "boat",
@@ -7964,7 +7964,7 @@
     "result": {
       "item": "minecraft:spruce_boat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_door": {
     "group": "wooden_door",
@@ -7983,7 +7983,7 @@
       "count": 3,
       "item": "minecraft:spruce_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_fence": {
     "group": "wooden_fence",
@@ -8004,7 +8004,7 @@
       "count": 3,
       "item": "minecraft:spruce_fence"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_fence_gate": {
     "group": "wooden_fence_gate",
@@ -8024,7 +8024,7 @@
     "result": {
       "item": "minecraft:spruce_fence_gate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_planks": {
     "group": "planks",
@@ -8042,7 +8042,7 @@
       "data": 1,
       "item": "minecraft:planks"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_stairs": {
     "group": "wooden_stairs",
@@ -8061,7 +8061,7 @@
       "count": 4,
       "item": "minecraft:spruce_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:spruce_wooden_slab": {
     "group": "wooden_slab",
@@ -8079,7 +8079,7 @@
       "data": 1,
       "item": "minecraft:wooden_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stick": {
     "key": {
@@ -8118,7 +8118,7 @@
       "count": 4,
       "item": "minecraft:stick"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sticky_piston": {
     "key": {
@@ -8136,7 +8136,7 @@
     "result": {
       "item": "minecraft:sticky_piston"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_axe": {
     "key": {
@@ -8155,7 +8155,7 @@
     "result": {
       "item": "minecraft:stone_axe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_brick_slab": {
     "key": {
@@ -8186,7 +8186,7 @@
       "data": 5,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_brick_stairs": {
     "key": {
@@ -8218,7 +8218,7 @@
       "count": 4,
       "item": "minecraft:stone_brick_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_button": {
     "key": {
@@ -8233,7 +8233,7 @@
     "result": {
       "item": "minecraft:stone_button"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_hoe": {
     "key": {
@@ -8252,7 +8252,7 @@
     "result": {
       "item": "minecraft:stone_hoe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_pickaxe": {
     "key": {
@@ -8271,7 +8271,7 @@
     "result": {
       "item": "minecraft:stone_pickaxe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_pressure_plate": {
     "key": {
@@ -8286,7 +8286,7 @@
     "result": {
       "item": "minecraft:stone_pressure_plate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_shovel": {
     "key": {
@@ -8305,7 +8305,7 @@
     "result": {
       "item": "minecraft:stone_shovel"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_slab": {
     "key": {
@@ -8322,7 +8322,7 @@
       "data": 0,
       "item": "minecraft:stone_slab"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_stairs": {
     "key": {
@@ -8339,7 +8339,7 @@
       "count": 4,
       "item": "minecraft:stone_stairs"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stone_sword": {
     "key": {
@@ -8358,7 +8358,7 @@
     "result": {
       "item": "minecraft:stone_sword"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:stonebrick": {
     "key": {
@@ -8376,7 +8376,7 @@
       "data": 0,
       "item": "minecraft:stonebrick"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:string_to_wool": {
     "key": {
@@ -8392,7 +8392,7 @@
       "data": 0,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:sugar": {
     "key": {
@@ -8406,7 +8406,7 @@
     "result": {
       "item": "minecraft:sugar"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:tnt": {
     "key": {
@@ -8432,7 +8432,7 @@
     "result": {
       "item": "minecraft:tnt"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:tnt_minecart": {
     "key": {
@@ -8450,7 +8450,7 @@
     "result": {
       "item": "minecraft:tnt_minecart"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:torch": {
     "key": {
@@ -8476,7 +8476,7 @@
       "count": 4,
       "item": "minecraft:torch"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:trapdoor": {
     "key": {
@@ -8515,7 +8515,7 @@
       "count": 2,
       "item": "minecraft:trapdoor"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:trapped_chest": {
     "ingredients": [
@@ -8529,7 +8529,7 @@
     "result": {
       "item": "minecraft:trapped_chest"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:tripwire_hook": {
     "key": {
@@ -8575,7 +8575,7 @@
       "count": 2,
       "item": "minecraft:tripwire_hook"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wheat": {
     "key": {
@@ -8590,7 +8590,7 @@
       "count": 9,
       "item": "minecraft:wheat"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:white_banner": {
     "group": "banner",
@@ -8612,7 +8612,7 @@
       "data": 15,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:white_bed": {
     "group": "bed",
@@ -8656,7 +8656,7 @@
       "data": 0,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:white_carpet": {
     "group": "carpet",
@@ -8674,7 +8674,7 @@
       "data": 0,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:white_concrete_powder": {
     "group": "concrete_powder",
@@ -8717,7 +8717,7 @@
       "data": 0,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:white_stained_glass": {
     "group": "stained_glass",
@@ -8740,7 +8740,7 @@
       "data": 0,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:white_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -8759,7 +8759,7 @@
       "data": 0,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:white_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -8782,7 +8782,7 @@
       "data": 0,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_axe": {
     "key": {
@@ -8824,7 +8824,7 @@
     "result": {
       "item": "minecraft:wooden_axe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_button": {
     "key": {
@@ -8861,7 +8861,7 @@
     "result": {
       "item": "minecraft:wooden_button"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_door": {
     "group": "wooden_door",
@@ -8880,7 +8880,7 @@
       "count": 3,
       "item": "minecraft:wooden_door"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_hoe": {
     "key": {
@@ -8922,7 +8922,7 @@
     "result": {
       "item": "minecraft:wooden_hoe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_pickaxe": {
     "key": {
@@ -8964,7 +8964,7 @@
     "result": {
       "item": "minecraft:wooden_pickaxe"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_pressure_plate": {
     "key": {
@@ -9001,7 +9001,7 @@
     "result": {
       "item": "minecraft:wooden_pressure_plate"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_shovel": {
     "key": {
@@ -9043,7 +9043,7 @@
     "result": {
       "item": "minecraft:wooden_shovel"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:wooden_sword": {
     "key": {
@@ -9085,7 +9085,7 @@
     "result": {
       "item": "minecraft:wooden_sword"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:writable_book": {
     "ingredients": [
@@ -9103,7 +9103,7 @@
     "result": {
       "item": "minecraft:writable_book"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:yellow_banner": {
     "group": "banner",
@@ -9125,7 +9125,7 @@
       "data": 11,
       "item": "minecraft:banner"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:yellow_bed": {
     "group": "bed",
@@ -9169,7 +9169,7 @@
       "data": 4,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:yellow_bed_from_white_bed": {
     "group": "dyed_bed",
@@ -9187,7 +9187,7 @@
       "data": 4,
       "item": "minecraft:bed"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:yellow_carpet": {
     "group": "carpet",
@@ -9205,7 +9205,7 @@
       "data": 4,
       "item": "minecraft:carpet"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:yellow_concrete_powder": {
     "group": "concrete_powder",
@@ -9248,7 +9248,7 @@
       "data": 4,
       "item": "minecraft:concrete_powder"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:yellow_dye_from_dandelion": {
     "group": "yellow_dye",
@@ -9262,7 +9262,7 @@
       "data": 11,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:yellow_dye_from_sunflower": {
     "group": "yellow_dye",
@@ -9277,7 +9277,7 @@
       "data": 11,
       "item": "minecraft:dye"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   },
   "minecraft:yellow_stained_glass": {
     "group": "stained_glass",
@@ -9300,7 +9300,7 @@
       "data": 4,
       "item": "minecraft:stained_glass"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:yellow_stained_glass_pane": {
     "group": "stained_glass_pane",
@@ -9319,7 +9319,7 @@
       "data": 4,
       "item": "minecraft:stained_glass_pane"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:yellow_stained_hardened_clay": {
     "group": "stained_hardened_clay",
@@ -9342,7 +9342,7 @@
       "data": 4,
       "item": "minecraft:stained_hardened_clay"
     },
-    "type": "crafting_shaped"
+    "type": "minecraft:crafting_shaped"
   },
   "minecraft:yellow_wool": {
     "group": "wool",
@@ -9360,6 +9360,6 @@
       "data": 4,
       "item": "minecraft:wool"
     },
-    "type": "crafting_shapeless"
+    "type": "minecraft:crafting_shapeless"
   }
 }
