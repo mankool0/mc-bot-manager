@@ -1,8 +1,10 @@
 package mankool.mcBotClient.mixin.client;
 
 import mankool.mcBotClient.handler.outbound.ContainerOutbound;
+import mankool.mcBotClient.handler.outbound.InventoryOutbound;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.world.inventory.MenuType;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,7 +21,7 @@ public abstract class ContainerMixin {
         if (handler != null) {
             int containerId = packet.getContainerId();
             MenuType<?> menuType = packet.getType();
-            String containerType = menuType.toString();
+            String containerType = BuiltInRegistries.MENU.getKey(menuType).toString();
 
             handler.onContainerOpened(containerId, containerType, null);
         }

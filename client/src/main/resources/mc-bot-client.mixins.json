@@ -8,6 +8,8 @@
     "ClientPacketListenerMixin",
     "ClientboundSectionBlocksUpdatePacketAccessor",
     "ContainerMixin",
+    "InventoryMixin",
+    "BlockInteractionMixin",
     "AbstractContainerMenuAccessor",
     "baritone.BaritoneSettingMixin"
   ],

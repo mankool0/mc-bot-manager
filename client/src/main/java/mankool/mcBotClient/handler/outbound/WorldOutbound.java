@@ -102,7 +102,7 @@ public class WorldOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
-        // World data is sent via event hooks (mixins), not on tick
+        // No periodic tasks needed
     }
 
     public void onChunkLoaded(int chunkX, int chunkZ) {

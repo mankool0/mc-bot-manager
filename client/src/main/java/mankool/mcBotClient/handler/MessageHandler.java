@@ -103,6 +103,10 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleInteractWithBlock(msg.getMessageId(), msg.getInteractWithBlock()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REGISTRY_RESPONSE,
             msg -> worldOutbound.handleRegistryResponse(msg.getRegistryResponse()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLICK_CONTAINER_SLOT,
+            msg -> inventoryHandler.handleClickContainerSlot(msg.getMessageId(), msg.getClickContainerSlot()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLOSE_CONTAINER,
+            msg -> inventoryHandler.handleCloseContainer(msg.getMessageId(), msg.getCloseContainer()));
     }
 
     public void start() {
