@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "world.proto"; // For RegistryStatus
+
+// Item registry synchronization
+message QueryItemRegistryMessage {
+  int32 data_version = 1;
+  int32 protocol_version = 2;
+}
+
+message ItemRegistryResponse {
+  RegistryStatus status = 1;
+}
+
+message ItemEntry {
+  string item_id = 1;       // "minecraft:stick"
+  int32 max_stack_size = 2;
+  int32 max_damage = 3;
+}
+
+message ItemRegistryMessage {
+  int32 data_version = 1;
+  repeated ItemEntry entries = 2;
+}
