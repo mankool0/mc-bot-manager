@@ -4,6 +4,7 @@
 #include "BaritoneWidget.h"
 #include "ScriptsWidget.h"
 #include "PrismSettingsDialog.h"
+#include "GlobalSettingsDialog.h"
 #include "NetworkStatsWidget.h"
 #include "logging/LogManager.h"
 #include "prism/PrismLauncherManager.h"
@@ -120,6 +121,7 @@ void ManagerMainWindow::setupUI()
 
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
     connect(ui->actionWorldSavePath, &QAction::triggered, this, &ManagerMainWindow::configureWorldSavePath);
+    connect(ui->actionGlobalSettings, &QAction::triggered, this, &ManagerMainWindow::openGlobalSettings);
     connect(ui->actionNetworkStats, &QAction::toggled, this, &ManagerMainWindow::showNetworkStats);
     connect(ui->actionSave, &QAction::triggered, this, &ManagerMainWindow::saveSettings);
     connect(ui->actionOpen, &QAction::triggered, this, &ManagerMainWindow::loadSettingsFromFile);
@@ -817,6 +819,12 @@ void ManagerMainWindow::updateAccountComboBox()
     if (!prismConfig.accounts.isEmpty()) {
         ui->accountComboBox->addItems(prismConfig.accounts);
     }
+}
+
+void ManagerMainWindow::openGlobalSettings()
+{
+    GlobalSettingsDialog dialog(this);
+    dialog.exec();
 }
 
 void ManagerMainWindow::configurePrismLauncher()
