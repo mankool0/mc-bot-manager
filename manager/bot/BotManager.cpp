@@ -2450,6 +2450,27 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
     bool isOpen = containerUpdate.isOpen();
     int containerId = containerUpdate.containerId();
 
+    // Update container state
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        if (isOpen) {
+            bot->containerState.isOpen = true;
+            bot->containerState.containerId = containerId;
+            bot->containerState.containerType = containerUpdate.type();
+
+            bot->containerState.items.clear();
+            for (const auto &item : containerUpdate.items()) {
+                bot->containerState.items.append(item);
+            }
+        } else {
+            // Container closed - reset state
+            bot->containerState.isOpen = false;
+            bot->containerState.containerId = -1;
+            bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+            bot->containerState.items.clear();
+        }
+    }
+
     if (bot->debugLogging) {
         if (isOpen) {
             LogManager::log(QString("[DEBUG %1] Container update: ID=%2, Type=%3, Items=%4")
@@ -2505,11 +2526,6 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
             QVariantList args;
             args << containerInfo;
             bot->scriptEngine->fireEvent("container_update", args);
-        } else {
-            // Container closed
-            QVariantList args;
-            args << containerId;
-            bot->scriptEngine->fireEvent("container_closed", args);
         }
     }
 }
@@ -2526,7 +2542,19 @@ void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::
         return;
     }
 
-    bot->currentScreenClass = screen.screenClass();
+    QString screenClass = screen.screenClass();
+    bot->currentScreenClass = screenClass;
+
+    // If screen is closed (null/empty) and container was open, close the container
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        if (bot->containerState.isOpen && screenClass.isEmpty()) {
+            bot->containerState.isOpen = false;
+            bot->containerState.containerId = -1;
+            bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+            bot->containerState.items.clear();
+        }
+    }
 
     emit botUpdated(bot->name);
 
@@ -2600,3 +2628,92 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
                    .arg(botName).arg(x).arg(y).arg(z).arg(message.size()),
                    LogManager::Debug);
 }
+
+void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType)
+{
+    instance().sendClickContainerSlotImpl(botName, slotIndex, button, clickType);
+}
+
+void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("[ERROR] Bot '%1' not found for click container slot").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[ERROR %1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (!bot->containerState.isOpen) {
+        LogManager::log(QString("[ERROR %1] No container open").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::ClickContainerSlotCommand command;
+    command.setSlotIndex(slotIndex);
+    command.setButton(button);
+    command.setClickType(static_cast<mankool::mcbot::protocol::ClickContainerSlotCommand::ClickType>(clickType));
+
+    message.setClickContainerSlot(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+
+void BotManager::sendCloseContainer(const QString &botName)
+{
+    instance().sendCloseContainerImpl(botName);
+}
+
+void BotManager::sendCloseContainerImpl(const QString &botName)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("[ERROR] Bot '%1' not found for close container").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[ERROR %1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::CloseContainerCommand command;
+    message.setCloseContainer(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+

@@ -16,6 +16,23 @@ struct ESPBlockData;
 class PythonAPI
 {
 public:
+    // Enums for container interaction
+    enum class MouseButton {
+        LEFT = 0,
+        RIGHT = 1,
+        MIDDLE = 2
+    };
+
+    enum class ContainerClickType {
+        PICKUP = 0,
+        QUICK_MOVE = 1,
+        SWAP = 2,
+        CLONE = 3,
+        THROW = 4,
+        QUICK_CRAFT = 5,
+        PICKUP_ALL = 6
+    };
+
     static void setCurrentBot(const QString &botName);
     static QString getCurrentBot();
     static void setCurrentScript(const QString &scriptName);
@@ -69,7 +86,7 @@ public:
     static py::list meteorListModules(const std::string &bot = "");
 
     // World queries
-    static py::object getBlock(int x, int y, int z, const std::string &bot = "");
+    static py::object getBlock(double x, double y, double z, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius, const std::string &bot = "");
     static py::object findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot = "");
@@ -78,7 +95,12 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
-    static void interactBlock(int x, int y, int z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
+    static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
+
+    // Container interaction
+    static void clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot = "");
+    static void closeContainer(const std::string &bot = "");
+    static py::object getContainer(const std::string &bot = "");
 
     static void log(const std::string &message);
     static void error(const std::string &message);

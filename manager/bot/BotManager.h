@@ -217,6 +217,14 @@ struct BotInstance {
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
     int selectedSlot = 0;
 
+    // Container state
+    struct {
+        bool isOpen = false;
+        int containerId = -1;
+        mankool::mcbot::protocol::ContainerUpdate::ContainerType containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+        QVector<mankool::mcbot::protocol::ItemStack> items;
+    } containerState;
+
     QProcess* process = nullptr;
     qint64 minecraftPid = 0;
 
@@ -314,6 +322,10 @@ public:
                                       bool sneak = false,
                                       bool lookAtBlock = true);
 
+    // Container interaction commands
+    static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
+    static void sendCloseContainer(const QString &botName);
+
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
     static void requestBaritoneSettings(const QString &botName);
@@ -370,6 +382,8 @@ private:
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
+    void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
+    void sendCloseContainerImpl(const QString &botName);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);

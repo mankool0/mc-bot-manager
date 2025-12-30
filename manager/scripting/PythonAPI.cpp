@@ -990,15 +990,20 @@ void PythonAPI::error(const std::string &message)
 // World Data API
 // ============================================================================
 
-py::object PythonAPI::getBlock(int x, int y, int z, const std::string &bot)
+py::object PythonAPI::getBlock(double x, double y, double z, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
+    // Convert to integers
+    int ix = static_cast<int>(std::floor(x));
+    int iy = static_cast<int>(std::floor(y));
+    int iz = static_cast<int>(std::floor(z));
+
     std::optional<QString> blockOpt;
     {
         QReadLocker locker(botInstance->worldDataLock.get());
-        blockOpt = botInstance->worldData.getBlock(x, y, z);
+        blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
     }
 
     if (blockOpt.has_value()) {
@@ -1256,12 +1261,65 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     return chunkList;
 }
 
-void PythonAPI::interactBlock(int x, int y, int z, bool sneak, bool lookAtBlock, const std::string &bot)
+void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
-    BotManager::sendInteractWithBlock(botName, x, y, z,
+    int blockX = static_cast<int>(std::floor(x));
+    int blockY = static_cast<int>(std::floor(y));
+    int blockZ = static_cast<int>(std::floor(z));
+
+    BotManager::sendInteractWithBlock(botName, blockX, blockY, blockZ,
                                       mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock);
+}
+
+void PythonAPI::clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendClickContainerSlot(botName, slotIndex, static_cast<int>(button), static_cast<int>(clickType));
+}
+
+void PythonAPI::closeContainer(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendCloseContainer(botName);
+}
+
+py::object PythonAPI::getContainer(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    QMutexLocker locker(botInstance->dataMutex.get());
+
+    if (!botInstance->containerState.isOpen) {
+        return py::none();
+    }
+
+    py::dict result;
+    result["id"] = botInstance->containerState.containerId;
+    result["type"] = botInstance->containerState.containerType;
+
+    py::list items;
+    for (const auto &item : botInstance->containerState.items) {
+        py::dict itemDict;
+        itemDict["slot"] = static_cast<int>(item.slot());
+        itemDict["item_id"] = item.itemId().toStdString();
+        itemDict["count"] = static_cast<int>(item.count());
+        itemDict["display_name"] = item.displayName().toStdString();
+        items.append(itemDict);
+    }
+    result["items"] = items;
+
+    return result;
 }
 

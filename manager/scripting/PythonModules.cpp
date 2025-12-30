@@ -210,6 +210,59 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("look_at_block") = true,
           py::arg("bot") = "");
 
+    // Container interaction enums
+    py::enum_<PythonAPI::MouseButton>(m, "MouseButton")
+        .value("LEFT", PythonAPI::MouseButton::LEFT)
+        .value("RIGHT", PythonAPI::MouseButton::RIGHT)
+        .value("MIDDLE", PythonAPI::MouseButton::MIDDLE)
+        .export_values();
+
+    py::enum_<PythonAPI::ContainerClickType>(m, "ClickType")
+        .value("PICKUP", PythonAPI::ContainerClickType::PICKUP)
+        .value("QUICK_MOVE", PythonAPI::ContainerClickType::QUICK_MOVE)
+        .value("SWAP", PythonAPI::ContainerClickType::SWAP)
+        .value("CLONE", PythonAPI::ContainerClickType::CLONE)
+        .value("THROW", PythonAPI::ContainerClickType::THROW)
+        .value("QUICK_CRAFT", PythonAPI::ContainerClickType::QUICK_CRAFT)
+        .value("PICKUP_ALL", PythonAPI::ContainerClickType::PICKUP_ALL)
+        .export_values();
+
+    // Container type enum
+    py::enum_<mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType>(m, "ContainerType")
+        .value("PLAYER_INVENTORY", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::PLAYER_INVENTORY)
+        .value("CHEST", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::CHEST)
+        .value("ENDER_CHEST", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::ENDER_CHEST)
+        .value("SHULKER_BOX", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::SHULKER_BOX)
+        .value("FURNACE", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::FURNACE)
+        .value("BLAST_FURNACE", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::BLAST_FURNACE)
+        .value("SMOKER", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::SMOKER)
+        .value("CRAFTING_TABLE", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::CRAFTING_TABLE)
+        .value("ENCHANTING_TABLE", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::ENCHANTING_TABLE)
+        .value("ANVIL", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::ANVIL)
+        .value("BREWING_STAND", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::BREWING_STAND)
+        .value("VILLAGER_TRADE", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::VILLAGER_TRADE)
+        .value("HORSE_INVENTORY", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::HORSE_INVENTORY)
+        .value("HOPPER", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::HOPPER)
+        .value("DISPENSER", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::DISPENSER)
+        .value("DROPPER", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::DROPPER)
+        .value("BEACON", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::BEACON)
+        .value("OTHER", mankool::mcbot::protocol::ContainerUpdate_QtProtobufNested::ContainerType::OTHER)
+        .export_values();
+
+    // Container interaction functions
+    m.def("click_slot", &PythonAPI::clickContainerSlot,
+          "Click a container slot",
+          py::arg("slot_index"),
+          py::arg("button") = PythonAPI::MouseButton::LEFT,
+          py::arg("click_type") = PythonAPI::ContainerClickType::PICKUP,
+          py::arg("bot") = "");
+    m.def("close_container", &PythonAPI::closeContainer,
+          "Close currently open container",
+          py::arg("bot") = "");
+    m.def("get_container", &PythonAPI::getContainer,
+          "Get current open container info (None if no container open)",
+          py::arg("bot") = "");
+
 }
 
 PYBIND11_EMBEDDED_MODULE(utils, m) {
