@@ -2612,10 +2612,6 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
         return;
     }
 
-    LogManager::log(QString("[DEBUG %1] Serialized interact command: %2 bytes")
-                   .arg(botName).arg(protoData.size()),
-                   LogManager::Debug);
-
     QByteArray message;
     QDataStream stream(&message, QIODevice::WriteOnly);
     stream.setByteOrder(QDataStream::LittleEndian);
@@ -2623,10 +2619,6 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
     message.append(protoData);
 
     PipeServer::sendToClient(bot->connectionId, message);
-
-    LogManager::log(QString("[DEBUG %1] Sent interact with block at (%2, %3, %4), total message size: %5")
-                   .arg(botName).arg(x).arg(y).arg(z).arg(message.size()),
-                   LogManager::Debug);
 }
 
 void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType)
