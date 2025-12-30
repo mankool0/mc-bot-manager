@@ -90,6 +90,7 @@ qt_add_executable(mc-bot-manager
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
     ${app_icon_resource_windows}
+    pythonlibs.qrc
 )
 
 target_link_libraries(mc-bot-manager PRIVATE

@@ -3,6 +3,7 @@
 #include "ScriptThread.h"
 #include "ScriptFileManager.h"
 #include "PythonAPI.h"
+#include "EmbeddedPythonLibs.h"
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "logging/LogManager.h"
@@ -113,6 +114,8 @@ void ScriptEngine::setupPythonPath()
     // Add base scripts directory for shared modules between bots
     QString scriptsBaseDir = ScriptFileManager::getBaseScriptDir();
     path.append(scriptsBaseDir.toStdString());
+
+    EmbeddedPythonLibs::copyBundledModules(scriptsBaseDir);
 }
 
 bool ScriptEngine::loadScript(const QString &filename, const QString &code)
