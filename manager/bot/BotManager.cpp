@@ -623,7 +623,7 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
 
     // Check if server changed
     if (bot->worldAutoSaver && bot->worldAutoSaverServerIp != bot->server) {
-        LogManager::log(QString("Bot '%1': Server changed from %2 to %3 - creating new WorldAutoSaver")
+        LogManager::log(QString("[%1] Server changed from %2 to %3 - creating new WorldAutoSaver")
                        .arg(bot->name).arg(bot->worldAutoSaverServerIp).arg(bot->server), LogManager::Info);
     }
 
@@ -633,20 +633,20 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
     version.series = bot->versionSeries;
     version.isSnapshot = bot->versionIsSnapshot;
 
-    LogManager::log(QString("Bot '%1': Creating WorldAutoSaver for %2 with version %3 (data version %4)")
+    LogManager::log(QString("[%1] Creating WorldAutoSaver for %2 with version %3 (data version %4)")
                    .arg(bot->name).arg(bot->server).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
     bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version);
     bot->worldAutoSaverServerIp = bot->server;
 
     // Process any chunks that were queued before the saver was ready
     if (!bot->earlyChunkQueue.isEmpty()) {
-        LogManager::log(QString("Bot '%1': Processing %2 early chunks...")
+        LogManager::log(QString("[%1] Processing %2 early chunks...")
                        .arg(bot->name).arg(bot->earlyChunkQueue.size()), LogManager::Info);
         for (const auto& earlyChunk : bot->earlyChunkQueue) {
             bot->worldAutoSaver->saveChunkAsync(earlyChunk);
         }
         bot->earlyChunkQueue.clear();
-        LogManager::log(QString("Bot '%1': Finished processing early chunks").arg(bot->name), LogManager::Success);
+        LogManager::log(QString("[%1] Finished processing early chunks").arg(bot->name), LogManager::Success);
     }
 }
 
@@ -1882,7 +1882,7 @@ void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot:
     int dataVersion = query.dataVersion();
     bot->dataVersion = dataVersion;
 
-    LogManager::log(QString("Bot '%1': Query for block registry data version %2")
+    LogManager::log(QString("[%1] Query for block registry data version %2")
                    .arg(bot->name).arg(dataVersion), LogManager::Info);
 
     // Check if we have this registry cached
@@ -1892,15 +1892,15 @@ void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot:
     if (haveCached) {
         bot->blockRegistry = std::make_shared<BlockRegistry>();
         if (bot->blockRegistry->loadFromCache(dataVersion)) {
-            LogManager::log(QString("Bot '%1': Loaded block registry from cache for data version %2")
+            LogManager::log(QString("[%1] Loaded block registry from cache for data version %2")
                            .arg(bot->name).arg(dataVersion), LogManager::Success);
         } else {
-            LogManager::log(QString("Bot '%1': Failed to load cached registry for data version %2")
+            LogManager::log(QString("[%1] Failed to load cached registry for data version %2")
                            .arg(bot->name).arg(dataVersion), LogManager::Warning);
             haveCached = false;  // Failed to load, need it from client
         }
     } else {
-        LogManager::log(QString("Bot '%1': Block registry cache not found for data version %2")
+        LogManager::log(QString("[%1] Block registry cache not found for data version %2")
                        .arg(bot->name).arg(dataVersion), LogManager::Info);
     }
 
@@ -1930,7 +1930,7 @@ void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot:
 
     PipeServer::sendToClient(connectionId, message);
 
-    LogManager::log(QString("Bot '%1': Sent registry response: %2")
+    LogManager::log(QString("[%1] Sent block registry response: %2")
                    .arg(bot->name)
                    .arg(haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
 
@@ -1950,7 +1950,7 @@ void BotManager::handleBlockRegistryImpl(int connectionId, const mankool::mcbot:
 
     int dataVersion = registry.dataVersion();
 
-    LogManager::log(QString("Bot '%1': Receiving block registry for data version %2 (%3 states)")
+    LogManager::log(QString("[%1] Receiving block registry for data version %2 (%3 states)")
                    .arg(bot->name).arg(dataVersion).arg(registry.stateMap().size()),
                    LogManager::Info);
 
@@ -1967,7 +1967,7 @@ void BotManager::handleBlockRegistryImpl(int connectionId, const mankool::mcbot:
     // Save to cache
     bot->blockRegistry->saveToCache();
 
-    LogManager::log(QString("Bot '%1': Block registry saved to cache")
+    LogManager::log(QString("[%1] Block registry saved to cache")
                    .arg(bot->name), LogManager::Success);
 
     // Try to initialize WorldAutoSaver now that we have dataVersion
@@ -2229,7 +2229,7 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
 
     // Check if we have the block registry
     if (!bot->blockRegistry || !bot->blockRegistry->isLoaded()) {
-        LogManager::log(QString("Bot '%1': Received chunk data but block registry not loaded yet!")
+        LogManager::log(QString("[%1] Received chunk data but block registry not loaded yet!")
                        .arg(bot->name), LogManager::Warning);
         return;
     }
