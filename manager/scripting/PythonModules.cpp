@@ -87,20 +87,20 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
 PYBIND11_EMBEDDED_MODULE(baritone, m) {
     m.doc() = "Baritone";
 
-    // Path event type constants as a nested class
-    auto pathEventType = m.def_submodule("PathEventType", "Path event types");
-    pathEventType.attr("CALC_STARTED") = 0;
-    pathEventType.attr("CALC_FINISHED_NOW_EXECUTING") = 1;
-    pathEventType.attr("CALC_FAILED") = 2;
-    pathEventType.attr("NEXT_SEGMENT_CALC_STARTED") = 3;
-    pathEventType.attr("NEXT_SEGMENT_CALC_FINISHED") = 4;
-    pathEventType.attr("CONTINUING_ONTO_PLANNED_NEXT") = 5;
-    pathEventType.attr("SPLICING_ONTO_NEXT_EARLY") = 6;
-    pathEventType.attr("AT_GOAL") = 7;
-    pathEventType.attr("PATH_FINISHED_NEXT_STILL_CALCULATING") = 8;
-    pathEventType.attr("NEXT_CALC_FAILED") = 9;
-    pathEventType.attr("DISCARD_NEXT") = 10;
-    pathEventType.attr("CANCELED") = 11;
+    py::enum_<PythonAPI::PathEventType>(m, "PathEventType")
+        .value("CALC_STARTED", PythonAPI::PathEventType::CALC_STARTED)
+        .value("CALC_FINISHED_NOW_EXECUTING", PythonAPI::PathEventType::CALC_FINISHED_NOW_EXECUTING)
+        .value("CALC_FAILED", PythonAPI::PathEventType::CALC_FAILED)
+        .value("NEXT_SEGMENT_CALC_STARTED", PythonAPI::PathEventType::NEXT_SEGMENT_CALC_STARTED)
+        .value("NEXT_SEGMENT_CALC_FINISHED", PythonAPI::PathEventType::NEXT_SEGMENT_CALC_FINISHED)
+        .value("CONTINUING_ONTO_PLANNED_NEXT", PythonAPI::PathEventType::CONTINUING_ONTO_PLANNED_NEXT)
+        .value("SPLICING_ONTO_NEXT_EARLY", PythonAPI::PathEventType::SPLICING_ONTO_NEXT_EARLY)
+        .value("AT_GOAL", PythonAPI::PathEventType::AT_GOAL)
+        .value("PATH_FINISHED_NEXT_STILL_CALCULATING", PythonAPI::PathEventType::PATH_FINISHED_NEXT_STILL_CALCULATING)
+        .value("NEXT_CALC_FAILED", PythonAPI::PathEventType::NEXT_CALC_FAILED)
+        .value("DISCARD_NEXT", PythonAPI::PathEventType::DISCARD_NEXT)
+        .value("CANCELED", PythonAPI::PathEventType::CANCELED)
+        .export_values();
 
     m.def("goto",
           static_cast<void(*)(double, double, double, const std::string&)>(&PythonAPI::baritoneGoto),

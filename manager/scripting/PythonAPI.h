@@ -33,6 +33,21 @@ public:
         PICKUP_ALL = 6
     };
 
+    enum class PathEventType {
+        CALC_STARTED = 0,
+        CALC_FINISHED_NOW_EXECUTING = 1,
+        CALC_FAILED = 2,
+        NEXT_SEGMENT_CALC_STARTED = 3,
+        NEXT_SEGMENT_CALC_FINISHED = 4,
+        CONTINUING_ONTO_PLANNED_NEXT = 5,
+        SPLICING_ONTO_NEXT_EARLY = 6,
+        AT_GOAL = 7,
+        PATH_FINISHED_NEXT_STILL_CALCULATING = 8,
+        NEXT_CALC_FAILED = 9,
+        DISCARD_NEXT = 10,
+        CANCELED = 11
+    };
+
     static void setCurrentBot(const QString &botName);
     static QString getCurrentBot();
     static void setCurrentScript(const QString &scriptName);
