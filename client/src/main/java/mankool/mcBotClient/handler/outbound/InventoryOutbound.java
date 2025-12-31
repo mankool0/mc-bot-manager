@@ -26,11 +26,7 @@ public class InventoryOutbound extends BaseOutbound {
     }
 
 
-    public void onInventorySlotChanged(int slot) {
-        sendUpdate();
-    }
-
-    private void sendUpdate() {
+    public void sendUpdate() {
         LocalPlayer player = client.player;
         if (player == null) return;
 
