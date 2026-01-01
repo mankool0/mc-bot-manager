@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public class InventoryOutbound extends BaseOutbound {
     private static InventoryOutbound instance;
+    private boolean pendingUpdate = false;
 
     public InventoryOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -22,11 +23,18 @@ public class InventoryOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
-        // No periodic updates needed
+        // Send batched inventory update once per tick
+        if (pendingUpdate) {
+            pendingUpdate = false;
+            sendUpdate();
+        }
     }
 
+    public void queueUpdate() {
+        pendingUpdate = true;
+    }
 
-    public void sendUpdate() {
+    private void sendUpdate() {
         LocalPlayer player = client.player;
         if (player == null) return;
 

@@ -45,7 +45,7 @@ public class InventoryMixin {
         if (mc.player != null && this.player == mc.player) {
             InventoryOutbound handler = InventoryOutbound.getInstance();
             if (handler != null) {
-                handler.sendUpdate();
+                handler.queueUpdate();
             }
         }
     }

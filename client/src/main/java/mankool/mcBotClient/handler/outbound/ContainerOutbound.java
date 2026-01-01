@@ -19,6 +19,7 @@ public class ContainerOutbound extends BaseOutbound {
     private static ContainerOutbound instance;
 
     private ContainerState currentContainer = null;
+    private boolean pendingUpdate = false;
 
     private BlockPos lastInteractedBlock = null;
     private long lastInteractionTime = 0;
@@ -34,11 +35,13 @@ public class ContainerOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
-        // Check if container contents have changed
+        // Send batched container update once per tick
         if (currentContainer != null && client.player != null) {
             AbstractContainerMenu menu = client.player.containerMenu;
             if (menu.containerId == currentContainer.containerId) {
-                if (hasContainerChanged(menu)) {
+                // Check for changes or pending update flag
+                if (pendingUpdate || hasContainerChanged(menu)) {
+                    pendingUpdate = false;
                     sendContainerUpdate();
                 }
             }
@@ -93,7 +96,7 @@ public class ContainerOutbound extends BaseOutbound {
 
     public void onContainerContentSet(int containerId) {
         if (currentContainer != null && currentContainer.containerId == containerId) {
-            sendContainerUpdate();
+            pendingUpdate = true;
         } else if (currentContainer == null && client.player != null && client.player.containerMenu.containerId == containerId) {
             System.out.println("Container content received before open screen packet (id=" + containerId + ")");
         }
@@ -102,8 +105,7 @@ public class ContainerOutbound extends BaseOutbound {
 
     public void onContainerSlotChanged(int containerId, int slot) {
         if (currentContainer != null && currentContainer.containerId == containerId) {
-            // Send full container update (could optimize to just slot in the future)
-            sendContainerUpdate();
+            pendingUpdate = true;
         }
     }
 
