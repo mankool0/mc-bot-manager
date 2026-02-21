@@ -107,6 +107,8 @@ public class MessageHandler {
             msg -> inventoryHandler.handleClickContainerSlot(msg.getMessageId(), msg.getClickContainerSlot()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLOSE_CONTAINER,
             msg -> inventoryHandler.handleCloseContainer(msg.getMessageId(), msg.getCloseContainer()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.OPEN_INVENTORY,
+            msg -> inventoryHandler.handleOpenInventory(msg.getMessageId(), msg.getOpenInventory()));
     }
 
     public void start() {

@@ -1290,6 +1290,14 @@ void PythonAPI::closeContainer(const std::string &bot)
     BotManager::sendCloseContainer(botName);
 }
 
+void PythonAPI::openInventory(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendOpenInventory(botName);
+}
+
 py::object PythonAPI::getContainer(const std::string &bot)
 {
     QString botName = resolveBotName(bot);

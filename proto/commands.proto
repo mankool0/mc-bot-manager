@@ -72,6 +72,9 @@ message ClickContainerSlotCommand {
 message CloseContainerCommand {
 }
 
+message OpenInventoryCommand {
+}
+
 // Tell client to shut down the process
 message ShutdownCommand {
   string reason = 1;           // Optional reason for shutdown

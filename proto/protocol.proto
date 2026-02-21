@@ -122,6 +122,7 @@ message ManagerToClientMessage {
     // Container interaction
     ClickContainerSlotCommand click_container_slot = 22;
     CloseContainerCommand close_container = 23;
+    OpenInventoryCommand open_inventory = 25;
 
     // Item registry response
     ItemRegistryResponse item_registry_response = 24;

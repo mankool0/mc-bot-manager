@@ -2709,3 +2709,42 @@ void BotManager::sendCloseContainerImpl(const QString &botName)
     PipeServer::sendToClient(bot->connectionId, fullMessage);
 }
 
+void BotManager::sendOpenInventory(const QString &botName)
+{
+    instance().sendOpenInventoryImpl(botName);
+}
+
+void BotManager::sendOpenInventoryImpl(const QString &botName)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("[%1] Bot not found for open inventory").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::OpenInventoryCommand command;
+    message.setOpenInventory(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+

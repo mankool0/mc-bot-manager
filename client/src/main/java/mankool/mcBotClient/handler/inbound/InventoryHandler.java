@@ -153,13 +153,25 @@ public class InventoryHandler extends BaseInboundHandler {
         }
 
         try {
-            System.err.println("Trying to close container");
             player.closeContainer();
-            System.err.println("Closed container");
             sendSuccess(messageId, "Closed container");
         } catch (Exception e) {
-            System.err.println("Failed to close container: " + e.getMessage());
             sendFailure(messageId, "Failed to close container: " + e.getMessage());
+        }
+    }
+
+    public void handleOpenInventory(String messageId, Commands.OpenInventoryCommand command) {
+        LocalPlayer player = client.player;
+        if (player == null) {
+            sendFailure(messageId, "Not in game");
+            return;
+        }
+
+        try {
+            client.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(player));
+            sendSuccess(messageId, "Opened inventory");
+        } catch (Exception e) {
+            sendFailure(messageId, "Failed to open inventory: " + e.getMessage());
         }
     }
 }

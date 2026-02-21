@@ -325,6 +325,7 @@ public:
     // Container interaction commands
     static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
     static void sendCloseContainer(const QString &botName);
+    static void sendOpenInventory(const QString &botName);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -384,6 +385,7 @@ private:
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
     void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
     void sendCloseContainerImpl(const QString &botName);
+    void sendOpenInventoryImpl(const QString &botName);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);

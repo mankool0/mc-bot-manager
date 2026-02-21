@@ -259,6 +259,9 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     m.def("close_container", &PythonAPI::closeContainer,
           "Close currently open container",
           py::arg("bot") = "");
+    m.def("open_inventory", &PythonAPI::openInventory,
+          "Open player inventory",
+          py::arg("bot") = "");
     m.def("get_container", &PythonAPI::getContainer,
           "Get current open container info (None if no container open)",
           py::arg("bot") = "");

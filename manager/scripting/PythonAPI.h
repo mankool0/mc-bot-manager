@@ -115,6 +115,7 @@ public:
     // Container interaction
     static void clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot = "");
     static void closeContainer(const std::string &bot = "");
+    static void openInventory(const std::string &bot = "");
     static py::object getContainer(const std::string &bot = "");
 
     static void log(const std::string &message);
