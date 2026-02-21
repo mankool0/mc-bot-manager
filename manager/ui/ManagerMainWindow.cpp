@@ -61,11 +61,11 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
                     BotInstance *bot = BotManager::getBotByName(botName);
                     if (bot) {
                         if (bot->status == BotStatus::Starting) {
-                            LogManager::log(QString("Bot '%1' crashed during startup").arg(botName), LogManager::Error);
+                            LogManager::log(QString("[%1] Crashed during startup").arg(botName), LogManager::Error);
                             bot->status = BotStatus::Error;
                             updateInstancesTable();
                         } else if (bot->status == BotStatus::Online) {
-                            LogManager::log(QString("Bot '%1' stopped unexpectedly").arg(botName), LogManager::Warning);
+                            LogManager::log(QString("[%1] Stopped unexpectedly").arg(botName), LogManager::Warning);
                             bot->status = BotStatus::Offline;
                             bot->connectionId = -1;
                             bot->minecraftPid = 0;
@@ -654,12 +654,12 @@ bool ManagerMainWindow::launchBotByName(const QString &botName)
     }
 
     if (botToLaunch->instance.isEmpty()) {
-        LogManager::log(QString("Bot '%1' has no instance configured").arg(botName), LogManager::Error);
+        LogManager::log(QString("[%1] Has no instance configured").arg(botName), LogManager::Error);
         return false;
     }
 
     if (botToLaunch->account.isEmpty()) {
-        LogManager::log(QString("Bot '%1' has no account configured").arg(botName), LogManager::Error);
+        LogManager::log(QString("[%1] Has no account configured").arg(botName), LogManager::Error);
         return false;
     }
 
@@ -699,16 +699,16 @@ void ManagerMainWindow::stopBot()
                 BotInstance *b = BotManager::getBotByName(botName);
                 // Only kill if bot is still offline AND the PID hasn't changed (no restart)
                 if (b && b->status != BotStatus::Offline && b->minecraftPid == pid && pid > 0) {
-                    LogManager::log(QString("Bot '%1' didn't shut down gracefully, force killing...").arg(botName), LogManager::Warning);
+                    LogManager::log(QString("[%1] Didn't shut down gracefully, force killing...").arg(botName), LogManager::Warning);
                     PrismLauncherManager::stopBot(pid);
                 }
             });
 
             bot->minecraftPid = 0;
         } else if (bot->status == BotStatus::Starting) {
-            LogManager::log(QString("Bot '%1' is still starting, cannot stop yet").arg(bot->name), LogManager::Warning);
+            LogManager::log(QString("[%1] Is still starting, cannot stop yet").arg(bot->name), LogManager::Warning);
         } else {
-            LogManager::log(QString("Bot '%1' is not running").arg(bot->name), LogManager::Warning);
+            LogManager::log(QString("[%1] Is not running").arg(bot->name), LogManager::Warning);
         }
     }
 }
@@ -1279,7 +1279,7 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
         updateStatusDisplay();
 
         if (shouldAutoRestart) {
-            LogManager::log(QString("Bot '%1' crashed, auto-restarting...").arg(botName), LogManager::Warning);
+            LogManager::log(QString("[%1] Crashed, auto-restarting...").arg(botName), LogManager::Warning);
             QTimer::singleShot(2000, this, [this, botName]() {
                 launchBotByName(botName);
             });

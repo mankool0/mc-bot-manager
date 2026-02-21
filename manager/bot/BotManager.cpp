@@ -738,7 +738,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
 
         emit botUpdated(bot->name);
 
-        LogManager::log(QString("Bot '%1' connected (Connection ID: %2)")
+        LogManager::log(QString("[%1] Connected (Connection ID: %2)")
                        .arg(playerName).arg(connectionId), LogManager::Success);
     } else {
         LogManager::log(QString("Received ConnectionInfo for unknown bot '%1'")
@@ -746,7 +746,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     }
 
     if (bot && bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] ConnectionInfo received").arg(bot->name), LogManager::Debug);
+        LogManager::log(QString("[%1] ConnectionInfo received").arg(bot->name), LogManager::Debug);
     }
 }
 
@@ -772,7 +772,7 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
     }
 
     if (bot && bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] ServerStatus received").arg(bot->name), LogManager::Debug);
+        LogManager::log(QString("[%1] ServerStatus received").arg(bot->name), LogManager::Debug);
     }
 }
 
@@ -832,7 +832,7 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
     }
 
     if (bot && bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] PlayerState received").arg(bot->name), LogManager::Debug);
+        LogManager::log(QString("[%1] PlayerState received").arg(bot->name), LogManager::Debug);
     }
 }
 
@@ -878,7 +878,7 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] InventoryUpdate received: %2 items, selected slot %3")
+        LogManager::log(QString("[%1] InventoryUpdate received: %2 items, selected slot %3")
                             .arg(bot->name)
                             .arg(inventory.items().size())
                             .arg(inventory.selectedSlot()),
@@ -992,7 +992,7 @@ void BotManager::handleChatMessageImpl(int connectionId, const mankool::mcbot::p
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] ChatMessage received: %2").arg(bot->name, output), LogManager::Debug);
+        LogManager::log(QString("[%1] ChatMessage received: %2").arg(bot->name, output), LogManager::Debug);
     }
 }
 
@@ -1027,19 +1027,16 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
             break;
     }
 
-    if (!isSilent) {
-        QString output = QString("[%1] %2").arg(statusText, response.message());
+    QString output = QString("[%1] %2").arg(statusText, response.message());
 
+    if (!isSilent) {
         if (bot->consoleWidget) {
             bot->consoleWidget->appendResponse(success, output);
         }
-
-        LogManager::log(QString("[%1] Command response: %2").arg(bot->name, output),
-                        success ? LogManager::Info : LogManager::Warning);
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] CommandResponse received").arg(bot->name), LogManager::Debug);
+        LogManager::log(QString("[%1] CommandResponse received: %2").arg(bot->name, output), LogManager::Debug);
     }
 }
 
@@ -1622,7 +1619,7 @@ void BotManager::handleHeartbeatImpl(int connectionId, const mankool::mcbot::pro
         }
 
         if (bot->debugLogging) {
-            LogManager::log(QString("[DEBUG %1] Heartbeat received").arg(bot->name), LogManager::Debug);
+            LogManager::log(QString("[%1] Heartbeat received").arg(bot->name), LogManager::Debug);
         }
     }
 }
@@ -2286,7 +2283,7 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] Loaded chunk (%2, %3) with %4 sections")
+        LogManager::log(QString("[%1] Loaded chunk (%2, %3) with %4 sections")
                        .arg(bot->name)
                        .arg(chunk.chunkX)
                        .arg(chunk.chunkZ)
@@ -2337,7 +2334,7 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] Block update at (%2, %3, %4): %5")
+        LogManager::log(QString("[%1] Block update at (%2, %3, %4): %5")
                        .arg(bot->name)
                        .arg(x).arg(y).arg(z)
                        .arg(blockStr),
@@ -2389,7 +2386,7 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] Multi-block update: %2 blocks")
+        LogManager::log(QString("[%1] Multi-block update: %2 blocks")
                        .arg(bot->name)
                        .arg(updateCount),
                        LogManager::Debug);
@@ -2422,7 +2419,7 @@ void BotManager::handleChunkUnloadImpl(int connectionId, const mankool::mcbot::p
     }
 
     if (bot->debugLogging) {
-        LogManager::log(QString("[DEBUG %1] Unloaded chunk (%2, %3)")
+        LogManager::log(QString("[%1] Unloaded chunk (%2, %3)")
                        .arg(bot->name)
                        .arg(chunkX)
                        .arg(chunkZ),
@@ -2473,14 +2470,14 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
 
     if (bot->debugLogging) {
         if (isOpen) {
-            LogManager::log(QString("[DEBUG %1] Container update: ID=%2, Type=%3, Items=%4")
+            LogManager::log(QString("[%1] Container update: ID=%2, Type=%3, Items=%4")
                            .arg(bot->name)
                            .arg(containerId)
                            .arg(static_cast<int>(containerUpdate.type()))
                            .arg(containerUpdate.items().size()),
                            LogManager::Debug);
         } else {
-            LogManager::log(QString("[DEBUG %1] Container closed: ID=%2")
+            LogManager::log(QString("[%1] Container closed: ID=%2")
                            .arg(bot->name)
                            .arg(containerId),
                            LogManager::Debug);
@@ -2630,19 +2627,19 @@ void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotInde
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
-        LogManager::log(QString("[ERROR] Bot '%1' not found for click container slot").arg(botName),
+        LogManager::log(QString("Cannot click container slot: bot '%1' not found").arg(botName),
                        LogManager::Error);
         return;
     }
 
     if (bot->connectionId < 0) {
-        LogManager::log(QString("[ERROR %1] Bot not connected").arg(botName),
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
                        LogManager::Error);
         return;
     }
 
     if (!bot->containerState.isOpen) {
-        LogManager::log(QString("[ERROR %1] No container open").arg(botName),
+        LogManager::log(QString("[%1] No container open").arg(botName),
                        LogManager::Error);
         return;
     }
@@ -2679,13 +2676,13 @@ void BotManager::sendCloseContainerImpl(const QString &botName)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
-        LogManager::log(QString("[ERROR] Bot '%1' not found for close container").arg(botName),
+        LogManager::log(QString("Cannot close container: bot '%1' not found").arg(botName),
                        LogManager::Error);
         return;
     }
 
     if (bot->connectionId < 0) {
-        LogManager::log(QString("[ERROR %1] Bot not connected").arg(botName),
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
                        LogManager::Error);
         return;
     }
