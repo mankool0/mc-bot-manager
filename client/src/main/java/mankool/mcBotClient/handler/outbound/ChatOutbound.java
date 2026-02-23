@@ -45,7 +45,7 @@ public class ChatOutbound {
                 String senderName = "";
                 PlayerInfo playerInfo = client.getConnection().getPlayerInfo(senderUuid);
                 if (playerInfo != null) {
-                    senderName = playerInfo.getProfile().getName();
+                    senderName = playerInfo.getProfile().name();
                 }
 
                 String content = packet.body().content();
@@ -55,7 +55,7 @@ public class ChatOutbound {
                 long timestamp = packet.body().timeStamp().toEpochMilli();
 
                 String chatTypeStr = packet.chatType().chatType().unwrapKey()
-                    .map(key -> key.location().toString())
+                    .map(key -> key.identifier().toString())
                     .orElse("minecraft:chat");
 
                 Chat.ChatMessage.MinecraftChatType chatType = switch (chatTypeStr) {

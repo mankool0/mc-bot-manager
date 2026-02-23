@@ -47,7 +47,7 @@ public class PlayerOutbound extends BaseOutbound {
             .setFlying(player.getAbilities().flying)
             .setBurning(player.isOnFire())
             .setAbsorption(player.getAbsorptionAmount())
-            .setDimension(player.level().dimension().location().toString())
+            .setDimension(player.level().dimension().identifier().toString())
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

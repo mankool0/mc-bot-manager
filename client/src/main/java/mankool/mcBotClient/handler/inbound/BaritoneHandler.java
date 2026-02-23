@@ -425,12 +425,12 @@ public class BaritoneHandler extends BaseInboundHandler {
 
                 for (String item : protoValue.getListValue().getItemsList()) {
                     if (elementType == net.minecraft.world.level.block.Block.class) {
-                        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(item);
+                        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(item);
                         if (id != null) {
                             list.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(id));
                         }
                     } else if (elementType == net.minecraft.world.item.Item.class) {
-                        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(item);
+                        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(item);
                         if (id != null) {
                             list.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(id));
                         }
@@ -448,7 +448,7 @@ public class BaritoneHandler extends BaseInboundHandler {
                         String keyId = entry.getKey();
                         StringList valueList = entry.getValue();
 
-                        net.minecraft.resources.ResourceLocation keyIdentifier = net.minecraft.resources.ResourceLocation.tryParse(keyId);
+                        net.minecraft.resources.Identifier keyIdentifier = net.minecraft.resources.Identifier.tryParse(keyId);
                         if (keyIdentifier == null) {
                             LOGGER.warn("Invalid block ID for map key: {}", keyId);
                             continue;
@@ -457,7 +457,7 @@ public class BaritoneHandler extends BaseInboundHandler {
 
                         List<net.minecraft.world.level.block.Block> valueBlocks = new ArrayList<>();
                         for (String blockId : valueList.getItemsList()) {
-                            net.minecraft.resources.ResourceLocation blockIdentifier = net.minecraft.resources.ResourceLocation.tryParse(blockId);
+                            net.minecraft.resources.Identifier blockIdentifier = net.minecraft.resources.Identifier.tryParse(blockId);
                             if (blockIdentifier != null) {
                                 net.minecraft.world.level.block.Block block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(blockIdentifier);
                                 valueBlocks.add(block);
