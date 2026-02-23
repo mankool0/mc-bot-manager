@@ -54,72 +54,105 @@ def _plan_fits_in_2x2(plan, bot_name=""):
 
 
 def _open_crafting_container(bot_name="", max_distance=128, use_player_inventory=False):
-    """Open player inventory or find and navigate to crafting table."""
+    """Open appropriate crafting interface. Returns container type to use."""
+    # Check what's currently open
+    container = world.get_container(bot=bot_name)
+
     if use_player_inventory:
-        world.open_inventory(bot=bot_name)
-        time.sleep(0.3)
-        return
-
-    crafting_table = world.find_nearest(["minecraft:crafting_table"],
-                                        max_distance=max_distance, bot=bot_name)
-    if not crafting_table:
-        raise RuntimeError(f"No crafting table found within {max_distance} blocks")
-
-    x, y, z = crafting_table
-
-    # Find best position to stand next to the crafting table
-    bot_pos = bot.position(bot_name) if bot_name else bot.position()
-    best_pos = None
-    best_dist = float('inf')
-
-    for dx, dz in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-        check_x = x + dx
-        check_z = z + dz
-        block_at_feet = world.get_block(check_x, y, check_z, bot=bot_name) if bot_name else world.get_block(check_x, y, check_z)
-        block_at_head = world.get_block(check_x, y + 1, check_z, bot=bot_name) if bot_name else world.get_block(check_x, y + 1, check_z)
-
-        if block_at_feet and block_at_head:
-            if 'air' in block_at_feet and 'air' in block_at_head:
-                dist = ((check_x - bot_pos['x'])**2 + (y - bot_pos['y'])**2 + (check_z - bot_pos['z'])**2)**0.5
-                if dist < best_dist:
-                    best_dist = dist
-                    best_pos = (check_x, y, check_z)
-
-    if best_pos:
-        if bot_name:
-            baritone.goto(best_pos[0], best_pos[1], best_pos[2], bot=bot_name)
+        # 2x2 recipes can use player inventory or crafting table
+        if not container:
+            # Nothing open - use player inventory (container ID 0)
+            return world.ContainerType.PLAYER_INVENTORY
+        elif container.get('type') == world.ContainerType.CRAFTING_TABLE:
+            # Crafting table is open - can use it
+            return world.ContainerType.CRAFTING_TABLE
         else:
-            baritone.goto(best_pos[0], best_pos[1], best_pos[2])
+            # Something else is open - close it and use player inventory
+            world.close_container(bot=bot_name)
+            time.sleep(0.1)
+            return world.ContainerType.PLAYER_INVENTORY
     else:
-        if bot_name:
-            baritone.goto(x, z, bot=bot_name)
+        # 3x3 recipes require crafting table
+        if container and container.get('type') == world.ContainerType.CRAFTING_TABLE:
+            # Crafting table already open
+            return world.ContainerType.CRAFTING_TABLE
+
+        # Close any open container
+        if container:
+            world.close_container(bot=bot_name)
+            time.sleep(0.1)
+
+        # Find and open crafting table
+        crafting_table = world.find_nearest(["minecraft:crafting_table"],
+                                            max_distance=max_distance, bot=bot_name)
+        if not crafting_table:
+            raise RuntimeError(f"No crafting table found within {max_distance} blocks")
+
+        x, y, z = crafting_table
+
+        # Find best position to stand next to the crafting table
+        bot_pos = bot.position(bot_name) if bot_name else bot.position()
+        best_pos = None
+        best_dist = float('inf')
+
+        for dx, dz in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            check_x = x + dx
+            check_z = z + dz
+            block_at_feet = world.get_block(check_x, y, check_z, bot=bot_name) if bot_name else world.get_block(check_x, y, check_z)
+            block_at_head = world.get_block(check_x, y + 1, check_z, bot=bot_name) if bot_name else world.get_block(check_x, y + 1, check_z)
+
+            if block_at_feet and block_at_head:
+                if 'air' in block_at_feet and 'air' in block_at_head:
+                    dist = ((check_x - bot_pos['x'])**2 + (y - bot_pos['y'])**2 + (check_z - bot_pos['z'])**2)**0.5
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_pos = (check_x, y, check_z)
+
+        if best_pos:
+            if bot_name:
+                baritone.goto(best_pos[0], best_pos[1], best_pos[2], bot=bot_name)
+            else:
+                baritone.goto(best_pos[0], best_pos[1], best_pos[2])
         else:
-            baritone.goto(x, z)
+            if bot_name:
+                baritone.goto(x, z, bot=bot_name)
+            else:
+                baritone.goto(x, z)
 
-    # Wait for pathfinding
-    max_wait = 60
-    start_time = time.time()
-
-    pathing_started = False
-    while time.time() - start_time < 5:
-        status = baritone.get_process_status(bot_name) if bot_name else baritone.get_process_status()
-        if status.get('is_pathing', False):
-            pathing_started = True
-            break
-        time.sleep(0.1)
-
-    if pathing_started:
-        while time.time() - start_time < max_wait:
+        # Wait for pathfinding to start
+        start_time = time.time()
+        pathing_started = False
+        while time.time() - start_time < 5:
             status = baritone.get_process_status(bot_name) if bot_name else baritone.get_process_status()
-            if not status.get('is_pathing', False):
+            if status.get('is_pathing', False):
+                pathing_started = True
                 break
-            time.sleep(0.5)
+            time.sleep(0.1)
 
-    if bot_name:
-        world.interact_block(x, y, z, bot=bot_name)
-    else:
-        world.interact_block(x, y, z)
-    time.sleep(0.5)
+        # Wait for pathfinding to complete (if it started)
+        if pathing_started:
+            max_wait = 60
+            wait_start = time.time()
+            while time.time() - wait_start < max_wait:
+                status = baritone.get_process_status(bot_name) if bot_name else baritone.get_process_status()
+                if not status.get('is_pathing', False):
+                    break
+                time.sleep(0.5)
+
+        if bot_name:
+            world.interact_block(x, y, z, bot=bot_name)
+        else:
+            world.interact_block(x, y, z)
+
+        # Wait for container to be available
+        max_wait = 5
+        start_time = time.time()
+        while time.time() - start_time < max_wait:
+            container = world.get_container(bot=bot_name)
+            if container and container.get('type') == world.ContainerType.CRAFTING_TABLE:
+                return world.ContainerType.CRAFTING_TABLE
+            time.sleep(0.05)
+        raise RuntimeError("Failed to open crafting table (container not available)")
 
 
 def _find_ingredient_in_inventory(ingredient, available_items):
@@ -175,22 +208,48 @@ def has_materials(item_id, count=1, bot_name=""):
     return missing is not None and len(missing) == 0
 
 
-def craft_item(item_id, count=1, bot_name=""):
-    """Craft item using currently open container."""
+def craft_item(item_id, count=1, bot_name="", container_type=None):
+    """Craft item using specified container type or currently open container."""
     recipe = world.get_recipe(item_id, bot=bot_name)
     if not recipe:
         raise ValueError(f"Unknown recipe: {item_id}")
 
-    container = world.get_container(bot=bot_name)
-    if not container:
-        raise RuntimeError("No container open")
+    # Determine container type
+    if container_type is None:
+        container = world.get_container(bot=bot_name)
+        if not container:
+            raise RuntimeError("No container open and no container type specified")
+        container_type = container['type']
+        container_items = [item.copy() for item in container.get('items', [])]
+    else:
+        # Using player inventory (no container object needed)
+        if container_type == world.ContainerType.PLAYER_INVENTORY:
+            # Build container items from inventory
+            inventory = bot.inventory(bot_name)
+            container_items = []
+            for inv_item in inventory:
+                container_items.append({
+                    'slot': inv_item['slot'],
+                    'item_id': inv_item['item_id'],
+                    'count': inv_item['count']
+                })
+            # Add empty slots for crafting grid (slots 1-4) if not present
+            existing_slots = {item['slot'] for item in container_items}
+            for slot in range(0, 5):  # Result slot 0 + crafting grid 1-4
+                if slot not in existing_slots:
+                    container_items.append({'slot': slot, 'item_id': 'minecraft:air', 'count': 0})
+        else:
+            # For other types, need actual container
+            container = world.get_container(bot=bot_name)
+            if not container or container['type'] != container_type:
+                raise RuntimeError(f"Expected {container_type} container to be open")
+            container_items = [item.copy() for item in container.get('items', [])]
 
     missing = get_missing_materials(item_id, count, bot_name)
     if missing:
         items_str = ", ".join(f"{cnt}x {itm}" for itm, cnt in missing.items())
         raise ValueError(f"Missing materials: {items_str}")
 
-    container_type = container['type']
     slots = _get_crafting_grid_slots(container_type)
 
     if container_type == world.ContainerType.PLAYER_INVENTORY and not _can_craft_in_2x2(recipe):
@@ -205,7 +264,6 @@ def craft_item(item_id, count=1, bot_name=""):
                 if info:
                     max_batch_size = min(max_batch_size, info['max_stack_size'])
 
-    container_items = [item.copy() for item in container.get('items', [])]
     available = _count_available_items(bot_name)
 
     # Clear crafting grid if needed
@@ -316,34 +374,26 @@ def auto_craft(item_id, count=1, bot_name="", max_distance=128, keep_container_o
         items_str = ", ".join(f"{cnt}x {itm}" for itm, cnt in missing.items())
         raise ValueError(f"Missing materials: {items_str}")
 
-    container = world.get_container(bot=bot_name)
-    if container:
-        container_type = container.get('type')
-        if container_type == world.ContainerType.CRAFTING_TABLE:
-            result = craft_item(item_id, count, bot_name)
-            if not keep_container_open:
-                world.close_container(bot=bot_name)
-            return result
-        elif container_type == world.ContainerType.PLAYER_INVENTORY:
-            if _can_craft_in_2x2(recipe):
-                result = craft_item(item_id, count, bot_name)
-                if not keep_container_open:
-                    world.close_container(bot=bot_name)
-                return result
-            else:
-                world.close_container(bot=bot_name)
-                time.sleep(0.1)
-
-    _open_crafting_container(bot_name, max_distance, use_player_inventory=False)
+    # Determine if we can use player inventory
+    use_player_inventory = _can_craft_in_2x2(recipe)
+    container_type = _open_crafting_container(bot_name, max_distance, use_player_inventory)
 
     try:
-        result = craft_item(item_id, count, bot_name)
+        result = craft_item(item_id, count, bot_name, container_type=container_type)
+
+        # Close container if requested and one is actually open
         if not keep_container_open:
-            world.close_container(bot=bot_name)
+            container = world.get_container(bot=bot_name)
+            if container:
+                world.close_container(bot=bot_name)
+
         return result
     except Exception:
+        # Clean up on error
         if not keep_container_open:
-            world.close_container(bot=bot_name)
+            container = world.get_container(bot=bot_name)
+            if container:
+                world.close_container(bot=bot_name)
         raise
 
 
@@ -355,10 +405,9 @@ def auto_craft_recursive(item_id, count=1, bot_name="", max_distance=128):
         raise RuntimeError(f"Failed to plan crafting: {plan['error']}")
 
     use_player_inventory = _plan_fits_in_2x2(plan, bot_name)
+    container_type = _open_crafting_container(bot_name, max_distance, use_player_inventory)
 
     try:
-        _open_crafting_container(bot_name, max_distance, use_player_inventory)
-
         for step in plan['steps']:
             craft_item_id = step['output_item']
             craft_count = step['times']
@@ -368,7 +417,7 @@ def auto_craft_recursive(item_id, count=1, bot_name="", max_distance=128):
 
             for attempt in range(max_retries):
                 try:
-                    craft_item(craft_item_id, craft_count, bot_name)
+                    craft_item(craft_item_id, craft_count, bot_name, container_type=container_type)
                     break
                 except ValueError as e:
                     if "Missing materials" in str(e) and attempt < max_retries - 1:
@@ -379,12 +428,18 @@ def auto_craft_recursive(item_id, count=1, bot_name="", max_distance=128):
 
             time.sleep(0.1)
 
-        world.close_container(bot=bot_name)
+        # Close container if one is open
+        container = world.get_container(bot=bot_name)
+        if container:
+            world.close_container(bot=bot_name)
+
         return True
 
     except Exception as e:
         try:
-            world.close_container(bot=bot_name)
+            container = world.get_container(bot=bot_name)
+            if container:
+                world.close_container(bot=bot_name)
         except:
             pass
         raise RuntimeError(f"Failed to craft: {e}")

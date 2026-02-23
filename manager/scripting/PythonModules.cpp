@@ -279,6 +279,12 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     m.def("get_all_recipes", &PythonAPI::getAllRecipes,
           "Get list of all available recipe IDs",
           py::arg("bot") = "");
+    m.def("plan_recursive_craft", &PythonAPI::planRecursiveCraft,
+          "Plan recursive crafting from current inventory, returns list of (item_id, count) tuples",
+          py::arg("item_id"),
+          py::arg("count") = 1,
+          py::arg("bot") = "");
+
 }
 
 PYBIND11_EMBEDDED_MODULE(utils, m) {

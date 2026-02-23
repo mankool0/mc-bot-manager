@@ -79,6 +79,8 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "scripting/*.h"
     "saving/*.cpp"
     "saving/*.h"
+    "crafting/*.cpp"
+    "crafting/*.h"
 )
 
 # Windows resource file for application icon

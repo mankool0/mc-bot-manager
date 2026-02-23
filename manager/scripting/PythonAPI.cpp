@@ -2,6 +2,7 @@
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "prism/PrismLauncherManager.h"
+#include "crafting/CraftingPlanner.h"
 #include "world/ItemRegistry.h"
 #include <QDebug>
 #include <QCoreApplication>
@@ -1418,6 +1419,63 @@ py::list PythonAPI::getAllRecipes(const std::string &bot)
     for (const QString &id : recipeIds) {
         result.append(id.toStdString());
     }
+
+    return result;
+}
+
+py::dict PythonAPI::planRecursiveCraft(const std::string &itemId, int count, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    // Get bot's current inventory
+    QMap<QString, int> available;
+    for (const auto &item : botInstance->inventory) {
+        available[item.itemId()] += item.count();
+    }
+
+    // Create planner and plan the craft
+    CraftingPlanner planner(&botInstance->recipeRegistry);
+    CraftingPlan plan = planner.planCrafting(QString::fromStdString(itemId), count, available);
+
+    // Convert CraftingPlan to Python dict
+    py::dict result;
+    result["success"] = plan.success;
+    result["error"] = plan.error.toStdString();
+
+    // Convert steps
+    py::list steps;
+    for (const CraftingStep &step : plan.steps) {
+        py::dict stepDict;
+        stepDict["recipe_id"] = step.recipeId.toStdString();
+        stepDict["times"] = step.times;
+        stepDict["output_item"] = step.outputItem.toStdString();
+        stepDict["output_count"] = step.outputCount;
+
+        // Convert inputs map
+        py::dict inputs;
+        for (auto it = step.inputs.constBegin(); it != step.inputs.constEnd(); ++it) {
+            inputs[it.key().toStdString().c_str()] = it.value();
+        }
+        stepDict["inputs"] = inputs;
+
+        steps.append(stepDict);
+    }
+    result["steps"] = steps;
+
+    // Convert raw materials
+    py::dict rawMaterials;
+    for (auto it = plan.rawMaterials.constBegin(); it != plan.rawMaterials.constEnd(); ++it) {
+        rawMaterials[it.key().toStdString().c_str()] = it.value();
+    }
+    result["raw_materials"] = rawMaterials;
+
+    // Convert leftovers
+    py::dict leftovers;
+    for (auto it = plan.leftovers.constBegin(); it != plan.leftovers.constEnd(); ++it) {
+        leftovers[it.key().toStdString().c_str()] = it.value();
+    }
+    result["leftovers"] = leftovers;
 
     return result;
 }
