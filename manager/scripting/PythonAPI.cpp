@@ -2,6 +2,7 @@
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "prism/PrismLauncherManager.h"
+#include "world/ItemRegistry.h"
 #include <QDebug>
 #include <QCoreApplication>
 #include <QThread>
@@ -1329,5 +1330,28 @@ py::object PythonAPI::getContainer(const std::string &bot)
     result["items"] = items;
 
     return result;
+}
+
+py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+    
+    if (botInstance->itemRegistry) {
+        auto itemInfo = botInstance->itemRegistry->getItem(QString::fromStdString(itemId));
+        if (itemInfo) {
+            py::dict result;
+            result["item_id"] = itemInfo->itemId.toStdString();
+            result["max_stack_size"] = itemInfo->maxStackSize;
+            result["max_damage"] = itemInfo->maxDamage;
+            return result;
+        }
+    }
+    
+    return py::none();
 }
 

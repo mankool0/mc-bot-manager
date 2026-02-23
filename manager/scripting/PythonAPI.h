@@ -117,6 +117,7 @@ public:
     static void closeContainer(const std::string &bot = "");
     static void openInventory(const std::string &bot = "");
     static py::object getContainer(const std::string &bot = "");
+    static py::object getItemInfo(const std::string &itemId, const std::string &bot = "");
 
     static void log(const std::string &message);
     static void error(const std::string &message);

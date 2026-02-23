@@ -24,8 +24,10 @@
 #include "baritone.qpb.h"
 #include "world.qpb.h"
 #include "screen.qpb.h"
+#include "registry.qpb.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
+#include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
 
 using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
@@ -253,6 +255,7 @@ struct BotInstance {
     // World data
     BotWorldData worldData;
     std::shared_ptr<BlockRegistry> blockRegistry;
+    std::shared_ptr<ItemRegistry> itemRegistry;
     int dataVersion = 0;
     QString versionName;
     QString versionSeries = "main";
@@ -307,6 +310,10 @@ public:
     // Block registry handlers
     static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     static void handleBlockRegistry(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
+
+    // Item registry handlers
+    static void handleQueryItemRegistry(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);
+    static void handleItemRegistry(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry);
 
     // World data handlers
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
@@ -375,6 +382,8 @@ private:
     void handleBaritoneProcessStatusImpl(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
     void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
+    void handleQueryItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);
+    void handleItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry);
     void handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     void handleBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
     void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);

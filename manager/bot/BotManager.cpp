@@ -9,6 +9,14 @@
 #include <QDataStream>
 #include <QUuid>
 #include <QtProtobuf/QProtobufSerializer>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QFile>
+#include <QDir>
+#include <QEventLoop>
 
 static QVariant baritoneProtoToVariant(
     const mankool::mcbot::protocol::BaritoneSettingValue &value,
@@ -735,6 +743,11 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         bot->versionName = info.clientVersion();
         bot->versionSeries = info.versionSeries();
         bot->versionIsSnapshot = info.versionIsSnapshot();
+
+        // Load recipes and tags for this version
+        if (!bot->recipeRegistry.loadFromCache(clientVersion)) {
+            LogManager::log(QString("Failed to load recipes for version %1").arg(clientVersion), LogManager::Error);
+        }
 
         emit botUpdated(bot->name);
 
@@ -1969,6 +1982,100 @@ void BotManager::handleBlockRegistryImpl(int connectionId, const mankool::mcbot:
 
     // Try to initialize WorldAutoSaver now that we have dataVersion
     tryInitializeWorldAutoSaver(bot);
+}
+
+// Item Registry Handlers
+
+void BotManager::handleQueryItemRegistry(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query)
+{
+    instance().handleQueryItemRegistryImpl(connectionId, query);
+}
+
+void BotManager::handleQueryItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int dataVersion = query.dataVersion();
+    bot->dataVersion = dataVersion;
+
+    LogManager::log(QString("[%1] Query for item registry data version %2")
+                   .arg(bot->name).arg(dataVersion), LogManager::Info);
+
+    bool haveCached = ItemRegistry::cacheExists(dataVersion);
+    if (haveCached) {
+        bot->itemRegistry = std::make_shared<ItemRegistry>();
+        if (bot->itemRegistry->loadFromCache(dataVersion)) {
+            LogManager::log(QString("[%1] Loaded item registry from cache for data version %2")
+                           .arg(bot->name).arg(dataVersion), LogManager::Success);
+        } else {
+            LogManager::log(QString("[%1] Failed to load cached item registry for data version %2")
+                           .arg(bot->name).arg(dataVersion), LogManager::Warning);
+            haveCached = false;  // Failed to load, need it from client
+        }
+    } else {
+        LogManager::log(QString("[%1] Item registry cache not found for data version %2")
+                       .arg(bot->name).arg(dataVersion), LogManager::Info);
+    }
+
+    // Send response
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::ItemRegistryResponse response;
+    response.setStatus(haveCached ? mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::HAVE_IT
+                                   : mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::NEED_IT);
+    msg.setItemRegistryResponse(response);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize item registry response for bot '%1'")
+                       .arg(bot->name), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(connectionId, message);
+
+    LogManager::log(QString("[%1] Sent item registry response: %2")
+                   .arg(bot->name)
+                   .arg(haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
+}
+
+void BotManager::handleItemRegistry(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry)
+{
+    instance().handleItemRegistryImpl(connectionId, registry);
+}
+
+void BotManager::handleItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int dataVersion = registry.dataVersion();
+
+    LogManager::log(QString("[%1] Receiving item registry for data version %2 (%3 items)")
+                   .arg(bot->name).arg(dataVersion).arg(registry.entries().size()),
+                   LogManager::Info);
+
+    bot->itemRegistry = std::make_shared<ItemRegistry>();
+    bot->itemRegistry->setDataVersion(dataVersion);
+
+    for (const auto &entry : registry.entries()) {
+        bot->itemRegistry->addItem(entry.itemId(), entry.maxStackSize(), entry.maxDamage());
+    }
+
+    bot->itemRegistry->saveToCache();
+
+    LogManager::log(QString("[%1] Item registry saved to cache")
+                   .arg(bot->name), LogManager::Success);
 }
 
 void BotManager::requestBaritoneSettings(const QString &botName)

@@ -266,6 +266,10 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           "Get current open container info (None if no container open)",
           py::arg("bot") = "");
 
+    m.def("get_item_info", &PythonAPI::getItemInfo,
+          "Get item info (max_stack_size, max_damage) by ID",
+          py::arg("item_id"),
+          py::arg("bot") = "");
 }
 
 PYBIND11_EMBEDDED_MODULE(utils, m) {
