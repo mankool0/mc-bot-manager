@@ -126,7 +126,7 @@ public class WorldOutbound extends BaseOutbound {
         World.ChunkUnloadMessage unload = World.ChunkUnloadMessage.newBuilder()
             .setChunkX(chunkX)
             .setChunkZ(chunkZ)
-            .setDimension(client.level.dimension().location().toString())
+            .setDimension(client.level.dimension().identifier().toString())
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
@@ -146,7 +146,7 @@ public class WorldOutbound extends BaseOutbound {
         World.BlockUpdateMessage update = World.BlockUpdateMessage.newBuilder()
             .setPosition(toProtoBlockPos(pos))
             .setStateId(stateId)
-            .setDimension(client.level.dimension().location().toString())
+            .setDimension(client.level.dimension().identifier().toString())
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
@@ -162,7 +162,7 @@ public class WorldOutbound extends BaseOutbound {
         if (client.level == null || positions.isEmpty()) return;
 
         World.MultiBlockUpdateMessage.Builder builder = World.MultiBlockUpdateMessage.newBuilder()
-            .setDimension(client.level.dimension().location().toString());
+            .setDimension(client.level.dimension().identifier().toString());
 
         for (int i = 0; i < positions.size(); i++) {
             builder.addPositions(toProtoBlockPos(positions.get(i)));
@@ -184,7 +184,7 @@ public class WorldOutbound extends BaseOutbound {
         World.ChunkDataMessage.Builder chunkBuilder = World.ChunkDataMessage.newBuilder()
             .setChunkX(chunk.getPos().x)
             .setChunkZ(chunk.getPos().z)
-            .setDimension(client.level.dimension().location().toString())
+            .setDimension(client.level.dimension().identifier().toString())
             .setMinY(chunk.getMinY())
             .setMaxY(chunk.getMaxY());
 
