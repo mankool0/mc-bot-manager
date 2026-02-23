@@ -12,6 +12,7 @@ import "meteor.proto";
 import "baritone.proto";
 import "world.proto";
 import "screen.proto";
+import "registry.proto";
 
 // Main protocol definition that ties everything together
 
@@ -65,6 +66,10 @@ message ClientToManagerMessage {
 
     // Screen updates
     ScreenUpdate screen = 26;
+
+    // Item registry
+    QueryItemRegistryMessage query_item_registry = 27;
+    ItemRegistryMessage item_registry = 28;
   }
 }
 
@@ -113,5 +118,13 @@ message ManagerToClientMessage {
 
     // Block registry response
     BlockRegistryResponse registry_response = 21;
+
+    // Container interaction
+    ClickContainerSlotCommand click_container_slot = 22;
+    CloseContainerCommand close_container = 23;
+    OpenInventoryCommand open_inventory = 25;
+
+    // Item registry response
+    ItemRegistryResponse item_registry_response = 24;
   }
 }

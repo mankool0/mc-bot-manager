@@ -16,11 +16,13 @@ import java.util.UUID;
 
 public class ContainerOutbound extends BaseOutbound {
 
-    // Static instance for access from mixin
     private static ContainerOutbound instance;
 
-    // Currently open container (null if no container is open)
     private ContainerState currentContainer = null;
+    private boolean pendingUpdate = false;
+
+    private BlockPos lastInteractedBlock = null;
+    private long lastInteractionTime = 0;
 
     public ContainerOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -33,23 +35,41 @@ public class ContainerOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
-        // Check if container contents have changed
+        // Send batched container update once per tick
         if (currentContainer != null && client.player != null) {
             AbstractContainerMenu menu = client.player.containerMenu;
             if (menu.containerId == currentContainer.containerId) {
-                if (hasContainerChanged(menu)) {
+                // Check for changes or pending update flag
+                if (pendingUpdate || hasContainerChanged(menu)) {
+                    pendingUpdate = false;
                     sendContainerUpdate();
                 }
             }
         }
     }
 
+    public void onBlockInteraction(BlockPos pos) {
+        lastInteractedBlock = pos;
+        lastInteractionTime = System.currentTimeMillis();
+    }
+
     public void onContainerOpened(int containerId, String containerType, BlockPos position) {
+        if (position == null && lastInteractedBlock != null) {
+            long timeSinceInteraction = System.currentTimeMillis() - lastInteractionTime;
+
+            int timeoutMs = getPlayerPing() * 2 + 50; // 2x ping + 50ms buffer
+
+            if (timeSinceInteraction < timeoutMs) {
+                position = lastInteractedBlock;
+                System.out.println("Using cached block position (interaction was " + timeSinceInteraction + "ms ago, timeout: " + timeoutMs + "ms)");
+            } else {
+                System.out.println("Cached block position too old (" + timeSinceInteraction + "ms ago, timeout: " + timeoutMs + "ms)");
+            }
+        }
+
         System.out.println("Container opened: " + containerType + " at " + position + " (id=" + containerId + ")");
 
         currentContainer = new ContainerState(containerId, containerType, position);
-
-        sendContainerUpdate();
     }
 
     public void onContainerClosed(int containerId) {
@@ -76,15 +96,16 @@ public class ContainerOutbound extends BaseOutbound {
 
     public void onContainerContentSet(int containerId) {
         if (currentContainer != null && currentContainer.containerId == containerId) {
-            sendContainerUpdate();
+            pendingUpdate = true;
+        } else if (currentContainer == null && client.player != null && client.player.containerMenu.containerId == containerId) {
+            System.out.println("Container content received before open screen packet (id=" + containerId + ")");
         }
     }
 
 
     public void onContainerSlotChanged(int containerId, int slot) {
         if (currentContainer != null && currentContainer.containerId == containerId) {
-            // Send full container update (could optimize to just slot in the future)
-            sendContainerUpdate();
+            pendingUpdate = true;
         }
     }
 
@@ -156,24 +177,32 @@ public class ContainerOutbound extends BaseOutbound {
      * Maps Minecraft container type string to proto enum.
      */
     private Inventory.ContainerUpdate.ContainerType mapContainerType(String typeString) {
-        if (typeString == null) return Inventory.ContainerUpdate.ContainerType.OTHER;
+        if (typeString == null) {
+            System.err.println("ERROR: Container type is null! Defaulting to OTHER");
+            return Inventory.ContainerUpdate.ContainerType.OTHER;
+        }
 
         return switch (typeString.toLowerCase()) {
-            case "minecraft:chest" -> Inventory.ContainerUpdate.ContainerType.CHEST;
+            case "minecraft:generic_9x1", "minecraft:generic_9x2", "minecraft:generic_9x3",
+                 "minecraft:generic_9x4", "minecraft:generic_9x5", "minecraft:generic_9x6" ->
+                Inventory.ContainerUpdate.ContainerType.CHEST;
             case "minecraft:ender_chest" -> Inventory.ContainerUpdate.ContainerType.ENDER_CHEST;
             case "minecraft:shulker_box" -> Inventory.ContainerUpdate.ContainerType.SHULKER_BOX;
             case "minecraft:furnace" -> Inventory.ContainerUpdate.ContainerType.FURNACE;
             case "minecraft:blast_furnace" -> Inventory.ContainerUpdate.ContainerType.BLAST_FURNACE;
             case "minecraft:smoker" -> Inventory.ContainerUpdate.ContainerType.SMOKER;
-            case "minecraft:crafting_table" -> Inventory.ContainerUpdate.ContainerType.CRAFTING_TABLE;
-            case "minecraft:enchanting_table" -> Inventory.ContainerUpdate.ContainerType.ENCHANTING_TABLE;
+            case "minecraft:crafting" -> Inventory.ContainerUpdate.ContainerType.CRAFTING_TABLE;
+            case "minecraft:enchantment" -> Inventory.ContainerUpdate.ContainerType.ENCHANTING_TABLE;
             case "minecraft:anvil" -> Inventory.ContainerUpdate.ContainerType.ANVIL;
             case "minecraft:brewing_stand" -> Inventory.ContainerUpdate.ContainerType.BREWING_STAND;
             case "minecraft:hopper" -> Inventory.ContainerUpdate.ContainerType.HOPPER;
             case "minecraft:dispenser" -> Inventory.ContainerUpdate.ContainerType.DISPENSER;
             case "minecraft:dropper" -> Inventory.ContainerUpdate.ContainerType.DROPPER;
             case "minecraft:beacon" -> Inventory.ContainerUpdate.ContainerType.BEACON;
-            default -> Inventory.ContainerUpdate.ContainerType.OTHER;
+            default -> {
+                System.err.println("Unknown container type: " + typeString + " - defaulting to OTHER");
+                yield Inventory.ContainerUpdate.ContainerType.OTHER;
+            }
         };
     }
 
@@ -188,6 +217,26 @@ public class ContainerOutbound extends BaseOutbound {
             String fieldName = getDataSlotNBTFieldName(containerType, i);
             builder.putProperties(fieldName, value);
         }
+    }
+
+    private int getPlayerPing() {
+        try {
+            if (client.player != null && client.getConnection() != null) {
+                var playerInfo = client.getConnection().getPlayerInfo(client.player.getUUID());
+                if (playerInfo != null) {
+                    int ping = playerInfo.getLatency();
+                    if (ping > 0) {
+                        return ping;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to get player ping: " + e.getMessage());
+        }
+
+        // Fallback to conservative 150ms with warning
+        System.err.println("WARNING: Could not retrieve player ping, using fallback of 150ms");
+        return 150;
     }
 
     private String getDataSlotNBTFieldName(Inventory.ContainerUpdate.ContainerType type, int slotIndex) {

@@ -29,6 +29,7 @@ public:
 signals:
     void scriptFinished(bool success);
     void scriptError(const QString &error);
+    void scriptMessage(const QString &message);
 
 protected:
     void run() override;

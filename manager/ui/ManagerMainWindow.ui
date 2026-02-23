@@ -581,6 +581,9 @@
     </property>
     <addaction name="actionPrismSettings"/>
     <addaction name="actionWorldSavePath"/>
+    <addaction name="separator"/>
+    <addaction name="actionGlobalSettings"/>
+    <addaction name="separator"/>
     <addaction name="actionNetworkStats"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -783,6 +786,11 @@
   <action name="actionWorldSavePath">
    <property name="text">
     <string>&amp;World Save Path...</string>
+   </property>
+  </action>
+  <action name="actionGlobalSettings">
+   <property name="text">
+    <string>&amp;Global Settings...</string>
    </property>
   </action>
   <action name="actionNetworkStats">

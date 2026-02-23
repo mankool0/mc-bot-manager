@@ -5,6 +5,7 @@ import mankool.mcbot.protocol.Common;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.inventory.ClickType;
 import mankool.mcBotClient.connection.PipeConnection;
 
 public class InventoryHandler extends BaseInboundHandler {
@@ -76,6 +77,101 @@ public class InventoryHandler extends BaseInboundHandler {
         } catch (Exception e) {
             System.err.println("Failed to drop item: " + e.getMessage());
             sendFailure(messageId, "Failed to drop item: " + e.getMessage());
+        }
+    }
+
+    public void handleClickContainerSlot(String messageId, Commands.ClickContainerSlotCommand command) {
+        LocalPlayer player = client.player;
+        if (player == null) {
+            sendFailure(messageId, "Not in game");
+            return;
+        }
+
+        if (player.containerMenu == null) {
+            sendFailure(messageId, "No container open");
+            return;
+        }
+
+        try {
+            int slotIndex = command.getSlotIndex();
+            int button = command.getButton();
+
+            // Map protobuf ClickType to Minecraft ClickType
+            ClickType clickType;
+            switch (command.getClickType()) {
+                case PICKUP:
+                    clickType = ClickType.PICKUP;
+                    break;
+                case QUICK_MOVE:
+                    clickType = ClickType.QUICK_MOVE;
+                    break;
+                case SWAP:
+                    clickType = ClickType.SWAP;
+                    break;
+                case CLONE:
+                    clickType = ClickType.CLONE;
+                    break;
+                case THROW:
+                    clickType = ClickType.THROW;
+                    break;
+                case QUICK_CRAFT:
+                    clickType = ClickType.QUICK_CRAFT;
+                    break;
+                case PICKUP_ALL:
+                    clickType = ClickType.PICKUP_ALL;
+                    break;
+                default:
+                    sendFailure(messageId, "Unknown click type: " + command.getClickType());
+                    return;
+            }
+
+            if (client.gameMode != null) {
+                int containerId = player.containerMenu.containerId;
+                client.gameMode.handleInventoryMouseClick(
+                    containerId,
+                    slotIndex,
+                    button,
+                    clickType,
+                    player
+                );
+                sendSuccess(messageId, "Clicked slot " + slotIndex + " with button " + button + " (type: " + clickType + ")");
+            } else {
+                sendFailure(messageId, "Game mode not available");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to click container slot: " + e.getMessage());
+            e.printStackTrace();
+            sendFailure(messageId, "Failed to click slot: " + e.getMessage());
+        }
+    }
+
+    public void handleCloseContainer(String messageId, Commands.CloseContainerCommand command) {
+        LocalPlayer player = client.player;
+        if (player == null) {
+            sendFailure(messageId, "Not in game");
+            return;
+        }
+
+        try {
+            player.closeContainer();
+            sendSuccess(messageId, "Closed container");
+        } catch (Exception e) {
+            sendFailure(messageId, "Failed to close container: " + e.getMessage());
+        }
+    }
+
+    public void handleOpenInventory(String messageId, Commands.OpenInventoryCommand command) {
+        LocalPlayer player = client.player;
+        if (player == null) {
+            sendFailure(messageId, "Not in game");
+            return;
+        }
+
+        try {
+            client.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(player));
+            sendSuccess(messageId, "Opened inventory");
+        } catch (Exception e) {
+            sendFailure(messageId, "Failed to open inventory: " + e.getMessage());
         }
     }
 }

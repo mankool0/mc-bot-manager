@@ -24,9 +24,12 @@
 #include "baritone.qpb.h"
 #include "world.qpb.h"
 #include "screen.qpb.h"
+#include "registry.qpb.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
+#include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
+#include "crafting/RecipeRegistry.h"
 
 using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
 using BaritoneSettingType = mankool::mcbot::protocol::BaritoneSettingInfo::SettingType;
@@ -217,6 +220,14 @@ struct BotInstance {
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
     int selectedSlot = 0;
 
+    // Container state
+    struct {
+        bool isOpen = false;
+        int containerId = -1;
+        mankool::mcbot::protocol::ContainerUpdate::ContainerType containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+        QVector<mankool::mcbot::protocol::ItemStack> items;
+    } containerState;
+
     QProcess* process = nullptr;
     qint64 minecraftPid = 0;
 
@@ -245,6 +256,7 @@ struct BotInstance {
     // World data
     BotWorldData worldData;
     std::shared_ptr<BlockRegistry> blockRegistry;
+    std::shared_ptr<ItemRegistry> itemRegistry;
     int dataVersion = 0;
     QString versionName;
     QString versionSeries = "main";
@@ -252,6 +264,9 @@ struct BotInstance {
     std::shared_ptr<WorldAutoSaver> worldAutoSaver;
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;
+
+    // Recipe registry
+    RecipeRegistry recipeRegistry;
 
     std::shared_ptr<QMutex> dataMutex = std::make_shared<QMutex>();
     std::shared_ptr<QReadWriteLock> worldDataLock = std::make_shared<QReadWriteLock>();
@@ -300,6 +315,10 @@ public:
     static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     static void handleBlockRegistry(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
 
+    // Item registry handlers
+    static void handleQueryItemRegistry(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);
+    static void handleItemRegistry(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry);
+
     // World data handlers
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
@@ -313,6 +332,11 @@ public:
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
                                       bool lookAtBlock = true);
+
+    // Container interaction commands
+    static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
+    static void sendCloseContainer(const QString &botName);
+    static void sendOpenInventory(const QString &botName);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -362,6 +386,8 @@ private:
     void handleBaritoneProcessStatusImpl(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
     void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
+    void handleQueryItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);
+    void handleItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry);
     void handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     void handleBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
     void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
@@ -370,6 +396,9 @@ private:
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
+    void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
+    void sendCloseContainerImpl(const QString &botName);
+    void sendOpenInventoryImpl(const QString &botName);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);

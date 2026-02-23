@@ -3,6 +3,7 @@
 #include "ScriptThread.h"
 #include "ScriptFileManager.h"
 #include "PythonAPI.h"
+#include "EmbeddedPythonLibs.h"
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "logging/LogManager.h"
@@ -113,6 +114,8 @@ void ScriptEngine::setupPythonPath()
     // Add base scripts directory for shared modules between bots
     QString scriptsBaseDir = ScriptFileManager::getBaseScriptDir();
     path.append(scriptsBaseDir.toStdString());
+
+    EmbeddedPythonLibs::copyBundledModules(scriptsBaseDir);
 }
 
 bool ScriptEngine::loadScript(const QString &filename, const QString &code)
@@ -200,14 +203,6 @@ bool ScriptEngine::runScript(const QString &filename)
                                        Qt::darkGreen);
                 }
                 emit scriptStopped(filename);
-            } else {
-                if (botInstance->consoleWidget) {
-                    botInstance->consoleWidget
-                        ->appendOutput(QString("[%1] Initialized, %2 event handler(s) registered")
-                                           .arg(filename)
-                                           .arg(ctx->eventHandlers.size()),
-                                       Qt::darkGreen);
-                }
             }
         } else {
             // Script stopped (error or user interruption)
@@ -238,6 +233,14 @@ bool ScriptEngine::runScript(const QString &filename)
             for (const QString &line : std::as_const(errorLines)) {
                 botInstance->consoleWidget->appendOutput(line, Qt::red);
             }
+        }
+    }, Qt::QueuedConnection);
+
+    connect(ctx->thread, &ScriptThread::scriptMessage, this, [this, filename](const QString &message) {
+        if (!scripts.contains(filename)) return;
+
+        if (botInstance->consoleWidget) {
+            botInstance->consoleWidget->appendOutput(message, Qt::darkGreen);
         }
     }, Qt::QueuedConnection);
 

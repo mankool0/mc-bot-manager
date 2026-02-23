@@ -9,24 +9,29 @@ import mankool.mcBotClient.connection.PipeConnection;
 import java.util.UUID;
 
 public class InventoryOutbound extends BaseOutbound {
-    private int tickCounter = 0;
+    private static InventoryOutbound instance;
+    private boolean pendingUpdate = false;
 
     public InventoryOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
+        instance = this;
+    }
+
+    public static InventoryOutbound getInstance() {
+        return instance;
     }
 
     @Override
     protected void onClientTick(Minecraft client) {
-        if (client.player == null || client.level == null) {
-            return;
-        }
-
-        tickCounter++;
-
-        // Send inventory update every 10 ticks
-        if (tickCounter % 10 == 0) {
+        // Send batched inventory update once per tick
+        if (pendingUpdate) {
+            pendingUpdate = false;
             sendUpdate();
         }
+    }
+
+    public void queueUpdate() {
+        pendingUpdate = true;
     }
 
     private void sendUpdate() {
@@ -36,20 +41,18 @@ public class InventoryOutbound extends BaseOutbound {
         Inventory.InventoryUpdate.Builder inventoryBuilder = Inventory.InventoryUpdate.newBuilder()
             .setSelectedSlot(player.getInventory().getSelectedSlot());
 
-        // Add all inventory items
+        // Add all inventory slots
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             net.minecraft.world.item.ItemStack itemStack = player.getInventory().getItem(i);
-            if (!itemStack.isEmpty()) {
-                Common.ItemStack protoItem = Common.ItemStack.newBuilder()
-                    .setSlot(i)
-                    .setItemId(itemStack.getItem().toString())
-                    .setCount(itemStack.getCount())
-                    .setDamage(itemStack.getDamageValue())
-                    .setMaxDamage(itemStack.getMaxDamage())
-                    .setDisplayName(itemStack.getHoverName().getString())
-                    .build();
-                inventoryBuilder.addItems(protoItem);
-            }
+            Common.ItemStack protoItem = Common.ItemStack.newBuilder()
+                .setSlot(i)
+                .setItemId(itemStack.getItem().toString())
+                .setCount(itemStack.getCount())
+                .setDamage(itemStack.getDamageValue())
+                .setMaxDamage(itemStack.getMaxDamage())
+                .setDisplayName(itemStack.getHoverName().getString())
+                .build();
+            inventoryBuilder.addItems(protoItem);
         }
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

@@ -5,6 +5,7 @@
 #include <QScrollBar>
 #include <QTimer>
 #include <QAbstractItemView>
+#include <QSettings>
 
 BotConsoleWidget::BotConsoleWidget(QWidget *parent)
     : QWidget(parent)
@@ -28,7 +29,14 @@ void BotConsoleWidget::setupUI()
     outputEdit = new QPlainTextEdit(this);
     outputEdit->setReadOnly(true);
     outputEdit->setFont(QFont("Consolas", 9));
-    outputEdit->setMaximumBlockCount(1000);
+
+    QSettings settings("MCBotManager", "MCBotManager");
+    int lineLimit = settings.value("Console/maxLines", 10000).toInt();
+    if (lineLimit > 0) {
+        outputEdit->setMaximumBlockCount(lineLimit);
+    }
+    // If lineLimit is 0, don't set any limit (Qt default is unlimited)
+
     mainLayout->addWidget(outputEdit);
 
     hintLabel = new QLabel(this);

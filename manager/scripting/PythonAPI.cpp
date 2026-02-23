@@ -2,6 +2,8 @@
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "prism/PrismLauncherManager.h"
+#include "crafting/CraftingPlanner.h"
+#include "world/ItemRegistry.h"
 #include <QDebug>
 #include <QCoreApplication>
 #include <QThread>
@@ -990,15 +992,20 @@ void PythonAPI::error(const std::string &message)
 // World Data API
 // ============================================================================
 
-py::object PythonAPI::getBlock(int x, int y, int z, const std::string &bot)
+py::object PythonAPI::getBlock(double x, double y, double z, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
+    // Convert to integers
+    int ix = static_cast<int>(std::floor(x));
+    int iy = static_cast<int>(std::floor(y));
+    int iz = static_cast<int>(std::floor(z));
+
     std::optional<QString> blockOpt;
     {
         QReadLocker locker(botInstance->worldDataLock.get());
-        blockOpt = botInstance->worldData.getBlock(x, y, z);
+        blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
     }
 
     if (blockOpt.has_value()) {
@@ -1256,12 +1263,220 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     return chunkList;
 }
 
-void PythonAPI::interactBlock(int x, int y, int z, bool sneak, bool lookAtBlock, const std::string &bot)
+void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
-    BotManager::sendInteractWithBlock(botName, x, y, z,
+    int blockX = static_cast<int>(std::floor(x));
+    int blockY = static_cast<int>(std::floor(y));
+    int blockZ = static_cast<int>(std::floor(z));
+
+    BotManager::sendInteractWithBlock(botName, blockX, blockY, blockZ,
                                       mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock);
+}
+
+void PythonAPI::clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendClickContainerSlot(botName, slotIndex, static_cast<int>(button), static_cast<int>(clickType));
+}
+
+void PythonAPI::closeContainer(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendCloseContainer(botName);
+}
+
+void PythonAPI::openInventory(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendOpenInventory(botName);
+}
+
+py::object PythonAPI::getContainer(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    QMutexLocker locker(botInstance->dataMutex.get());
+
+    if (!botInstance->containerState.isOpen) {
+        return py::none();
+    }
+
+    py::dict result;
+    result["id"] = botInstance->containerState.containerId;
+    result["type"] = botInstance->containerState.containerType;
+
+    py::list items;
+    for (const auto &item : botInstance->containerState.items) {
+        py::dict itemDict;
+        itemDict["slot"] = static_cast<int>(item.slot());
+        itemDict["item_id"] = item.itemId().toStdString();
+        itemDict["count"] = static_cast<int>(item.count());
+        itemDict["display_name"] = item.displayName().toStdString();
+        items.append(itemDict);
+    }
+    result["items"] = items;
+
+    return result;
+}
+
+py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+    
+    if (botInstance->itemRegistry) {
+        auto itemInfo = botInstance->itemRegistry->getItem(QString::fromStdString(itemId));
+        if (itemInfo) {
+            py::dict result;
+            result["item_id"] = itemInfo->itemId.toStdString();
+            result["max_stack_size"] = itemInfo->maxStackSize;
+            result["max_damage"] = itemInfo->maxDamage;
+            return result;
+        }
+    }
+    
+    return py::none();
+}
+
+py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    QString qRecipeId = QString::fromStdString(recipeId);
+
+    const Recipe *recipe = botInstance->recipeRegistry.getRecipe(qRecipeId);
+    if (!recipe) {
+        return py::none();
+    }
+
+    py::dict result;
+    result["recipe_id"] = recipe->recipeId.toStdString();
+    result["type"] = recipe->type.toStdString();
+    result["result_item"] = recipe->resultItem.toStdString();
+    result["result_count"] = recipe->resultCount;
+    result["is_shapeless"] = recipe->isShapeless;
+
+    if (recipe->experience > 0) {
+        result["experience"] = recipe->experience;
+    }
+    if (recipe->cookingTime > 0) {
+        result["cooking_time"] = recipe->cookingTime;
+    }
+
+    py::list ingredients;
+    for (const auto &ingredient : recipe->ingredients) {
+        py::dict ingredientDict;
+        ingredientDict["slot"] = ingredient.slot;
+        ingredientDict["count"] = ingredient.count;
+
+        py::list itemsList;
+        for (const auto &item : ingredient.items) {
+            itemsList.append(item.toStdString());
+        }
+        ingredientDict["items"] = itemsList;
+
+        ingredients.append(ingredientDict);
+    }
+    result["ingredients"] = ingredients;
+
+    return result;
+}
+
+py::list PythonAPI::getAllRecipes(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::list();
+    }
+
+    py::list result;
+    QStringList recipeIds = botInstance->recipeRegistry.getAllRecipeIds();
+    for (const QString &id : recipeIds) {
+        result.append(id.toStdString());
+    }
+
+    return result;
+}
+
+py::dict PythonAPI::planRecursiveCraft(const std::string &itemId, int count, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    // Get bot's current inventory
+    QMap<QString, int> available;
+    for (const auto &item : botInstance->inventory) {
+        available[item.itemId()] += item.count();
+    }
+
+    // Create planner and plan the craft
+    CraftingPlanner planner(&botInstance->recipeRegistry);
+    CraftingPlan plan = planner.planCrafting(QString::fromStdString(itemId), count, available);
+
+    // Convert CraftingPlan to Python dict
+    py::dict result;
+    result["success"] = plan.success;
+    result["error"] = plan.error.toStdString();
+
+    // Convert steps
+    py::list steps;
+    for (const CraftingStep &step : plan.steps) {
+        py::dict stepDict;
+        stepDict["recipe_id"] = step.recipeId.toStdString();
+        stepDict["times"] = step.times;
+        stepDict["output_item"] = step.outputItem.toStdString();
+        stepDict["output_count"] = step.outputCount;
+
+        // Convert inputs map
+        py::dict inputs;
+        for (auto it = step.inputs.constBegin(); it != step.inputs.constEnd(); ++it) {
+            inputs[it.key().toStdString().c_str()] = it.value();
+        }
+        stepDict["inputs"] = inputs;
+
+        steps.append(stepDict);
+    }
+    result["steps"] = steps;
+
+    // Convert raw materials
+    py::dict rawMaterials;
+    for (auto it = plan.rawMaterials.constBegin(); it != plan.rawMaterials.constEnd(); ++it) {
+        rawMaterials[it.key().toStdString().c_str()] = it.value();
+    }
+    result["raw_materials"] = rawMaterials;
+
+    // Convert leftovers
+    py::dict leftovers;
+    for (auto it = plan.leftovers.constBegin(); it != plan.leftovers.constEnd(); ++it) {
+        leftovers[it.key().toStdString().c_str()] = it.value();
+    }
+    result["leftovers"] = leftovers;
+
+    return result;
 }
 

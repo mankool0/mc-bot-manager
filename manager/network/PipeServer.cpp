@@ -227,6 +227,10 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleQueryRegistry(connectionId, clientMsg.queryRegistry());
         } else if (clientMsg.hasBlockRegistry()) {
             BotManager::handleBlockRegistry(connectionId, clientMsg.blockRegistry());
+        } else if (clientMsg.hasQueryItemRegistry()) {
+            BotManager::handleQueryItemRegistry(connectionId, clientMsg.queryItemRegistry());
+        } else if (clientMsg.hasItemRegistry()) {
+            BotManager::handleItemRegistry(connectionId, clientMsg.itemRegistry());
         }
         return;
     }

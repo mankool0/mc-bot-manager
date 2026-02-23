@@ -52,6 +52,29 @@ message DropItemCommand {
   bool drop_all = 1;           // Drop entire stack vs single item
 }
 
+// Container interaction commands
+message ClickContainerSlotCommand {
+  int32 slot_index = 1;
+  int32 button = 2;
+  ClickType click_type = 3;
+
+  enum ClickType {
+    PICKUP = 0;
+    QUICK_MOVE = 1;
+    SWAP = 2;
+    CLONE = 3;
+    THROW = 4;
+    QUICK_CRAFT = 5;
+    PICKUP_ALL = 6;
+  }
+}
+
+message CloseContainerCommand {
+}
+
+message OpenInventoryCommand {
+}
+
 // Tell client to shut down the process
 message ShutdownCommand {
   string reason = 1;           // Optional reason for shutdown

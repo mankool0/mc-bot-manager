@@ -16,6 +16,38 @@ struct ESPBlockData;
 class PythonAPI
 {
 public:
+    // Enums for container interaction
+    enum class MouseButton {
+        LEFT = 0,
+        RIGHT = 1,
+        MIDDLE = 2
+    };
+
+    enum class ContainerClickType {
+        PICKUP = 0,
+        QUICK_MOVE = 1,
+        SWAP = 2,
+        CLONE = 3,
+        THROW = 4,
+        QUICK_CRAFT = 5,
+        PICKUP_ALL = 6
+    };
+
+    enum class PathEventType {
+        CALC_STARTED = 0,
+        CALC_FINISHED_NOW_EXECUTING = 1,
+        CALC_FAILED = 2,
+        NEXT_SEGMENT_CALC_STARTED = 3,
+        NEXT_SEGMENT_CALC_FINISHED = 4,
+        CONTINUING_ONTO_PLANNED_NEXT = 5,
+        SPLICING_ONTO_NEXT_EARLY = 6,
+        AT_GOAL = 7,
+        PATH_FINISHED_NEXT_STILL_CALCULATING = 8,
+        NEXT_CALC_FAILED = 9,
+        DISCARD_NEXT = 10,
+        CANCELED = 11
+    };
+
     static void setCurrentBot(const QString &botName);
     static QString getCurrentBot();
     static void setCurrentScript(const QString &scriptName);
@@ -69,7 +101,7 @@ public:
     static py::list meteorListModules(const std::string &bot = "");
 
     // World queries
-    static py::object getBlock(int x, int y, int z, const std::string &bot = "");
+    static py::object getBlock(double x, double y, double z, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius, const std::string &bot = "");
     static py::object findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot = "");
@@ -78,7 +110,19 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
-    static void interactBlock(int x, int y, int z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
+    static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
+
+    // Container interaction
+    static void clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot = "");
+    static void closeContainer(const std::string &bot = "");
+    static void openInventory(const std::string &bot = "");
+    static py::object getContainer(const std::string &bot = "");
+
+    // Recipe registry
+    static py::object getRecipe(const std::string &recipeId, const std::string &bot = "");
+    static py::object getItemInfo(const std::string &itemId, const std::string &bot = "");
+    static py::list getAllRecipes(const std::string &bot = "");
+    static py::dict planRecursiveCraft(const std::string &itemId, int count, const std::string &bot = "");
 
     static void log(const std::string &message);
     static void error(const std::string &message);
