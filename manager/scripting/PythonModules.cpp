@@ -1,4 +1,5 @@
 #include "PythonAPI.h"
+#include "inventory.qpb.h"
 
 #undef slots
 #include <pybind11/embed.h>
@@ -266,9 +267,17 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           "Get current open container info (None if no container open)",
           py::arg("bot") = "");
 
+    // Recipe registry
+    m.def("get_recipe", &PythonAPI::getRecipe,
+          "Get recipe data by ID (e.g., 'minecraft:diamond_pickaxe')",
+          py::arg("recipe_id"),
+          py::arg("bot") = "");
     m.def("get_item_info", &PythonAPI::getItemInfo,
           "Get item info (max_stack_size, max_damage) by ID",
           py::arg("item_id"),
+          py::arg("bot") = "");
+    m.def("get_all_recipes", &PythonAPI::getAllRecipes,
+          "Get list of all available recipe IDs",
           py::arg("bot") = "");
 }
 

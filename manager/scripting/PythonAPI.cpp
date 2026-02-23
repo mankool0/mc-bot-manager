@@ -1355,3 +1355,70 @@ py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &
     return py::none();
 }
 
+py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    QString qRecipeId = QString::fromStdString(recipeId);
+
+    const Recipe *recipe = botInstance->recipeRegistry.getRecipe(qRecipeId);
+    if (!recipe) {
+        return py::none();
+    }
+
+    py::dict result;
+    result["recipe_id"] = recipe->recipeId.toStdString();
+    result["type"] = recipe->type.toStdString();
+    result["result_item"] = recipe->resultItem.toStdString();
+    result["result_count"] = recipe->resultCount;
+    result["is_shapeless"] = recipe->isShapeless;
+
+    if (recipe->experience > 0) {
+        result["experience"] = recipe->experience;
+    }
+    if (recipe->cookingTime > 0) {
+        result["cooking_time"] = recipe->cookingTime;
+    }
+
+    py::list ingredients;
+    for (const auto &ingredient : recipe->ingredients) {
+        py::dict ingredientDict;
+        ingredientDict["slot"] = ingredient.slot;
+        ingredientDict["count"] = ingredient.count;
+
+        py::list itemsList;
+        for (const auto &item : ingredient.items) {
+            itemsList.append(item.toStdString());
+        }
+        ingredientDict["items"] = itemsList;
+
+        ingredients.append(ingredientDict);
+    }
+    result["ingredients"] = ingredients;
+
+    return result;
+}
+
+py::list PythonAPI::getAllRecipes(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::list();
+    }
+
+    py::list result;
+    QStringList recipeIds = botInstance->recipeRegistry.getAllRecipeIds();
+    for (const QString &id : recipeIds) {
+        result.append(id.toStdString());
+    }
+
+    return result;
+}
+

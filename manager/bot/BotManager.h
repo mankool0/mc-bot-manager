@@ -29,6 +29,7 @@
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
+#include "crafting/RecipeRegistry.h"
 
 using SettingType = mankool::mcbot::protocol::SettingInfo::SettingType;
 using BaritoneSettingType = mankool::mcbot::protocol::BaritoneSettingInfo::SettingType;
@@ -263,6 +264,9 @@ struct BotInstance {
     std::shared_ptr<WorldAutoSaver> worldAutoSaver;
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;
+
+    // Recipe registry
+    RecipeRegistry recipeRegistry;
 
     std::shared_ptr<QMutex> dataMutex = std::make_shared<QMutex>();
     std::shared_ptr<QReadWriteLock> worldDataLock = std::make_shared<QReadWriteLock>();
