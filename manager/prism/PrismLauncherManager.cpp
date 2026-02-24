@@ -342,6 +342,18 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
                 }
             }
         }
+
+        // Fallback: detect "Process exited with code" for cases where the profile
+        // message is never received (e.g. bot crashes before fully starting)
+        if (cleanLine.contains("Process exited with code")) {
+            QVector<BotInstance> &bots = BotManager::getBots();
+            for (const BotInstance &bot : bots) {
+                if (bot.status == BotStatus::Starting) {
+                    emit minecraftStopped(bot.name);
+                    break;
+                }
+            }
+        }
     }
 }
 

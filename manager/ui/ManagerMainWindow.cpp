@@ -391,6 +391,8 @@ void ManagerMainWindow::updateInstancesTable()
             statusColor = QColor(76, 175, 80); // green
         } else if (bot.status == BotStatus::Offline) {
             statusColor = QColor(158, 158, 158); // gray
+        } else if (bot.status == BotStatus::Error) {
+            statusColor = QColor(244, 67, 54); // red
         } else {
             statusColor = QColor(255, 152, 0); // orange
         }
@@ -674,6 +676,17 @@ bool ManagerMainWindow::launchBotByName(const QString &botName)
     updateStatusDisplay();
 
     PrismLauncherManager::launchBot(botToLaunch);
+
+    // Startup timeout: if the bot hasn't connected within 2 minutes, mark as Error
+    QTimer::singleShot(120000, this, [this, botName]() {
+        BotInstance *bot = BotManager::getBotByName(botName);
+        if (bot && bot->status == BotStatus::Starting) {
+            LogManager::log(QString("[%1] Startup timed out (no connection after 2 minutes)").arg(botName), LogManager::Error);
+            bot->status = BotStatus::Error;
+            updateInstancesTable();
+            updateStatusDisplay();
+        }
+    });
 
     return true;
 }
