@@ -1037,7 +1037,6 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("account", bot.account);
     settings.setValue("accountId", bot.accountId);
     settings.setValue("server", bot.server);
-    settings.setValue("connectionId", bot.connectionId);
     settings.setValue("maxMemory", bot.maxMemory);
     settings.setValue("restartThreshold", bot.restartThreshold);
     settings.setValue("autoRestart", bot.autoRestart);
@@ -1059,7 +1058,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.account = settings.value("account", "").toString();
     bot.accountId = settings.value("accountId", "").toString();
     bot.server = settings.value("server", "").toString();
-    bot.connectionId = settings.value("connectionId", -1).toInt();
+    bot.connectionId = -1;
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
     bot.currentMemory = 0;
     bot.restartThreshold = settings.value("restartThreshold", 48.0).toDouble();
