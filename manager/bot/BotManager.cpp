@@ -2747,11 +2747,6 @@ void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotInde
         return;
     }
 
-    if (!bot->containerState.isOpen) {
-        LogManager::log(QString("[%1] No container open").arg(botName),
-                       LogManager::Error);
-        return;
-    }
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
