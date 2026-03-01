@@ -92,7 +92,7 @@ QString ManagerMainWindow::getWorldSaveBasePath()
 
 void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
 {
-    worldSaveBasePath = path.isEmpty() ? "worldSaves" : path;
+    worldSaveBasePath = QDir(path.isEmpty() ? "worldSaves" : path).absolutePath();
 }
 
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
@@ -963,7 +963,7 @@ void ManagerMainWindow::loadSettings()
 
     // Load world save path
     settings.beginGroup("World");
-    worldSaveBasePath = settings.value("savePath", "worldSaves").toString();
+    worldSaveBasePath = QDir(settings.value("savePath", "worldSaves").toString()).absolutePath();
     settings.endGroup();
 
     // Load bot instances

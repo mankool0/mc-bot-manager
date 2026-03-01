@@ -1,6 +1,7 @@
 #include "ScriptThread.h"
 #include "ScriptContext.h"
 #include "ScriptFileManager.h"
+#include "EmbeddedPythonLibs.h"
 #include "PythonAPI.h"
 #include "bot/BotManager.h"
 #include <QDebug>
@@ -151,12 +152,18 @@ void ScriptThread::run()
         PythonAPI::setCurrentBot(botInstance->name);
         PythonAPI::setCurrentScript(scriptContext->filename);
 
-        // Change working directory to the script's directory
-        QString scriptDir = ScriptFileManager::getScriptDirectory(botInstance->name);
-        py::module_::import("os").attr("chdir")(scriptDir.toStdString());
-
         // Add bot-specific directory to sys.path for bot-local imports
+        QString scriptDir = ScriptFileManager::getScriptDirectory(botInstance->name);
         py::module_::import("sys").attr("path").attr("insert")(0, scriptDir.toStdString());
+
+        // Evict bundled libs from sys.modules so disk changes are picked up on each run
+        py::dict sysModules = py::module_::import("sys").attr("modules").cast<py::dict>();
+        for (const QString &modName : EmbeddedPythonLibs::getBundledModules()) {
+            py::str key(modName.toStdString());
+            if (sysModules.contains(key)) {
+                sysModules.attr("__delitem__")(key);
+            }
+        }
 
         scriptContext->globals = py::dict();
         scriptContext->globals["__builtins__"] = py::module_::import("builtins");
