@@ -204,6 +204,17 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("bot") = "");
 
     // World interaction
+    m.def("can_reach_block", &PythonAPI::canReachBlock,
+          "Check if a block is reachable from the bot's current position",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("sneak") = false,
+          py::arg("bot") = "");
+    m.def("can_reach_block_from", &PythonAPI::canReachBlockFrom,
+          "Check if a block (x,y,z) is reachable when standing at (from_x,from_y,from_z)",
+          py::arg("from_x"), py::arg("from_y"), py::arg("from_z"),
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("sneak") = false,
+          py::arg("bot") = "");
     m.def("interact_block", &PythonAPI::interactBlock,
           "Right-click/interact with block at position",
           py::arg("x"), py::arg("y"), py::arg("z"),

@@ -110,6 +110,8 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
+    static bool canReachBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
+    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, const std::string &bot = "");
     static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
 
     // Container interaction

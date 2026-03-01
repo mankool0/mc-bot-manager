@@ -70,6 +70,9 @@ message ClientToManagerMessage {
     // Item registry
     QueryItemRegistryMessage query_item_registry = 27;
     ItemRegistryMessage item_registry = 28;
+
+    // World interaction responses
+    CanReachBlockResponse can_reach_block_response = 29;
   }
 }
 
@@ -115,6 +118,7 @@ message ManagerToClientMessage {
 
     // World interaction
     InteractWithBlockCommand interact_with_block = 20;
+    CanReachBlockCommand can_reach_block = 26;
 
     // Block registry response
     BlockRegistryResponse registry_response = 21;

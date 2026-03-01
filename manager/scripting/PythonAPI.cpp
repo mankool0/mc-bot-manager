@@ -1271,6 +1271,32 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     return chunkList;
 }
 
+bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::sendCanReachBlock(botName, x, y, z, sneak);
+    }
+    return result;
+}
+
+bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::sendCanReachBlockFrom(botName, fromX, fromY, fromZ, x, y, z, sneak);
+    }
+    return result;
+}
+
 void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, const std::string &bot)
 {
     QString botName = resolveBotName(bot);

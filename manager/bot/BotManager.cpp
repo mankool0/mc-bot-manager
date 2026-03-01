@@ -2676,6 +2676,92 @@ void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::
 // World Interaction Commands
 // ============================================================================
 
+bool BotManager::sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs)
+{
+    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs);
+}
+
+bool BotManager::sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, int timeoutMs)
+{
+    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, true, fromX, fromY, fromZ);
+}
+
+bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
+                                        bool hasFrom, int fromX, int fromY, int fromZ)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return false;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
+    PendingCanReachBlockEntry entry;
+    {
+        QMutexLocker lock(&m_pendingCanReachBlockMutex);
+        m_pendingCanReachBlockRequests[msgId] = &entry;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(msgId);
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::CanReachBlockCommand cmd;
+    mankool::mcbot::protocol::BlockPos pos;
+    pos.setX(x);
+    pos.setY(y);
+    pos.setZ(z);
+    cmd.setPosition(pos);
+    cmd.setSneak(sneak);
+    if (hasFrom) {
+        mankool::mcbot::protocol::BlockPos fromPos;
+        fromPos.setX(fromX);
+        fromPos.setY(fromY);
+        fromPos.setZ(fromZ);
+        cmd.setFromPosition(fromPos);
+    }
+    msg.setCanReachBlock(cmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        QMutexLocker lock(&m_pendingCanReachBlockMutex);
+        m_pendingCanReachBlockRequests.remove(msgId);
+        return false;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+    PipeServer::sendToClient(bot->connectionId, message);
+
+    bool acquired = entry.sem.tryAcquire(1, timeoutMs);
+
+    {
+        QMutexLocker lock(&m_pendingCanReachBlockMutex);
+        m_pendingCanReachBlockRequests.remove(msgId);
+    }
+
+    return acquired && entry.reachable;
+}
+
+void BotManager::handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response)
+{
+    instance().handleCanReachBlockResponseImpl(connectionId, response);
+}
+
+void BotManager::handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response)
+{
+    Q_UNUSED(connectionId);
+    QMutexLocker lock(&m_pendingCanReachBlockMutex);
+    auto it = m_pendingCanReachBlockRequests.find(response.commandId());
+    if (it != m_pendingCanReachBlockRequests.end()) {
+        it.value()->reachable = response.reachable();
+        it.value()->sem.release();
+    }
+}
+
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                         mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
 {
