@@ -2,6 +2,7 @@ package mankool.mcBotClient.handler.outbound;
 
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.mixin.client.AbstractContainerMenuAccessor;
+import mankool.mcBotClient.util.ProtoUtil;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Inventory;
 import mankool.mcbot.protocol.Protocol;
@@ -131,15 +132,7 @@ public class ContainerOutbound extends BaseOutbound {
         for (int i = 0; i < menu.slots.size(); i++) {
             ItemStack itemStack = menu.getSlot(i).getItem();
             if (!itemStack.isEmpty()) {
-                Common.ItemStack protoItem = Common.ItemStack.newBuilder()
-                    .setSlot(i)
-                    .setItemId(itemStack.getItem().toString())
-                    .setCount(itemStack.getCount())
-                    .setDamage(itemStack.getDamageValue())
-                    .setMaxDamage(itemStack.getMaxDamage())
-                    .setDisplayName(itemStack.getHoverName().getString())
-                    .build();
-                containerBuilder.addItems(protoItem);
+                containerBuilder.addItems(ProtoUtil.buildItemStack(itemStack, i));
             }
         }
 

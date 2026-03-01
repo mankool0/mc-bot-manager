@@ -564,6 +564,12 @@ py::object PythonAPI::getInventory(const std::string &botName)
             itemDict["item_id"] = item.itemId().toStdString();
             itemDict["count"] = static_cast<int>(item.count());
             itemDict["display_name"] = item.displayName().toStdString();
+            const QStringList &enchants = item.enchantments();
+            py::list enchantList;
+            for (const QString &e : enchants) {
+                enchantList.append(e.toStdString());
+            }
+            itemDict["enchantments"] = enchantList;
             result.append(itemDict);
         }
     }
@@ -1326,6 +1332,12 @@ py::object PythonAPI::getContainer(const std::string &bot)
         itemDict["item_id"] = item.itemId().toStdString();
         itemDict["count"] = static_cast<int>(item.count());
         itemDict["display_name"] = item.displayName().toStdString();
+        const QStringList &enchants = item.enchantments();
+        py::list enchantList;
+        for (const QString &e : enchants) {
+            enchantList.append(e.toStdString());
+        }
+        itemDict["enchantments"] = enchantList;
         items.append(itemDict);
     }
     result["items"] = items;
