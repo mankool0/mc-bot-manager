@@ -15,6 +15,7 @@ RecipeRegistry::RecipeRegistry()
 void RecipeRegistry::clear()
 {
     recipes.clear();
+    craftingByResult.clear();
     tags.clear();
 }
 
@@ -177,6 +178,29 @@ const Recipe* RecipeRegistry::getRecipe(const QString &recipeId) const
     return nullptr;
 }
 
+const Recipe* RecipeRegistry::getRecipeByResult(const QString &resultItemId) const
+{
+    auto it = craftingByResult.find(resultItemId);
+    if (it != craftingByResult.end() && !it.value().isEmpty()) {
+        return getRecipe(it.value().first());
+    }
+    return nullptr;
+}
+
+QVector<const Recipe*> RecipeRegistry::getRecipesByResult(const QString &resultItemId) const
+{
+    QVector<const Recipe*> result;
+    auto it = craftingByResult.find(resultItemId);
+    if (it != craftingByResult.end()) {
+        for (const QString& id : it.value()) {
+            if (const Recipe* r = getRecipe(id)) {
+                result.append(r);
+            }
+        }
+    }
+    return result;
+}
+
 QStringList RecipeRegistry::getAllRecipeIds() const
 {
     return recipes.keys();
@@ -241,6 +265,11 @@ void RecipeRegistry::parseRecipe(const QString &recipeId, const QJsonObject &rec
     // They're handled dynamically by Minecraft
 
     recipes[recipeId] = recipe;
+
+    // Build secondary index: result item -> all crafting recipe IDs
+    if (recipe.type.contains("crafting_shaped") || recipe.type.contains("crafting_shapeless")) {
+        craftingByResult[recipe.resultItem].append(recipeId);
+    }
 }
 
 QStringList RecipeRegistry::parseIngredient(const QJsonValue &ingredientValue) const

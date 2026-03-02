@@ -204,6 +204,17 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("bot") = "");
 
     // World interaction
+    m.def("can_reach_block", &PythonAPI::canReachBlock,
+          "Check if a block is reachable from the bot's current position",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("sneak") = false,
+          py::arg("bot") = "");
+    m.def("can_reach_block_from", &PythonAPI::canReachBlockFrom,
+          "Check if a block (x,y,z) is reachable when standing at (from_x,from_y,from_z)",
+          py::arg("from_x"), py::arg("from_y"), py::arg("from_z"),
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("sneak") = false,
+          py::arg("bot") = "");
     m.def("interact_block", &PythonAPI::interactBlock,
           "Right-click/interact with block at position",
           py::arg("x"), py::arg("y"), py::arg("z"),
@@ -269,8 +280,12 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
 
     // Recipe registry
     m.def("get_recipe", &PythonAPI::getRecipe,
-          "Get recipe data by ID (e.g., 'minecraft:diamond_pickaxe')",
+          "Get recipe data by exact recipe ID (e.g., 'minecraft:gold_ingot_from_gold_block'). Returns None if not found.",
           py::arg("recipe_id"),
+          py::arg("bot") = "");
+    m.def("get_recipes_for", &PythonAPI::getRecipesFor,
+          "Get all recipes that produce a given item ID (e.g., 'minecraft:gold_ingot'). Returns a list (may be empty).",
+          py::arg("item_id"),
           py::arg("bot") = "");
     m.def("get_item_info", &PythonAPI::getItemInfo,
           "Get item info (max_stack_size, max_damage) by ID",

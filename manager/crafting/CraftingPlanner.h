@@ -77,12 +77,22 @@ private:
         QString* selectedItem = nullptr
     );
 
-    // Calculate raw material cost for a recipe (recursive helper for pickBestRecipe)
+    // Calculate raw material cost for a recipe (recursive helper for pickBestRecipe).
+    // inProgress tracks recipes on the current DFS stack for cycle detection:
+    // if a recipe is encountered again while computing its own cost, return 999999.
     int calculateRawMaterialCost(
         const Recipe* recipe,
         int batches,
         const PlanningState& state,
-        int maxDepth = 10
+        int maxDepth = 10,
+        QSet<QString>* inProgress = nullptr
+    ) const;
+
+    // Among all crafting recipes that produce 'item', picks the cheapest one
+    // based on current virtual inventory.
+    const Recipe* pickBestRecipeForItem(
+        const QString& item,
+        const PlanningState& state
     ) const;
 };
 

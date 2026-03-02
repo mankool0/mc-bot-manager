@@ -101,6 +101,8 @@ public class MessageHandler {
             msg -> baritoneHandler.handleExecuteBaritoneCommand(msg.getMessageId(), msg.getExecuteBaritoneCommand()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.INTERACT_WITH_BLOCK,
             msg -> worldInteractionHandler.handleInteractWithBlock(msg.getMessageId(), msg.getInteractWithBlock()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CAN_REACH_BLOCK,
+            msg -> worldInteractionHandler.handleCanReachBlock(msg.getMessageId(), msg.getCanReachBlock()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REGISTRY_RESPONSE,
             msg -> worldOutbound.handleRegistryResponse(msg.getRegistryResponse()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLICK_CONTAINER_SLOT,

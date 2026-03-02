@@ -26,9 +26,16 @@ int CraftingPlanner::calculateRawMaterialCost(
     const Recipe* recipe,
     int batches,
     const PlanningState& state,
-    int maxDepth) const
+    int maxDepth,
+    QSet<QString>* inProgress) const
 {
     if (!recipe || maxDepth <= 0) return 999999;
+
+    // Cycle detection: if this recipe is already on the current call stack,
+    // we've hit a loop (e.g. gold_ingot -> gold_nugget -> gold_ingot).
+    // Return worst-case cost to break the cycle.
+    if (inProgress && inProgress->contains(recipe->recipeId)) return 999999;
+    if (inProgress) inProgress->insert(recipe->recipeId);
 
     qDebug() << QString(10 - maxDepth, ' ') << "[Cost] Calculating" << recipe->recipeId << "x" << batches << "depth=" << maxDepth;
 
@@ -54,13 +61,15 @@ int CraftingPlanner::calculateRawMaterialCost(
             qDebug() << QString(10 - maxDepth, ' ') << "  Ingredient:" << ing.items << "need=" << stillNeeded;
 
             for (const QString& item : ing.items) {
-                const Recipe* subRecipe = m_registry->getRecipe(item);
+                QVector<const Recipe*> subRecipes = m_registry->getRecipesByResult(item);
 
-                if (subRecipe) {
-                    // This item can be crafted
-                    int subBatches = (stillNeeded + subRecipe->resultCount - 1) / subRecipe->resultCount;
-                    int subCost = calculateRawMaterialCost(subRecipe, subBatches, state, maxDepth - 1);
-                    minSubCost = qMin(minSubCost, subCost);
+                if (!subRecipes.isEmpty()) {
+                    // This item can be crafted — find cheapest sub-recipe
+                    for (const Recipe* subRecipe : subRecipes) {
+                        int subBatches = (stillNeeded + subRecipe->resultCount - 1) / subRecipe->resultCount;
+                        int subCost = calculateRawMaterialCost(subRecipe, subBatches, state, maxDepth - 1, inProgress);
+                        minSubCost = qMin(minSubCost, subCost);
+                    }
                 } else {
                     // This is a raw material (no recipe)
                     // We still need some, so we need to gather it - always high cost
@@ -75,7 +84,45 @@ int CraftingPlanner::calculateRawMaterialCost(
     }
 
     qDebug() << QString(10 - maxDepth, ' ') << "[Cost] Result for" << recipe->recipeId << "=" << totalCraftingSteps;
+    if (inProgress) inProgress->remove(recipe->recipeId);
     return totalCraftingSteps;
+}
+
+const Recipe* CraftingPlanner::pickBestRecipeForItem(
+    const QString& item,
+    const PlanningState& state) const
+{
+    QVector<const Recipe*> recipes = m_registry->getRecipesByResult(item);
+    if (recipes.isEmpty()) return nullptr;
+    if (recipes.size() == 1) return recipes.first();
+
+    const Recipe* best = nullptr;
+    int bestCost = 999999;
+    long long bestBatches = -1;
+
+    for (const Recipe* r : recipes) {
+        // Count craftable batches from current inventory
+        long long batches = std::numeric_limits<long long>::max();
+        for (const auto& ing : r->ingredients) {
+            long long avail = 0;
+            for (const QString& ingItem : ing.items) {
+                avail += state.virtualInventory.value(ingItem, 0);
+            }
+            if (ing.count > 0) {
+                batches = std::min(batches, avail / ing.count);
+            }
+        }
+
+        QSet<QString> inProgress;
+        int cost = calculateRawMaterialCost(r, 1, state, 10, &inProgress);
+        if (best == nullptr || cost < bestCost ||
+            (cost == bestCost && batches > bestBatches)) {
+            best = r;
+            bestCost = cost;
+            bestBatches = batches;
+        }
+    }
+    return best;
 }
 
 const Recipe* CraftingPlanner::pickBestRecipe(
@@ -88,7 +135,7 @@ const Recipe* CraftingPlanner::pickBestRecipe(
         if (selectedItem) {
             *selectedItem = possibleTargets.first();
         }
-        return m_registry->getRecipe(possibleTargets.first());
+        return pickBestRecipeForItem(possibleTargets.first(), state);
     }
 
     qDebug() << "  [PickRecipe] Selecting best recipe for one of:" << possibleTargets;
@@ -99,7 +146,7 @@ const Recipe* CraftingPlanner::pickBestRecipe(
     long long maxCraftableBatches = -1;
 
     for (const QString& target : possibleTargets) {
-        const Recipe* r = m_registry->getRecipe(target);
+        const Recipe* r = pickBestRecipeForItem(target, state);
 
         int rawMaterialCost;
         long long currentBatches;
@@ -140,7 +187,8 @@ const Recipe* CraftingPlanner::pickBestRecipe(
                 }
             }
 
-            rawMaterialCost = calculateRawMaterialCost(r, 1, state);
+            QSet<QString> inProgress;
+            rawMaterialCost = calculateRawMaterialCost(r, 1, state, 10, &inProgress);
             qDebug() << "    - " << target << " (" << r->recipeId << "): batches=" << currentBatches << " raw_cost=" << rawMaterialCost;
         }
 
@@ -323,6 +371,22 @@ bool CraftingPlanner::satisfyDependency(
 
     // 3. RECURSE: Satisfy ingredients for the batches
     // ---------------------------------------------------------
+
+    // Snapshot state before recursing so we can roll back if a circular
+    // dependency is detected (i.e. the item we're crafting ends up being
+    // needed as a raw material to produce one of its own ingredients).
+    int stepsBefore = state.plan.steps.size();
+    QMap<QString, int> inventoryBefore = state.virtualInventory;
+    int rawMatBefore = state.plan.rawMaterials.value(recipe->resultItem, 0);
+
+    // Blacklist the result item while satisfying its ingredients so that any
+    // back-reference is caught by the raw-material fallback instead of
+    // recursing until the depth limit is hit.
+    bool addedToBlacklist = !state.blacklistedItems.contains(recipe->resultItem);
+    if (addedToBlacklist) {
+        state.blacklistedItems.insert(recipe->resultItem);
+    }
+
     CraftingStep step;
     step.recipeId = recipe->recipeId;
     step.times = batches;
@@ -332,17 +396,50 @@ bool CraftingPlanner::satisfyDependency(
     for (const auto& ing : recipe->ingredients) {
         int ingNeeded = ing.count * batches;
         QMap<QString, int> ingConsumed;
-        
+
         // RECURSE with tracking
         if (!satisfyDependency(ing.items, ingNeeded, state, &ingConsumed)) {
+            if (addedToBlacklist) state.blacklistedItems.remove(recipe->resultItem);
             state.depth--;
             return false;
         }
-        
+
         // Merge tracked consumption into step inputs
         for (auto it = ingConsumed.cbegin(); it != ingConsumed.cend(); ++it) {
             step.inputs[it.key()] += it.value();
         }
+    }
+
+    if (addedToBlacklist) {
+        state.blacklistedItems.remove(recipe->resultItem);
+    }
+
+    // Cycle detection: if our own item ended up in rawMaterials during the
+    // ingredient recursion, the recipe is circular (e.g. redstone ->
+    // redstone_block -> redstone).  Roll everything back and treat this item
+    // as a plain raw material with just the amount originally needed.
+    if (state.plan.rawMaterials.value(recipe->resultItem, 0) > rawMatBefore) {
+        // Restore plan steps and virtual inventory to pre-recursion state
+        while (state.plan.steps.size() > stepsBefore) {
+            state.plan.steps.removeLast();
+        }
+        state.virtualInventory = inventoryBefore;
+        state.plan.rawMaterials.remove(recipe->resultItem);
+        if (rawMatBefore > 0) {
+            state.plan.rawMaterials[recipe->resultItem] = rawMatBefore;
+        }
+
+        // Now record just what we actually need as a raw material
+        QString itemToRequest = selectedItem.isEmpty() ? possibleItems.first() : selectedItem;
+        state.plan.rawMaterials[itemToRequest] += remainingNeeded;
+        state.virtualInventory[itemToRequest] += remainingNeeded;
+        state.virtualInventory[itemToRequest] -= remainingNeeded;
+        if (consumed) {
+            (*consumed)[itemToRequest] += remainingNeeded;
+        }
+
+        state.depth--;
+        return true;
     }
 
     // 4. PRODUCE: Update state with results

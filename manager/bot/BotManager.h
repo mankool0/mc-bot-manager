@@ -10,6 +10,8 @@
 #include <QMap>
 #include <QSet>
 #include <QMutex>
+#include <QSemaphore>
+#include <QHash>
 #include <QReadWriteLock>
 #include <QPointer>
 #include <memory>
@@ -328,6 +330,9 @@ public:
     static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
 
     // World interaction commands
+    static bool sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak = false, int timeoutMs = 3000);
+    static bool sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, int timeoutMs = 3000);
+    static void handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
@@ -394,6 +399,9 @@ private:
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
+    bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
+                               bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0);
+    void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
     void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
@@ -410,8 +418,15 @@ private:
     // Helper to initialize WorldAutoSaver when both server and dataVersion are available
     void tryInitializeWorldAutoSaver(BotInstance* bot);
 
+    struct PendingCanReachBlockEntry {
+        QSemaphore sem{0};
+        bool reachable = false;
+    };
+
     QVector<BotInstance> botInstances;
     QSet<QString> silentMessageIds;
+    QMutex m_pendingCanReachBlockMutex;
+    QHash<QString, PendingCanReachBlockEntry*> m_pendingCanReachBlockRequests;
 
     // Block state registry cache: data_version -> (state_id -> block_state_string)
     QMap<int, QMap<quint32, QString>> blockRegistryCache;

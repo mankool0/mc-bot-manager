@@ -107,11 +107,12 @@ public class ServerOutbound extends BaseOutbound {
                 playerCount = client.level.players().size();
             }
 
+
+            serverStatus = Connection.ServerConnectionStatus.Status.SUCCESSFUL;
+
             // Get server metadata
             var serverInfo = networkHandler.getServerData();
             if (serverInfo != null) {
-                serverStatus = Connection.ServerConnectionStatus.Status.forNumber(serverInfo.state().ordinal());
-
                 if (serverInfo.motd != null) {
                     motd = serverInfo.motd.getString();
                 }

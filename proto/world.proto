@@ -37,6 +37,18 @@ message InteractWithBlockCommand {
   bool look_at_block = 4;         // Whether to rotate to look at the block before interacting
 }
 
+// Command to check if a block is reachable from the current player position
+message CanReachBlockCommand {
+  BlockPos position = 1;
+  bool sneak = 2;
+  optional BlockPos from_position = 3;  // If set, simulate reach from this floor position instead of current player pos
+}
+
+message CanReachBlockResponse {
+  bool reachable = 1;
+  string command_id = 2;
+}
+
 // Chunk data synchronization (Client -> Manager)
 message ChunkDataMessage {
   int32 chunk_x = 1;              // Chunk X coordinate

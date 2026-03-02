@@ -110,6 +110,8 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
+    static bool canReachBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
+    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, const std::string &bot = "");
     static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
 
     // Container interaction
@@ -120,6 +122,7 @@ public:
 
     // Recipe registry
     static py::object getRecipe(const std::string &recipeId, const std::string &bot = "");
+    static py::list getRecipesFor(const std::string &itemId, const std::string &bot = "");
     static py::object getItemInfo(const std::string &itemId, const std::string &bot = "");
     static py::list getAllRecipes(const std::string &bot = "");
     static py::dict planRecursiveCraft(const std::string &itemId, int count, const std::string &bot = "");

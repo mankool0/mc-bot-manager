@@ -563,7 +563,15 @@ py::object PythonAPI::getInventory(const std::string &botName)
             itemDict["slot"] = static_cast<int>(item.slot());
             itemDict["item_id"] = item.itemId().toStdString();
             itemDict["count"] = static_cast<int>(item.count());
+            itemDict["damage"] = static_cast<int>(item.damage());
+            itemDict["max_damage"] = static_cast<int>(item.maxDamage());
             itemDict["display_name"] = item.displayName().toStdString();
+            const QStringList &enchants = item.enchantments();
+            py::list enchantList;
+            for (const QString &e : enchants) {
+                enchantList.append(e.toStdString());
+            }
+            itemDict["enchantments"] = enchantList;
             result.append(itemDict);
         }
     }
@@ -1263,6 +1271,32 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     return chunkList;
 }
 
+bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::sendCanReachBlock(botName, x, y, z, sneak);
+    }
+    return result;
+}
+
+bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::sendCanReachBlockFrom(botName, fromX, fromY, fromZ, x, y, z, sneak);
+    }
+    return result;
+}
+
 void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
@@ -1325,7 +1359,15 @@ py::object PythonAPI::getContainer(const std::string &bot)
         itemDict["slot"] = static_cast<int>(item.slot());
         itemDict["item_id"] = item.itemId().toStdString();
         itemDict["count"] = static_cast<int>(item.count());
+        itemDict["damage"] = static_cast<int>(item.damage());
+        itemDict["max_damage"] = static_cast<int>(item.maxDamage());
         itemDict["display_name"] = item.displayName().toStdString();
+        const QStringList &enchants = item.enchantments();
+        py::list enchantList;
+        for (const QString &e : enchants) {
+            enchantList.append(e.toStdString());
+        }
+        itemDict["enchantments"] = enchantList;
         items.append(itemDict);
     }
     result["items"] = items;
@@ -1356,22 +1398,8 @@ py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &
     return py::none();
 }
 
-py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &bot)
+static py::dict recipeToDict(const Recipe *recipe)
 {
-    QString botName = resolveBotName(bot);
-
-    BotInstance *botInstance = BotManager::getBotByName(botName);
-    if (!botInstance || botInstance->status != BotStatus::Online) {
-        return py::none();
-    }
-
-    QString qRecipeId = QString::fromStdString(recipeId);
-
-    const Recipe *recipe = botInstance->recipeRegistry.getRecipe(qRecipeId);
-    if (!recipe) {
-        return py::none();
-    }
-
     py::dict result;
     result["recipe_id"] = recipe->recipeId.toStdString();
     result["type"] = recipe->type.toStdString();
@@ -1401,6 +1429,41 @@ py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &
         ingredients.append(ingredientDict);
     }
     result["ingredients"] = ingredients;
+
+    return result;
+}
+
+py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    const Recipe *recipe = botInstance->recipeRegistry.getRecipe(QString::fromStdString(recipeId));
+    if (!recipe) {
+        return py::none();
+    }
+
+    return recipeToDict(recipe);
+}
+
+py::list PythonAPI::getRecipesFor(const std::string &itemId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    py::list result;
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return result;
+    }
+
+    const QVector<const Recipe*> recipes = botInstance->recipeRegistry.getRecipesByResult(QString::fromStdString(itemId));
+    for (const Recipe *recipe : recipes) {
+        result.append(recipeToDict(recipe));
+    }
 
     return result;
 }

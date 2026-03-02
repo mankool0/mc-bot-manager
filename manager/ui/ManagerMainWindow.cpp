@@ -92,7 +92,7 @@ QString ManagerMainWindow::getWorldSaveBasePath()
 
 void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
 {
-    worldSaveBasePath = path.isEmpty() ? "worldSaves" : path;
+    worldSaveBasePath = QDir(path.isEmpty() ? "worldSaves" : path).absolutePath();
 }
 
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
@@ -114,6 +114,10 @@ void ManagerMainWindow::setupUI()
             this, &ManagerMainWindow::showInstancesContextMenu);
     connect(ui->instancesTableWidget, &QTableWidget::itemSelectionChanged,
             this, &ManagerMainWindow::onInstanceSelectionChanged);
+
+    ui->instancesTableWidget->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->instancesTableWidget->horizontalHeader(), &QHeaderView::customContextMenuRequested,
+            this, &ManagerMainWindow::onHeaderContextMenu);
 
     connect(ui->launchBotButton, &QPushButton::clicked, this, &ManagerMainWindow::launchBot);
     connect(ui->stopBotButton, &QPushButton::clicked, this, &ManagerMainWindow::stopBot);
@@ -454,12 +458,29 @@ void ManagerMainWindow::updateInstancesTable()
         }
         dimensionItem->setText(bot.dimension.isEmpty() ? "-" : bot.dimension);
 
-        // PID column (7)
-        QTableWidgetItem *pidItem = ui->instancesTableWidget->item(i, 7);
+        // Screen column (7)
+        QTableWidgetItem *screenItem = ui->instancesTableWidget->item(i, 7);
+        if (!screenItem) {
+            screenItem = new QTableWidgetItem();
+            screenItem->setFlags(screenItem->flags() & ~Qt::ItemIsEditable);
+            ui->instancesTableWidget->setItem(i, 7, screenItem);
+        }
+        QString screenText;
+        if (bot.status != BotStatus::Online) {
+            screenText = "-";
+        } else if (bot.currentScreenClass.isEmpty()) {
+            screenText = "Game";
+        } else {
+            screenText = bot.currentScreenClass;
+        }
+        screenItem->setText(screenText);
+
+        // PID column (8)
+        QTableWidgetItem *pidItem = ui->instancesTableWidget->item(i, 8);
         if (!pidItem) {
             pidItem = new QTableWidgetItem();
             pidItem->setFlags(pidItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 7, pidItem);
+            ui->instancesTableWidget->setItem(i, 8, pidItem);
         }
         QString pidText = bot.minecraftPid > 0 ? QString::number(bot.minecraftPid) : "-";
         pidItem->setText(pidText);
@@ -471,6 +492,65 @@ void ManagerMainWindow::updateInstancesTable()
     if (!selectedBotName.isEmpty()) {
         updateStatusDisplay();
     }
+}
+
+void ManagerMainWindow::onHeaderContextMenu(const QPoint &pos)
+{
+    // Columns 0 (Name) and 1 (Status) are always visible
+    static const QList<QPair<int, QString>> toggleableColumns = {
+        {2, "Instance"},
+        {3, "Server"},
+        {4, "Memory"},
+        {5, "Position"},
+        {6, "Dimension"},
+        {7, "Screen"},
+        {8, "PID"},
+    };
+
+    QMenu menu(this);
+    menu.setTitle("Columns");
+
+    QHeaderView *header = ui->instancesTableWidget->horizontalHeader();
+    for (const auto &col : toggleableColumns) {
+        QAction *action = menu.addAction(col.second);
+        action->setCheckable(true);
+        action->setChecked(!header->isSectionHidden(col.first));
+        connect(action, &QAction::toggled, this, [this, col](bool checked) {
+            ui->instancesTableWidget->setColumnHidden(col.first, !checked);
+            saveColumnVisibility();
+        });
+    }
+
+    menu.exec(header->mapToGlobal(pos));
+}
+
+void ManagerMainWindow::saveColumnVisibility()
+{
+    QSettings settings("MCBotManager", "MCBotManager");
+    settings.beginGroup("Window/ColumnVisibility");
+    QHeaderView *header = ui->instancesTableWidget->horizontalHeader();
+    settings.setValue("Instance", !header->isSectionHidden(2));
+    settings.setValue("Server", !header->isSectionHidden(3));
+    settings.setValue("Memory", !header->isSectionHidden(4));
+    settings.setValue("Position", !header->isSectionHidden(5));
+    settings.setValue("Dimension", !header->isSectionHidden(6));
+    settings.setValue("Screen", !header->isSectionHidden(7));
+    settings.setValue("PID", !header->isSectionHidden(8));
+    settings.endGroup();
+}
+
+void ManagerMainWindow::loadColumnVisibility()
+{
+    QSettings settings("MCBotManager", "MCBotManager");
+    settings.beginGroup("Window/ColumnVisibility");
+    ui->instancesTableWidget->setColumnHidden(2, !settings.value("Instance", true).toBool());
+    ui->instancesTableWidget->setColumnHidden(3, !settings.value("Server", true).toBool());
+    ui->instancesTableWidget->setColumnHidden(4, !settings.value("Memory", true).toBool());
+    ui->instancesTableWidget->setColumnHidden(5, !settings.value("Position", true).toBool());
+    ui->instancesTableWidget->setColumnHidden(6, !settings.value("Dimension", true).toBool());
+    ui->instancesTableWidget->setColumnHidden(7, !settings.value("Screen", true).toBool());
+    ui->instancesTableWidget->setColumnHidden(8, !settings.value("PID", true).toBool());
+    settings.endGroup();
 }
 
 void ManagerMainWindow::onInstanceSelectionChanged()
@@ -948,6 +1028,8 @@ void ManagerMainWindow::saveSettings()
     settings.setValue("networkStatsVisible", ui->actionNetworkStats->isChecked());
     settings.endGroup();
 
+    saveColumnVisibility();
+
     LogManager::log(QString("Configuration saved successfully (%1 bots)").arg(bots.size()), LogManager::Success);
 }
 
@@ -963,7 +1045,7 @@ void ManagerMainWindow::loadSettings()
 
     // Load world save path
     settings.beginGroup("World");
-    worldSaveBasePath = settings.value("savePath", "worldSaves").toString();
+    worldSaveBasePath = QDir(settings.value("savePath", "worldSaves").toString()).absolutePath();
     settings.endGroup();
 
     // Load bot instances
@@ -1026,6 +1108,8 @@ void ManagerMainWindow::loadSettings()
     }
 
     ui->actionNetworkStats->setChecked(networkStatsVisible);
+
+    loadColumnVisibility();
 }
 
 void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &bot, int index)
@@ -1037,7 +1121,6 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("account", bot.account);
     settings.setValue("accountId", bot.accountId);
     settings.setValue("server", bot.server);
-    settings.setValue("connectionId", bot.connectionId);
     settings.setValue("maxMemory", bot.maxMemory);
     settings.setValue("restartThreshold", bot.restartThreshold);
     settings.setValue("autoRestart", bot.autoRestart);
@@ -1059,7 +1142,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.account = settings.value("account", "").toString();
     bot.accountId = settings.value("accountId", "").toString();
     bot.server = settings.value("server", "").toString();
-    bot.connectionId = settings.value("connectionId", -1).toInt();
+    bot.connectionId = -1;
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
     bot.currentMemory = 0;
     bot.restartThreshold = settings.value("restartThreshold", 48.0).toDouble();

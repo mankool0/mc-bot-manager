@@ -3,6 +3,7 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Inventory;
 import mankool.mcbot.protocol.Protocol;
+import mankool.mcBotClient.util.ProtoUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import mankool.mcBotClient.connection.PipeConnection;
@@ -44,15 +45,7 @@ public class InventoryOutbound extends BaseOutbound {
         // Add all inventory slots
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             net.minecraft.world.item.ItemStack itemStack = player.getInventory().getItem(i);
-            Common.ItemStack protoItem = Common.ItemStack.newBuilder()
-                .setSlot(i)
-                .setItemId(itemStack.getItem().toString())
-                .setCount(itemStack.getCount())
-                .setDamage(itemStack.getDamageValue())
-                .setMaxDamage(itemStack.getMaxDamage())
-                .setDisplayName(itemStack.getHoverName().getString())
-                .build();
-            inventoryBuilder.addItems(protoItem);
+            inventoryBuilder.addItems(ProtoUtil.buildItemStack(itemStack, i));
         }
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

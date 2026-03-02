@@ -40,7 +40,13 @@ public:
     QJsonObject tagsToJson() const;
 
     // Accessors
+    // Look up by exact recipe ID (e.g. "minecraft:gold_ingot_from_gold_block")
     const Recipe* getRecipe(const QString &recipeId) const;
+    // Look up by result item ID (e.g. "minecraft:gold_ingot").
+    // Returns the first indexed crafting recipe for that item (for PythonAPI use).
+    const Recipe* getRecipeByResult(const QString &resultItemId) const;
+    // Returns all crafting recipes that produce this item.
+    QVector<const Recipe*> getRecipesByResult(const QString &resultItemId) const;
     QStringList getAllRecipeIds() const;
     int getRecipeCount() const;
     int getTagCount() const;
@@ -59,6 +65,8 @@ public:
 
 private:
     QMap<QString, Recipe> recipes;
+    // Secondary index: result item ID -> all crafting recipe IDs
+    QMap<QString, QVector<QString>> craftingByResult;
     QMap<QString, QStringList> tags;
 
     // Parsing helpers
