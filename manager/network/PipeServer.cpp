@@ -4,6 +4,7 @@
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include <QtProtobuf/QProtobufSerializer>
+#include <QThread>
 
 PipeServer::PipeServer()
     : QObject(nullptr)
@@ -273,7 +274,14 @@ void PipeServer::handleClientDisconnection()
 
 void PipeServer::sendToClient(int connectionId, const QByteArray &data)
 {
-    instance().sendToClientImpl(connectionId, data);
+    PipeServer *inst = &instance();
+    if (QThread::currentThread() == inst->thread()) {
+        inst->sendToClientImpl(connectionId, data);
+    } else {
+        QMetaObject::invokeMethod(inst, [inst, connectionId, data]() {
+            inst->sendToClientImpl(connectionId, data);
+        }, Qt::QueuedConnection);
+    }
 }
 
 void PipeServer::sendToClientImpl(int connectionId, const QByteArray &data)
