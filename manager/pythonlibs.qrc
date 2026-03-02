@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/pythonlibs">
         <file>pythonlibs/crafting.py</file>
+        <file>pythonlibs/enchanting.py</file>
     </qresource>
 </RCC>

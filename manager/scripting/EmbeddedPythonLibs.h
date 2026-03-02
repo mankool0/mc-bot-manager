@@ -13,7 +13,7 @@ namespace py = pybind11;
 class EmbeddedPythonLibs {
 public:
     static QStringList getBundledModules() {
-        return {"crafting"};
+        return {"crafting", "enchanting"};
     }
 
     static bool ensureModuleExists(const QString &scriptsDir, const QString &moduleName) {
