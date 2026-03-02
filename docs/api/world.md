@@ -374,6 +374,160 @@ print(f"Found {len(containers)} containers")
 print(f"Found {len(fluids)} fluid blocks")
 ```
 
+## Recipe Registry
+
+### `get_recipe(recipe_id, bot="")`
+
+Get recipe data by its exact recipe ID.
+
+**Parameters:**
+
+- `recipe_id` (`str`) - Exact recipe ID (e.g., `"minecraft:gold_ingot_from_gold_block"`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict` with recipe data, or `None` if not found
+
+```python
+recipe = world.get_recipe("minecraft:stick")
+if recipe:
+    print(f"Makes {recipe['result_count']}x {recipe['result_item']}")
+    for ing in recipe['ingredients']:
+        print(f"  Slot {ing['slot']}: {ing['items']} x{ing['count']}")
+```
+
+**Recipe dict fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `recipe_id` | `str` | The recipe's unique ID |
+| `type` | `str` | Recipe type (e.g., `"minecraft:crafting_shaped"`) |
+| `result_item` | `str` | Output item ID |
+| `result_count` | `int` | Number of items produced |
+| `is_shapeless` | `bool` | Whether the recipe is shapeless |
+| `ingredients` | `list` | List of ingredient dicts (see below) |
+| `experience` | `float` | XP granted (smelting recipes only) |
+| `cooking_time` | `int` | Ticks to smelt (smelting recipes only) |
+
+Each ingredient dict:
+
+| Field | Type | Description |
+|---|---|---|
+| `slot` | `int` | Grid slot index (1-9 for 3×3, 1-4 for 2×2) |
+| `count` | `int` | Amount required |
+| `items` | `list[str]` | Accepted item IDs (e.g., any log type) |
+
+---
+
+### `get_recipes_for(item_id, bot="")`
+
+Get all recipes that produce a given item.
+
+**Parameters:**
+
+- `item_id` (`str`) - Item ID to look up (e.g., `"minecraft:gold_ingot"`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `list[dict]` - List of recipe dicts (same format as `get_recipe()`). Empty list if no recipes found.
+
+```python
+recipes = world.get_recipes_for("minecraft:gold_ingot")
+print(f"{len(recipes)} way(s) to craft gold ingot:")
+for r in recipes:
+    print(f"  {r['recipe_id']}")
+# e.g.:
+#   minecraft:gold_ingot_from_nuggets
+#   minecraft:gold_ingot_from_gold_block
+```
+
+---
+
+### `get_item_info(item_id, bot="")`
+
+Get item metadata from the item registry.
+
+**Parameters:**
+
+- `item_id` (`str`) - Item ID (e.g., `"minecraft:diamond_sword"`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict` or `None` if item not found
+
+| Field | Type | Description |
+|---|---|---|
+| `item_id` | `str` | Item ID |
+| `max_stack_size` | `int` | Maximum stack size (usually 1, 16, or 64) |
+| `max_damage` | `int` | Maximum durability (0 for non-damageable items) |
+
+```python
+info = world.get_item_info("minecraft:diamond_pickaxe")
+if info:
+    print(f"Max durability: {info['max_damage']}")
+    print(f"Stack size: {info['max_stack_size']}")
+```
+
+---
+
+### `get_all_recipes(bot="")`
+
+Get a list of all known recipe IDs.
+
+**Parameters:**
+
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `list[str]` - All recipe IDs
+
+```python
+recipes = world.get_all_recipes()
+# Filter to just pickaxe recipes
+pickaxe_recipes = [r for r in recipes if "pickaxe" in r]
+```
+
+---
+
+### `plan_recursive_craft(item_id, count=1, bot="")`
+
+Plan the full crafting tree for an item, including all intermediate steps, based on the bot's current inventory.
+
+**Parameters:**
+
+- `item_id` (`str`) - Item to craft (e.g., `"minecraft:piston"`)
+- `count` (`int`, optional) - How many to craft (default: 1)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict`
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | `bool` | Whether a complete plan was found |
+| `error` | `str` | Error message if `success` is False |
+| `steps` | `list` | Ordered crafting steps (see below) |
+| `raw_materials` | `dict` | Items needed that cannot be crafted: `{item_id: count}` |
+| `leftovers` | `dict` | Items left over after all steps: `{item_id: count}` |
+
+Each step dict:
+
+| Field | Type | Description |
+|---|---|---|
+| `recipe_id` | `str` | Recipe to use for this step |
+| `output_item` | `str` | Item produced |
+| `output_count` | `int` | Items produced per craft |
+| `times` | `int` | How many times to run this recipe |
+| `inputs` | `dict` | Items consumed: `{item_id: count}` |
+
+```python
+plan = world.plan_recursive_craft("minecraft:piston", 4)
+if not plan['success']:
+    utils.error(f"Can't plan: {plan['error']}")
+else:
+    utils.log(f"Raw materials needed: {dict(plan['raw_materials'])}")
+    for step in plan['steps']:
+        utils.log(f"Craft {step['output_item']} x{step['times']} (recipe: {step['recipe_id']})")
+```
+
+!!! note
+    Pass `step['recipe_id']` to `get_recipe()` when executing plan steps — do not re-look up by item ID, as there may be multiple recipes for the same output.
+
 ## Notes
 
 - **Chunk Loading**: Blocks can only be queried in loaded chunks. The client automatically loads chunks as the bot moves around.
