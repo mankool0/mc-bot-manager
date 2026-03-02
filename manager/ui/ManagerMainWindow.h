@@ -54,6 +54,7 @@ protected:
 
 private slots:
     void showInstancesContextMenu(const QPoint &pos);
+    void onHeaderContextMenu(const QPoint &pos);
     void addNewBot();
     void removeBot();
     void onInstanceSelectionChanged();
@@ -110,6 +111,9 @@ private:
 
     void checkScheduledLaunches();
     void checkBotUptimes();
+
+    void saveColumnVisibility();
+    void loadColumnVisibility();
 
     void onClearLog();
     void onAutoScrollToggled(bool checked);

@@ -73,7 +73,7 @@
            <bool>false</bool>
           </property>
           <property name="columnCount">
-           <number>8</number>
+           <number>9</number>
           </property>
           <attribute name="horizontalHeaderStretchLastSection">
            <bool>true</bool>
@@ -111,6 +111,11 @@
           <column>
            <property name="text">
             <string>Dimension</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Screen</string>
            </property>
           </column>
           <column>
