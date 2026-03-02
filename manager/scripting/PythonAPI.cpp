@@ -1398,22 +1398,8 @@ py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &
     return py::none();
 }
 
-py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &bot)
+static py::dict recipeToDict(const Recipe *recipe)
 {
-    QString botName = resolveBotName(bot);
-
-    BotInstance *botInstance = BotManager::getBotByName(botName);
-    if (!botInstance || botInstance->status != BotStatus::Online) {
-        return py::none();
-    }
-
-    QString qRecipeId = QString::fromStdString(recipeId);
-
-    const Recipe *recipe = botInstance->recipeRegistry.getRecipe(qRecipeId);
-    if (!recipe) {
-        return py::none();
-    }
-
     py::dict result;
     result["recipe_id"] = recipe->recipeId.toStdString();
     result["type"] = recipe->type.toStdString();
@@ -1443,6 +1429,41 @@ py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &
         ingredients.append(ingredientDict);
     }
     result["ingredients"] = ingredients;
+
+    return result;
+}
+
+py::object PythonAPI::getRecipe(const std::string &recipeId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    const Recipe *recipe = botInstance->recipeRegistry.getRecipe(QString::fromStdString(recipeId));
+    if (!recipe) {
+        return py::none();
+    }
+
+    return recipeToDict(recipe);
+}
+
+py::list PythonAPI::getRecipesFor(const std::string &itemId, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    py::list result;
+
+    BotInstance *botInstance = BotManager::getBotByName(botName);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return result;
+    }
+
+    const QVector<const Recipe*> recipes = botInstance->recipeRegistry.getRecipesByResult(QString::fromStdString(itemId));
+    for (const Recipe *recipe : recipes) {
+        result.append(recipeToDict(recipe));
+    }
 
     return result;
 }

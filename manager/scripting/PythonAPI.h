@@ -122,6 +122,7 @@ public:
 
     // Recipe registry
     static py::object getRecipe(const std::string &recipeId, const std::string &bot = "");
+    static py::list getRecipesFor(const std::string &itemId, const std::string &bot = "");
     static py::object getItemInfo(const std::string &itemId, const std::string &bot = "");
     static py::list getAllRecipes(const std::string &bot = "");
     static py::dict planRecursiveCraft(const std::string &itemId, int count, const std::string &bot = "");

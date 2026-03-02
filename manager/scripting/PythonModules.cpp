@@ -280,8 +280,12 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
 
     // Recipe registry
     m.def("get_recipe", &PythonAPI::getRecipe,
-          "Get recipe data by ID (e.g., 'minecraft:diamond_pickaxe')",
+          "Get recipe data by exact recipe ID (e.g., 'minecraft:gold_ingot_from_gold_block'). Returns None if not found.",
           py::arg("recipe_id"),
+          py::arg("bot") = "");
+    m.def("get_recipes_for", &PythonAPI::getRecipesFor,
+          "Get all recipes that produce a given item ID (e.g., 'minecraft:gold_ingot'). Returns a list (may be empty).",
+          py::arg("item_id"),
           py::arg("bot") = "");
     m.def("get_item_info", &PythonAPI::getItemInfo,
           "Get item info (max_stack_size, max_damage) by ID",
