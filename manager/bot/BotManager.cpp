@@ -860,6 +860,7 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
     if (!bot) return;
 
     bot->selectedSlot = inventory.selectedSlot();
+    bot->cursorItem = inventory.cursorItem();
 
     if (bot->inventory.isEmpty()) {
         bot->inventory.resize(41);

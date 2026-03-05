@@ -48,6 +48,8 @@ public class InventoryOutbound extends BaseOutbound {
             inventoryBuilder.addItems(ProtoUtil.buildItemStack(itemStack, i));
         }
 
+        inventoryBuilder.setCursorItem(ProtoUtil.buildItemStack(player.containerMenu.getCarried(), -1));
+
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
             .setMessageId(UUID.randomUUID().toString())
             .setTimestamp(System.currentTimeMillis())

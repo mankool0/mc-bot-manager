@@ -54,6 +54,9 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.def("inventory", &PythonAPI::getInventory,
           "Get inventory as list of items",
           py::arg("bot_name") = "");
+    m.def("get_cursor_item", &PythonAPI::getCursorItem,
+          "Get item currently held on the cursor (slot=-1, item_id='minecraft:air' if empty)",
+          py::arg("bot_name") = "");
     m.def("screen", &PythonAPI::getScreen,
           "Get current screen class name (None if in-game)",
           py::arg("bot_name") = "");

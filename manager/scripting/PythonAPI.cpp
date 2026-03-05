@@ -579,6 +579,31 @@ py::object PythonAPI::getInventory(const std::string &botName)
     return result;
 }
 
+py::object PythonAPI::getCursorItem(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    const auto &item = bot->cursorItem;
+    py::dict itemDict;
+    itemDict["slot"] = -1;
+    itemDict["item_id"] = item.itemId().isEmpty() ? std::string("minecraft:air") : item.itemId().toStdString();
+    itemDict["count"] = static_cast<int>(item.count());
+    itemDict["damage"] = static_cast<int>(item.damage());
+    itemDict["max_damage"] = static_cast<int>(item.maxDamage());
+    itemDict["display_name"] = item.displayName().toStdString();
+    py::list enchantList;
+    for (const QString &e : item.enchantments()) {
+        enchantList.append(e.toStdString());
+    }
+    itemDict["enchantments"] = enchantList;
+    return itemDict;
+}
+
 py::object PythonAPI::getScreen(const std::string &botName)
 {
     QString name = resolveBotName(botName);

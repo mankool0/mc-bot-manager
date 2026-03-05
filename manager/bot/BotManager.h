@@ -221,6 +221,7 @@ struct BotInstance {
 
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
     int selectedSlot = 0;
+    mankool::mcbot::protocol::ItemStack cursorItem;
 
     // Container state
     struct {

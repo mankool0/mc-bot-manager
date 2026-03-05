@@ -11,6 +11,9 @@ message InventoryUpdate {
 
   // Current selection
   int32 selected_slot = 2;      // Currently selected hotbar slot (0-8)
+
+  // Item currently held on the player's cursor (minecraft:air if empty)
+  ItemStack cursor_item = 3;
 }
 
 // Container/GUI state (Client -> Manager)
