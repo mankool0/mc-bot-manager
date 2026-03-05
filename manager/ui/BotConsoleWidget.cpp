@@ -197,9 +197,7 @@ void BotConsoleWidget::appendResponse(bool success, const QString &message)
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     QColor color = success ? QColor(0, 102, 0)  // dark green
                            : QColor(204, 0, 0); // red
-    QString prefix = success ? "✓" : "✗";
-
-    appendOutput(QString("[%1] %2 %3").arg(timestamp, prefix, message), color);
+    appendOutput(QString("[%1] %2").arg(timestamp, message), color);
 }
 
 void BotConsoleWidget::clearOutput()
