@@ -10,8 +10,11 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import mankool.mcBotClient.connection.PipeConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlayerActionHandler extends BaseInboundHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerActionHandler.class);
 
     public PlayerActionHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -26,8 +29,7 @@ public class PlayerActionHandler extends BaseInboundHandler {
 
         Common.Vec3d target = command.getTargetPosition();
         // TODO: Implement pathfinding/movement to target
-        System.out.printf("Move to: %.2f, %.2f, %.2f%n",
-            target.getX(), target.getY(), target.getZ());
+        LOGGER.info("Move to: {}, {}, {}", target.getX(), target.getY(), target.getZ());
         sendFailure(messageId, "Pathfinding not implemented yet");
     }
 
@@ -107,7 +109,7 @@ public class PlayerActionHandler extends BaseInboundHandler {
                 }
             } else if (command.hasEntityId()) {
                 // TODO: Look at entity by ID
-                System.out.println("Look at entity: " + command.getEntityId());
+                LOGGER.info("Look at entity: {}", command.getEntityId());
                 sendFailure(messageId, "Look at entity not implemented yet");
             } else {
                 sendFailure(messageId, "No target specified");

@@ -15,12 +15,16 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 
 /**
  * Handles sending world data (chunks, block updates) to the manager.
  */
 public class WorldOutbound extends BaseOutbound {
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorldOutbound.class);
 
     private static WorldOutbound instance;
     private final Set<ChunkPos> sentChunks = Collections.synchronizedSet(new HashSet<>());
@@ -50,7 +54,7 @@ public class WorldOutbound extends BaseOutbound {
             .build();
 
         connection.sendMessage(message);
-        System.out.println("Block registry query sent (data version: " + dataVersion + ")");
+        LOGGER.info("Block registry query sent (data version: {})", dataVersion);
     }
 
     /**
@@ -59,10 +63,10 @@ public class WorldOutbound extends BaseOutbound {
      */
     public void handleRegistryResponse(World.BlockRegistryResponse response) {
         if (response.getStatus() == World.RegistryStatus.NEED_IT) {
-            System.out.println("Manager needs block registry, building and sending...");
+            LOGGER.info("Manager needs block registry, building and sending...");
             sendFullRegistry();
         } else {
-            System.out.println("Manager already has block registry");
+            LOGGER.info("Manager already has block registry");
         }
     }
 
@@ -93,7 +97,7 @@ public class WorldOutbound extends BaseOutbound {
             .build();
 
         connection.sendMessage(message);
-        System.out.println("Block registry sent: " + stateMap.size() + " states");
+        LOGGER.info("Block registry sent: {} states", stateMap.size());
     }
 
     public static WorldOutbound getInstance() {

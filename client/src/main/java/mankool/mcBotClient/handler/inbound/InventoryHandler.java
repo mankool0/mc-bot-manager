@@ -7,8 +7,11 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.inventory.ClickType;
 import mankool.mcBotClient.connection.PipeConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InventoryHandler extends BaseInboundHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(InventoryHandler.class);
 
     public InventoryHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -31,7 +34,7 @@ public class InventoryHandler extends BaseInboundHandler {
             player.getInventory().setSelectedSlot(slot);
             sendSuccess(messageId, "Switched to hotbar slot " + slot);
         } catch (Exception e) {
-            System.err.println("Failed to switch hotbar slot: " + e.getMessage());
+            LOGGER.error("Failed to switch hotbar slot: {}", e.getMessage());
             sendFailure(messageId, "Failed to switch slot: " + e.getMessage());
         }
     }
@@ -53,7 +56,7 @@ public class InventoryHandler extends BaseInboundHandler {
                 sendFailure(messageId, "Interaction manager not available");
             }
         } catch (Exception e) {
-            System.err.println("Failed to use item: " + e.getMessage());
+            LOGGER.error("Failed to use item: {}", e.getMessage());
             sendFailure(messageId, "Failed to use item: " + e.getMessage());
         }
     }
@@ -75,7 +78,7 @@ public class InventoryHandler extends BaseInboundHandler {
                 sendFailure(messageId, "No item to drop");
             }
         } catch (Exception e) {
-            System.err.println("Failed to drop item: " + e.getMessage());
+            LOGGER.error("Failed to drop item: {}", e.getMessage());
             sendFailure(messageId, "Failed to drop item: " + e.getMessage());
         }
     }
@@ -139,8 +142,7 @@ public class InventoryHandler extends BaseInboundHandler {
                 sendFailure(messageId, "Game mode not available");
             }
         } catch (Exception e) {
-            System.err.println("Failed to click container slot: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.error("Failed to click container slot: {}", e.getMessage(), e);
             sendFailure(messageId, "Failed to click slot: " + e.getMessage());
         }
     }

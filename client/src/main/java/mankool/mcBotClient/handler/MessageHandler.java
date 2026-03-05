@@ -6,11 +6,14 @@ import mankool.mcBotClient.handler.inbound.*;
 import mankool.mcBotClient.handler.outbound.*;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
 public class MessageHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandler.class);
     private final PipeConnection connection;
     private final Minecraft client;
     private volatile boolean running = false;
@@ -126,7 +129,7 @@ public class MessageHandler {
         // Send block registry query
         worldOutbound.sendRegistryQuery();
 
-        System.out.println("MessageHandler started, processing messages on game tick");
+        LOGGER.info("MessageHandler started, processing messages on game tick");
     }
 
     public void stop() {
@@ -138,7 +141,7 @@ public class MessageHandler {
         if (handler != null) {
             handler.accept(message);
         } else {
-            System.err.println("Unknown message type: " + message.getPayloadCase());
+            LOGGER.warn("Unknown message type: {}", message.getPayloadCase());
         }
     }
 

@@ -10,6 +10,9 @@ import mankool.mcbot.protocol.Protocol;
 import org.newsclub.net.unix.AFUNIXSocket;
 import org.newsclub.net.unix.AFUNIXSocketAddress;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +24,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeConnection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnection.class);
     private static final String PIPE_NAME = "minecraft_manager";
     private static final String WINDOWS_PIPE_PATH = "\\\\.\\pipe\\" + PIPE_NAME;
     private static final String UNIX_SOCKET_PATH = getUnixSocketPath();
@@ -58,7 +62,7 @@ public class PipeConnection {
         }
 
         String socketPath = System.getProperty("os.name").toLowerCase().contains("win") ? WINDOWS_PIPE_PATH : UNIX_SOCKET_PATH;
-        System.out.println("Attempting to connect to manager pipe at: " + socketPath);
+        LOGGER.info("Attempting to connect to manager pipe at: {}", socketPath);
 
         try {
             if (System.getProperty("os.name").toLowerCase().contains("win")) {
@@ -67,9 +71,7 @@ public class PipeConnection {
                 return connectUnix();
             }
         } catch (Exception e) {
-            System.err.println("Failed to connect to pipe at " + socketPath);
-            System.err.println("Error: " + e.getMessage());
-            System.err.println("Make sure the manager is running and the socket file exists");
+            LOGGER.error("Failed to connect to pipe at {}: {}. Make sure the manager is running and the socket file exists", socketPath, e.getMessage());
             return false;
         }
     }
@@ -147,8 +149,7 @@ public class PipeConnection {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
-                System.err.println("Error sending message: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error sending message: {}", e.getMessage(), e);
             }
         }
     }
@@ -200,7 +201,7 @@ public class PipeConnection {
                     receiveQueue.offer(message);
                 }
             } catch (Exception e) {
-                System.err.println("Connection lost: " + e.getMessage());
+                LOGGER.error("Connection lost: {}", e.getMessage());
                 disconnect();
                 break;
             }
@@ -227,7 +228,7 @@ public class PipeConnection {
         try {
             return Protocol.ManagerToClientMessage.parseFrom(ByteBuffer.wrap(buffer, 0, bytesRead));
         } catch (InvalidProtocolBufferException e) {
-            System.err.println("Failed to parse protobuf message: " + e.getMessage());
+            LOGGER.error("Failed to parse protobuf message: {}", e.getMessage());
             return null;
         }
     }
@@ -309,7 +310,7 @@ public class PipeConnection {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error closing connection: " + e.getMessage());
+            LOGGER.error("Error closing connection: {}", e.getMessage());
         }
 
         connection = null;

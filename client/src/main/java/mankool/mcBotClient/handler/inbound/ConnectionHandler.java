@@ -6,8 +6,11 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundDisconnectPacket;
 import mankool.mcBotClient.connection.PipeConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConnectionHandler extends BaseInboundHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionHandler.class);
 
     public ConnectionHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -15,7 +18,7 @@ public class ConnectionHandler extends BaseInboundHandler {
 
     public void handleConnectToServer(String messageId, Commands.ConnectToServerCommand command) {
         String serverAddress = command.getServerAddress();
-        System.out.println("Connect to server: " + serverAddress);
+        LOGGER.info("Connect to server: {}", serverAddress);
 
         try {
             // Disconnect from current server if connected
@@ -43,14 +46,14 @@ public class ConnectionHandler extends BaseInboundHandler {
 
             sendSuccess(messageId, "Connecting to " + serverAddress);
         } catch (Exception e) {
-            System.err.println("Failed to connect to server: " + e.getMessage());
+            LOGGER.error("Failed to connect to server: {}", e.getMessage());
             sendFailure(messageId, "Failed to connect: " + e.getMessage());
         }
     }
 
     public void handleDisconnect(String messageId, Commands.DisconnectCommand command) {
         String reason = command.getReason();
-        System.out.println("Disconnect requested: " + reason);
+        LOGGER.info("Disconnect requested: {}", reason);
 
         try {
             if (client.getConnection() != null) {
@@ -60,13 +63,13 @@ public class ConnectionHandler extends BaseInboundHandler {
                 sendFailure(messageId, "Not connected to any server");
             }
         } catch (Exception e) {
-            System.err.println("Failed to disconnect: " + e.getMessage());
+            LOGGER.error("Failed to disconnect: {}", e.getMessage());
             sendFailure(messageId, "Failed to disconnect: " + e.getMessage());
         }
     }
 
     public void handleShutdown(String messageId, Commands.ShutdownCommand command) {
-        System.out.println("Shutdown requested: " + command.getReason());
+        LOGGER.info("Shutdown requested: {}", command.getReason());
         sendSuccess(messageId, "Shutting down");
         client.destroy();
     }

@@ -11,11 +11,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class ContainerOutbound extends BaseOutbound {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ContainerOutbound.class);
 
     private static ContainerOutbound instance;
 
@@ -62,20 +66,20 @@ public class ContainerOutbound extends BaseOutbound {
 
             if (timeSinceInteraction < timeoutMs) {
                 position = lastInteractedBlock;
-                System.out.println("Using cached block position (interaction was " + timeSinceInteraction + "ms ago, timeout: " + timeoutMs + "ms)");
+                LOGGER.debug("Using cached block position (interaction was {}ms ago, timeout: {}ms)", timeSinceInteraction, timeoutMs);
             } else {
-                System.out.println("Cached block position too old (" + timeSinceInteraction + "ms ago, timeout: " + timeoutMs + "ms)");
+                LOGGER.debug("Cached block position too old ({}ms ago, timeout: {}ms)", timeSinceInteraction, timeoutMs);
             }
         }
 
-        System.out.println("Container opened: " + containerType + " at " + position + " (id=" + containerId + ")");
+        LOGGER.info("Container opened: {} at {} (id={})", containerType, position, containerId);
 
         currentContainer = new ContainerState(containerId, containerType, position);
     }
 
     public void onContainerClosed(int containerId) {
         if (currentContainer != null && currentContainer.containerId == containerId) {
-            System.out.println("Container closed: id=" + containerId);
+            LOGGER.info("Container closed: id={}", containerId);
 
             // Send container closed message (is_open = false, no items)
             Inventory.ContainerUpdate.Builder containerBuilder = Inventory.ContainerUpdate.newBuilder()
@@ -99,7 +103,7 @@ public class ContainerOutbound extends BaseOutbound {
         if (currentContainer != null && currentContainer.containerId == containerId) {
             pendingUpdate = true;
         } else if (currentContainer == null && client.player != null && client.player.containerMenu.containerId == containerId) {
-            System.out.println("Container content received before open screen packet (id=" + containerId + ")");
+            LOGGER.info("Container content received before open screen packet (id={})", containerId);
         }
     }
 
@@ -171,7 +175,7 @@ public class ContainerOutbound extends BaseOutbound {
      */
     private Inventory.ContainerUpdate.ContainerType mapContainerType(String typeString) {
         if (typeString == null) {
-            System.err.println("ERROR: Container type is null! Defaulting to OTHER");
+            LOGGER.error("Container type is null! Defaulting to OTHER");
             return Inventory.ContainerUpdate.ContainerType.OTHER;
         }
 
@@ -193,7 +197,7 @@ public class ContainerOutbound extends BaseOutbound {
             case "minecraft:dropper" -> Inventory.ContainerUpdate.ContainerType.DROPPER;
             case "minecraft:beacon" -> Inventory.ContainerUpdate.ContainerType.BEACON;
             default -> {
-                System.err.println("Unknown container type: " + typeString + " - defaulting to OTHER");
+                LOGGER.warn("Unknown container type: {} - defaulting to OTHER", typeString);
                 yield Inventory.ContainerUpdate.ContainerType.OTHER;
             }
         };
@@ -224,11 +228,11 @@ public class ContainerOutbound extends BaseOutbound {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Failed to get player ping: " + e.getMessage());
+            LOGGER.error("Failed to get player ping: {}", e.getMessage());
         }
 
         // Fallback to conservative 150ms with warning
-        System.err.println("WARNING: Could not retrieve player ping, using fallback of 150ms");
+        LOGGER.warn("Could not retrieve player ping, using fallback of 150ms");
         return 150;
     }
 

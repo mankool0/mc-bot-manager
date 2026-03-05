@@ -7,9 +7,12 @@ import mankool.mcBotClient.mixin.client.ClientPlayNetworkHandlerAccessor;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.UUID;
 
 public class ServerOutbound extends BaseOutbound {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServerOutbound.class);
     private int tickCounter = 0;
 
     public ServerOutbound(Minecraft client, PipeConnection connection) {
@@ -71,8 +74,8 @@ public class ServerOutbound extends BaseOutbound {
             .build();
 
         connection.sendMessage(message);
-        System.out.println("Connection info sent to manager");
-        System.out.println("  Version: " + versionName + " (data version: " + dataVersion + ", series: " + versionSeries + ", snapshot: " + isSnapshot + ")");
+        LOGGER.info("Connection info sent to manager");
+        LOGGER.info("  Version: {} (data version: {}, series: {}, snapshot: {})", versionName, dataVersion, versionSeries, isSnapshot);
     }
 
     public void sendStatusUpdate() {
