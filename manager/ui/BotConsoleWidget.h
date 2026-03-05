@@ -10,6 +10,7 @@
 #include <QCompleter>
 #include <QStringListModel>
 #include <QLabel>
+#include <QCheckBox>
 #include <QKeyEvent>
 
 class BotConsoleWidget : public QWidget
@@ -44,6 +45,7 @@ private:
     QPlainTextEdit *outputEdit;
     QLineEdit *inputEdit;
     QPushButton *sendButton;
+    QCheckBox *autoScrollCheckBox;
     QLabel *hintLabel;
 
     QCompleter *completer;

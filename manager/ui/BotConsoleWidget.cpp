@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QAbstractItemView>
 #include <QSettings>
+#include <QCheckBox>
 
 BotConsoleWidget::BotConsoleWidget(QWidget *parent)
     : QWidget(parent)
@@ -54,6 +55,10 @@ void BotConsoleWidget::setupUI()
 
     sendButton = new QPushButton("Send", this);
     inputLayout->addWidget(sendButton);
+
+    autoScrollCheckBox = new QCheckBox("Auto-scroll", this);
+    autoScrollCheckBox->setChecked(true);
+    inputLayout->addWidget(autoScrollCheckBox);
 
     mainLayout->addLayout(inputLayout);
 
@@ -188,8 +193,10 @@ void BotConsoleWidget::appendOutput(const QString &text, const QColor &color)
 
     cursor.insertText(text + "\n", format);
 
-    outputEdit->setTextCursor(cursor);
-    outputEdit->ensureCursorVisible();
+    if (autoScrollCheckBox->isChecked()) {
+        outputEdit->setTextCursor(cursor);
+        outputEdit->ensureCursorVisible();
+    }
 }
 
 void BotConsoleWidget::appendResponse(bool success, const QString &message)
