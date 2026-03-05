@@ -702,6 +702,7 @@ void ManagerMainWindow::updateStatusDisplay()
             .arg(selectedBot->status == BotStatus::Online ? "Connected" : "Not Connected"));
 
         bool isOnline = (selectedBot->status == BotStatus::Online);
+        bool isActive = (selectedBot->status == BotStatus::Online || selectedBot->status == BotStatus::Starting);
         bool canLaunch = (selectedBot->status == BotStatus::Offline || selectedBot->status == BotStatus::Error);
         bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
                                           [this](const ScheduledLaunch &s) { return s.botName == selectedBotName; });
@@ -709,10 +710,10 @@ void ManagerMainWindow::updateStatusDisplay()
         ui->launchBotButton->setEnabled(canLaunch && !inLaunchQueue);
         ui->stopBotButton->setEnabled(isOnline);
         ui->restartBotButton->setEnabled(isOnline);
-        ui->instanceComboBox->setEnabled(!isOnline);
-        ui->accountComboBox->setEnabled(!isOnline);
-        ui->serverLineEdit->setEnabled(!isOnline);
-        ui->memorySpinBox->setEnabled(!isOnline);
+        ui->instanceComboBox->setEnabled(!isActive);
+        ui->accountComboBox->setEnabled(!isActive);
+        ui->serverLineEdit->setEnabled(!isActive);
+        ui->memorySpinBox->setEnabled(!isActive);
     }
 }
 
