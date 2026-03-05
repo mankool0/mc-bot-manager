@@ -4,8 +4,10 @@
 #include <QDialog>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <Qt>
 
 class GlobalSettingsDialog : public QDialog
 {
@@ -14,6 +16,8 @@ class GlobalSettingsDialog : public QDialog
 public:
     explicit GlobalSettingsDialog(QWidget *parent = nullptr);
     ~GlobalSettingsDialog();
+
+    static void applyColorScheme();
 
 private slots:
     void saveSettings();
@@ -24,6 +28,7 @@ private:
 
     QSpinBox *consoleMaxLinesSpinBox;
     QCheckBox *consoleUnlimitedCheckBox;
+    QComboBox *colorSchemeComboBox;
 
     QDialogButtonBox *buttonBox;
 };

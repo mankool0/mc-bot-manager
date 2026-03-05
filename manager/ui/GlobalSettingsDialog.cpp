@@ -3,6 +3,8 @@
 #include <QGroupBox>
 #include <QSettings>
 #include <QLabel>
+#include <QGuiApplication>
+#include <QStyleHints>
 
 GlobalSettingsDialog::GlobalSettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -53,6 +55,17 @@ void GlobalSettingsDialog::setupUI()
 
     mainLayout->addWidget(consoleGroup);
 
+    QGroupBox *appearanceGroup = new QGroupBox("Appearance", this);
+    QFormLayout *appearanceLayout = new QFormLayout(appearanceGroup);
+
+    colorSchemeComboBox = new QComboBox(this);
+    colorSchemeComboBox->addItem("Follow System", static_cast<int>(Qt::ColorScheme::Unknown));
+    colorSchemeComboBox->addItem("Light", static_cast<int>(Qt::ColorScheme::Light));
+    colorSchemeComboBox->addItem("Dark", static_cast<int>(Qt::ColorScheme::Dark));
+    appearanceLayout->addRow("Color Scheme:", colorSchemeComboBox);
+
+    mainLayout->addWidget(appearanceGroup);
+
     mainLayout->addStretch();
 
     // Buttons
@@ -91,6 +104,14 @@ void GlobalSettingsDialog::loadSettings()
         consoleMaxLinesSpinBox->setValue(maxLines);
         consoleMaxLinesSpinBox->setEnabled(true);
     }
+
+    int scheme = settings.value("Appearance/colorScheme", static_cast<int>(Qt::ColorScheme::Unknown)).toInt();
+    for (int i = 0; i < colorSchemeComboBox->count(); ++i) {
+        if (colorSchemeComboBox->itemData(i).toInt() == scheme) {
+            colorSchemeComboBox->setCurrentIndex(i);
+            break;
+        }
+    }
 }
 
 void GlobalSettingsDialog::saveSettings()
@@ -100,6 +121,17 @@ void GlobalSettingsDialog::saveSettings()
     int maxLines = consoleUnlimitedCheckBox->isChecked() ? 0 : consoleMaxLinesSpinBox->value();
     settings.setValue("Console/maxLines", maxLines);
 
+    int scheme = colorSchemeComboBox->currentData().toInt();
+    settings.setValue("Appearance/colorScheme", scheme);
+
     settings.sync();
+    applyColorScheme();
     accept();
+}
+
+void GlobalSettingsDialog::applyColorScheme()
+{
+    QSettings settings("MCBotManager", "MCBotManager");
+    int scheme = settings.value("Appearance/colorScheme", static_cast<int>(Qt::ColorScheme::Unknown)).toInt();
+    QGuiApplication::styleHints()->setColorScheme(static_cast<Qt::ColorScheme>(scheme));
 }
