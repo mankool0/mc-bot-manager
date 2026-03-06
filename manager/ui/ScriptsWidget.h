@@ -37,6 +37,7 @@ signals:
 private slots:
     void onScriptSelectionChanged();
     void onNewScript();
+    void onRenameScript();
     void onDeleteScript();
     void onSaveScript();
     void onRunScript();
@@ -58,6 +59,7 @@ private:
     QListWidget *scriptList;
     Qutepart::Qutepart *codeEditor;
     QPushButton *newButton;
+    QPushButton *renameButton;
     QPushButton *deleteButton;
     QPushButton *saveButton;
     QPushButton *runButton;

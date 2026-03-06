@@ -5,6 +5,7 @@
 #include "bot/BotManager.h"
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QLineEdit>
 #include <QGroupBox>
 #include <QSettings>
 #include <QGuiApplication>
@@ -84,8 +85,10 @@ void ScriptsWidget::setupUI()
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     newButton = new QPushButton("New");
+    renameButton = new QPushButton("Rename");
     deleteButton = new QPushButton("Delete");
     buttonLayout->addWidget(newButton);
+    buttonLayout->addWidget(renameButton);
     buttonLayout->addWidget(deleteButton);
     buttonLayout->addStretch();
     leftLayout->addLayout(buttonLayout);
@@ -132,6 +135,8 @@ void ScriptsWidget::setupUI()
             this, &ScriptsWidget::onScriptItemChanged);
     connect(newButton, &QPushButton::clicked,
             this, &ScriptsWidget::onNewScript);
+    connect(renameButton, &QPushButton::clicked,
+            this, &ScriptsWidget::onRenameScript);
     connect(deleteButton, &QPushButton::clicked,
             this, &ScriptsWidget::onDeleteScript);
     connect(saveButton, &QPushButton::clicked,
@@ -237,6 +242,57 @@ void ScriptsWidget::onNewScript()
             QMessageBox::warning(this, "Save Failed", "Failed to save script to disk.");
         }
     }
+}
+
+void ScriptsWidget::onRenameScript()
+{
+    if (currentScript.isEmpty()) {
+        return;
+    }
+
+    QString newName = QInputDialog::getText(this, "Rename Script", "New name:", QLineEdit::Normal, currentScript);
+    if (newName.isEmpty() || newName == currentScript) {
+        return;
+    }
+
+    if (!newName.endsWith(".py")) {
+        newName += ".py";
+    }
+
+    if (scriptEngine->getScript(newName)) {
+        QMessageBox::warning(this, "Script Exists", "A script with this name already exists.");
+        return;
+    }
+
+    ScriptContext *ctx = scriptEngine->getScript(currentScript);
+    if (!ctx) {
+        return;
+    }
+
+    QString code = ctx->code;
+    bool autorun = scriptEngine->isScriptEnabled(currentScript);
+    QString botName = scriptEngine->getBotName();
+
+    if (!ScriptFileManager::renameScript(botName, currentScript, newName)) {
+        QMessageBox::warning(this, "Rename Failed", "Failed to rename script file on disk.");
+        return;
+    }
+
+    scriptEngine->loadScript(newName, code);
+    scriptEngine->enableScript(newName, autorun);
+    scriptEngine->unloadScript(currentScript);
+
+    currentScript = newName;
+    refreshScriptList();
+
+    for (int i = 0; i < scriptList->count(); ++i) {
+        if (scriptList->item(i)->text() == newName) {
+            scriptList->setCurrentRow(i);
+            break;
+        }
+    }
+
+    statusLabel->setText(QString("Renamed to: %1").arg(newName));
 }
 
 void ScriptsWidget::onDeleteScript()
@@ -386,6 +442,7 @@ void ScriptsWidget::updateButtons()
     bool hasScript = !currentScript.isEmpty();
     bool isRunning = hasScript && scriptEngine && scriptEngine->isScriptRunning(currentScript);
 
+    renameButton->setEnabled(hasScript && !isRunning);
     deleteButton->setEnabled(hasScript && !isRunning);
     saveButton->setEnabled(hasScript && isModified);
     runButton->setEnabled(hasScript && !isRunning);
