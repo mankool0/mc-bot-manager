@@ -1,24 +1,25 @@
 package mankool.mcBotClient.connection;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.WinBase;
-import com.sun.jna.platform.win32.WinNT;
-import com.sun.jna.ptr.IntByReference;
 import mankool.mcbot.protocol.Connection;
 import mankool.mcbot.protocol.Protocol;
-import org.newsclub.net.unix.AFUNIXSocket;
-import org.newsclub.net.unix.AFUNIXSocketAddress;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.Closeable;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.Channels;
+import java.nio.channels.SocketChannel;
+import java.nio.file.Path;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,16 +27,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PipeConnection {
     private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnection.class);
     private static final String PIPE_NAME = "minecraft_manager";
+    private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final String WINDOWS_PIPE_PATH = "\\\\.\\pipe\\" + PIPE_NAME;
     private static final String UNIX_SOCKET_PATH = getUnixSocketPath();
 
     private static String getUnixSocketPath() {
-        // Use XDG_RUNTIME_DIR if available (better for sockets, works with flatpak)
         String xdgRuntime = System.getenv("XDG_RUNTIME_DIR");
         if (xdgRuntime != null && !xdgRuntime.isEmpty()) {
             return xdgRuntime + "/" + PIPE_NAME;
         }
-        // Fallback to /tmp if XDG_RUNTIME_DIR is not set
         return "/tmp/" + PIPE_NAME;
     }
 
@@ -48,7 +48,7 @@ public class PipeConnection {
     private Thread receiveThread;
     private OutputStream outputStream;
     private InputStream inputStream;
-    private Object connection; // WinNT.HANDLE for Windows, AFUNIXSocket for Unix
+    private Closeable connection;
 
     private final String clientId;
 
@@ -61,80 +61,37 @@ public class PipeConnection {
             return true;
         }
 
-        String socketPath = System.getProperty("os.name").toLowerCase().contains("win") ? WINDOWS_PIPE_PATH : UNIX_SOCKET_PATH;
-        LOGGER.info("Attempting to connect to manager pipe at: {}", socketPath);
+        String path = IS_WINDOWS ? WINDOWS_PIPE_PATH : UNIX_SOCKET_PATH;
+        LOGGER.info("Attempting to connect to manager at: {}", path);
 
         try {
-            if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                return connectWindows();
+            if (IS_WINDOWS) {
+                RandomAccessFile pipe = new RandomAccessFile(WINDOWS_PIPE_PATH, "rw");
+                this.connection = pipe;
+                this.inputStream = new FileInputStream(pipe.getFD());
+                this.outputStream = new FileOutputStream(pipe.getFD());
             } else {
-                return connectUnix();
+                SocketChannel channel = SocketChannel.open(UnixDomainSocketAddress.of(Path.of(UNIX_SOCKET_PATH)));
+                this.connection = channel;
+                this.inputStream = Channels.newInputStream(channel);
+                this.outputStream = Channels.newOutputStream(channel);
             }
+            connected.set(true);
+            startThreads();
+            return true;
         } catch (Exception e) {
-            LOGGER.error("Failed to connect to pipe at {}: {}. Make sure the manager is running and the socket file exists", socketPath, e.getMessage());
+            LOGGER.error("Failed to connect to {}: {}. Make sure the manager is running.", path, e.getMessage());
             return false;
         }
-    }
-
-    private boolean connectWindows() throws IOException {
-        // Open the named pipe
-        WinNT.HANDLE pipeHandle = Kernel32.INSTANCE.CreateFile(
-            WINDOWS_PIPE_PATH,
-            WinNT.GENERIC_READ | WinNT.GENERIC_WRITE,
-            0, // No sharing
-            null, // Default security
-            WinNT.OPEN_EXISTING,
-            0, // Default attributes
-            null // No template
-        );
-
-        if (pipeHandle == WinNT.INVALID_HANDLE_VALUE) {
-            int error = Kernel32.INSTANCE.GetLastError();
-            throw new IOException("Failed to open pipe: " + WINDOWS_PIPE_PATH + ", error: " + error);
-        }
-
-        // Set pipe mode to message mode
-        IntByReference lpMode = new IntByReference(WinBase.PIPE_READMODE_MESSAGE);
-        boolean success = Kernel32.INSTANCE.SetNamedPipeHandleState(
-            pipeHandle,
-            lpMode,
-            null,
-            null
-        );
-
-        if (!success) {
-            Kernel32.INSTANCE.CloseHandle(pipeHandle);
-            throw new IOException("Failed to set pipe mode");
-        }
-
-        this.connection = pipeHandle;
-        connected.set(true);
-        startThreads();
-        return true;
-    }
-
-    private boolean connectUnix() throws IOException {
-        AFUNIXSocket socket = AFUNIXSocket.newInstance();
-        socket.connect(AFUNIXSocketAddress.of(new File(UNIX_SOCKET_PATH)));
-
-        this.connection = socket;
-        this.outputStream = socket.getOutputStream();
-        this.inputStream = socket.getInputStream();
-
-        connected.set(true);
-        startThreads();
-        return true;
     }
 
     private void startThreads() {
         running.set(true);
 
-        // Start send thread
         sendThread = new Thread(this::sendLoop, "PipeConnection-Send");
         sendThread.setDaemon(true);
         sendThread.start();
 
-        // Start receive thread
         receiveThread = new Thread(this::receiveLoop, "PipeConnection-Receive");
         receiveThread.setDaemon(true);
         receiveThread.start();
@@ -156,44 +113,16 @@ public class PipeConnection {
 
     private void sendMessageInternal(Protocol.ClientToManagerMessage message) throws IOException {
         byte[] data = message.toByteArray();
-
-        if (System.getProperty("os.name").toLowerCase().contains("win")) {
-            sendMessageWindows(data);
-        } else {
-            sendMessageUnix(data);
-        }
-    }
-
-    private void sendMessageWindows(byte[] data) throws IOException {
-        WinNT.HANDLE pipeHandle = (WinNT.HANDLE) connection;
-        IntByReference bytesWritten = new IntByReference();
-
-        boolean success = Kernel32.INSTANCE.WriteFile(
-            pipeHandle,
-            data,
-            data.length,
-            bytesWritten,
-            null
-        );
-
-        if (!success) {
-            throw new IOException("Failed to write to pipe");
-        }
-    }
-
-    private void sendMessageUnix(byte[] data) throws IOException {
-        ByteBuffer messageBuffer = ByteBuffer.allocate(4 + data.length);
-        messageBuffer.order(ByteOrder.LITTLE_ENDIAN);
-        messageBuffer.putInt(data.length);
-        messageBuffer.put(data);
-
-        outputStream.write(messageBuffer.array());
+        ByteBuffer buffer = ByteBuffer.allocate(4 + data.length);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.putInt(data.length);
+        buffer.put(data);
+        outputStream.write(buffer.array());
         outputStream.flush();
     }
 
     private void receiveLoop() {
-        byte[] buffer = new byte[65536]; // 64KB buffer
-
+        byte[] buffer = new byte[65536];
         while (running.get()) {
             try {
                 Protocol.ManagerToClientMessage message = receiveMessage(buffer);
@@ -209,60 +138,10 @@ public class PipeConnection {
     }
 
     private Protocol.ManagerToClientMessage receiveMessage(byte[] buffer) throws IOException {
-        int bytesRead;
-
-        if (System.getProperty("os.name").toLowerCase().contains("win")) {
-            bytesRead = receiveMessageWindows(buffer);
-        } else {
-            bytesRead = receiveMessageUnix(buffer);
-        }
-
-        if (bytesRead < 0) {
-            throw new IOException("Connection closed");
-        }
-
-        if (bytesRead == 0) {
-            return null;
-        }
-
-        try {
-            return Protocol.ManagerToClientMessage.parseFrom(ByteBuffer.wrap(buffer, 0, bytesRead));
-        } catch (InvalidProtocolBufferException e) {
-            LOGGER.error("Failed to parse protobuf message: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private int receiveMessageWindows(byte[] buffer) throws IOException {
-        WinNT.HANDLE pipeHandle = (WinNT.HANDLE) connection;
-        IntByReference bytesRead = new IntByReference();
-
-        boolean success = Kernel32.INSTANCE.ReadFile(
-            pipeHandle,
-            buffer,
-            buffer.length,
-            bytesRead,
-            null
-        );
-
-        if (!success) {
-            int error = Kernel32.INSTANCE.GetLastError();
-            if (error == 109) { // ERROR_BROKEN_PIPE
-                disconnect();
-                return -1;
-            }
-            throw new IOException("Failed to read from pipe, error: " + error);
-        }
-
-        return bytesRead.getValue();
-    }
-
-    private int receiveMessageUnix(byte[] buffer) throws IOException {
-        // Read length prefix (4 bytes, little-endian)
         byte[] lengthBytes = new byte[4];
         int bytesRead = inputStream.read(lengthBytes);
         if (bytesRead != 4) {
-            return -1;
+            return null;
         }
 
         ByteBuffer lengthBuffer = ByteBuffer.wrap(lengthBytes);
@@ -277,12 +156,17 @@ public class PipeConnection {
         while (totalRead < messageLength) {
             int read = inputStream.read(buffer, totalRead, messageLength - totalRead);
             if (read < 0) {
-                return -1;
+                return null;
             }
             totalRead += read;
         }
 
-        return totalRead;
+        try {
+            return Protocol.ManagerToClientMessage.parseFrom(ByteBuffer.wrap(buffer, 0, totalRead));
+        } catch (InvalidProtocolBufferException e) {
+            LOGGER.error("Failed to parse protobuf message: {}", e.getMessage());
+            return null;
+        }
     }
 
     public void disconnect() {
@@ -292,23 +176,11 @@ public class PipeConnection {
 
         running.set(false);
 
-        if (sendThread != null) {
-            sendThread.interrupt();
-        }
-        if (receiveThread != null) {
-            receiveThread.interrupt();
-        }
+        if (sendThread != null) sendThread.interrupt();
+        if (receiveThread != null) receiveThread.interrupt();
 
         try {
-            if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                if (connection != null) {
-                    Kernel32.INSTANCE.CloseHandle((WinNT.HANDLE) connection);
-                }
-            } else {
-                if (connection != null) {
-                    ((AFUNIXSocket) connection).close();
-                }
-            }
+            if (connection != null) connection.close();
         } catch (Exception e) {
             LOGGER.error("Error closing connection: {}", e.getMessage());
         }
