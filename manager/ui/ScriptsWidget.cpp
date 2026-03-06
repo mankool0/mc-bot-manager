@@ -11,8 +11,36 @@
 #include <QStyleHints>
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QPainter>
+#include <QStyledItemDelegate>
 #include <qutepart/qutepart.h>
 #include <qutepart/theme.h>
+
+enum ScriptItemState { StateNormal = 0, StateRunning = 1, StateError = 2 };
+static const int ScriptStateRole = Qt::UserRole + 1;
+
+class ScriptItemDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        QStyledItemDelegate::paint(painter, option, index);
+
+        int state = index.data(ScriptStateRole).toInt();
+        if (state == StateNormal)
+            return;
+
+        // Semi-transparent tint over the whole item — blends with both normal and selected backgrounds
+        QColor tint = (state == StateRunning) ? QColor(76, 175, 80, 70) : QColor(244, 67, 54, 70);
+        painter->save();
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(tint);
+        painter->drawRect(option.rect);
+        painter->restore();
+    }
+};
 
 ScriptsWidget::ScriptsWidget(ScriptEngine *engine, QWidget *parent)
     : QWidget(parent)
@@ -51,6 +79,7 @@ void ScriptsWidget::setupUI()
 
     scriptList = new QListWidget();
     scriptList->setSelectionMode(QAbstractItemView::SingleSelection);
+    scriptList->setItemDelegate(new ScriptItemDelegate(scriptList));
     leftLayout->addWidget(scriptList);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
@@ -133,8 +162,10 @@ void ScriptsWidget::refreshScriptList()
         bool enabled = scriptEngine->isScriptEnabled(scriptName);
         item->setCheckState(enabled ? Qt::Checked : Qt::Unchecked);
 
-        // Add tooltip explaining the checkbox
         item->setToolTip("Check to auto-run this script when the manager starts");
+
+        if (scriptEngine->isScriptRunning(scriptName))
+            item->setData(ScriptStateRole, StateRunning);
 
         scriptList->addItem(item);
     }
@@ -313,7 +344,7 @@ void ScriptsWidget::onScriptStarted(const QString &filename)
     for (int i = 0; i < scriptList->count(); ++i) {
         QListWidgetItem *item = scriptList->item(i);
         if (item->text() == filename) {
-            item->setBackground(QColor(200, 255, 200));
+            item->setData(ScriptStateRole, StateRunning);
             break;
         }
     }
@@ -329,7 +360,9 @@ void ScriptsWidget::onScriptStopped(const QString &filename)
     for (int i = 0; i < scriptList->count(); ++i) {
         QListWidgetItem *item = scriptList->item(i);
         if (item->text() == filename) {
-            item->setBackground(Qt::transparent);
+            // Don't clear error state — only clear if it was running normally
+            if (item->data(ScriptStateRole).toInt() == StateRunning)
+                item->setData(ScriptStateRole, StateNormal);
             break;
         }
     }
@@ -342,7 +375,7 @@ void ScriptsWidget::onScriptError(const QString &filename, const QString &error)
     for (int i = 0; i < scriptList->count(); ++i) {
         QListWidgetItem *item = scriptList->item(i);
         if (item->text() == filename) {
-            item->setBackground(QColor(255, 200, 200));
+            item->setData(ScriptStateRole, StateError);
             break;
         }
     }
