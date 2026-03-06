@@ -94,7 +94,6 @@ dependencies {
 
     // Baritone (https://github.com/MeteorDevelopment/baritone)
     modImplementation "meteordevelopment:baritone:${project.baritone_version}"
-    include "meteordevelopment:baritone:${project.baritone_version}"
 
     // Baritone's nether-pathfinder dependency (from babbaj-repo)
     modImplementation "dev.babbaj:nether-pathfinder:1.6"
@@ -103,19 +102,6 @@ dependencies {
     implementation "com.google.protobuf:protobuf-java:${project.protobuf_version}"
     include "com.google.protobuf:protobuf-java:${project.protobuf_version}"
 
-    // JNA for Windows named pipes
-    implementation "net.java.dev.jna:jna:${project.jna_version}"
-    implementation "net.java.dev.jna:jna-platform:${project.jna_version}"
-    include "net.java.dev.jna:jna:${project.jna_version}"
-    include "net.java.dev.jna:jna-platform:${project.jna_version}"
-
-    // junixsocket for Unix domain sockets
-    implementation "com.kohlschutter.junixsocket:junixsocket-core:${project.junixsocket_version}"
-    implementation "com.kohlschutter.junixsocket:junixsocket-common:${project.junixsocket_version}"
-    implementation "com.kohlschutter.junixsocket:junixsocket-native-common:${project.junixsocket_version}"
-    include "com.kohlschutter.junixsocket:junixsocket-core:${project.junixsocket_version}"
-    include "com.kohlschutter.junixsocket:junixsocket-common:${project.junixsocket_version}"
-    include "com.kohlschutter.junixsocket:junixsocket-native-common:${project.junixsocket_version}"
 }
 
 processResources {
