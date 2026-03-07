@@ -31,6 +31,7 @@ message ItemStack {
   string display_name = 6; // Display name of the item
   string nbt = 7;          // NBT as JSON string
   repeated string enchantments = 8;
+  repeated ItemStack container_items = 9; // Contents of container items (shulker boxes, bundles, etc.)
 }
 
 enum Hand {

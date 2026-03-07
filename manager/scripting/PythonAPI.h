@@ -62,6 +62,7 @@ public:
     static py::object getExperienceLevel(const std::string &botName = "");
     static py::object getExperienceProgress(const std::string &botName = "");
     static py::object getSelectedSlot(const std::string &botName = "");
+    static void selectSlot(int slot, const std::string &botName = "");
     static py::object getServer(const std::string &botName = "");
     static py::object getAccount(const std::string &botName = "");
     static py::object getUptime(const std::string &botName = "");
@@ -111,6 +112,7 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
+    static void lookAt(double x, double y, double z, const std::string &botName = "");
     static bool canReachBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
     static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, const std::string &bot = "");
     static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");

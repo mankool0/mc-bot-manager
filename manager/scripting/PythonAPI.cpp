@@ -479,6 +479,16 @@ py::object PythonAPI::getSelectedSlot(const std::string &botName)
     return py::cast(bot->selectedSlot);
 }
 
+void PythonAPI::selectSlot(int slot, const std::string &botName)
+{
+    if (slot < 0 || slot > 8) {
+        throw std::runtime_error("Slot must be 0-8");
+    }
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendSwitchHotbarSlot(name, slot);
+}
+
 py::object PythonAPI::getServer(const std::string &botName)
 {
     QString name = resolveBotName(botName);
@@ -547,6 +557,31 @@ std::string PythonAPI::getStatus(const std::string &botName)
     }
 }
 
+static py::dict buildItemDict(const mankool::mcbot::protocol::ItemStack &item)
+{
+    py::dict itemDict;
+    itemDict["slot"] = static_cast<int>(item.slot());
+    itemDict["item_id"] = item.itemId().toStdString();
+    itemDict["count"] = static_cast<int>(item.count());
+    itemDict["damage"] = static_cast<int>(item.damage());
+    itemDict["max_damage"] = static_cast<int>(item.maxDamage());
+    itemDict["display_name"] = item.displayName().toStdString();
+    py::list enchantList;
+    for (const QString &e : item.enchantments()) {
+        enchantList.append(e.toStdString());
+    }
+    itemDict["enchantments"] = enchantList;
+    const auto &containerItems = item.containerItems();
+    if (!containerItems.isEmpty()) {
+        py::list containerList;
+        for (const auto &ci : containerItems) {
+            containerList.append(buildItemDict(ci));
+        }
+        itemDict["container_items"] = containerList;
+    }
+    return itemDict;
+}
+
 py::object PythonAPI::getInventory(const std::string &botName)
 {
     QString name = resolveBotName(botName);
@@ -557,22 +592,9 @@ py::object PythonAPI::getInventory(const std::string &botName)
     }
 
     py::list result;
-    for (const auto &item : std::as_const(bot->inventory)) {
+    for (const auto &item : bot->inventory) {
         if (!item.itemId().isEmpty()) {
-            py::dict itemDict;
-            itemDict["slot"] = static_cast<int>(item.slot());
-            itemDict["item_id"] = item.itemId().toStdString();
-            itemDict["count"] = static_cast<int>(item.count());
-            itemDict["damage"] = static_cast<int>(item.damage());
-            itemDict["max_damage"] = static_cast<int>(item.maxDamage());
-            itemDict["display_name"] = item.displayName().toStdString();
-            const QStringList &enchants = item.enchantments();
-            py::list enchantList;
-            for (const QString &e : enchants) {
-                enchantList.append(e.toStdString());
-            }
-            itemDict["enchantments"] = enchantList;
-            result.append(itemDict);
+            result.append(buildItemDict(item));
         }
     }
 
@@ -588,19 +610,11 @@ py::object PythonAPI::getCursorItem(const std::string &botName)
         return py::none();
     }
 
-    const auto &item = bot->cursorItem;
-    py::dict itemDict;
-    itemDict["slot"] = -1;
-    itemDict["item_id"] = item.itemId().isEmpty() ? std::string("minecraft:air") : item.itemId().toStdString();
-    itemDict["count"] = static_cast<int>(item.count());
-    itemDict["damage"] = static_cast<int>(item.damage());
-    itemDict["max_damage"] = static_cast<int>(item.maxDamage());
-    itemDict["display_name"] = item.displayName().toStdString();
-    py::list enchantList;
-    for (const QString &e : item.enchantments()) {
-        enchantList.append(e.toStdString());
+    py::dict itemDict = buildItemDict(bot->cursorItem);
+    if (bot->cursorItem.itemId().isEmpty()) {
+        itemDict["item_id"] = std::string("minecraft:air");
     }
-    itemDict["enchantments"] = enchantList;
+    itemDict["slot"] = -1;
     return itemDict;
 }
 
@@ -1322,6 +1336,13 @@ bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y,
     return result;
 }
 
+void PythonAPI::lookAt(double x, double y, double z, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendLookAt(name, x, y, z);
+}
+
 void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
@@ -1380,20 +1401,7 @@ py::object PythonAPI::getContainer(const std::string &bot)
 
     py::list items;
     for (const auto &item : botInstance->containerState.items) {
-        py::dict itemDict;
-        itemDict["slot"] = static_cast<int>(item.slot());
-        itemDict["item_id"] = item.itemId().toStdString();
-        itemDict["count"] = static_cast<int>(item.count());
-        itemDict["damage"] = static_cast<int>(item.damage());
-        itemDict["max_damage"] = static_cast<int>(item.maxDamage());
-        itemDict["display_name"] = item.displayName().toStdString();
-        const QStringList &enchants = item.enchantments();
-        py::list enchantList;
-        for (const QString &e : enchants) {
-            enchantList.append(e.toStdString());
-        }
-        itemDict["enchantments"] = enchantList;
-        items.append(itemDict);
+        items.append(buildItemDict(item));
     }
     result["items"] = items;
 

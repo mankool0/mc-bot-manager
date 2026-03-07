@@ -343,6 +343,8 @@ public:
     static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
     static void sendCloseContainer(const QString &botName);
     static void sendOpenInventory(const QString &botName);
+    static void sendSwitchHotbarSlot(const QString &botName, int slot);
+    static void sendLookAt(const QString &botName, double x, double y, double z);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -408,6 +410,8 @@ private:
     void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
     void sendCloseContainerImpl(const QString &botName);
     void sendOpenInventoryImpl(const QString &botName);
+    void sendSwitchHotbarSlotImpl(const QString &botName, int slot);
+    void sendLookAtImpl(const QString &botName, double x, double y, double z);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);

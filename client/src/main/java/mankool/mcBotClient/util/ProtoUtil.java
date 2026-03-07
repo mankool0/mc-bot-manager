@@ -2,8 +2,10 @@ package mankool.mcBotClient.util;
 
 import mankool.mcbot.protocol.Common;
 import net.minecraft.core.Holder;
+import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.phys.Vec3;
@@ -20,6 +22,7 @@ public class ProtoUtil {
             .setDisplayName(itemStack.getHoverName().getString());
 
         addEnchantments(itemStack, builder);
+        addContainerItems(itemStack, builder);
 
         return builder.build();
     }
@@ -45,6 +48,20 @@ public class ProtoUtil {
                 int level = entry.getIntValue();
                 holder.unwrapKey().ifPresent(key ->
                     builder.addEnchantments(key.identifier().toString() + " " + level));
+            }
+        }
+    }
+
+    private static void addContainerItems(ItemStack itemStack, Common.ItemStack.Builder builder) {
+        ItemContainerContents container = itemStack.get(DataComponents.CONTAINER);
+        if (container == null) {
+            return;
+        }
+        NonNullList<ItemStack> contents = NonNullList.withSize(27, ItemStack.EMPTY);
+        container.copyInto(contents);
+        for (int i = 0; i < contents.size(); i++) {
+            if (!contents.get(i).isEmpty()) {
+                builder.addContainerItems(buildItemStack(contents.get(i), i));
             }
         }
     }

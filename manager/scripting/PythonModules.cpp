@@ -36,6 +36,10 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.def("selected_slot", &PythonAPI::getSelectedSlot,
           "Get selected hotbar slot",
           py::arg("bot_name") = "");
+    m.def("select_slot", &PythonAPI::selectSlot,
+          "Select hotbar slot (0-8)",
+          py::arg("slot"),
+          py::arg("bot_name") = "");
     m.def("server", &PythonAPI::getServer,
           "Get server address",
           py::arg("bot_name") = "");
@@ -207,6 +211,10 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("bot") = "");
 
     // World interaction
+    m.def("look_at", &PythonAPI::lookAt,
+          "Look at a specific position (x, y, z)",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("bot_name") = "");
     m.def("can_reach_block", &PythonAPI::canReachBlock,
           "Check if a block is reachable from the bot's current position",
           py::arg("x"), py::arg("y"), py::arg("z"),

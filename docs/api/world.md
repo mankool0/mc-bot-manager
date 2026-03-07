@@ -152,6 +152,25 @@ else:
 
 ## Block Interaction
 
+### `look_at(x, y, z, bot_name="")`
+
+Rotate the bot to look at a specific position.
+
+**Parameters:**
+
+- `x` (`float`) - X coordinate to look at
+- `y` (`float`) - Y coordinate to look at
+- `z` (`float`) - Z coordinate to look at
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+# Look at the top face of a block before placing on it
+world.look_at(bx + 0.5, by + 1.0, bz + 0.5)
+world.interact_block(bx, by, bz, sneak=True, look_at_block=False)
+```
+
 ### `interact_block(x, y, z, sneak=False, look_at_block=True, bot="")`
 
 Interact with (right-click) a block at the specified position.

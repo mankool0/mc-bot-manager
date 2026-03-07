@@ -52,6 +52,22 @@ Get currently selected hotbar slot.
 
 **Returns:** `int` or `None` if bot is offline
 
+### `select_slot(slot, bot_name="")`
+
+Select a hotbar slot.
+
+**Parameters:**
+
+- `slot` (`int`) - Slot to select (0–8)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online, or if slot is out of range
+
+```python
+bot.select_slot(0)  # Select first hotbar slot
+bot.select_slot(8)  # Select last hotbar slot
+```
+
 ### `server(bot_name="")`
 
 Get server address.
@@ -94,7 +110,7 @@ Get bot status string.
 
 Get bot inventory.
 
-**Returns:** `list` of dicts with `slot`, `item_id`, `count`, `display_name`, or `None` if bot is offline
+**Returns:** `list` of dicts with `slot`, `item_id`, `count`, `damage`, `max_damage`, `display_name`, `enchantments`, and optionally `container_items` (list of the same dict structure, present on shulker boxes and other container items), or `None` if bot is offline
 
 ```python
 items = bot.inventory()
