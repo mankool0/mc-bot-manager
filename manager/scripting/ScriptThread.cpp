@@ -63,8 +63,6 @@ def __split_script_phases__(code_str, filename='<script>'):
             definitions.append(node)
         elif isinstance(node, _ast.If) and _is_main_guard(node):
             execution.extend(node.body)
-        elif isinstance(node, (_ast.Assign, _ast.AnnAssign, _ast.AugAssign)):
-            definitions.append(node)
         elif isinstance(node, _ast.Try) and _is_definition_try_block(node):
             definitions.append(node)
         elif isinstance(node, _ast.Expr) and isinstance(node.value, _ast.Constant) and \
