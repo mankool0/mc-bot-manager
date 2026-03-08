@@ -8,6 +8,7 @@
 #include <QCoreApplication>
 #include <QThread>
 #include <QReadWriteLock>
+#include <QDateTime>
 #include <pybind11/stl.h>
 
 thread_local QString PythonAPI::currentBot;
@@ -1010,7 +1011,8 @@ void PythonAPI::log(const std::string &message)
     if (!botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString formattedMsg = QString("[%1] %2").arg(scriptName, qMessage);
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+            QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
             QMetaObject::invokeMethod(bot->consoleWidget, [widget = bot->consoleWidget, msg = formattedMsg]() {
                 widget->appendOutput(msg, Qt::darkGreen);
             }, Qt::QueuedConnection);
@@ -1027,7 +1029,8 @@ void PythonAPI::error(const std::string &message)
     if (!botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString formattedMsg = QString("[%1 Error] %2").arg(scriptName, qMessage);
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+            QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
             QMetaObject::invokeMethod(bot->consoleWidget, [widget = bot->consoleWidget, msg = formattedMsg]() {
                 widget->appendOutput(msg, Qt::red);
             }, Qt::QueuedConnection);
