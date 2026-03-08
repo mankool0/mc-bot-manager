@@ -12,6 +12,7 @@ static const char* SCRIPT_SETUP_CODE = R"PY(
 import sys
 import utils
 import ast as _ast
+import ctypes as _ctypes
 
 # Redirect stdout/stderr to capture print() statements
 class ConsoleOutput:
@@ -31,9 +32,12 @@ class ConsoleOutput:
 sys.stdout = ConsoleOutput(is_error=False)
 sys.stderr = ConsoleOutput(is_error=True)
 
-# Set up trace function to check for stop signal
+# Set up trace function to check for stop signal.
+# Reads C++ atomic<bool> directly via a ctypes pointer — no pybind11 overhead per line.
+_stop_ptr = _ctypes.cast(__stop_addr__, _ctypes.POINTER(_ctypes.c_bool))
+
 def _trace_for_stop(frame, event, arg):
-    if event == 'line' and __check_stop__():
+    if event == 'line' and _stop_ptr[0]:
         raise KeyboardInterrupt("Script stopped by user")
     return _trace_for_stop
 
@@ -167,9 +171,7 @@ void ScriptThread::run()
         scriptContext->globals["__builtins__"] = py::module_::import("builtins");
         scriptContext->globals["__name__"] = "__main__";
 
-        scriptContext->globals["__check_stop__"] = py::cpp_function([this]() -> bool {
-            return this->stopping.load();
-        });
+        scriptContext->globals["__stop_addr__"] = py::int_(reinterpret_cast<uintptr_t>(&stopping));
 
         py::exec(SCRIPT_SETUP_CODE, scriptContext->globals);
 
