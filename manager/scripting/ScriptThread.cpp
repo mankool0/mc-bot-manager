@@ -33,7 +33,7 @@ sys.stdout = ConsoleOutput(is_error=False)
 sys.stderr = ConsoleOutput(is_error=True)
 
 # Set up trace function to check for stop signal.
-# Reads C++ atomic<bool> directly via a ctypes pointer — no pybind11 overhead per line.
+# Reads C++ atomic<bool> directly via a ctypes pointer - no pybind11 overhead per line.
 _stop_ptr = _ctypes.cast(__stop_addr__, _ctypes.POINTER(_ctypes.c_bool))
 
 def _trace_for_stop(frame, event, arg):

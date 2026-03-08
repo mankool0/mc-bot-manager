@@ -33,7 +33,7 @@ public:
         if (state == StateNormal)
             return;
 
-        // Semi-transparent tint over the whole item — blends with both normal and selected backgrounds
+        // Semi-transparent tint over the whole item - blends with both normal and selected backgrounds
         QColor tint = (state == StateRunning) ? QColor(76, 175, 80, 70) : QColor(244, 67, 54, 70);
         painter->save();
         painter->setPen(Qt::NoPen);
@@ -416,7 +416,7 @@ void ScriptsWidget::onScriptStopped(const QString &filename)
     for (int i = 0; i < scriptList->count(); ++i) {
         QListWidgetItem *item = scriptList->item(i);
         if (item->text() == filename) {
-            // Don't clear error state — only clear if it was running normally
+            // Don't clear error state - only clear if it was running normally
             if (item->data(ScriptStateRole).toInt() == StateRunning)
                 item->setData(ScriptStateRole, StateNormal);
             break;

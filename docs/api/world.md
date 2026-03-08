@@ -205,6 +205,159 @@ if pos:
     world.interact_block(int(x), int(y), int(z))
 ```
 
+## Container Interaction
+
+### `get_container(bot="")`
+
+Get the currently open container. Returns `None` if no container is open or bot is offline.
+
+**Returns:** `dict` with container info, or `None`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `id` | `int` | Container ID |
+| `type` | `ContainerType` | Container type enum value |
+| `items` | `list` | List of [item dicts](bot.md#item-dict) for all slots |
+
+**Note:** Only works for external containers (chests, barrels, etc.). For the player's own inventory use `bot.inventory()`.
+
+```python
+import world, time
+
+world.interact_block(cx, cy, cz)
+time.sleep(0.3)  # wait for server to open container
+
+container = world.get_container()
+if container:
+    print(f"Container type: {container['type']}")
+    for item in container['items']:
+        if item['item_id'] != 'minecraft:air':
+            print(f"  Slot {item['slot']}: {item['count']}x {item['item_id']}")
+```
+
+---
+
+### `click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot="")`
+
+Click a slot in the currently open container (or player inventory).
+
+**Parameters:**
+
+- `slot_index` (`int`) - Slot index using **InventoryMenu numbering** (see note below)
+- `button` (`MouseButton`, optional) - Mouse button or hotbar index for SWAP (default: `LEFT`)
+- `click_type` (`ClickType`, optional) - Click type (default: `PICKUP`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+**Slot numbering** depends on what is open. Container slots always start at 0, with player inventory slots appended after.
+
+**Single chest (27 slots):**
+
+| Range | Contents |
+|-------|----------|
+| 0–26 | Chest |
+| 27–53 | Player main inventory |
+| 54–62 | Player hotbar |
+
+**Double chest (54 slots):**
+
+| Range | Contents |
+|-------|----------|
+| 0–53 | Chest |
+| 54–80 | Player main inventory |
+| 81–89 | Player hotbar |
+
+**Player inventory screen (no external container):**
+
+| Range | Contents |
+|-------|----------|
+| 0 | Crafting output |
+| 1–4 | Crafting grid |
+| 5–8 | Armor |
+| 9–35 | Main inventory |
+| 36–44 | Hotbar |
+| 45 | Offhand |
+
+> **Note:** `bot.inventory()` numbers hotbar as 0–8 and main as 9–35. When a chest is open, player main starts at `chest_size` and hotbar at `chest_size + 27`, so `bot.inventory()` slot numbers cannot be used directly - calculate the offset based on container size.
+
+```python
+import world
+
+# Shift-click slot 0 of a chest into inventory
+world.click_slot(0, click_type=world.ClickType.QUICK_MOVE)
+
+# Swap chest slot 0 with hotbar slot 8
+world.click_slot(0, button=8, click_type=world.ClickType.SWAP)
+
+# Right-click a slot (split stack)
+world.click_slot(5, button=world.MouseButton.RIGHT)
+```
+
+---
+
+### `close_container(bot="")`
+
+Close the currently open container.
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+world.close_container()
+```
+
+---
+
+### `open_inventory(bot="")`
+
+Open the player's own inventory screen.
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+world.open_inventory()
+```
+
+---
+
+### Enums
+
+#### `world.MouseButton`
+
+| Value | Description |
+|-------|-------------|
+| `LEFT` | Left mouse button |
+| `RIGHT` | Right mouse button |
+| `MIDDLE` | Middle mouse button |
+
+#### `world.ClickType`
+
+| Value | Description |
+|-------|-------------|
+| `PICKUP` | Pick up / place item (left or right click) |
+| `QUICK_MOVE` | Shift-click (move to/from inventory) |
+| `SWAP` | Swap with hotbar slot (`button` = hotbar index 0–8) |
+| `CLONE` | Clone item (creative mode middle-click) |
+| `THROW` | Throw item out of inventory |
+| `QUICK_CRAFT` | Quick craft drag operation |
+| `PICKUP_ALL` | Double-click to collect all matching items |
+
+#### `world.ContainerType`
+
+| Value | |
+|-------|-|
+| `PLAYER_INVENTORY` | `CRAFTING_TABLE` |
+| `CHEST` | `ENCHANTING_TABLE` |
+| `ENDER_CHEST` | `ANVIL` |
+| `SHULKER_BOX` | `BREWING_STAND` |
+| `FURNACE` | `VILLAGER_TRADE` |
+| `BLAST_FURNACE` | `HORSE_INVENTORY` |
+| `SMOKER` | `HOPPER` |
+| `DISPENSER` | `DROPPER` |
+| `BEACON` | `OTHER` |
+
+---
+
 ## Chunk Information
 
 ### `loaded_chunk_count(bot="")`
@@ -545,7 +698,95 @@ else:
 ```
 
 !!! note
-    Pass `step['recipe_id']` to `get_recipe()` when executing plan steps — do not re-look up by item ID, as there may be multiple recipes for the same output.
+    Pass `step['recipe_id']` to `get_recipe()` when executing plan steps - do not re-look up by item ID, as there may be multiple recipes for the same output.
+
+## Entity Tracking
+
+Live entity data is pushed from the Minecraft client every tick (only changed/new/removed entities).
+
+### Entity dict schema
+
+| Key | Type | Present when |
+|-----|------|-------------|
+| `entity_id` | `int` | always |
+| `uuid` | `str` | always |
+| `type` | `str` | always (e.g. `"minecraft:item"`, `"minecraft:zombie"`) |
+| `x`, `y`, `z` | `float` | always |
+| `yaw`, `pitch` | `float` | always - yaw is normalised to -180–180 |
+| `vel_x`, `vel_y`, `vel_z` | `float` | always |
+| `health` | `float` | living entities |
+| `max_health` | `float` | living entities |
+| `item` | [item dict](bot.md#item-dict) | `type == "minecraft:item"` (dropped item entities) |
+| `player_name` | `str` | player entities |
+
+The `item` sub-dict follows the standard [item dict schema](bot.md#item-dict).
+
+---
+
+### `world.entities(bot="")`
+
+Returns a list of all currently tracked entity dicts.
+
+```python
+import world
+
+for e in world.entities():
+    print(e['type'], e['x'], e['y'], e['z'])
+```
+
+---
+
+### `world.find_entities_near(x, y, z, radius, type="", bot="")`
+
+Returns entities within `radius` blocks of `(x, y, z)`. Optional `type` is a prefix filter on the entity type string (e.g. `"minecraft:item"` or `"minecraft:"` for all vanilla entities).
+
+```python
+import bot, world
+
+pos = bot.position()
+items = world.find_entities_near(pos['x'], pos['y'], pos['z'], 8, type='minecraft:item')
+for item_ent in items:
+    print(item_ent['item']['item_id'], 'at', item_ent['x'], item_ent['y'], item_ent['z'])
+```
+
+#### Wait for a specific item to drop after breaking a block
+
+```python
+import bot, world, time
+
+MINE_ITEMS = {'minecraft:diamond', 'minecraft:ancient_debris'}
+
+def wait_for_drops(bx, by, bz, timeout=3.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        items = world.find_entities_near(bx, by, bz, 4, type='minecraft:item')
+        if any(i['item']['item_id'] in MINE_ITEMS for i in items):
+            return items
+        time.sleep(0.1)
+    return []
+```
+
+#### Check nearby mob health
+
+```python
+import bot, world
+
+pos = bot.position()
+mobs = [e for e in world.find_entities_near(pos['x'], pos['y'], pos['z'], 16)
+        if 'health' in e and e['type'] != 'minecraft:player']
+for mob in mobs:
+    print(mob['type'], f"{mob['health']:.1f}/{mob['max_health']:.1f} HP")
+```
+
+---
+
+### Update strategy
+
+The Java client sends `EntityUpdate` messages only when entities change - new arrivals, position/rotation changes, and removals.
+
+On server disconnect, all entity data is cleared so stale entities never persist across reconnections.
+
+---
 
 ## Notes
 
