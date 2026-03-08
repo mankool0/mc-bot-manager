@@ -392,6 +392,50 @@ size_t BotWorldData::totalMemoryUsage() const
     return total;
 }
 
+// ============================================================================
+// Entity Tracking Implementation
+// ============================================================================
+
+void BotWorldData::updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed)
+{
+    for (const auto &e : upserted) {
+        entities[e.entityId] = e;
+    }
+    for (int id : removed) {
+        entities.remove(id);
+    }
+}
+
+QVector<EntityData> BotWorldData::getAllEntities() const
+{
+    return entities.values().toVector();
+}
+
+QVector<EntityData> BotWorldData::findEntitiesNear(double x, double y, double z, double radius,
+                                                    const QString& typeFilter) const
+{
+    QVector<EntityData> result;
+    const double radiusSq = radius * radius;
+
+    for (const auto &e : entities) {
+        if (!typeFilter.isEmpty() && !e.type.startsWith(typeFilter)) {
+            continue;
+        }
+        double dx = e.x - x;
+        double dy = e.y - y;
+        double dz = e.z - z;
+        if (dx * dx + dy * dy + dz * dz <= radiusSq) {
+            result.append(e);
+        }
+    }
+    return result;
+}
+
+void BotWorldData::clearEntities()
+{
+    entities.clear();
+}
+
 bool BotWorldData::blockMatches(const QString& blockState, const QStringList& blockTypes) const
 {
     for (const QString& type : blockTypes) {

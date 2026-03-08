@@ -13,6 +13,7 @@ import "baritone.proto";
 import "world.proto";
 import "screen.proto";
 import "registry.proto";
+import "entities.proto";
 
 // Main protocol definition that ties everything together
 
@@ -73,6 +74,9 @@ message ClientToManagerMessage {
 
     // World interaction responses
     CanReachBlockResponse can_reach_block_response = 29;
+
+    // Entity tracking
+    EntityUpdate entity_update = 30;
   }
 }
 

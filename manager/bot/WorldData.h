@@ -8,6 +8,7 @@
 #include <QVector>
 #include <optional>
 #include <qobject.h>
+#include "common.qpb.h"
 
 struct ChunkPos {
     int32_t x = 0;
@@ -23,6 +24,19 @@ struct ChunkPos {
     bool operator!=(const ChunkPos& other) const {
         return !(*this == other);
     }
+};
+
+struct EntityData {
+    int entityId = 0;
+    QString uuid;
+    QString type;
+    QString playerName;
+    double x = 0, y = 0, z = 0;
+    double velX = 0, velY = 0, velZ = 0;
+    float yaw = 0, pitch = 0;
+    float health = 0, maxHealth = 0;
+    bool isLiving = false, isItem = false, isPlayer = false;
+    mankool::mcbot::protocol::ItemStack itemStack;  // only populated when isItem == true
 };
 
 // Hash function for ChunkPos to use in QHash
@@ -82,9 +96,17 @@ public:
     QString getCurrentDimension() const { return currentDimension; }
     void setCurrentDimension(const QString& dimension) { currentDimension = dimension; }
 
+    // Entity tracking
+    void updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed);
+    QVector<EntityData> getAllEntities() const;
+    QVector<EntityData> findEntitiesNear(double x, double y, double z, double radius,
+                                         const QString& typeFilter = "") const;
+    void clearEntities();
+
 private:
     QHash<ChunkPos, ChunkData> chunks;
     QString currentDimension;
+    QHash<int, EntityData> entities;
 
     bool blockMatches(const QString& blockState, const QStringList& blockTypes) const;  // Handles exact matches and wildcards
 };

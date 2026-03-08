@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+import "common.proto";
+
+message EntityData {
+  int32  entity_id   = 1;
+  string uuid        = 2;
+  string type        = 3;   // "minecraft:item", "minecraft:zombie", etc.
+  double x           = 4;
+  double y           = 5;
+  double z           = 6;
+  float  yaw         = 7;
+  float  pitch       = 8;
+  double vel_x       = 9;
+  double vel_y       = 10;
+  double vel_z       = 11;
+  bool   is_living   = 12;
+  float  health      = 13;
+  float  max_health  = 14;
+  bool      is_item    = 15;
+  ItemStack item_stack = 16;
+  bool   is_player   = 17;
+  string player_name = 18;
+}
+
+message EntityUpdate {
+  string              dimension    = 1;
+  repeated EntityData upserted     = 2;
+  repeated int32      removed_ids  = 3 [packed = true];
+}

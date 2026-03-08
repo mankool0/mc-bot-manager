@@ -778,6 +778,13 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
         bot->server = serverAddr;
         bot->serverConnectionStatus = status.status();
 
+        // Clear entity tracking when bot disconnects from server
+        using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
+        if (status.status() != Status::SUCCESSFUL) {
+            QWriteLocker locker(bot->worldDataLock.get());
+            bot->worldData.clearEntities();
+        }
+
         // Try to initialize WorldAutoSaver now that we have server address
         tryInitializeWorldAutoSaver(bot);
 
@@ -2640,6 +2647,55 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
 void BotManager::handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)
 {
     instance().handleScreenUpdateImpl(connectionId, screen);
+}
+
+void BotManager::handleEntityUpdate(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch)
+{
+    instance().handleEntityUpdateImpl(connectionId, batch);
+}
+
+void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) {
+        return;
+    }
+
+    QVector<EntityData> upserted;
+    upserted.reserve(batch.upserted().size());
+    for (const auto &proto : batch.upserted()) {
+        EntityData e;
+        e.entityId  = proto.entityId();
+        e.uuid       = proto.uuid();
+        e.type       = proto.type();
+        e.x          = proto.x();
+        e.y          = proto.y();
+        e.z          = proto.z();
+        e.yaw        = proto.yaw();
+        e.pitch      = proto.pitch();
+        e.velX       = proto.velX();
+        e.velY       = proto.velY();
+        e.velZ       = proto.velZ();
+        e.isLiving   = proto.isLiving();
+        e.health     = proto.health();
+        e.maxHealth  = proto.maxHealth();
+        e.isItem     = proto.isItem();
+        if (proto.isItem()) {
+            e.itemStack = proto.itemStack();
+        }
+        e.isPlayer   = proto.isPlayer();
+        e.playerName = proto.playerName();
+        upserted.append(e);
+    }
+
+    QVector<int> removed;
+    removed.reserve(batch.removedIds().size());
+    for (int id : batch.removedIds()) {
+        removed.append(id);
+    }
+
+    QWriteLocker locker(bot->worldDataLock.get());
+    bot->worldData.updateEntities(upserted, removed);
 }
 
 void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)

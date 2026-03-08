@@ -196,6 +196,15 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("block_type"), py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
           py::arg("radius"),
           py::arg("bot") = "");
+    m.def("entities", &PythonAPI::getEntities,
+          "Get all tracked entities as list of dicts",
+          py::arg("bot") = "");
+    m.def("find_entities_near", &PythonAPI::findEntitiesNear,
+          "Find entities within radius of (x,y,z), optional type prefix filter, returns list of entity dicts",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("radius"),
+          py::arg("type") = "",
+          py::arg("bot") = "");
     m.def("find_nearest", &PythonAPI::findNearestBlock,
           "Find nearest block matching any type in list, returns (x,y,z) tuple or None",
           py::arg("block_types"), py::arg("max_distance") = 128,
