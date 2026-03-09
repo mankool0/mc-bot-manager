@@ -10,14 +10,19 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import com.google.protobuf.ByteString;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.util.*;
 
 /**
@@ -203,6 +208,19 @@ public class WorldOutbound extends BaseOutbound {
             int sectionY = chunk.getMinSectionY() + i;
             World.ChunkSection sectionProto = encodeSection(section, sectionY);
             chunkBuilder.addSections(sectionProto);
+        }
+
+        // Encode block entities
+        for (var entry : chunk.getBlockEntities().entrySet()) {
+            BlockEntity be = entry.getValue();
+            try {
+                CompoundTag nbt = be.saveWithFullMetadata(client.level.registryAccess());
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                nbt.write(new DataOutputStream(baos));
+                chunkBuilder.addBlockEntityNbt(ByteString.copyFrom(baos.toByteArray()));
+            } catch (Exception e) {
+                // skip on error
+            }
         }
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

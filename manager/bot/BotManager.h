@@ -224,6 +224,8 @@ struct BotInstance {
     int selectedSlot = 0;
     mankool::mcbot::protocol::ItemStack cursorItem;
 
+    WorldSaveSettings worldSaveSettings;
+
     // Container state
     struct {
         bool isOpen = false;

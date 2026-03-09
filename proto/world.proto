@@ -57,6 +57,7 @@ message ChunkDataMessage {
   int32 min_y = 4;                // Minimum Y for this world
   int32 max_y = 5;                // Maximum Y for this world
   repeated ChunkSection sections = 6;  // All sections in this chunk
+  repeated bytes block_entity_nbt = 7; // Raw binary compound payloads for block entities in this chunk
 }
 
 // Single chunk section (16x16x16 blocks)

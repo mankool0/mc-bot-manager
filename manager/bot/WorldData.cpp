@@ -436,6 +436,51 @@ void BotWorldData::clearEntities()
     entities.clear();
 }
 
+void BotWorldData::updateBlockEntity(const BlockEntityData& be)
+{
+    QString key = QString("%1|%2|%3|%4").arg(be.dimension).arg(be.x).arg(be.y).arg(be.z);
+
+    // When a container is opened we get items but no rawNbt. Preserve the rawNbt that
+    // arrived with the chunk load so blockEntityToNBT can patch items into it rather
+    // than falling back to the stripped structured path.
+    if (!be.items.isEmpty() && be.rawNbt.isEmpty()) {
+        auto it = blockEntities.find(key);
+        if (it != blockEntities.end() && !it->rawNbt.isEmpty()) {
+            BlockEntityData merged = be;
+            merged.rawNbt = it->rawNbt;
+            blockEntities[key] = merged;
+            return;
+        }
+    }
+
+    blockEntities[key] = be;
+}
+
+void BotWorldData::removeBlockEntity(int x, int y, int z, const QString& dimension)
+{
+    QString key = QString("%1|%2|%3|%4").arg(dimension).arg(x).arg(y).arg(z);
+    blockEntities.remove(key);
+}
+
+QVector<BlockEntityData> BotWorldData::getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const
+{
+    QVector<BlockEntityData> result;
+    int minX = chunkX * 16;
+    int maxX = minX + 15;
+    int minZ = chunkZ * 16;
+    int maxZ = minZ + 15;
+
+    for (const auto& be : blockEntities) {
+        if (be.dimension == dimension &&
+            be.x >= minX && be.x <= maxX &&
+            be.z >= minZ && be.z <= maxZ)
+        {
+            result.append(be);
+        }
+    }
+    return result;
+}
+
 bool BotWorldData::blockMatches(const QString& blockState, const QStringList& blockTypes) const
 {
     for (const QString& type : blockTypes) {

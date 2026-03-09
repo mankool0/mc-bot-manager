@@ -3,12 +3,36 @@
 
 #include <QHash>
 #include <QMap>
+#include <QByteArray>
 #include <QString>
 #include <QVector3D>
 #include <QVector>
 #include <optional>
 #include <qobject.h>
 #include "common.qpb.h"
+
+struct BlockEntityData {
+    int x = 0, y = 0, z = 0;
+    QString dimension;
+    QString type;                                        // e.g. "minecraft:chest"
+    QVector<mankool::mcbot::protocol::ItemStack> items;
+    QByteArray rawNbt;  // Full binary compound payload from chunk load; patched with items if container was opened
+};
+
+struct PlayerSaveData {
+    QString uuid;
+    double x = 0, y = 0, z = 0;
+    float yaw = 0, pitch = 0;
+    QString dimension;
+    float health = 0.0f;
+    int foodLevel = 0;
+    float saturation = 0.0f;
+    int experienceLevel = 0;
+    float experienceProgress = 0.0f;
+    int totalExperience = 0;
+    QVector<mankool::mcbot::protocol::ItemStack> inventory;   // slots 0-40
+    QVector<mankool::mcbot::protocol::ItemStack> enderItems;
+};
 
 struct ChunkPos {
     int32_t x = 0;
@@ -72,6 +96,10 @@ struct ChunkData {
 };
 
 Q_DECLARE_METATYPE(ChunkData);
+Q_DECLARE_METATYPE(BlockEntityData);
+Q_DECLARE_METATYPE(PlayerSaveData);
+Q_DECLARE_METATYPE(QVector<EntityData>);
+Q_DECLARE_METATYPE(QVector<BlockEntityData>);
 
 // Stores world data for a bot
 class BotWorldData {
@@ -103,10 +131,16 @@ public:
                                          const QString& typeFilter = "") const;
     void clearEntities();
 
+    // Block entity tracking
+    void updateBlockEntity(const BlockEntityData& be);
+    void removeBlockEntity(int x, int y, int z, const QString& dimension);
+    QVector<BlockEntityData> getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const;
+
 private:
     QHash<ChunkPos, ChunkData> chunks;
     QString currentDimension;
     QHash<int, EntityData> entities;
+    QHash<QString, BlockEntityData> blockEntities;  // key: "dim|x|y|z"
 
     bool blockMatches(const QString& blockState, const QStringList& blockTypes) const;  // Handles exact matches and wildcards
 };

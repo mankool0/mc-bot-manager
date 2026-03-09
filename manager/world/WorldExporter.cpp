@@ -78,7 +78,8 @@ bool WorldExporter::exportWorld(const BotWorldData& worldData,
     return true;
 }
 
-bool WorldExporter::exportChunk(const ChunkData& chunk, const QString& outputPath, int dataVersion) {
+bool WorldExporter::exportChunk(const ChunkData& chunk, const QString& outputPath, int dataVersion,
+                                const QVector<BlockEntityData>& blockEntities) {
     // Calculate region coordinates
     RegionPos regionPos = RegionPos::fromChunkPos(chunk.chunkX, chunk.chunkZ);
 
@@ -91,12 +92,43 @@ bool WorldExporter::exportChunk(const ChunkData& chunk, const QString& outputPat
     }
 
     // Convert and write
-    nbt::tag_compound chunkNBT = NBTSerializer::chunkToNBT(chunk, dataVersion);
+    nbt::tag_compound chunkNBT = NBTSerializer::chunkToNBT(chunk, dataVersion, blockEntities);
 
     int localX = chunk.chunkX & 31;
     int localZ = chunk.chunkZ & 31;
 
     return regionFile.writeChunk(localX, localZ, chunkNBT);
+}
+
+bool WorldExporter::exportEntityChunk(int chunkX, int chunkZ, const QString& dimension,
+                                       const QVector<EntityData>& entities,
+                                       const QString& worldPath, int dataVersion) {
+    // Determine entities directory
+    QString entitiesDir;
+    if (dimension == "minecraft:the_nether") {
+        entitiesDir = worldPath + "/DIM-1/entities";
+    } else if (dimension == "minecraft:overworld") {
+        entitiesDir = worldPath + "/entities";
+    } else if (dimension == "minecraft:the_end") {
+        entitiesDir = worldPath + "/DIM1/entities";
+    } else {
+        return false;
+    }
+
+    RegionPos regionPos = RegionPos::fromChunkPos(chunkX, chunkZ);
+    QString regionPath = QString("%1/r.%2.%3.mca").arg(entitiesDir).arg(regionPos.x).arg(regionPos.z);
+    RegionFile regionFile(regionPath);
+
+    if (!regionFile.isValid()) {
+        return false;
+    }
+
+    nbt::tag_compound entityNBT = NBTSerializer::entitiesToNBT(chunkX, chunkZ, entities, dataVersion);
+
+    int localX = chunkX & 31;
+    int localZ = chunkZ & 31;
+
+    return regionFile.writeChunk(localX, localZ, entityNBT);
 }
 
 std::tuple<int, int, int, int> WorldExporter::getChunkBounds(const BotWorldData& worldData) {
@@ -138,6 +170,11 @@ bool WorldExporter::createWorldDirectories(const QString& outputPath) {
     dir.mkpath(outputPath + "/playerdata");
     dir.mkpath(outputPath + "/data");
 
+    // Entity region files
+    dir.mkpath(outputPath + "/entities");
+    dir.mkpath(outputPath + "/DIM-1/entities");
+    dir.mkpath(outputPath + "/DIM1/entities");
+
     return true;
 }
 
@@ -161,14 +198,13 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
 
     data.insert("LevelName", nbt::tag_string(worldName.toStdString()));
 
-    // Spawn coordinates
-    data.insert("SpawnX", nbt::tag_int(spawnX));
-    data.insert("SpawnY", nbt::tag_int(spawnY));
-    data.insert("SpawnZ", nbt::tag_int(spawnZ));
-    data.insert("SpawnAngle", nbt::tag_float(0.0f));
-
-    // Disable features in new chunks
-    data.insert("MapFeatures", nbt::tag_byte(0));
+    // Spawn point
+    nbt::tag_compound spawnCompound;
+    spawnCompound.insert("pos", nbt::tag_int_array(std::vector<int32_t>{spawnX, spawnY, spawnZ}));
+    spawnCompound.insert("pitch", nbt::tag_float(0.0f));
+    spawnCompound.insert("yaw", nbt::tag_float(0.0f));
+    spawnCompound.insert("dimension", nbt::tag_string("minecraft:overworld"));
+    data.insert("spawn", std::move(spawnCompound));
 
     // Game settings
     data.insert("Difficulty", nbt::tag_byte(2));  // Normal
@@ -183,13 +219,12 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
     worldGen.insert("generate_features", nbt::tag_byte(0));  // No structures
     worldGen.insert("seed", nbt::tag_long(0));
 
-    // Dimensions with void generator
     nbt::tag_compound dimensions;
     dimensions.insert("minecraft:overworld", createVoidDimension("minecraft:overworld"));
     dimensions.insert("minecraft:the_nether", createVoidDimension("minecraft:the_nether"));
     dimensions.insert("minecraft:the_end", createVoidDimension("minecraft:the_end"));
-    worldGen.insert("dimensions", std::move(dimensions));
 
+    worldGen.insert("dimensions", std::move(dimensions));
     data.insert("WorldGenSettings", std::move(worldGen));
 
     // Time settings
@@ -217,6 +252,17 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
     // World state
     data.insert("initialized", nbt::tag_byte(1));
     data.insert("WasModded", nbt::tag_byte(0));
+
+    nbt::tag_compound dataPacks;
+    nbt::tag_list enabledPacks(nbt::tag_type::String);
+    enabledPacks.push_back(nbt::tag_string("vanilla"));
+    dataPacks.insert("Enabled", std::move(enabledPacks));
+    nbt::tag_list disabledPacks(nbt::tag_type::String);
+    disabledPacks.push_back(nbt::tag_string("minecart_improvements"));
+    disabledPacks.push_back(nbt::tag_string("redstone_experiments"));
+    disabledPacks.push_back(nbt::tag_string("trade_rebalance"));
+    dataPacks.insert("Disabled", std::move(disabledPacks));
+    data.insert("DataPacks", std::move(dataPacks));
 
     // Current timestamp in milliseconds since epoch
     auto now = std::chrono::system_clock::now();
@@ -331,29 +377,20 @@ QString WorldExporter::getRegionFilePath(const QString& outputPath, int regionX,
 }
 
 nbt::tag_compound WorldExporter::createVoidDimension(const std::string& dimensionType) {
-    nbt::tag_compound dim;
-
-    // Type
-    dim.insert("type", nbt::tag_string(dimensionType));
-
-    // Chunk generator - flat with no layers (void)
-    nbt::tag_compound generator;
-    generator.insert("type", nbt::tag_string("minecraft:flat"));
+    std::string biome = "minecraft:the_void";
 
     nbt::tag_compound settings;
+    settings.insert("biome", nbt::tag_string(biome));
+    settings.insert("layers", nbt::tag_list(nbt::tag_type::Compound));  // empty = void
+    settings.insert("features", nbt::tag_byte(0));
+    settings.insert("lake", nbt::tag_byte(0));
 
-    // Empty layers = void
-    nbt::tag_list layers(nbt::tag_type::Compound);
-    settings.insert("layers", std::move(layers));
-
-    settings.insert("biome", nbt::tag_string("minecraft:plains"));
-
-    // Structure settings
-    nbt::tag_compound structures;
-    structures.insert("structures", nbt::tag_compound());
-    settings.insert("structures", std::move(structures));
-
+    nbt::tag_compound generator;
+    generator.insert("type", nbt::tag_string("minecraft:flat"));
     generator.insert("settings", std::move(settings));
+
+    nbt::tag_compound dim;
+    dim.insert("type", nbt::tag_string(dimensionType));
     dim.insert("generator", std::move(generator));
 
     return dim;
