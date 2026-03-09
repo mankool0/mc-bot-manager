@@ -36,6 +36,16 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     PrismLauncherManager::setPrismConfig(&prismConfig);
 
     connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::prismGUIStarted,
+            this,
+            [this]() { updateStatusDisplay(); });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::prismGUIStopped,
+            this,
+            [this]() { updateStatusDisplay(); });
+
+    connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftLaunching,
             this,
             [](const QString &botName) {
@@ -734,7 +744,7 @@ void ManagerMainWindow::updateStatusDisplay()
         ui->instanceComboBox->setEnabled(!isActive);
         ui->accountComboBox->setEnabled(!isActive);
         ui->serverLineEdit->setEnabled(!isActive);
-        ui->memorySpinBox->setEnabled(!isActive);
+        ui->memorySpinBox->setEnabled(!isActive && !PrismLauncherManager::isPrismGUIRunning());
     }
 }
 

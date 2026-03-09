@@ -3,6 +3,7 @@
 #include "ui/ManagerMainWindow.h"
 #include "bot/BotManager.h"
 #include <QTimer>
+#include <QSettings>
 
 #ifdef Q_OS_UNIX
 #include <signal.h>
@@ -205,6 +206,21 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
         prismGUIProcess = nullptr;
         emit prismGUIStopped();
     });
+
+    // Set memory config for all bots before Prism GUI starts so it reads correct values on load
+    for (const BotInstance &b : BotManager::getBots()) {
+        if (b.instance.isEmpty()) continue;
+        QString cfgPath = prismConfig->prismPath + "/instances/" + b.instance + "/instance.cfg";
+        QSettings cfg(cfgPath, QSettings::IniFormat);
+        bool needsUpdate = cfg.value("MaxMemAlloc").toInt() != b.maxMemory
+                           || !cfg.value("OverrideMemory").toBool();
+        if (needsUpdate) {
+            cfg.setValue("MaxMemAlloc", b.maxMemory);
+            cfg.setValue("OverrideMemory", true);
+            cfg.sync();
+            LogManager::log(QString("Set MaxMemAlloc=%1 for instance '%2'").arg(b.maxMemory).arg(b.instance), LogManager::Info);
+        }
+    }
 
     LogManager::log(QString("Starting PrismLauncher GUI: %1 %2").arg(prismExe, arguments.join(" ")),
                     LogManager::Info);
