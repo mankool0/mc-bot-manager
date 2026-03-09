@@ -210,7 +210,10 @@ struct BotInstance {
     bool manualStop = false;
     QDateTime startTime;
 
+    QString playerUuid;
     QVector3D position;
+    float yaw = 0.0f;
+    float pitch = 0.0f;
     QString dimension;
 
     float health = 0.0f;
@@ -221,6 +224,8 @@ struct BotInstance {
     float experienceProgress = 0.0f;
 
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
+    QVector<mankool::mcbot::protocol::ItemStack> enderChestItems;
+    bool enderChestLoaded = false;  // true once ender chest has been opened this session
     int selectedSlot = 0;
     mankool::mcbot::protocol::ItemStack cursorItem;
 

@@ -791,6 +791,11 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
         if (status.status() != Status::SUCCESSFUL) {
             QWriteLocker locker(bot->worldDataLock.get());
             bot->worldData.clearEntities();
+
+            // Flush player data on disconnect
+            if (bot->worldAutoSaver && bot->saveWorldToDisk) {
+                bot->worldAutoSaver->flushPlayerData();
+            }
         }
 
         // Try to initialize WorldAutoSaver now that we have server address
@@ -816,9 +821,14 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         float oldHealth = bot->health;
         int oldFoodLevel = bot->foodLevel;
 
+        if (!state.uuid().isEmpty()) {
+            bot->playerUuid = state.uuid();
+        }
         if (state.hasPosition()) {
             bot->position = QVector3D(state.position().x(), state.position().y(), state.position().z());
         }
+        bot->yaw   = state.yaw();
+        bot->pitch = state.pitch();
         if (!state.dimension().isEmpty()) {
             bot->dimension = state.dimension();
         }
@@ -829,6 +839,29 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         bot->air = state.air();
         bot->experienceLevel = state.experienceLevel();
         bot->experienceProgress = state.experienceProgress();
+
+        // Update player data for periodic save
+        if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.savePlayerData) {
+            PlayerSaveData psd;
+            psd.uuid             = bot->playerUuid;
+            psd.x                = bot->position.x();
+            psd.y                = bot->position.y();
+            psd.z                = bot->position.z();
+            psd.yaw              = bot->yaw;
+            psd.pitch            = bot->pitch;
+            psd.dimension        = bot->dimension;
+            psd.health           = bot->health;
+            psd.foodLevel        = bot->foodLevel;
+            psd.saturation       = bot->saturation;
+            psd.experienceLevel  = bot->experienceLevel;
+            psd.experienceProgress = bot->experienceProgress;
+            psd.totalExperience  = state.totalExperience();
+            psd.inventory        = bot->inventory;
+            if (bot->enderChestLoaded) {
+                psd.enderItems = bot->enderChestItems;
+            }
+            bot->worldAutoSaver->setPlayerData(psd);
+        }
 
         emit botUpdated(bot->name);
 
@@ -2801,11 +2834,6 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
                         if (item.slot() < it->maxSlots) {
                             be.items.append(item);
                         }
-                    }
-
-                    for (auto pit = containerUpdate.properties().constBegin();
-                         pit != containerUpdate.properties().constEnd(); ++pit) {
-                        be.properties[pit.key()] = pit.value();
                     }
 
                     saveBlockEntity(be);
