@@ -142,6 +142,19 @@ void ManagerMainWindow::setupUI()
     connect(ui->tokenRefreshCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->debugModeCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->saveWorldToDiskCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->saveBlockEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->saveEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->saveItemEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->savePlayerDataCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+
+    auto updateSaveSubSettings = [this](bool enabled) {
+        ui->saveBlockEntitiesCheckBox->setVisible(enabled);
+        ui->saveEntitiesCheckBox->setVisible(enabled);
+        ui->saveItemEntitiesCheckBox->setVisible(enabled);
+        ui->savePlayerDataCheckBox->setVisible(enabled);
+    };
+    connect(ui->saveWorldToDiskCheckBox, &QCheckBox::toggled, this, updateSaveSubSettings);
+    updateSaveSubSettings(ui->saveWorldToDiskCheckBox->isChecked());
 
     ui->detailsStackedWidget->setCurrentIndex(0);
     ui->detailsStackedWidget->hide();
@@ -637,6 +650,10 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
             bot->debugLogging = ui->debugModeCheckBox->isChecked();
             bot->saveWorldToDisk = ui->saveWorldToDiskCheckBox->isChecked();
+            bot->worldSaveSettings.saveBlockEntities = ui->saveBlockEntitiesCheckBox->isChecked();
+            bot->worldSaveSettings.saveEntities = ui->saveEntitiesCheckBox->isChecked();
+            bot->worldSaveSettings.saveItemEntities = ui->saveItemEntitiesCheckBox->isChecked();
+            bot->worldSaveSettings.savePlayerData = ui->savePlayerDataCheckBox->isChecked();
             updateInstancesTable();
         }
     }
@@ -682,6 +699,10 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     ui->tokenRefreshCheckBox->setChecked(bot.tokenRefresh);
     ui->debugModeCheckBox->setChecked(bot.debugLogging);
     ui->saveWorldToDiskCheckBox->setChecked(bot.saveWorldToDisk);
+    ui->saveBlockEntitiesCheckBox->setChecked(bot.worldSaveSettings.saveBlockEntities);
+    ui->saveEntitiesCheckBox->setChecked(bot.worldSaveSettings.saveEntities);
+    ui->saveItemEntitiesCheckBox->setChecked(bot.worldSaveSettings.saveItemEntities);
+    ui->savePlayerDataCheckBox->setChecked(bot.worldSaveSettings.savePlayerData);
 
     // Clear flag to allow user changes to sync to memory
     loadingConfiguration = false;
@@ -1128,6 +1149,10 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("tokenRefresh", bot.tokenRefresh);
     settings.setValue("debugLogging", bot.debugLogging);
     settings.setValue("saveWorldToDisk", bot.saveWorldToDisk);
+    settings.setValue("saveBlockEntities", bot.worldSaveSettings.saveBlockEntities);
+    settings.setValue("saveEntities", bot.worldSaveSettings.saveEntities);
+    settings.setValue("saveItemEntities", bot.worldSaveSettings.saveItemEntities);
+    settings.setValue("savePlayerData", bot.worldSaveSettings.savePlayerData);
 
     settings.endGroup();
 }
@@ -1151,6 +1176,10 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.tokenRefresh = settings.value("tokenRefresh", true).toBool();
     bot.debugLogging = settings.value("debugLogging", false).toBool();
     bot.saveWorldToDisk = settings.value("saveWorldToDisk", true).toBool();
+    bot.worldSaveSettings.saveBlockEntities = settings.value("saveBlockEntities", true).toBool();
+    bot.worldSaveSettings.saveEntities = settings.value("saveEntities", true).toBool();
+    bot.worldSaveSettings.saveItemEntities = settings.value("saveItemEntities", true).toBool();
+    bot.worldSaveSettings.savePlayerData = settings.value("savePlayerData", true).toBool();
 
     bot.position = QVector3D(0, 0, 0);
     bot.dimension = "";

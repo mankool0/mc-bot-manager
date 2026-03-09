@@ -843,20 +843,20 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         // Update player data for periodic save
         if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.savePlayerData) {
             PlayerSaveData psd;
-            psd.uuid             = bot->playerUuid;
-            psd.x                = bot->position.x();
-            psd.y                = bot->position.y();
-            psd.z                = bot->position.z();
-            psd.yaw              = bot->yaw;
-            psd.pitch            = bot->pitch;
-            psd.dimension        = bot->dimension;
-            psd.health           = bot->health;
-            psd.foodLevel        = bot->foodLevel;
-            psd.saturation       = bot->saturation;
-            psd.experienceLevel  = bot->experienceLevel;
+            psd.uuid = bot->playerUuid;
+            psd.x = bot->position.x();
+            psd.y = bot->position.y();
+            psd.z = bot->position.z();
+            psd.yaw = bot->yaw;
+            psd.pitch = bot->pitch;
+            psd.dimension = bot->dimension;
+            psd.health = bot->health;
+            psd.foodLevel = bot->foodLevel;
+            psd.saturation = bot->saturation;
+            psd.experienceLevel = bot->experienceLevel;
             psd.experienceProgress = bot->experienceProgress;
-            psd.totalExperience  = state.totalExperience();
-            psd.inventory        = bot->inventory;
+            psd.totalExperience = state.totalExperience();
+            psd.inventory = bot->inventory;
             if (bot->enderChestLoaded) {
                 psd.enderItems = bot->enderChestItems;
             }
