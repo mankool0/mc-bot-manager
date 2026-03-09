@@ -1,10 +1,14 @@
 #include "NBTSerializer.h"
+#include <io/stream_reader.h>
 #include <QRegularExpression>
 #include <QStringList>
+#include <sstream>
 #include <ctime>
 #include <algorithm>
+#include <cmath>
 
-nbt::tag_compound NBTSerializer::chunkToNBT(const ChunkData& chunk, int dataVersion) {
+nbt::tag_compound NBTSerializer::chunkToNBT(const ChunkData& chunk, int dataVersion,
+                                             const QVector<BlockEntityData>& blockEntities) {
     nbt::tag_compound root;
 
     root.insert("DataVersion", nbt::tag_int(dataVersion));
@@ -32,9 +36,235 @@ nbt::tag_compound NBTSerializer::chunkToNBT(const ChunkData& chunk, int dataVers
     // Heightmaps (required for proper rendering)
     root.insert("Heightmaps", createHeightmaps(chunk));
 
-    // Empty lists for optional data
-    root.insert("block_entities", nbt::tag_list(nbt::tag_type::Compound));
+    // Block entities
+    nbt::tag_list blockEntitiesTag(nbt::tag_type::Compound);
+    for (const auto& be : blockEntities) {
+        blockEntitiesTag.push_back(blockEntityToNBT(be));
+    }
+    root.insert("block_entities", std::move(blockEntitiesTag));
     root.insert("PostProcessing", nbt::tag_list(nbt::tag_type::List));
+
+    return root;
+}
+
+nbt::tag_compound NBTSerializer::buildItemNBT(const mankool::mcbot::protocol::ItemStack& item) {
+    // Java client sends the full compound payload from ItemStack.CODEC: {id, count, components}.
+    // Slot is not included - callers add it as appropriate.
+    const QByteArray nbtBytes = item.nbt();
+    if (!nbtBytes.isEmpty()) {
+        try {
+            std::istringstream ss(std::string(nbtBytes.data(), nbtBytes.size()), std::ios::binary);
+            nbt::io::stream_reader reader(ss);
+            auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+            return std::move(static_cast<nbt::tag_compound&>(*tagPtr));
+        } catch (const std::exception&) {}
+    }
+
+    return nbt::tag_compound{};
+}
+
+nbt::tag_compound NBTSerializer::itemStackToNBT(const mankool::mcbot::protocol::ItemStack& item) {
+    nbt::tag_compound tag = buildItemNBT(item);
+    tag.insert("Slot", nbt::tag_byte(static_cast<int8_t>(item.slot())));
+    return tag;
+}
+
+nbt::tag_compound NBTSerializer::blockEntityToNBT(const BlockEntityData& be) {
+    // If raw binary NBT is available (from chunk load), use it as the base.
+    // If items are also known (container was opened this session), patch them in
+    // so we keep all original fields (lock, custom name, furnace progress, etc.)
+    // while writing the freshest item contents.
+    if (!be.rawNbt.isEmpty()) {
+        try {
+            std::istringstream ss(std::string(be.rawNbt.constData(), be.rawNbt.size()), std::ios::binary);
+            nbt::io::stream_reader reader(ss);
+            auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+            auto& compound = static_cast<nbt::tag_compound&>(*tagPtr);
+
+            if (!be.items.isEmpty()) {
+                nbt::tag_list items(nbt::tag_type::Compound);
+                for (const auto& item : be.items) {
+                    if (!item.itemId().isEmpty() && item.itemId() != "minecraft:air") {
+                        items.push_back(itemStackToNBT(item));
+                    }
+                }
+                compound["Items"] = nbt::value(std::move(items));
+            }
+
+            return std::move(compound);
+        } catch (...) {}
+    }
+
+    // rawNbt should always be present (set from chunk load and preserved through container opens).
+    // Return an empty compound as a last-resort fallback so callers always get a valid tag.
+    return nbt::tag_compound{};
+}
+
+nbt::tag_compound NBTSerializer::entityToNBT(const EntityData& e) {
+    nbt::tag_compound tag;
+
+    tag.insert("id", nbt::tag_string(e.type.toStdString()));
+
+    // UUID as [I; a, b, c, d] (4 big-endian int32s from hex string)
+    QString uuidStr = e.uuid;
+    uuidStr.remove('-');
+    if (uuidStr.length() == 32) {
+        std::vector<int32_t> uuidInts;
+        for (int i = 0; i < 4; i++) {
+            bool ok;
+            uint32_t val = uuidStr.mid(i * 8, 8).toUInt(&ok, 16);
+            uuidInts.push_back(static_cast<int32_t>(val));
+        }
+        tag.insert("UUID", nbt::tag_int_array(std::move(uuidInts)));
+    }
+
+    // Position
+    nbt::tag_list pos(nbt::tag_type::Double);
+    pos.push_back(nbt::tag_double(e.x));
+    pos.push_back(nbt::tag_double(e.y));
+    pos.push_back(nbt::tag_double(e.z));
+    tag.insert("Pos", std::move(pos));
+
+    // Rotation
+    nbt::tag_list rot(nbt::tag_type::Float);
+    rot.push_back(nbt::tag_float(e.yaw));
+    rot.push_back(nbt::tag_float(e.pitch));
+    tag.insert("Rotation", std::move(rot));
+
+    // Motion (velocity)
+    nbt::tag_list motion(nbt::tag_type::Double);
+    motion.push_back(nbt::tag_double(e.velX));
+    motion.push_back(nbt::tag_double(e.velY));
+    motion.push_back(nbt::tag_double(e.velZ));
+    tag.insert("Motion", std::move(motion));
+
+    tag.insert("OnGround", nbt::tag_byte(0));
+
+    if (e.isLiving) {
+        tag.insert("Health", nbt::tag_float(e.health));
+    }
+
+    if (e.isItem) {
+        nbt::tag_compound itemTag;
+        itemTag.insert("id",    nbt::tag_string(e.itemStack.itemId().toStdString()));
+        itemTag.insert("count", nbt::tag_byte(static_cast<int8_t>(e.itemStack.count())));
+        tag.insert("Item", std::move(itemTag));
+    }
+
+    return tag;
+}
+
+nbt::tag_compound NBTSerializer::entitiesToNBT(int chunkX, int chunkZ, const QVector<EntityData>& entities,
+                                                int dataVersion, bool saveItemEntities) {
+    nbt::tag_compound root;
+    root.insert("DataVersion", nbt::tag_int(dataVersion));
+
+    // Position as [I; chunkX, chunkZ]
+    std::vector<int32_t> posVec = {chunkX, chunkZ};
+    root.insert("Position", nbt::tag_int_array(std::move(posVec)));
+
+    nbt::tag_list entityList(nbt::tag_type::Compound);
+    for (const auto& e : entities) {
+        if (e.isPlayer) continue;
+        if (!saveItemEntities && e.isItem) continue;
+        entityList.push_back(entityToNBT(e));
+    }
+    root.insert("Entities", std::move(entityList));
+
+    return root;
+}
+
+nbt::tag_compound NBTSerializer::playerToNBT(const PlayerSaveData& data, int dataVersion) {
+    nbt::tag_compound root;
+
+    root.insert("DataVersion",    nbt::tag_int(dataVersion));
+    root.insert("playerGameType", nbt::tag_int(0));  // survival
+
+    // Position
+    nbt::tag_list pos(nbt::tag_type::Double);
+    pos.push_back(nbt::tag_double(data.x));
+    pos.push_back(nbt::tag_double(data.y));
+    pos.push_back(nbt::tag_double(data.z));
+    root.insert("Pos", std::move(pos));
+
+    // Rotation
+    nbt::tag_list rot(nbt::tag_type::Float);
+    rot.push_back(nbt::tag_float(data.yaw));
+    rot.push_back(nbt::tag_float(data.pitch));
+    root.insert("Rotation", std::move(rot));
+
+    root.insert("Dimension",          nbt::tag_string(data.dimension.toStdString()));
+    root.insert("Health",             nbt::tag_float(data.health));
+    root.insert("foodLevel",          nbt::tag_int(data.foodLevel));
+    root.insert("foodSaturationLevel",nbt::tag_float(data.saturation));
+    root.insert("XpLevel",            nbt::tag_int(data.experienceLevel));
+    root.insert("XpP",                nbt::tag_float(data.experienceProgress));
+    root.insert("XpTotal",            nbt::tag_int(data.totalExperience));
+    root.insert("Score",              nbt::tag_int(0));  // Cross-death score, not tracked by bot
+
+    // Inventory (slots 0-35) and equipment (armor slots 36-39, offhand 40).
+    // Proto slots 36-39 = armor (boots/leggings/chestplate/helmet), 40 = offhand.
+    // 1.21.5+ (dataVersion >= DATA_VERSION_1_21_5): store in equipment compound.
+    // Older: store in Inventory list with legacy slot IDs 100-103 / -106.
+    nbt::tag_list inventory(nbt::tag_type::Compound);
+    nbt::tag_compound equipment;
+    bool hasEquipment = false;
+
+    for (const auto& item : data.inventory) {
+        if (item.itemId().isEmpty() || item.itemId() == "minecraft:air") continue;
+
+        int protoSlot = item.slot();
+
+        if (protoSlot >= 36 && protoSlot <= 40) {
+            if (dataVersion >= DATA_VERSION_1_21_5) {
+                // New format: equipment compound with named slots, no Slot field on item
+                const char* slotName = nullptr;
+                switch (protoSlot) {
+                    case 36: slotName = "feet";    break;
+                    case 37: slotName = "legs";    break;
+                    case 38: slotName = "chest";   break;
+                    case 39: slotName = "head";    break;
+                    case 40: slotName = "offhand"; break;
+                }
+                if (slotName) {
+                    equipment.insert(slotName, buildItemNBT(item));
+                    hasEquipment = true;
+                }
+            } else {
+                // Legacy format: Inventory list with slot IDs 100-103 / -106
+                int8_t datSlot;
+                switch (protoSlot) {
+                    case 36: datSlot = 100; break;
+                    case 37: datSlot = 101; break;
+                    case 38: datSlot = 102; break;
+                    case 39: datSlot = 103; break;
+                    case 40: datSlot = static_cast<int8_t>(-106); break;
+                    default: datSlot = static_cast<int8_t>(protoSlot); break;
+                }
+                nbt::tag_compound itemTag = buildItemNBT(item);
+                itemTag.insert("Slot", nbt::tag_byte(datSlot));
+                inventory.push_back(std::move(itemTag));
+            }
+        } else {
+            inventory.push_back(itemStackToNBT(item));
+        }
+    }
+
+    root.insert("Inventory", std::move(inventory));
+    if (hasEquipment) {
+        root.insert("equipment", std::move(equipment));
+    }
+
+    // Ender chest contents (only written when known; processPlayerData injects from disk otherwise)
+    if (!data.enderItems.isEmpty()) {
+        nbt::tag_list enderItems(nbt::tag_type::Compound);
+        for (const auto& item : data.enderItems) {
+            if (!item.itemId().isEmpty() && item.itemId() != "minecraft:air") {
+                enderItems.push_back(itemStackToNBT(item));
+            }
+        }
+        root.insert("EnderItems", std::move(enderItems));
+    }
 
     return root;
 }
@@ -81,10 +311,10 @@ nbt::tag_compound NBTSerializer::sectionToNBT(const ChunkSection& section) {
 
     sectionTag.insert("block_states", std::move(blockStates));
 
-    // Simple biomes (all plains for now)
+    // Biomes - use the_void until per-section biome data is plumbed through
     nbt::tag_compound biomes;
     nbt::tag_list biomePalette(nbt::tag_type::String);
-    biomePalette.push_back(nbt::tag_string("minecraft:plains"));
+    biomePalette.push_back(nbt::tag_string("minecraft:the_void"));
     biomes.insert("palette", std::move(biomePalette));
     sectionTag.insert("biomes", std::move(biomes));
 

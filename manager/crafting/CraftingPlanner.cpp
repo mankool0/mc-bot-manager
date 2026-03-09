@@ -64,7 +64,7 @@ int CraftingPlanner::calculateRawMaterialCost(
                 QVector<const Recipe*> subRecipes = m_registry->getRecipesByResult(item);
 
                 if (!subRecipes.isEmpty()) {
-                    // This item can be crafted — find cheapest sub-recipe
+                    // This item can be crafted - find cheapest sub-recipe
                     for (const Recipe* subRecipe : subRecipes) {
                         int subBatches = (stillNeeded + subRecipe->resultCount - 1) / subRecipe->resultCount;
                         int subCost = calculateRawMaterialCost(subRecipe, subBatches, state, maxDepth - 1, inProgress);

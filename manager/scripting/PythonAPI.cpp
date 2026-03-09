@@ -8,6 +8,7 @@
 #include <QCoreApplication>
 #include <QThread>
 #include <QReadWriteLock>
+#include <QDateTime>
 #include <pybind11/stl.h>
 
 thread_local QString PythonAPI::currentBot;
@@ -1010,7 +1011,8 @@ void PythonAPI::log(const std::string &message)
     if (!botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString formattedMsg = QString("[%1] %2").arg(scriptName, qMessage);
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+            QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
             QMetaObject::invokeMethod(bot->consoleWidget, [widget = bot->consoleWidget, msg = formattedMsg]() {
                 widget->appendOutput(msg, Qt::darkGreen);
             }, Qt::QueuedConnection);
@@ -1027,7 +1029,8 @@ void PythonAPI::error(const std::string &message)
     if (!botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString formattedMsg = QString("[%1 Error] %2").arg(scriptName, qMessage);
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+            QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
             QMetaObject::invokeMethod(bot->consoleWidget, [widget = bot->consoleWidget, msg = formattedMsg]() {
                 widget->appendOutput(msg, Qt::red);
             }, Qt::QueuedConnection);
@@ -1308,6 +1311,71 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     }
 
     return chunkList;
+}
+
+static py::dict buildEntityDict(const EntityData &e)
+{
+    py::dict d;
+    d["entity_id"]  = e.entityId;
+    d["uuid"]       = e.uuid.toStdString();
+    d["type"]       = e.type.toStdString();
+    d["x"]          = e.x;
+    d["y"]          = e.y;
+    d["z"]          = e.z;
+    d["yaw"]        = e.yaw;
+    d["pitch"]      = e.pitch;
+    d["vel_x"]      = e.velX;
+    d["vel_y"]      = e.velY;
+    d["vel_z"]      = e.velZ;
+    if (e.isLiving) {
+        d["health"]     = e.health;
+        d["max_health"] = e.maxHealth;
+    }
+    if (e.isItem) {
+        d["item"] = buildItemDict(e.itemStack);
+    }
+    if (e.isPlayer) {
+        d["player_name"] = e.playerName.toStdString();
+    }
+    return d;
+}
+
+py::list PythonAPI::getEntities(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QVector<EntityData> ents;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        ents = botInstance->worldData.getAllEntities();
+    }
+
+    py::list result;
+    for (const auto &e : ents) {
+        result.append(buildEntityDict(e));
+    }
+    return result;
+}
+
+py::list PythonAPI::findEntitiesNear(double x, double y, double z, double radius,
+                                     const std::string &typeFilter, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QVector<EntityData> ents;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        ents = botInstance->worldData.findEntitiesNear(x, y, z, radius,
+                                                       QString::fromStdString(typeFilter));
+    }
+
+    py::list result;
+    for (const auto &e : ents) {
+        result.append(buildEntityDict(e));
+    }
+    return result;
 }
 
 bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, const std::string &bot)

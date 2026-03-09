@@ -102,6 +102,12 @@ public:
     static py::dict meteorGetModule(const std::string &module, const std::string &bot = "");
     static py::list meteorListModules(const std::string &bot = "");
 
+    // Entity queries
+    static py::list getEntities(const std::string &bot = "");
+    static py::list findEntitiesNear(double x, double y, double z, double radius,
+                                     const std::string &typeFilter = "",
+                                     const std::string &bot = "");
+
     // World queries
     static py::object getBlock(double x, double y, double z, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,

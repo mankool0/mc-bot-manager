@@ -110,7 +110,7 @@ Get bot status string.
 
 Get bot inventory.
 
-**Returns:** `list` of dicts with `slot`, `item_id`, `count`, `damage`, `max_damage`, `display_name`, `enchantments`, and optionally `container_items` (list of the same dict structure, present on shulker boxes and other container items), or `None` if bot is offline
+**Returns:** `list` of [item dicts](#item-dict), or `None` if bot is offline. Each dict also includes a `slot` field (0–40). Shulker boxes and other container items additionally have `container_items` (list of item dicts for the contents).
 
 ```python
 items = bot.inventory()
@@ -118,6 +118,19 @@ if items is not None:
     for item in items:
         print(f"Slot {item['slot']}: {item['count']}x {item['item_id']} ({item['display_name']})")
 ```
+
+### Item dict
+
+The item dict schema used by `bot.inventory()`, `world.get_container()`, and entity item fields:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `item_id` | `str` | Item ID (e.g. `"minecraft:diamond"`) |
+| `count` | `int` | Stack size |
+| `damage` | `int` | Current damage (0 = undamaged) |
+| `max_damage` | `int` | Max durability (0 for non-damageable items) |
+| `display_name` | `str` | Display name (may include formatting) |
+| `enchantments` | `list[str]` | List of enchantment IDs (e.g. `["minecraft:sharpness"]`) |
 
 ### `screen(bot_name="")`
 

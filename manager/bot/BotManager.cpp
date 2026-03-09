@@ -5,6 +5,9 @@
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
 #include "scripting/ScriptEngine.h"
+#include <io/stream_reader.h>
+#include <nbt_tags.h>
+#include <sstream>
 #include <QDateTime>
 #include <QDataStream>
 #include <QUuid>
@@ -643,7 +646,7 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
 
     LogManager::log(QString("[%1] Creating WorldAutoSaver for %2 with version %3 (data version %4)")
                    .arg(bot->name).arg(bot->server).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
-    bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version);
+    bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version, bot->worldSaveSettings);
     bot->worldAutoSaverServerIp = bot->server;
 
     // Process any chunks that were queued before the saver was ready
@@ -651,7 +654,12 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         LogManager::log(QString("[%1] Processing %2 early chunks...")
                        .arg(bot->name).arg(bot->earlyChunkQueue.size()), LogManager::Info);
         for (const auto& earlyChunk : bot->earlyChunkQueue) {
-            bot->worldAutoSaver->saveChunkAsync(earlyChunk);
+            QVector<BlockEntityData> earlyBEs;
+            {
+                QReadLocker locker(bot->worldDataLock.get());
+                earlyBEs = bot->worldData.getBlockEntitiesInChunk(earlyChunk.chunkX, earlyChunk.chunkZ, earlyChunk.dimension);
+            }
+            bot->worldAutoSaver->saveChunkAsync(earlyChunk, earlyBEs);
         }
         bot->earlyChunkQueue.clear();
         LogManager::log(QString("[%1] Finished processing early chunks").arg(bot->name), LogManager::Success);
@@ -778,6 +786,18 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
         bot->server = serverAddr;
         bot->serverConnectionStatus = status.status();
 
+        // Clear entity tracking when bot disconnects from server
+        using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
+        if (status.status() != Status::SUCCESSFUL) {
+            QWriteLocker locker(bot->worldDataLock.get());
+            bot->worldData.clearEntities();
+
+            // Flush player data on disconnect
+            if (bot->worldAutoSaver && bot->saveWorldToDisk) {
+                bot->worldAutoSaver->flushPlayerData();
+            }
+        }
+
         // Try to initialize WorldAutoSaver now that we have server address
         tryInitializeWorldAutoSaver(bot);
 
@@ -801,9 +821,14 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         float oldHealth = bot->health;
         int oldFoodLevel = bot->foodLevel;
 
+        if (!state.uuid().isEmpty()) {
+            bot->playerUuid = state.uuid();
+        }
         if (state.hasPosition()) {
             bot->position = QVector3D(state.position().x(), state.position().y(), state.position().z());
         }
+        bot->yaw   = state.yaw();
+        bot->pitch = state.pitch();
         if (!state.dimension().isEmpty()) {
             bot->dimension = state.dimension();
         }
@@ -814,6 +839,29 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         bot->air = state.air();
         bot->experienceLevel = state.experienceLevel();
         bot->experienceProgress = state.experienceProgress();
+
+        // Update player data for periodic save
+        if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.savePlayerData) {
+            PlayerSaveData psd;
+            psd.uuid = bot->playerUuid;
+            psd.x = bot->position.x();
+            psd.y = bot->position.y();
+            psd.z = bot->position.z();
+            psd.yaw = bot->yaw;
+            psd.pitch = bot->pitch;
+            psd.dimension = bot->dimension;
+            psd.health = bot->health;
+            psd.foodLevel = bot->foodLevel;
+            psd.saturation = bot->saturation;
+            psd.experienceLevel = bot->experienceLevel;
+            psd.experienceProgress = bot->experienceProgress;
+            psd.totalExperience = state.totalExperience();
+            psd.inventory = bot->inventory;
+            if (bot->enderChestLoaded) {
+                psd.enderItems = bot->enderChestItems;
+            }
+            bot->worldAutoSaver->setPlayerData(psd);
+        }
 
         emit botUpdated(bot->name);
 
@@ -2376,16 +2424,76 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         chunk.sections[section.sectionY] = section;
     }
 
-    // Load chunk into world data (with write lock)
+    // Load chunk into world data (with write lock), also parse and store block entities
+    QVector<BlockEntityData> chunkBlockEntities;
     {
         QWriteLocker locker(bot->worldDataLock.get());
         bot->worldData.loadChunk(chunk);
+
+        // Snapshot existing block entities for this chunk before modifying worldData:
+        // used to preserve item data for containers opened earlier this session,
+        // and to detect broken blocks (zombie cleanup).
+        auto existingBEs = bot->worldData.getBlockEntitiesInChunk(chunk.chunkX, chunk.chunkZ, chunk.dimension);
+        QHash<QString, BlockEntityData> existingMap;
+        for (const auto& e : existingBEs) {
+            existingMap[QString("%1|%2|%3|%4").arg(e.dimension).arg(e.x).arg(e.y).arg(e.z)] = e;
+        }
+
+        // Parse all block entity NBT from chunk and update worldData.
+        QSet<QString> rawNbtPositions;
+        for (const QByteArray& beBytes : chunkData.blockEntityNbt()) {
+            if (beBytes.isEmpty()) continue;
+            try {
+                std::istringstream ss(std::string(beBytes.constData(), beBytes.size()), std::ios::binary);
+                nbt::io::stream_reader reader(ss);
+                auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+                auto& compound = static_cast<nbt::tag_compound&>(*tagPtr);
+
+                BlockEntityData be;
+                be.x = compound.has_key("x") ? static_cast<nbt::tag_int&>(compound.at("x").get()).get() : 0;
+                be.y = compound.has_key("y") ? static_cast<nbt::tag_int&>(compound.at("y").get()).get() : 0;
+                be.z = compound.has_key("z") ? static_cast<nbt::tag_int&>(compound.at("z").get()).get() : 0;
+                if (compound.has_key("id")) {
+                    be.type = QString::fromStdString(static_cast<nbt::tag_string&>(compound.at("id").get()).get());
+                }
+                be.dimension = chunkData.dimension();
+
+                QString posKey = QString("%1|%2|%3|%4").arg(be.dimension).arg(be.x).arg(be.y).arg(be.z);
+                rawNbtPositions.insert(posKey);
+
+                // If we already have items for this block entity (container opened earlier this
+                // session), preserve them. The server never sends container contents in chunk data.
+                auto existingIt = existingMap.find(posKey);
+                if (existingIt != existingMap.end() && !existingIt->items.isEmpty()) {
+                    be.items = existingIt->items;
+                    // rawNbt stays empty so the structured items path is used in serialization
+                } else {
+                    be.rawNbt = beBytes;  // No known items; processChunk will check disk
+                }
+
+                bot->worldData.updateBlockEntity(be);
+            } catch (...) {}
+        }
+
+        // Zombie cleanup: remove worldData entries for this chunk that the server no longer
+        // reports (the block was broken since the last chunk load).
+        for (const auto& existing : existingBEs) {
+            QString posKey = QString("%1|%2|%3|%4").arg(existing.dimension).arg(existing.x).arg(existing.y).arg(existing.z);
+            if (!rawNbtPositions.contains(posKey)) {
+                bot->worldData.removeBlockEntity(existing.x, existing.y, existing.z, existing.dimension);
+            }
+        }
+
+        // Collect block entities for this chunk to pass to the saver
+        if (bot->saveWorldToDisk) {
+            chunkBlockEntities = bot->worldData.getBlockEntitiesInChunk(chunk.chunkX, chunk.chunkZ, chunk.dimension);
+        }
     }
 
     // Save the chunk to disk or queue it if the saver isn't ready (only if saving is enabled)
     if (bot->saveWorldToDisk) {
         if (bot->worldAutoSaver) {
-            bot->worldAutoSaver->saveChunkAsync(chunk);
+            bot->worldAutoSaver->saveChunkAsync(chunk, chunkBlockEntities);
         } else {
             bot->earlyChunkQueue.append(chunk);
         }
@@ -2553,6 +2661,8 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
+    using CT = mankool::mcbot::protocol::ContainerUpdate::ContainerType;
+
     bool isOpen = containerUpdate.isOpen();
     int containerId = containerUpdate.containerId();
 
@@ -2574,6 +2684,161 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
             bot->containerState.containerId = -1;
             bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
             bot->containerState.items.clear();
+        }
+    }
+
+    // Save block entity or ender chest contents when container opens
+    if (isOpen && bot->saveWorldToDisk && bot->worldAutoSaver) {
+        CT type = containerUpdate.type();
+
+        // Handle ender chest separately (stored in player data)
+        if (type == CT::ENDER_CHEST && bot->worldSaveSettings.savePlayerData) {
+            QVector<mankool::mcbot::protocol::ItemStack> items;
+            for (const auto& item : containerUpdate.items()) {
+                if (item.slot() < 27) {
+                    items.append(item);
+                }
+            }
+            bot->enderChestItems = items;
+            bot->enderChestLoaded = true;
+            // handlePlayerStateImpl (fires every tick) will pick these up in the next setPlayerData call
+        }
+
+        // Handle block entities (containers with a world position)
+        if (bot->worldSaveSettings.saveBlockEntities && containerUpdate.hasPosition()) {
+            // Map container type to block entity id and slot count
+            struct ContainerInfo { QString id; int maxSlots; };
+            static const QHash<int, ContainerInfo> containerMap = {
+                {static_cast<int>(CT::CHEST),        {"minecraft:chest",        27}},
+                {static_cast<int>(CT::SHULKER_BOX),  {"minecraft:shulker_box",  27}},
+                {static_cast<int>(CT::FURNACE),       {"minecraft:furnace",       3}},
+                {static_cast<int>(CT::BLAST_FURNACE), {"minecraft:blast_furnace", 3}},
+                {static_cast<int>(CT::SMOKER),        {"minecraft:smoker",        3}},
+                {static_cast<int>(CT::HOPPER),        {"minecraft:hopper",        5}},
+                {static_cast<int>(CT::DISPENSER),     {"minecraft:dispenser",     9}},
+                {static_cast<int>(CT::DROPPER),       {"minecraft:dropper",       9}},
+                {static_cast<int>(CT::BREWING_STAND), {"minecraft:brewing_stand", 5}},
+                {static_cast<int>(CT::BEACON),        {"minecraft:beacon",        1}},
+            };
+
+            // Helper: update a block entity and re-save its chunk
+            auto saveBlockEntity = [&](const BlockEntityData& be) {
+                int chunkX = be.x >> 4;
+                int chunkZ = be.z >> 4;
+                {
+                    QWriteLocker locker(bot->worldDataLock.get());
+                    bot->worldData.updateBlockEntity(be);
+                }
+                {
+                    QReadLocker locker(bot->worldDataLock.get());
+                    const ChunkData* chunk = bot->worldData.getChunk(chunkX, chunkZ);
+                    if (chunk) {
+                        auto bes = bot->worldData.getBlockEntitiesInChunk(chunkX, chunkZ, be.dimension);
+                        bot->worldAutoSaver->saveChunkAsync(*chunk, bes);
+                    }
+                }
+            };
+
+            auto it = containerMap.find(static_cast<int>(type));
+            if (it != containerMap.end()) {
+                int posX = containerUpdate.position().x();
+                int posY = containerUpdate.position().y();
+                int posZ = containerUpdate.position().z();
+
+                // For chests: check block state to detect double chests and handle both halves
+                if (type == CT::CHEST) {
+                    std::optional<QString> blockState;
+                    {
+                        QReadLocker locker(bot->worldDataLock.get());
+                        blockState = bot->worldData.getBlock(posX, posY, posZ);
+                    }
+
+                    // Extract block name from state string (e.g. "minecraft:barrel" from
+                    // "minecraft:barrel[facing=up,open=false]")
+                    QString blockName = "minecraft:chest";
+                    if (blockState) {
+                        int bracket = blockState->indexOf('[');
+                        blockName = bracket >= 0 ? blockState->left(bracket) : *blockState;
+                    }
+
+                    bool clickedIsRight = blockState && blockState->contains("type=right");
+                    bool clickedIsLeft  = blockState && blockState->contains("type=left");
+
+                    if (clickedIsRight || clickedIsLeft) {
+                        // Double chest. Slot assignment:
+                        //   Container slots 0-26  -> RIGHT chest block entity (slots 0-26 in its NBT)
+                        //   Container slots 27-53 -> LEFT  chest block entity (remapped to slots 0-26)
+                        // Connected position: RIGHT -> counterClockWise(facing), LEFT -> clockWise(facing)
+                        int dx = 0, dz = 0;
+                        if (clickedIsRight) {
+                            // counterClockWise: N->W, S->E, E->N, W->S
+                            if      (blockState->contains("facing=north")) dx = -1;
+                            else if (blockState->contains("facing=south")) dx = +1;
+                            else if (blockState->contains("facing=east"))  dz = -1;
+                            else                                            dz = +1; // west
+                        } else {
+                            // clockWise: N->E, S->W, E->S, W->N
+                            if      (blockState->contains("facing=north")) dx = +1;
+                            else if (blockState->contains("facing=south")) dx = -1;
+                            else if (blockState->contains("facing=east"))  dz = +1;
+                            else                                            dz = -1; // west
+                        }
+
+                        int connX = posX + dx;
+                        int connZ = posZ + dz;
+
+                        // Determine which position is RIGHT and which is LEFT
+                        int rightX = clickedIsRight ? posX : connX;
+                        int rightZ = clickedIsRight ? posZ : connZ;
+                        int leftX  = clickedIsRight ? connX : posX;
+                        int leftZ  = clickedIsRight ? connZ : posZ;
+
+                        BlockEntityData beRight, beLeft;
+                        beRight.x = rightX; beRight.y = posY; beRight.z = rightZ;
+                        beRight.dimension = bot->dimension; beRight.type = blockName;
+                        beLeft.x = leftX;   beLeft.y = posY;  beLeft.z = leftZ;
+                        beLeft.dimension = bot->dimension;  beLeft.type = blockName;
+
+                        for (const auto& item : containerUpdate.items()) {
+                            int slot = item.slot();
+                            if (slot >= 0 && slot < 27) {
+                                beRight.items.append(item);
+                            } else if (slot >= 27 && slot < 54) {
+                                mankool::mcbot::protocol::ItemStack remapped = item;
+                                remapped.setSlot(slot - 27);
+                                beLeft.items.append(remapped);
+                            }
+                        }
+
+                        saveBlockEntity(beRight);
+                        saveBlockEntity(beLeft);
+
+                    } else {
+                        // Single chest / barrel / trapped chest / etc.
+                        BlockEntityData be;
+                        be.x = posX; be.y = posY; be.z = posZ;
+                        be.dimension = bot->dimension; be.type = blockName;
+                        for (const auto& item : containerUpdate.items()) {
+                            if (item.slot() < 27) be.items.append(item);
+                        }
+                        saveBlockEntity(be);
+                    }
+                } else {
+                    // Non-chest containers: straightforward single block entity
+                    BlockEntityData be;
+                    be.x = posX; be.y = posY; be.z = posZ;
+                    be.dimension = bot->dimension;
+                    be.type = it->id;
+
+                    for (const auto& item : containerUpdate.items()) {
+                        if (item.slot() < it->maxSlots) {
+                            be.items.append(item);
+                        }
+                    }
+
+                    saveBlockEntity(be);
+                }
+            }
         }
     }
 
@@ -2640,6 +2905,61 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
 void BotManager::handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)
 {
     instance().handleScreenUpdateImpl(connectionId, screen);
+}
+
+void BotManager::handleEntityUpdate(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch)
+{
+    instance().handleEntityUpdateImpl(connectionId, batch);
+}
+
+void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) {
+        return;
+    }
+
+    QVector<EntityData> upserted;
+    upserted.reserve(batch.upserted().size());
+    for (const auto &proto : batch.upserted()) {
+        EntityData e;
+        e.entityId  = proto.entityId();
+        e.uuid       = proto.uuid();
+        e.type       = proto.type();
+        e.x          = proto.x();
+        e.y          = proto.y();
+        e.z          = proto.z();
+        e.yaw        = proto.yaw();
+        e.pitch      = proto.pitch();
+        e.velX       = proto.velX();
+        e.velY       = proto.velY();
+        e.velZ       = proto.velZ();
+        e.isLiving   = proto.isLiving();
+        e.health     = proto.health();
+        e.maxHealth  = proto.maxHealth();
+        e.isItem     = proto.isItem();
+        if (proto.isItem()) {
+            e.itemStack = proto.itemStack();
+        }
+        e.isPlayer   = proto.isPlayer();
+        e.playerName = proto.playerName();
+        upserted.append(e);
+    }
+
+    QVector<int> removed;
+    removed.reserve(batch.removedIds().size());
+    for (int id : batch.removedIds()) {
+        removed.append(id);
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.updateEntities(upserted, removed);
+    }
+
+    if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.saveEntities) {
+        bot->worldAutoSaver->onEntitiesUpdated(upserted, removed, bot->dimension);
+    }
 }
 
 void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)

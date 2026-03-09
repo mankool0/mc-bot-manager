@@ -181,10 +181,10 @@ def _wait_for_arrival(bot_name="", timeout=30):
         if status.get("is_pathing", False):
             pathing_started = True
             break
-        time.sleep(0.05)  # 50ms poll — catches brief is_pathing=True for short moves
+        time.sleep(0.05)  # 50ms poll - catches brief is_pathing=True for short moves
 
     if not pathing_started:
-        return False  # Baritone never started — no path found
+        return False  # Baritone never started - no path found
 
     # Wait for pathing to complete
     deadline = time.time() + timeout
@@ -518,7 +518,7 @@ def select_books(found_books, target_type, desired_enchants, max_per_enchant=Non
                 continue
             if not enchant_applies(ench_id, target_type):
                 continue  # harmlessly ignored on target item
-            # This enchantment WOULD apply — check if it's blocked by exclusivity
+            # This enchantment WOULD apply - check if it's blocked by exclusivity
             group = ENCHANTMENTS.get(ench_id, {}).get("group")
             if group and group in desired_groups:
                 continue  # blocked by a desired enchantment in the same group
@@ -826,7 +826,7 @@ def collect_books(selected_books, bot_name=""):
 
         time.sleep(0.3)  # let player fully settle after navigation
 
-        # Open chest — try each half (same as scan), with one retry per half
+        # Open chest - try each half (same as scan), with one retry per half
         container = None
         for hx, hy, hz in halves:
             for attempt in range(2):

@@ -10,6 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +70,13 @@ public class ContainerOutbound extends BaseOutbound {
                 LOGGER.debug("Using cached block position (interaction was {}ms ago, timeout: {}ms)", timeSinceInteraction, timeoutMs);
             } else {
                 LOGGER.debug("Cached block position too old ({}ms ago, timeout: {}ms)", timeSinceInteraction, timeoutMs);
+            }
+        }
+
+        // GENERIC_9x3 is used for both chests and ender chests - detect via block type
+        if ("minecraft:generic_9x3".equals(containerType) && position != null && client.level != null) {
+            if (client.level.getBlockState(position).getBlock() == Blocks.ENDER_CHEST) {
+                containerType = "minecraft:ender_chest";
             }
         }
 

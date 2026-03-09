@@ -29,7 +29,7 @@ message ItemStack {
   int32 damage = 4;        // Durability damage (0 = undamaged)
   int32 max_damage = 5;    // Maximum durability
   string display_name = 6; // Display name of the item
-  string nbt = 7;          // NBT as JSON string
+  bytes nbt = 7;           // Full item NBT as binary compound payload (Java big-endian, no type/name header)
   repeated string enchantments = 8;
   repeated ItemStack container_items = 9; // Contents of container items (shulker boxes, bundles, etc.)
 }

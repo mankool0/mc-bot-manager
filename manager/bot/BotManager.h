@@ -27,6 +27,7 @@
 #include "world.qpb.h"
 #include "screen.qpb.h"
 #include "registry.qpb.h"
+#include "entities.qpb.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
@@ -209,7 +210,10 @@ struct BotInstance {
     bool manualStop = false;
     QDateTime startTime;
 
+    QString playerUuid;
     QVector3D position;
+    float yaw = 0.0f;
+    float pitch = 0.0f;
     QString dimension;
 
     float health = 0.0f;
@@ -220,8 +224,12 @@ struct BotInstance {
     float experienceProgress = 0.0f;
 
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
+    QVector<mankool::mcbot::protocol::ItemStack> enderChestItems;
+    bool enderChestLoaded = false;  // true once ender chest has been opened this session
     int selectedSlot = 0;
     mankool::mcbot::protocol::ItemStack cursorItem;
+
+    WorldSaveSettings worldSaveSettings;
 
     // Container state
     struct {
@@ -322,6 +330,9 @@ public:
     static void handleQueryItemRegistry(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);
     static void handleItemRegistry(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry);
 
+    // Entity tracking handler
+    static void handleEntityUpdate(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
+
     // World data handlers
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
@@ -402,6 +413,7 @@ private:
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
+    void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
                                bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0);
     void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);

@@ -226,7 +226,7 @@ def get_missing_materials(item_id, count=1, bot_name="", recipe_id=None):
     if recipe_id:
         recipe = world.get_recipe(recipe_id, bot=bot_name)
     else:
-        # TODO: multi-path planning — return missing materials for each acquisition
+        # TODO: multi-path planning - return missing materials for each acquisition
         # option (craft/smelt/mine/gather) so the caller can pick the best path.
         recipes = world.get_recipes_for(item_id, bot=bot_name)
         recipe = recipes[0] if recipes else None
@@ -288,7 +288,7 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
             # numbers to InventoryMenu slot numbers so world.click_slot() works:
             #   bot.inventory() hotbar 0-8  -> InventoryMenu 36-44
             #   bot.inventory() main   9-35 -> InventoryMenu 9-35  (same)
-            #   armor/offhand (36-40) skipped — not usable for crafting
+            #   armor/offhand (36-40) skipped - not usable for crafting
             inventory = bot.inventory(bot_name)
             container_items = []
             for inv_item in inventory:
@@ -434,7 +434,7 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
 
 def auto_craft(item_id, count=1, bot_name="", max_distance=128, keep_container_open=False, skip_material_check=False):
     """Auto-find crafting table and craft item."""
-    # TODO: multi-path planning — when multiple recipes exist, pick based on
+    # TODO: multi-path planning - when multiple recipes exist, pick based on
     # available materials or registered acquisition modules (smelting, mining, etc.).
     recipes = world.get_recipes_for(item_id, bot=bot_name)
     recipe = recipes[0] if recipes else None

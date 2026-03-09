@@ -370,6 +370,46 @@
                    </property>
                   </widget>
                  </item>
+                 <item>
+                  <widget class="QCheckBox" name="saveBlockEntitiesCheckBox">
+                   <property name="text">
+                    <string>Save block entities (chests, furnaces, etc.)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="saveEntitiesCheckBox">
+                   <property name="text">
+                    <string>Save entities (mobs, players, etc.)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="saveItemEntitiesCheckBox">
+                   <property name="text">
+                    <string>Save item entities (dropped items)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="savePlayerDataCheckBox">
+                   <property name="text">
+                    <string>Save player data (inventory, position, etc.)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </widget>
               </item>

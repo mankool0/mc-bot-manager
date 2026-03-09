@@ -1,14 +1,22 @@
 package mankool.mcBotClient.util;
 
+import com.google.protobuf.ByteString;
 import mankool.mcbot.protocol.Common;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.phys.Vec3;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 
 public class ProtoUtil {
 
@@ -22,9 +30,34 @@ public class ProtoUtil {
             .setDisplayName(itemStack.getHoverName().getString());
 
         addEnchantments(itemStack, builder);
+        addFullNbt(itemStack, builder);
         addContainerItems(itemStack, builder);
 
         return builder.build();
+    }
+
+    /**
+     * Serializes the full item NBT using ItemStack.save()
+     *
+     * The bytes are the raw compound payload (entries + TAG_End) without the
+     * leading type byte or name string, matching what libnbt++ stream_reader
+     * read_payload(Compound) expects.
+     */
+    private static void addFullNbt(ItemStack itemStack, Common.ItemStack.Builder builder) {
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level == null) return;
+
+            var ops = mc.level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
+            var result = ItemStack.CODEC.encodeStart(ops, itemStack).result();
+            if (result.isEmpty() || !(result.get() instanceof CompoundTag compound)) return;
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            compound.write(new DataOutputStream(baos));
+            builder.setNbt(ByteString.copyFrom(baos.toByteArray()));
+        } catch (Exception e) {
+            // Fall back to partial data - enchants and damage are still sent
+        }
     }
 
     private static void addEnchantments(ItemStack itemStack, Common.ItemStack.Builder builder) {

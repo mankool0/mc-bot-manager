@@ -57,7 +57,11 @@ public:
                            const QString& worldName,
                            const MinecraftVersion& version);
 
-    static bool exportChunk(const ChunkData& chunk, const QString& outputPath, int dataVersion);
+    static bool exportChunk(const ChunkData& chunk, const QString& outputPath, int dataVersion,
+                            const QVector<BlockEntityData>& blockEntities = {});
+    static bool exportEntityChunk(int chunkX, int chunkZ, const QString& dimension,
+                                   const QVector<EntityData>& entities,
+                                   const QString& worldPath, int dataVersion);
     static std::tuple<int, int, int, int> getChunkBounds(const BotWorldData& worldData);  // Returns (minX, maxX, minZ, maxZ)
     static bool createWorldDirectories(const QString& outputPath);
 
