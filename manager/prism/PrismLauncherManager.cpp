@@ -248,14 +248,14 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
 
     bot->process = new QProcess(this);
 
-    connect(bot->process, &QProcess::started, this, [this, bot]() {
+    connect(bot->process, &QProcess::started, this, [bot]() {
         LogManager::log(QString("Sent launch command for bot '%1'").arg(bot->name), LogManager::Info);
     });
 
     connect(bot->process,
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this,
-            [this, bot](int exitCode, QProcess::ExitStatus exitStatus) {
+            [bot](int exitCode, QProcess::ExitStatus exitStatus) {
                 if (exitStatus == QProcess::CrashExit) {
                     LogManager::log(QString("Launch command for bot '%1' crashed (exit code: %2)")
                                         .arg(bot->name)
@@ -274,7 +274,7 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
                 bot->process = nullptr;
             });
 
-    connect(bot->process, &QProcess::errorOccurred, this, [this, bot](QProcess::ProcessError error) {
+    connect(bot->process, &QProcess::errorOccurred, this, [bot](QProcess::ProcessError error) {
         QString errorMsg;
         switch (error) {
         case QProcess::FailedToStart:
