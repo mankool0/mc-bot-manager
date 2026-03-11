@@ -204,8 +204,8 @@ public class WorldOutbound extends BaseOutbound {
         LevelChunkSection[] sections = chunk.getSections();
         for (int i = 0; i < sections.length; i++) {
             LevelChunkSection section = sections[i];
-            if (section == null || section.hasOnlyAir()) {
-                continue; // Skip empty sections
+            if (section == null) {
+                continue;
             }
 
             int sectionY = chunk.getMinSectionY() + i;
