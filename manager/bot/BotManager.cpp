@@ -2432,6 +2432,17 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
             }
         }
 
+        // Copy biome data
+        section.biomeUniform = sectionProto.biomeUniform();
+        for (const auto& biomeId : sectionProto.biomePalette()) {
+            section.biomePalette.append(biomeId);
+        }
+        if (!section.biomeUniform) {
+            for (uint32_t idx : sectionProto.biomeIndices()) {
+                section.biomeIndices.append(idx);
+            }
+        }
+
         chunk.sections[section.sectionY] = section;
     }
 
