@@ -5,6 +5,8 @@
 #include <QTimer>
 #include <QSet>
 #include <QHash>
+#include <functional>
+#include <optional>
 #include "bot/WorldData.h"
 #include "world/WorldExporter.h"
 
@@ -25,7 +27,12 @@ public:
                             const WorldSaveSettings& settings = {});
     ~WorldAutoSaver();
 
+    // Called with (chunkX, chunkZ, dimension) -> chunk + block entities, or nullopt if not loaded
+    using ChunkProvider = std::function<std::optional<std::pair<ChunkData, QVector<BlockEntityData>>>(int, int, const QString&)>;
+
     void saveChunkAsync(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities = {});
+    void setChunkProvider(ChunkProvider provider);
+    void markBlockChunkDirty(int chunkX, int chunkZ, const QString& dimension);
     void onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
                            const QString& dimension);
     void setPlayerData(const PlayerSaveData& data);
@@ -68,4 +75,8 @@ private:
     // Player data
     PlayerSaveData m_latestPlayerData;
     bool m_playerDataDirty = false;
+
+    // Dirty block chunk tracking for periodic flush
+    QSet<QString> m_dirtyBlockChunks;  // "dimension|cx,cz"
+    ChunkProvider m_chunkProvider;
 };

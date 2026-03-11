@@ -75,6 +75,14 @@ void WorldAutoSaver::saveChunkAsync(const ChunkData& chunk, const QVector<BlockE
     emit chunkReadyForSaving(chunk, filteredBEs, m_worldPath, m_version.dataVersion);
 }
 
+void WorldAutoSaver::setChunkProvider(ChunkProvider provider) {
+    m_chunkProvider = std::move(provider);
+}
+
+void WorldAutoSaver::markBlockChunkDirty(int chunkX, int chunkZ, const QString& dimension) {
+    m_dirtyBlockChunks.insert(QString("%1|%2,%3").arg(dimension).arg(chunkX).arg(chunkZ));
+}
+
 void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
                                        const QString& dimension) {
     if (!m_saveSettings.saveEntities) return;
@@ -142,6 +150,28 @@ void WorldAutoSaver::flushPeriodic() {
 
             QVector<EntityData> entities = chunkEntityMap.value(key);
             emit entityChunkReadyForSaving(chunkX, chunkZ, dim, entities, m_worldPath, m_version.dataVersion);
+        }
+    }
+
+    // Flush dirty block chunks
+    if (!m_dirtyBlockChunks.isEmpty() && m_chunkProvider) {
+        QSet<QString> dirtyChunks = m_dirtyBlockChunks;
+        m_dirtyBlockChunks.clear();
+
+        for (const QString& key : dirtyChunks) {
+            int sepIdx = key.indexOf('|');
+            if (sepIdx < 0) continue;
+            QString dim = key.left(sepIdx);
+            QString coordStr = key.mid(sepIdx + 1);
+            int commaIdx = coordStr.indexOf(',');
+            if (commaIdx < 0) continue;
+            int chunkX = coordStr.left(commaIdx).toInt();
+            int chunkZ = coordStr.mid(commaIdx + 1).toInt();
+
+            auto result = m_chunkProvider(chunkX, chunkZ, dim);
+            if (result) {
+                saveChunkAsync(result->first, result->second);
+            }
         }
     }
 
