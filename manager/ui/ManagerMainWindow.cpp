@@ -1414,7 +1414,15 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
         updateInstancesTable();
         updateStatusDisplay();
 
-        if (shouldAutoRestart) {
+        bool tokenRefreshPending = bot->tokenRefreshPending;
+        bot->tokenRefreshPending = false;
+
+        if (tokenRefreshPending) {
+            LogManager::log(QString("[%1] Token expired, refreshing and relaunching...").arg(botName), LogManager::Warning);
+            QTimer::singleShot(3000, this, [this, botName]() {
+                launchBotByName(botName);
+            });
+        } else if (shouldAutoRestart) {
             LogManager::log(QString("[%1] Crashed, auto-restarting...").arg(botName), LogManager::Warning);
             QTimer::singleShot(2000, this, [this, botName]() {
                 launchBotByName(botName);

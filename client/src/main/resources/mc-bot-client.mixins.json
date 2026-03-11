@@ -11,6 +11,8 @@
     "InventoryMixin",
     "BlockInteractionMixin",
     "AbstractContainerMenuAccessor",
+    "ClientCommonDisconnectMixin",
+    "LoginDisconnectMixin",
     "baritone.BaritoneSettingMixin"
   ],
   "injectors": {

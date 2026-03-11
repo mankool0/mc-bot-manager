@@ -783,8 +783,19 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
 
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
-        bot->server = serverAddr;
+        if (!serverAddr.isEmpty() && serverAddr != "Disconnected") {
+            bot->server = serverAddr;
+        }
         bot->serverConnectionStatus = status.status();
+
+        // Detect invalid session (expired token) - set flag so manager can re-launch via Prism
+        if (status.disconnectReason() == "INVALID_SESSION") {
+            if (bot->tokenRefresh) {
+                LogManager::log(QString("[%1] Invalid session detected, token refresh pending").arg(bot->name), LogManager::Warning);
+                bot->tokenRefreshPending = true;
+                sendShutdownCommandImpl(bot->name, "Token expired");
+            }
+        }
 
         // Clear entity tracking when bot disconnects from server
         using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;

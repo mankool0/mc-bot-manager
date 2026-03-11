@@ -138,6 +138,10 @@ public class MessageHandler {
         running = false;
     }
 
+    public ServerOutbound getServerOutbound() {
+        return serverOutbound;
+    }
+
     private void handleMessage(Protocol.ManagerToClientMessage message) {
         Consumer<Protocol.ManagerToClientMessage> handler = handlers.get(message.getPayloadCase());
         if (handler != null) {

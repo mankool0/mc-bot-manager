@@ -205,6 +205,7 @@ struct BotInstance {
     double restartThreshold;
     bool autoRestart;
     bool tokenRefresh;
+    bool tokenRefreshPending = false;
     bool debugLogging;
     bool saveWorldToDisk = true;
     bool manualStop = false;
