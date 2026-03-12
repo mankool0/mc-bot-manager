@@ -7,6 +7,7 @@
 #include "scripting/ScriptEngine.h"
 #include <io/stream_reader.h>
 #include <nbt_tags.h>
+#include <optional>
 #include <sstream>
 #include <QDateTime>
 #include <QDataStream>
@@ -648,6 +649,15 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
                    .arg(bot->name).arg(bot->server).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
     bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version, bot->worldSaveSettings);
     bot->worldAutoSaverServerIp = bot->server;
+
+    bot->worldAutoSaver->setChunkProvider([bot](int cx, int cz, const QString& dim)
+        -> std::optional<std::pair<ChunkData, QVector<BlockEntityData>>> {
+        QReadLocker locker(bot->worldDataLock.get());
+        const ChunkData* chunk = bot->worldData.getChunk(cx, cz);
+        if (!chunk) return std::nullopt;
+        auto bes = bot->worldData.getBlockEntitiesInChunk(cx, cz, dim);
+        return std::make_pair(*chunk, bes);
+    });
 
     // Process any chunks that were queued before the saver was ready
     if (!bot->earlyChunkQueue.isEmpty()) {
@@ -2432,6 +2442,17 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
             }
         }
 
+        // Copy biome data
+        section.biomeUniform = sectionProto.biomeUniform();
+        for (const auto& biomeId : sectionProto.biomePalette()) {
+            section.biomePalette.append(biomeId);
+        }
+        if (!section.biomeUniform) {
+            for (uint32_t idx : sectionProto.biomeIndices()) {
+                section.biomeIndices.append(idx);
+            }
+        }
+
         chunk.sections[section.sectionY] = section;
     }
 
@@ -2561,6 +2582,10 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
         bot->worldData.setBlock(x, y, z, blockStr);
     }
 
+    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
+        bot->worldAutoSaver->markBlockChunkDirty(x >> 4, z >> 4, bot->dimension);
+    }
+
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Block update at (%2, %3, %4): %5")
                        .arg(bot->name)
@@ -2610,6 +2635,13 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
             } else {
                 bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), *blockState);
             }
+        }
+    }
+
+    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
+        for (int i = 0; i < updateCount; ++i) {
+            const auto &pos = multiBlockUpdate.positions()[i];
+            bot->worldAutoSaver->markBlockChunkDirty(pos.x() >> 4, pos.z() >> 4, bot->dimension);
         }
     }
 

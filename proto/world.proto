@@ -66,6 +66,9 @@ message ChunkSection {
   repeated uint32 palette = 2 [packed = true];    // Block state IDs from Minecraft's global registry
   repeated uint32 block_indices = 3 [packed = true];  // Indices into palette (YZX order: y*256 + z*16 + x)
   bool uniform = 4;               // If true, entire section is palette[0]
+  repeated string biome_palette = 5;              // Biome resource IDs (e.g. "minecraft:plains")
+  repeated uint32 biome_indices = 6 [packed = true];  // 64 entries (4x4x4 grid, index = y*16 + z*4 + x); omitted if biome_uniform
+  bool biome_uniform = 7;         // If true, entire section is biome_palette[0]
 }
 
 // Single block update (Client -> Manager)

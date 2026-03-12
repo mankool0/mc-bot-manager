@@ -14,8 +14,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.PalettedContainerRO;
 import com.google.protobuf.ByteString;
 
 import org.slf4j.Logger;
@@ -201,8 +204,8 @@ public class WorldOutbound extends BaseOutbound {
         LevelChunkSection[] sections = chunk.getSections();
         for (int i = 0; i < sections.length; i++) {
             LevelChunkSection section = sections[i];
-            if (section == null || section.hasOnlyAir()) {
-                continue; // Skip empty sections
+            if (section == null) {
+                continue;
             }
 
             int sectionY = chunk.getMinSectionY() + i;
@@ -277,6 +280,40 @@ public class WorldOutbound extends BaseOutbound {
         // Only include indices if not uniform
         if (!uniform) {
             builder.addAllBlockIndices(indices);
+        }
+
+        // Extract biome data (4x4x4 per section, 64 entries, index = y*16 + z*4 + x)
+        PalettedContainerRO<Holder<Biome>> biomeContainer = section.getBiomes();
+        List<String> biomePaletteList = new ArrayList<>();
+        Map<String, Integer> biomeToIndex = new LinkedHashMap<>();
+        List<Integer> biomeIndices = new ArrayList<>(64);
+        boolean biomeUniform = true;
+        String firstBiome = null;
+
+        for (int by = 0; by < 4; by++) {
+            for (int bz = 0; bz < 4; bz++) {
+                for (int bx = 0; bx < 4; bx++) {
+                    Holder<Biome> holder = biomeContainer.get(bx, by, bz);
+                    String biomeId = holder.unwrapKey()
+                        .map(k -> k.identifier().toString())
+                        .orElse("minecraft:the_void");
+                    if (firstBiome == null) {
+                        firstBiome = biomeId;
+                    } else if (!biomeId.equals(firstBiome)) {
+                        biomeUniform = false;
+                    }
+                    int idx = biomeToIndex.computeIfAbsent(biomeId, id -> {
+                        biomePaletteList.add(id);
+                        return biomePaletteList.size() - 1;
+                    });
+                    biomeIndices.add(idx);
+                }
+            }
+        }
+
+        builder.addAllBiomePalette(biomePaletteList).setBiomeUniform(biomeUniform);
+        if (!biomeUniform) {
+            builder.addAllBiomeIndices(biomeIndices);
         }
 
         return builder.build();

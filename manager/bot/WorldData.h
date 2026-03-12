@@ -74,6 +74,9 @@ struct ChunkSection {
     QVector<QString> palette;          // Block state strings (e.g., "minecraft:stone")
     QVector<uint32_t> blockIndices;    // 4096 entries in YZX order
     bool uniform = false;              // If true, entire section is palette[0]
+    QVector<QString> biomePalette;     // Biome resource IDs (e.g., "minecraft:plains")
+    QVector<uint32_t> biomeIndices;    // 64 entries in 4x4x4 grid (index = y*16 + z*4 + x); empty if biomeUniform
+    bool biomeUniform = false;         // If true, entire section is biomePalette[0]
 
     QString getBlock(int localX, int localY, int localZ) const;  // localX/Y/Z: 0-15; index order: y*256 + z*16 + x
     void setBlock(int localX, int localY, int localZ, const QString& blockState);

@@ -311,11 +311,34 @@ nbt::tag_compound NBTSerializer::sectionToNBT(const ChunkSection& section) {
 
     sectionTag.insert("block_states", std::move(blockStates));
 
-    // Biomes - use the_void until per-section biome data is plumbed through
+    // Biomes
     nbt::tag_compound biomes;
-    nbt::tag_list biomePalette(nbt::tag_type::String);
-    biomePalette.push_back(nbt::tag_string("minecraft:the_void"));
-    biomes.insert("palette", std::move(biomePalette));
+    nbt::tag_list biomePaletteTag(nbt::tag_type::String);
+
+    if (section.biomePalette.isEmpty()) {
+        biomePaletteTag.push_back(nbt::tag_string("minecraft:the_void"));
+    } else {
+        for (const QString& biomeId : section.biomePalette) {
+            biomePaletteTag.push_back(nbt::tag_string(biomeId.toStdString()));
+        }
+
+        if (section.biomePalette.size() > 1 && !section.biomeIndices.isEmpty()) {
+            int bitsPerEntry = static_cast<int>(std::ceil(std::log2(section.biomePalette.size())));
+            int entriesPerLong = 64 / bitsPerEntry;
+            int longCount = (64 + entriesPerLong - 1) / entriesPerLong;
+
+            std::vector<int64_t> packedData(longCount, 0);
+            for (int i = 0; i < section.biomeIndices.size() && i < 64; i++) {
+                int longIndex = i / entriesPerLong;
+                int bitOffset = (i % entriesPerLong) * bitsPerEntry;
+                uint64_t mask = (1ULL << bitsPerEntry) - 1;
+                packedData[longIndex] |= (static_cast<uint64_t>(section.biomeIndices[i]) & mask) << bitOffset;
+            }
+            biomes.insert("data", nbt::tag_long_array(std::move(packedData)));
+        }
+    }
+
+    biomes.insert("palette", std::move(biomePaletteTag));
     sectionTag.insert("biomes", std::move(biomes));
 
     return sectionTag;
