@@ -187,6 +187,9 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     m.doc() = "World data queries and interaction";
 
     // World queries
+    m.def("get_weather", &PythonAPI::getWeather,
+          "Get current weather state as dict with is_raining, is_thundering, rain_level, thunder_level. Returns None if bot offline.",
+          py::arg("bot") = "");
     m.def("get_block", &PythonAPI::getBlock,
           "Get block state at position, returns block ID string or None if chunk not loaded",
           py::arg("x"), py::arg("y"), py::arg("z"),

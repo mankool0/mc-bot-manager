@@ -109,6 +109,7 @@ public:
                                      const std::string &bot = "");
 
     // World queries
+    static py::object getWeather(const std::string &bot = "");
     static py::object getBlock(double x, double y, double z, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius, const std::string &bot = "");

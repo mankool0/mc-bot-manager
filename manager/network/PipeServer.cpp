@@ -236,6 +236,8 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleCanReachBlockResponse(connectionId, clientMsg.canReachBlockResponse());
         } else if (clientMsg.hasEntityUpdate()) {
             BotManager::handleEntityUpdate(connectionId, clientMsg.entityUpdate());
+        } else if (clientMsg.hasWeatherUpdate()) {
+            BotManager::handleWeatherUpdate(connectionId, clientMsg.weatherUpdate());
         }
         return;
     }

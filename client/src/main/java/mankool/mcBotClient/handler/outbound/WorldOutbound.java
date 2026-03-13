@@ -328,6 +328,26 @@ public class WorldOutbound extends BaseOutbound {
     }
 
     /**
+     * Sends current weather state to the manager.
+     */
+    public void sendWeatherUpdate(boolean isRaining, boolean isThundering, float rainLevel, float thunderLevel) {
+        World.WeatherUpdate weather = World.WeatherUpdate.newBuilder()
+            .setIsRaining(isRaining)
+            .setIsThundering(isThundering)
+            .setRainLevel(rainLevel)
+            .setThunderLevel(thunderLevel)
+            .build();
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setWeatherUpdate(weather)
+            .build();
+
+        connection.sendMessage(message);
+    }
+
+    /**
      * Simple chunk position holder for tracking sent chunks.
      */
     private record ChunkPos(int x, int z) {}

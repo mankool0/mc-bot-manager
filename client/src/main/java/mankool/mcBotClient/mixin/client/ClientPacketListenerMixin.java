@@ -1,7 +1,9 @@
 package mankool.mcBotClient.mixin.client;
 
 import mankool.mcBotClient.handler.outbound.WorldOutbound;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.*;
@@ -71,6 +73,26 @@ public class ClientPacketListenerMixin {
         WorldOutbound handler = WorldOutbound.getInstance();
         if (handler != null) {
             handler.onChunkUnloaded(packet.pos().x, packet.pos().z);
+        }
+    }
+
+    @Inject(method = "handleGameEvent", at = @At("TAIL"))
+    private void onGameEvent(ClientboundGameEventPacket packet, CallbackInfo ci) {
+        ClientboundGameEventPacket.Type event = packet.getEvent();
+        if (event == ClientboundGameEventPacket.START_RAINING
+                || event == ClientboundGameEventPacket.STOP_RAINING
+                || event == ClientboundGameEventPacket.RAIN_LEVEL_CHANGE
+                || event == ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE) {
+            WorldOutbound handler = WorldOutbound.getInstance();
+            ClientLevel level = Minecraft.getInstance().level;
+            if (handler != null && level != null) {
+                handler.sendWeatherUpdate(
+                    level.isRaining(),
+                    level.isThundering(),
+                    level.getRainLevel(1.0f),
+                    level.getThunderLevel(1.0f)
+                );
+            }
         }
     }
 }

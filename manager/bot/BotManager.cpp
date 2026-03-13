@@ -3384,3 +3384,22 @@ void BotManager::sendLookAtImpl(const QString &botName, double x, double y, doub
     PipeServer::sendToClient(bot->connectionId, fullMessage);
 }
 
+void BotManager::handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather)
+{
+    instance().handleWeatherUpdateImpl(connectionId, weather);
+}
+
+void BotManager::handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) {
+        return;
+    }
+
+    QMutexLocker locker(bot->dataMutex.get());
+    bot->isRaining = weather.isRaining();
+    bot->isThundering = weather.isThundering();
+    bot->rainLevel = weather.rainLevel();
+    bot->thunderLevel = weather.thunderLevel();
+}
+

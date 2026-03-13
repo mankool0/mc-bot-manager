@@ -388,6 +388,24 @@ py::object PythonAPI::getDimension(const std::string &botName)
     return py::cast(bot->dimension.toStdString());
 }
 
+py::object PythonAPI::getWeather(const std::string &bot)
+{
+    QString name = resolveBotName(bot);
+
+    BotInstance *botInstance = BotManager::getBotByName(name);
+    if (!botInstance || botInstance->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    QMutexLocker locker(botInstance->dataMutex.get());
+    py::dict result;
+    result["is_raining"] = botInstance->isRaining;
+    result["is_thundering"] = botInstance->isThundering;
+    result["rain_level"] = botInstance->rainLevel;
+    result["thunder_level"] = botInstance->thunderLevel;
+    return result;
+}
+
 py::object PythonAPI::getHealth(const std::string &botName)
 {
     QString name = resolveBotName(botName);

@@ -224,6 +224,11 @@ struct BotInstance {
     int experienceLevel = 0;
     float experienceProgress = 0.0f;
 
+    bool isRaining = false;
+    bool isThundering = false;
+    float rainLevel = 0.0f;
+    float thunderLevel = 0.0f;
+
     QVector<mankool::mcbot::protocol::ItemStack> inventory;
     QVector<mankool::mcbot::protocol::ItemStack> enderChestItems;
     bool enderChestLoaded = false;  // true once ender chest has been opened this session
@@ -334,6 +339,9 @@ public:
     // Entity tracking handler
     static void handleEntityUpdate(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
 
+    // Weather handler
+    static void handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
+
     // World data handlers
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
@@ -415,6 +423,7 @@ private:
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
+    void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
     bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
                                bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0);
     void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);

@@ -91,3 +91,11 @@ message ChunkUnloadMessage {
   int32 chunk_z = 2;
   string dimension = 3;
 }
+
+// Weather state update (Client -> Manager)
+message WeatherUpdate {
+  bool is_raining = 1;       // True if it is raining
+  bool is_thundering = 2;    // True if there is thunder
+  float rain_level = 3;      // Rain intensity 0.0 to 1.0
+  float thunder_level = 4;   // Thunder intensity 0.0 to 1.0
+}
