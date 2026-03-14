@@ -585,11 +585,11 @@ static py::dict buildItemDict(const mankool::mcbot::protocol::ItemStack &item)
     itemDict["damage"] = static_cast<int>(item.damage());
     itemDict["max_damage"] = static_cast<int>(item.maxDamage());
     itemDict["display_name"] = item.displayName().toStdString();
-    py::list enchantList;
-    for (const QString &e : item.enchantments()) {
-        enchantList.append(e.toStdString());
+    py::dict enchantDict;
+    for (const auto &[name, level] : item.enchantments().asKeyValueRange()) {
+        enchantDict[name.toStdString().c_str()] = static_cast<int>(level);
     }
-    itemDict["enchantments"] = enchantList;
+    itemDict["enchantments"] = enchantDict;
     const auto &containerItems = item.containerItems();
     if (!containerItems.isEmpty()) {
         py::list containerList;

@@ -130,7 +130,7 @@ The item dict schema used by `bot.inventory()`, `world.get_container()`, and ent
 | `damage` | `int` | Current damage (0 = undamaged) |
 | `max_damage` | `int` | Max durability (0 for non-damageable items) |
 | `display_name` | `str` | Display name (may include formatting) |
-| `enchantments` | `list[str]` | List of enchantment IDs (e.g. `["minecraft:sharpness"]`) |
+| `enchantments` | `dict[str, int]` | Map of enchantment ID to level (e.g. `{"minecraft:sharpness": 3}`) |
 
 ### `screen(bot_name="")`
 

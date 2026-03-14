@@ -951,7 +951,10 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
                 itemMap["item_id"] = item.itemId();
                 itemMap["count"] = static_cast<int>(item.count());
                 itemMap["display_name"] = item.displayName();
-                itemMap["enchantments"] = QVariant(item.enchantments());
+                QVariantMap enchMap;
+                for (const auto &[k, v] : item.enchantments().asKeyValueRange())
+                    enchMap[k] = static_cast<int>(v);
+                itemMap["enchantments"] = enchMap;
                 inventoryList.append(itemMap);
             }
         }
@@ -2914,7 +2917,10 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
                 itemMap["damage"] = static_cast<int>(item.damage());
                 itemMap["max_damage"] = static_cast<int>(item.maxDamage());
                 itemMap["display_name"] = item.displayName();
-                itemMap["enchantments"] = QVariant(item.enchantments());
+                QVariantMap enchMap;
+                for (const auto &[k, v] : item.enchantments().asKeyValueRange())
+                    enchMap[k] = static_cast<int>(v);
+                itemMap["enchantments"] = enchMap;
                 itemsList.append(itemMap);
             }
 

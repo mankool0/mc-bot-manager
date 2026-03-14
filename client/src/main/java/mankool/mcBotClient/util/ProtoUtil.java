@@ -68,7 +68,7 @@ public class ProtoUtil {
                 Holder<Enchantment> holder = entry.getKey();
                 int level = entry.getIntValue();
                 holder.unwrapKey().ifPresent(key ->
-                    builder.addEnchantments(key.identifier().toString() + " " + level));
+                    builder.putEnchantments(key.identifier().toString(), level));
             }
             return;
         }
@@ -80,7 +80,7 @@ public class ProtoUtil {
                 Holder<Enchantment> holder = entry.getKey();
                 int level = entry.getIntValue();
                 holder.unwrapKey().ifPresent(key ->
-                    builder.addEnchantments(key.identifier().toString() + " " + level));
+                    builder.putEnchantments(key.identifier().toString(), level));
             }
         }
     }
