@@ -788,6 +788,37 @@ On server disconnect, all entity data is cleared so stale entities never persist
 
 ---
 
+## Weather
+
+### `get_weather(bot="")`
+
+Get the current weather state.
+
+**Parameters:**
+
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict` or `None` if bot is offline
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `is_raining` | `bool` | Whether it is raining |
+| `is_thundering` | `bool` | Whether there is a thunderstorm |
+| `rain_level` | `float` | Rain intensity (0.0-1.0) |
+| `thunder_level` | `float` | Thunder intensity (0.0-1.0) |
+
+**Note:** Weather only applies to the overworld. In the nether or end, values will show no rain since those dimensions have no weather system.
+
+```python
+weather = world.get_weather()
+if weather and weather['is_raining']:
+    utils.log(f"It's raining (intensity: {weather['rain_level']:.2f})")
+    if weather['is_thundering']:
+        utils.log("Thunderstorm!")
+```
+
+---
+
 ## Notes
 
 - **Chunk Loading**: Blocks can only be queried in loaded chunks. The client automatically loads chunks as the bot moves around.

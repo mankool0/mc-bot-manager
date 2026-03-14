@@ -95,4 +95,18 @@ public class ClientPacketListenerMixin {
             }
         }
     }
+
+    @Inject(method = "handleRespawn", at = @At("TAIL"))
+    private void onRespawn(ClientboundRespawnPacket packet, CallbackInfo ci) {
+        WorldOutbound handler = WorldOutbound.getInstance();
+        ClientLevel level = Minecraft.getInstance().level;
+        if (handler != null && level != null) {
+            handler.sendWeatherUpdate(
+                level.isRaining(),
+                level.isThundering(),
+                level.getRainLevel(1.0f),
+                level.getThunderLevel(1.0f)
+            );
+        }
+    }
 }
