@@ -78,11 +78,24 @@ bool BlockRegistry::loadFromCache(int dataVersion)
 
     // Read all mappings
     idToState.clear();
+    stateToId.clear();
     for (quint32 i = 0; i < size; ++i) {
         quint32 id;
         QString state;
         in >> id >> state;
         idToState[id] = state;
+        stateToId[state] = id;
+    }
+
+    // Read face masks
+    quint32 maskCount;
+    in >> maskCount;
+    faceMasks.clear();
+    for (quint32 i = 0; i < maskCount; ++i) {
+        quint32 id;
+        quint8 mask;
+        in >> id >> mask;
+        faceMasks[id] = mask;
     }
 
     this->dataVersion = dataVersion;
@@ -130,6 +143,12 @@ void BlockRegistry::saveToCache()
         out << quint32(it.key()) << it.value();
     }
 
+    // Write face masks
+    out << quint32(faceMasks.size());
+    for (auto it = faceMasks.constBegin(); it != faceMasks.constEnd(); ++it) {
+        out << quint32(it.key()) << quint8(it.value());
+    }
+
     file.close();
 
     LogManager::log(QString("Saved block registry to cache: %1 with %2 block states")
@@ -140,6 +159,13 @@ void BlockRegistry::addBlockState(uint32_t id, const QString& blockState)
 {
     QMutexLocker locker(&mutex);
     idToState[id] = blockState;
+    stateToId[blockState] = id;
+}
+
+void BlockRegistry::setFaceMask(uint32_t id, uint8_t mask)
+{
+    QMutexLocker locker(&mutex);
+    faceMasks[id] = mask;
 }
 
 std::optional<QString> BlockRegistry::getBlockState(uint32_t id) const
@@ -150,4 +176,22 @@ std::optional<QString> BlockRegistry::getBlockState(uint32_t id) const
         return *it;
     }
     return std::nullopt;
+}
+
+std::optional<uint32_t> BlockRegistry::getStateId(const QString& blockState) const
+{
+    QMutexLocker locker(&mutex);
+    auto it = stateToId.find(blockState);
+    if (it != stateToId.end()) {
+        return *it;
+    }
+    return std::nullopt;
+}
+
+bool BlockRegistry::isFaceSolid(uint32_t stateId, Direction direction) const
+{
+    QMutexLocker locker(&mutex);
+    auto it = faceMasks.find(stateId);
+    if (it == faceMasks.end()) return false;
+    return (it.value() >> static_cast<int>(direction)) & 1;
 }

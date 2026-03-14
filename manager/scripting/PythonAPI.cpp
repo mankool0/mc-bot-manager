@@ -1105,6 +1105,18 @@ py::object PythonAPI::getLight(double x, double y, double z, const std::string &
     return result;
 }
 
+py::object PythonAPI::isBlockSolid(const std::string &blockState, BlockRegistry::Direction face, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+    if (!botInstance->blockRegistry || !botInstance->blockRegistry->isLoaded())
+        return py::none();
+    auto stateId = botInstance->blockRegistry->getStateId(QString::fromStdString(blockState));
+    if (!stateId.has_value())
+        return py::bool_(false);
+    return py::bool_(botInstance->blockRegistry->isFaceSolid(stateId.value(), face));
+}
+
 py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius,
                                 int minBlockLight, int maxBlockLight,

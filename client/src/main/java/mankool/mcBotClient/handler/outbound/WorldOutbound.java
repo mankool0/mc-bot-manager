@@ -90,18 +90,36 @@ public class WorldOutbound extends BaseOutbound {
     private void sendFullRegistry() {
         int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
         Map<Integer, String> stateMap = new HashMap<>();
+        Map<Integer, Integer> faceMasks = new HashMap<>();
 
         for (Block block : BuiltInRegistries.BLOCK) {
             for (BlockState state : block.getStateDefinition().getPossibleStates()) {
                 int id = Block.getId(state);
                 String stateString = BlockStateParser.serialize(state);
                 stateMap.put(id, stateString);
+
+                try {
+                    net.minecraft.world.phys.shapes.VoxelShape shape =
+                        state.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+                    int mask = 0;
+                    for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+                        if (Block.isFaceFull(shape, dir)) {
+                            mask |= (1 << dir.ordinal());
+                        }
+                    }
+                    if (mask != 0) {
+                        faceMasks.put(id, mask);
+                    }
+                } catch (Exception e) {
+                    // Some blocks may throw when queried without a real level context
+                }
             }
         }
 
         World.BlockRegistryMessage registry = World.BlockRegistryMessage.newBuilder()
             .setDataVersion(dataVersion)
             .putAllStateMap(stateMap)
+            .putAllFaceMasks(faceMasks)
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

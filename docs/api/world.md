@@ -836,6 +836,59 @@ if light:
 
 ---
 
+## Block Solidity
+
+### `is_solid(block_state, face=Direction.UP, bot="")`
+
+Check if a block state has a fully solid face in the given direction. Useful for finding mob spawn surfaces, attachment points, and pathfinding.
+
+**Parameters:**
+
+- `block_state` (`str`) - Block state string (e.g. `"minecraft:stone"` or `"minecraft:oak_slab[type=top,waterlogged=false]"`)
+- `face` (`Direction`, optional) - Face direction to check, defaults to `Direction.UP`
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `bool`, or `None` if the block registry is not loaded
+
+### `Direction`
+
+Enum for block face directions, matching Minecraft's internal direction ordering.
+
+| Value | Description |
+|-------|-------------|
+| `Direction.DOWN` | Bottom face |
+| `Direction.UP` | Top face |
+| `Direction.NORTH` | North face (-Z) |
+| `Direction.SOUTH` | South face (+Z) |
+| `Direction.WEST` | West face (-X) |
+| `Direction.EAST` | East face (+X) |
+
+```python
+# Check if a block has a solid top face (mob spawn surface)
+block = world.get_block(x, y, z)
+if world.is_solid(block):
+    utils.log(f"{block} has a solid top face")
+
+# Check a specific face
+if world.is_solid("minecraft:oak_stairs[facing=north,half=bottom,shape=straight]", world.Direction.NORTH):
+    utils.log("North face is solid")
+
+# Find all spawnable locations in a radius
+pos = bot.position()
+cx, cy, cz = int(pos['x']), int(pos['y']), int(pos['z'])
+dark_air = world.find_blocks("minecraft:air", cx, cy, cz, 64,
+                             min_block_light=0, max_block_light=0)
+spawnable = []
+for (x, y, z) in dark_air:
+    surface = world.get_block(x, y - 1, z)
+    head = world.get_block(x, y + 1, z)
+    if surface and world.is_solid(surface) and head == "minecraft:air":
+        spawnable.append((x, y, z))
+utils.log(f"Found {len(spawnable)} spawnable locations")
+```
+
+---
+
 ## Weather
 
 ### `get_weather(bot="")`
