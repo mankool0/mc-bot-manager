@@ -186,6 +186,15 @@ PYBIND11_EMBEDDED_MODULE(meteor, m) {
 PYBIND11_EMBEDDED_MODULE(world, m) {
     m.doc() = "World data queries and interaction";
 
+    py::enum_<BlockRegistry::Direction>(m, "Direction")
+        .value("DOWN",  BlockRegistry::Direction::DOWN)
+        .value("UP",    BlockRegistry::Direction::UP)
+        .value("NORTH", BlockRegistry::Direction::NORTH)
+        .value("SOUTH", BlockRegistry::Direction::SOUTH)
+        .value("WEST",  BlockRegistry::Direction::WEST)
+        .value("EAST",  BlockRegistry::Direction::EAST)
+        .export_values();
+
     // World queries
     m.def("get_weather", &PythonAPI::getWeather,
           "Get current weather state as dict with is_raining, is_thundering, rain_level, thunder_level. Returns None if bot offline.",
@@ -197,6 +206,12 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     m.def("get_light", &PythonAPI::getLight,
           "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if chunk not loaded.",
           py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("bot") = "");
+    m.def("is_solid", &PythonAPI::isBlockSolid,
+          "Check if a block state string has a solid face in the given direction. "
+          "Returns True/False, or None if block registry not loaded.",
+          py::arg("block_state"),
+          py::arg("face") = BlockRegistry::Direction::UP,
           py::arg("bot") = "");
     m.def("find_blocks", &PythonAPI::findBlocks,
           "Find all blocks of type within radius of center, returns list of (x,y,z) tuples. "

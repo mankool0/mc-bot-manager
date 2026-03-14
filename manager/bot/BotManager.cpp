@@ -2048,6 +2048,12 @@ void BotManager::handleBlockRegistryImpl(int connectionId, const mankool::mcbot:
         bot->blockRegistry->addBlockState(it.key(), it.value());
     }
 
+    // Add face masks
+    const auto &faceMasksMap = registry.faceMasks();
+    for (auto it = faceMasksMap.begin(); it != faceMasksMap.end(); ++it) {
+        bot->blockRegistry->setFaceMask(static_cast<uint32_t>(it.key()), static_cast<uint8_t>(it.value()));
+    }
+
     // Save to cache
     bot->blockRegistry->saveToCache();
 

@@ -27,6 +27,7 @@ message BlockRegistryResponse {
 message BlockRegistryMessage {
   int32 data_version = 1;         // Data version for this registry
   map<uint32, string> state_map = 2;  // state_id -> "minecraft:stone[facing=north]"
+  map<uint32, uint32> face_masks = 3;  // state_id -> 6-bit bitmask: bit0=DOWN,bit1=UP,bit2=NORTH,bit3=SOUTH,bit4=WEST,bit5=EAST
 }
 
 // Command to interact with a block (right-click)

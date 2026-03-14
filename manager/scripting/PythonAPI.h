@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QVariant>
+#include "world/BlockRegistry.h"
 
 #undef slots
 #include <pybind11/pybind11.h>
@@ -112,6 +113,7 @@ public:
     static py::object getWeather(const std::string &bot = "");
     static py::object getBlock(double x, double y, double z, const std::string &bot = "");
     static py::object getLight(double x, double y, double z, const std::string &bot = "");
+    static py::object isBlockSolid(const std::string &blockState, BlockRegistry::Direction face = BlockRegistry::Direction::UP, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius,
                                 int minBlockLight = 0, int maxBlockLight = 15,
