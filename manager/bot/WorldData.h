@@ -77,9 +77,15 @@ struct ChunkSection {
     QVector<QString> biomePalette;     // Biome resource IDs (e.g., "minecraft:plains")
     QVector<uint32_t> biomeIndices;    // 64 entries in 4x4x4 grid (index = y*16 + z*4 + x); empty if biomeUniform
     bool biomeUniform = false;         // If true, entire section is biomePalette[0]
+    QByteArray blockLight;             // 2048-byte nibble array; empty if not present
+    QByteArray skyLight;               // 2048-byte nibble array; empty in nether/end or if not present
 
     QString getBlock(int localX, int localY, int localZ) const;  // localX/Y/Z: 0-15; index order: y*256 + z*16 + x
     void setBlock(int localX, int localY, int localZ, const QString& blockState);
+
+    struct LightLevels { int block = 0; int sky = 0; };
+    LightLevels getLight(int localX, int localY, int localZ) const;  // localX/Y/Z: 0-15; returns 0 for absent light
+
     size_t memoryUsage() const;
 };
 
@@ -93,6 +99,7 @@ struct ChunkData {
     QMap<int32_t, ChunkSection> sections;
 
     std::optional<QString> getBlock(int localX, int localY, int localZ) const;  // localX/Z: 0-15, localY: minY-maxY
+    ChunkSection::LightLevels getLight(int localX, int localY, int localZ) const;  // returns {0,0} if section missing
     void setBlock(int localX, int localY, int localZ, const QString& blockState);
     size_t memoryUsage() const;
     int sectionCount() const { return sections.size(); }
@@ -111,6 +118,12 @@ public:
 
     std::optional<QString> getBlock(int x, int y, int z) const;  // Returns nullopt if chunk not loaded
     void setBlock(int x, int y, int z, const QString& blockState);  // Creates chunk/section if needed
+
+    // Returns nullopt if chunk not loaded; block/sky are 0-15 (sky is 0 in nether/end)
+    std::optional<ChunkSection::LightLevels> getLight(int x, int y, int z) const;
+    // Apply incremental light updates for one section (empty data = clear to zero)
+    void updateSectionBlockLight(int chunkX, int chunkZ, int sectionY, const QByteArray& data);
+    void updateSectionSkyLight(int chunkX, int chunkZ, int sectionY, const QByteArray& data);
 
     void loadChunk(const ChunkData& chunk);
     void unloadChunk(int chunkX, int chunkZ);

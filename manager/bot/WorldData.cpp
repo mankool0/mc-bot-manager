@@ -77,6 +77,19 @@ void ChunkSection::setBlock(int localX, int localY, int localZ, const QString& b
     }
 }
 
+ChunkSection::LightLevels ChunkSection::getLight(int localX, int localY, int localZ) const
+{
+    LightLevels result;
+    int idx = localY * 256 + localZ * 16 + localX;
+    if (blockLight.size() == 2048) {
+        result.block = (static_cast<uint8_t>(blockLight[idx / 2]) >> ((idx % 2) * 4)) & 0xF;
+    }
+    if (skyLight.size() == 2048) {
+        result.sky = (static_cast<uint8_t>(skyLight[idx / 2]) >> ((idx % 2) * 4)) & 0xF;
+    }
+    return result;
+}
+
 size_t ChunkSection::memoryUsage() const
 {
     size_t total = sizeof(ChunkSection);
@@ -115,6 +128,14 @@ std::optional<QString> ChunkData::getBlock(int localX, int localY, int localZ) c
     int localSectionY = localY & 15;
 
     return it.value().getBlock(localX, localSectionY, localZ);
+}
+
+ChunkSection::LightLevels ChunkData::getLight(int localX, int localY, int localZ) const
+{
+    int sectionY = localY >> 4;
+    auto it = sections.find(sectionY);
+    if (it == sections.end()) return {};
+    return it.value().getLight(localX, localY & 15, localZ);
 }
 
 void ChunkData::setBlock(int localX, int localY, int localZ, const QString& blockState)
@@ -177,6 +198,43 @@ std::optional<QString> BotWorldData::getBlock(int x, int y, int z) const
     int localZ = z & 15;
 
     return it.value().getBlock(localX, y, localZ);
+}
+
+std::optional<ChunkSection::LightLevels> BotWorldData::getLight(int x, int y, int z) const
+{
+    ChunkPos chunkPos(x >> 4, z >> 4);
+    auto it = chunks.find(chunkPos);
+    if (it == chunks.end()) return std::nullopt;
+
+    const ChunkData& chunk = it.value();
+    int sectionY = y >> 4;
+    auto sit = chunk.sections.find(sectionY);
+    if (sit == chunk.sections.end()) return ChunkSection::LightLevels{};
+
+    int localX = x & 15;
+    int localY = y & 15;
+    int localZ = z & 15;
+    return sit.value().getLight(localX, localY, localZ);
+}
+
+void BotWorldData::updateSectionBlockLight(int chunkX, int chunkZ, int sectionY, const QByteArray& data)
+{
+    ChunkPos pos(chunkX, chunkZ);
+    auto it = chunks.find(pos);
+    if (it == chunks.end()) return;
+    auto sit = it->sections.find(sectionY);
+    if (sit == it->sections.end()) return;
+    sit->blockLight = data;
+}
+
+void BotWorldData::updateSectionSkyLight(int chunkX, int chunkZ, int sectionY, const QByteArray& data)
+{
+    ChunkPos pos(chunkX, chunkZ);
+    auto it = chunks.find(pos);
+    if (it == chunks.end()) return;
+    auto sit = it->sections.find(sectionY);
+    if (sit == it->sections.end()) return;
+    sit->skyLight = data;
 }
 
 void BotWorldData::setBlock(int x, int y, int z, const QString& blockState)

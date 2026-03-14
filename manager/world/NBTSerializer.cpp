@@ -341,6 +341,18 @@ nbt::tag_compound NBTSerializer::sectionToNBT(const ChunkSection& section) {
     biomes.insert("palette", std::move(biomePaletteTag));
     sectionTag.insert("biomes", std::move(biomes));
 
+    // Light data
+    if (section.blockLight.size() == 2048) {
+        std::vector<int8_t> blockLightVec(section.blockLight.constData(),
+                                          section.blockLight.constData() + 2048);
+        sectionTag.insert("BlockLight", nbt::tag_byte_array(std::move(blockLightVec)));
+    }
+    if (section.skyLight.size() == 2048) {
+        std::vector<int8_t> skyLightVec(section.skyLight.constData(),
+                                        section.skyLight.constData() + 2048);
+        sectionTag.insert("SkyLight", nbt::tag_byte_array(std::move(skyLightVec)));
+    }
+
     return sectionTag;
 }
 

@@ -27,7 +27,7 @@ public class ClientPacketListenerMixin {
     private void onChunkData(ClientboundLevelChunkWithLightPacket packet, CallbackInfo ci) {
         WorldOutbound handler = WorldOutbound.getInstance();
         if (handler != null) {
-            handler.onChunkLoaded(packet.getX(), packet.getZ());
+            handler.onChunkLoaded(packet.getX(), packet.getZ(), packet.getLightData());
         }
     }
 
@@ -93,6 +93,14 @@ public class ClientPacketListenerMixin {
                     level.getThunderLevel(1.0f)
                 );
             }
+        }
+    }
+
+    @Inject(method = "handleLightUpdatePacket", at = @At("TAIL"))
+    private void onLightUpdatePacket(ClientboundLightUpdatePacket packet, CallbackInfo ci) {
+        WorldOutbound handler = WorldOutbound.getInstance();
+        if (handler != null) {
+            handler.onLightUpdate(packet.getX(), packet.getZ(), packet.getLightData());
         }
     }
 

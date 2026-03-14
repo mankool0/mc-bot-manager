@@ -80,6 +80,9 @@ message ClientToManagerMessage {
 
     // Weather state
     WeatherUpdate weather_update = 31;
+
+    // Light updates
+    LightUpdateMessage light_update = 32;
   }
 }
 

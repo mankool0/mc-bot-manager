@@ -69,6 +69,23 @@ message ChunkSection {
   repeated string biome_palette = 5;              // Biome resource IDs (e.g. "minecraft:plains")
   repeated uint32 biome_indices = 6 [packed = true];  // 64 entries (4x4x4 grid, index = y*16 + z*4 + x); omitted if biome_uniform
   bool biome_uniform = 7;         // If true, entire section is biome_palette[0]
+  bytes block_light = 8;          // 2048-byte nibble array (4 bits per block, YZX order); empty if not present
+  bytes sky_light = 9;            // 2048-byte nibble array; empty in nether/end or if not present
+}
+
+// A single section's light data within a light update
+message LightSection {
+  int32 section_y = 1;            // Absolute section Y index
+  bytes data = 2;                 // 2048-byte nibble array; empty means clear this section to zero
+}
+
+// Incremental light update for a chunk (Client -> Manager)
+message LightUpdateMessage {
+  int32 chunk_x = 1;
+  int32 chunk_z = 2;
+  string dimension = 3;
+  repeated LightSection sky_sections = 4;    // Sky light section updates
+  repeated LightSection block_sections = 5;  // Block light section updates
 }
 
 // Single block update (Client -> Manager)

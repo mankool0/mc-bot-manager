@@ -2456,6 +2456,16 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
             }
         }
 
+        // Copy light data
+        const auto& bl = sectionProto.blockLight();
+        if (!bl.isEmpty()) {
+            section.blockLight = QByteArray(bl.data(), bl.size());
+        }
+        const auto& sl = sectionProto.skyLight();
+        if (!sl.isEmpty()) {
+            section.skyLight = QByteArray(sl.data(), sl.size());
+        }
+
         chunk.sections[section.sectionY] = section;
     }
 
@@ -3407,5 +3417,32 @@ void BotManager::handleWeatherUpdateImpl(int connectionId, const mankool::mcbot:
     bot->isThundering = weather.isThundering();
     bot->rainLevel = weather.rainLevel();
     bot->thunderLevel = weather.thunderLevel();
+}
+
+void BotManager::handleLightUpdate(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate)
+{
+    instance().handleLightUpdateImpl(connectionId, lightUpdate);
+}
+
+void BotManager::handleLightUpdateImpl(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    int chunkX = lightUpdate.chunkX();
+    int chunkZ = lightUpdate.chunkZ();
+
+    QWriteLocker locker(bot->worldDataLock.get());
+
+    for (const auto &sec : lightUpdate.skySections()) {
+        const auto &d = sec.data();
+        bot->worldData.updateSectionSkyLight(chunkX, chunkZ, sec.sectionY(),
+                                             d.isEmpty() ? QByteArray() : QByteArray(d.data(), d.size()));
+    }
+    for (const auto &sec : lightUpdate.blockSections()) {
+        const auto &d = sec.data();
+        bot->worldData.updateSectionBlockLight(chunkX, chunkZ, sec.sectionY(),
+                                               d.isEmpty() ? QByteArray() : QByteArray(d.data(), d.size()));
+    }
 }
 

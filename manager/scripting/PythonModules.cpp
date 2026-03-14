@@ -194,10 +194,17 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           "Get block state at position, returns block ID string or None if chunk not loaded",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("bot") = "");
+    m.def("get_light", &PythonAPI::getLight,
+          "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if chunk not loaded.",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("bot") = "");
     m.def("find_blocks", &PythonAPI::findBlocks,
-          "Find all blocks of type within radius of center, returns list of (x,y,z) tuples",
+          "Find all blocks of type within radius of center, returns list of (x,y,z) tuples. "
+          "Optionally filter by block/sky light range (0-15).",
           py::arg("block_type"), py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
           py::arg("radius"),
+          py::arg("min_block_light") = 0, py::arg("max_block_light") = 15,
+          py::arg("min_sky_light") = 0, py::arg("max_sky_light") = 15,
           py::arg("bot") = "");
     m.def("entities", &PythonAPI::getEntities,
           "Get all tracked entities as list of dicts",

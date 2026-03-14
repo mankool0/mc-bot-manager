@@ -14,11 +14,16 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.core.Holder;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.lighting.LevelLightEngine;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.chunk.DataLayer;
+import net.minecraft.core.SectionPos;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import com.google.protobuf.ByteString;
 
 import org.slf4j.Logger;
@@ -36,6 +41,7 @@ public class WorldOutbound extends BaseOutbound {
 
     private static WorldOutbound instance;
     private final Set<ChunkPos> sentChunks = Collections.synchronizedSet(new HashSet<>());
+    private final Set<SectionKey> pendingLightSections = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public WorldOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -114,10 +120,15 @@ public class WorldOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
-        // No periodic tasks needed
+        if (pendingLightSections.isEmpty()) return;
+        Set<SectionKey> toScan = new HashSet<>(pendingLightSections);
+        pendingLightSections.clear();
+        for (SectionKey sk : toScan) {
+            sendLightForSection(sk.chunkX, sk.chunkZ, sk.sectionY);
+        }
     }
 
-    public void onChunkLoaded(int chunkX, int chunkZ) {
+    public void onChunkLoaded(int chunkX, int chunkZ, ClientboundLightUpdatePacketData lightData) {
         ClientLevel level = client.level;
         if (level == null) return;
 
@@ -125,7 +136,7 @@ public class WorldOutbound extends BaseOutbound {
 
         LevelChunk chunk = level.getChunk(chunkX, chunkZ);
 
-        sendChunkData(chunk);
+        sendChunkData(chunk, lightData);
         sentChunks.add(pos);
     }
 
@@ -153,6 +164,9 @@ public class WorldOutbound extends BaseOutbound {
     public void onBlockUpdate(BlockPos pos, BlockState state) {
         if (client.level == null) return;
 
+        // Queue section for light rescan - light engine updates on next tick
+        pendingLightSections.add(new SectionKey(pos.getX() >> 4, pos.getZ() >> 4, pos.getY() >> 4));
+
         int stateId = Block.getId(state);
 
         World.BlockUpdateMessage update = World.BlockUpdateMessage.newBuilder()
@@ -173,6 +187,11 @@ public class WorldOutbound extends BaseOutbound {
     public void onMultiBlockUpdate(List<BlockPos> positions, List<BlockState> states) {
         if (client.level == null || positions.isEmpty()) return;
 
+        // Queue all affected sections for light rescan
+        for (BlockPos pos : positions) {
+            pendingLightSections.add(new SectionKey(pos.getX() >> 4, pos.getZ() >> 4, pos.getY() >> 4));
+        }
+
         World.MultiBlockUpdateMessage.Builder builder = World.MultiBlockUpdateMessage.newBuilder()
             .setDimension(client.level.dimension().identifier().toString());
 
@@ -190,8 +209,27 @@ public class WorldOutbound extends BaseOutbound {
         connection.sendMessage(message);
     }
 
-    private void sendChunkData(LevelChunk chunk) {
+    private void sendChunkData(LevelChunk chunk, ClientboundLightUpdatePacketData lightData) {
         if (client.level == null) return;
+
+        // Parse light data from the packet directly (light engine may not have applied it yet)
+        int minLightSection = client.level.getChunkSource().getLightEngine().getMinLightSection();
+        java.util.Map<Integer, byte[]> blockLightMap = new java.util.HashMap<>();
+        java.util.Map<Integer, byte[]> skyLightMap = new java.util.HashMap<>();
+
+        java.util.BitSet blockYMask = lightData.getBlockYMask();
+        java.util.List<byte[]> blockUpdates = lightData.getBlockUpdates();
+        int blockIdx = 0;
+        for (int i = blockYMask.nextSetBit(0); i >= 0; i = blockYMask.nextSetBit(i + 1)) {
+            blockLightMap.put(minLightSection + i, blockUpdates.get(blockIdx++));
+        }
+
+        java.util.BitSet skyYMask = lightData.getSkyYMask();
+        java.util.List<byte[]> skyUpdates = lightData.getSkyUpdates();
+        int skyIdx = 0;
+        for (int i = skyYMask.nextSetBit(0); i >= 0; i = skyYMask.nextSetBit(i + 1)) {
+            skyLightMap.put(minLightSection + i, skyUpdates.get(skyIdx++));
+        }
 
         World.ChunkDataMessage.Builder chunkBuilder = World.ChunkDataMessage.newBuilder()
             .setChunkX(chunk.getPos().x)
@@ -209,7 +247,7 @@ public class WorldOutbound extends BaseOutbound {
             }
 
             int sectionY = chunk.getMinSectionY() + i;
-            World.ChunkSection sectionProto = encodeSection(section, sectionY);
+            World.ChunkSection sectionProto = encodeSection(section, sectionY, blockLightMap, skyLightMap);
             chunkBuilder.addSections(sectionProto);
         }
 
@@ -237,9 +275,11 @@ public class WorldOutbound extends BaseOutbound {
 
     /**
      * Encodes a single chunk section (16x16x16 blocks) into protobuf format.
-     * Uses palette-based compression with numeric state IDs.
+     * Uses palette-based compression with numeric state IDs, and includes light data.
      */
-    private static World.ChunkSection encodeSection(LevelChunkSection section, int sectionY) {
+    private static World.ChunkSection encodeSection(LevelChunkSection section, int sectionY,
+                                                    java.util.Map<Integer, byte[]> blockLightMap,
+                                                    java.util.Map<Integer, byte[]> skyLightMap) {
         // Build palette and indices using numeric state IDs
         Map<Integer, Integer> stateIdToPaletteIndex = new LinkedHashMap<>();
         List<Integer> paletteStateIds = new ArrayList<>();
@@ -316,6 +356,16 @@ public class WorldOutbound extends BaseOutbound {
             builder.addAllBiomeIndices(biomeIndices);
         }
 
+        // Attach light data from packet
+        byte[] blockLightData = blockLightMap.get(sectionY);
+        if (blockLightData != null) {
+            builder.setBlockLight(ByteString.copyFrom(blockLightData));
+        }
+        byte[] skyLightData = skyLightMap.get(sectionY);
+        if (skyLightData != null) {
+            builder.setSkyLight(ByteString.copyFrom(skyLightData));
+        }
+
         return builder.build();
     }
 
@@ -325,6 +375,64 @@ public class WorldOutbound extends BaseOutbound {
             .setY(pos.getY())
             .setZ(pos.getZ())
             .build();
+    }
+
+    /**
+     * Sends incremental light update for a chunk to the manager.
+     * Called after handleLightUpdatePacket has already applied the update to the light engine.
+     */
+    public void onLightUpdate(int chunkX, int chunkZ, ClientboundLightUpdatePacketData lightData) {
+        if (client.level == null) return;
+
+        LevelLightEngine lightEngine = client.level.getChunkSource().getLightEngine();
+        int minLightSection = lightEngine.getMinLightSection();
+
+        World.LightUpdateMessage.Builder builder = World.LightUpdateMessage.newBuilder()
+            .setChunkX(chunkX)
+            .setChunkZ(chunkZ)
+            .setDimension(client.level.dimension().identifier().toString());
+
+        // Sky light: non-empty sections
+        java.util.BitSet skyYMask = lightData.getSkyYMask();
+        java.util.List<byte[]> skyUpdates = lightData.getSkyUpdates();
+        int skyIdx = 0;
+        for (int i = skyYMask.nextSetBit(0); i >= 0; i = skyYMask.nextSetBit(i + 1)) {
+            builder.addSkySections(World.LightSection.newBuilder()
+                .setSectionY(minLightSection + i)
+                .setData(ByteString.copyFrom(skyUpdates.get(skyIdx++))));
+        }
+
+        // Sky light: cleared sections
+        java.util.BitSet emptySkyYMask = lightData.getEmptySkyYMask();
+        for (int i = emptySkyYMask.nextSetBit(0); i >= 0; i = emptySkyYMask.nextSetBit(i + 1)) {
+            builder.addSkySections(World.LightSection.newBuilder()
+                .setSectionY(minLightSection + i));  // empty data = clear
+        }
+
+        // Block light: non-empty sections
+        java.util.BitSet blockYMask = lightData.getBlockYMask();
+        java.util.List<byte[]> blockUpdates = lightData.getBlockUpdates();
+        int blockIdx = 0;
+        for (int i = blockYMask.nextSetBit(0); i >= 0; i = blockYMask.nextSetBit(i + 1)) {
+            builder.addBlockSections(World.LightSection.newBuilder()
+                .setSectionY(minLightSection + i)
+                .setData(ByteString.copyFrom(blockUpdates.get(blockIdx++))));
+        }
+
+        // Block light: cleared sections
+        java.util.BitSet emptyBlockYMask = lightData.getEmptyBlockYMask();
+        for (int i = emptyBlockYMask.nextSetBit(0); i >= 0; i = emptyBlockYMask.nextSetBit(i + 1)) {
+            builder.addBlockSections(World.LightSection.newBuilder()
+                .setSectionY(minLightSection + i));  // empty data = clear
+        }
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(java.util.UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setLightUpdate(builder.build())
+            .build();
+
+        connection.sendMessage(message);
     }
 
     /**
@@ -347,8 +455,47 @@ public class WorldOutbound extends BaseOutbound {
         connection.sendMessage(message);
     }
 
+    private void sendLightForSection(int chunkX, int chunkZ, int sectionY) {
+        if (client.level == null) return;
+        LevelLightEngine lightEngine = client.level.getChunkSource().getLightEngine();
+        SectionPos sectionPos = SectionPos.of(chunkX, sectionY, chunkZ);
+
+        DataLayer blockLayer = lightEngine.getLayerListener(LightLayer.BLOCK).getDataLayerData(sectionPos);
+        DataLayer skyLayer = lightEngine.getLayerListener(LightLayer.SKY).getDataLayerData(sectionPos);
+
+        World.LightUpdateMessage.Builder builder = World.LightUpdateMessage.newBuilder()
+            .setChunkX(chunkX)
+            .setChunkZ(chunkZ)
+            .setDimension(client.level.dimension().identifier().toString());
+
+        boolean hasData = false;
+        if (blockLayer != null && !blockLayer.isEmpty()) {
+            builder.addBlockSections(World.LightSection.newBuilder()
+                .setSectionY(sectionY)
+                .setData(ByteString.copyFrom(blockLayer.getData())));
+            hasData = true;
+        }
+        if (skyLayer != null && !skyLayer.isEmpty()) {
+            builder.addSkySections(World.LightSection.newBuilder()
+                .setSectionY(sectionY)
+                .setData(ByteString.copyFrom(skyLayer.getData())));
+            hasData = true;
+        }
+        if (!hasData) return;
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setLightUpdate(builder.build())
+            .build();
+
+        connection.sendMessage(message);
+    }
+
     /**
      * Simple chunk position holder for tracking sent chunks.
      */
     private record ChunkPos(int x, int z) {}
+
+    private record SectionKey(int chunkX, int chunkZ, int sectionY) {}
 }
