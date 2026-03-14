@@ -8,6 +8,7 @@
 #include "ui/BotConsoleWidget.h"
 #include "logging/LogManager.h"
 #include <QDebug>
+#include <QDateTime>
 
 namespace py = pybind11;
 
@@ -177,8 +178,9 @@ bool ScriptEngine::runScript(const QString &filename)
     if (ctx->running || ctx->thread) return false;
 
     if (botInstance->consoleWidget) {
-        botInstance->consoleWidget->appendOutput(QString("[%1] Starting...").arg(filename),
-                                                 Qt::darkCyan);
+        QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+        botInstance->consoleWidget->appendOutput(
+            QString("[%1] [%2] Starting...").arg(ts, filename), Qt::darkCyan);
     }
 
     ctx->running = true;
@@ -198,9 +200,9 @@ bool ScriptEngine::runScript(const QString &filename)
             if (ctx->eventHandlers.isEmpty()) {
                 ctx->running = false;
                 if (botInstance->consoleWidget) {
-                    botInstance->consoleWidget
-                        ->appendOutput(QString("[%1] Completed successfully").arg(filename),
-                                       Qt::darkGreen);
+                    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+                    botInstance->consoleWidget->appendOutput(
+                        QString("[%1] [%2] Completed successfully").arg(ts, filename), Qt::darkGreen);
                 }
                 emit scriptStopped(filename);
             }
@@ -210,9 +212,9 @@ bool ScriptEngine::runScript(const QString &filename)
 
             // Show stopped message if no error was set (user stopped)
             if (ctx->lastError.isEmpty() && botInstance->consoleWidget) {
-                botInstance->consoleWidget
-                    ->appendOutput(QString("[%1] Stopped").arg(filename),
-                                   Qt::darkYellow);
+                QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+                botInstance->consoleWidget->appendOutput(
+                    QString("[%1] [%2] Stopped").arg(ts, filename), Qt::darkYellow);
             }
 
             emit scriptStopped(filename);
@@ -277,8 +279,9 @@ void ScriptEngine::stopScript(const QString &filename)
         }
 
         if (botInstance->consoleWidget) {
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             botInstance->consoleWidget->appendOutput(
-                QString("[%1] Stopped").arg(filename), Qt::darkYellow);
+                QString("[%1] [%2] Stopped").arg(ts, filename), Qt::darkYellow);
         }
 
         emit scriptStopped(filename);
