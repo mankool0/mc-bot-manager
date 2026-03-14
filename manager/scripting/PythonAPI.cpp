@@ -1082,8 +1082,34 @@ py::object PythonAPI::getBlock(double x, double y, double z, const std::string &
     return py::none();
 }
 
+py::object PythonAPI::getLight(double x, double y, double z, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    int ix = static_cast<int>(std::floor(x));
+    int iy = static_cast<int>(std::floor(y));
+    int iz = static_cast<int>(std::floor(z));
+
+    std::optional<ChunkSection::LightLevels> light;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        light = botInstance->worldData.getLight(ix, iy, iz);
+    }
+
+    if (!light.has_value()) return py::none();
+
+    py::dict result;
+    result["block"] = light->block;
+    result["sky"] = light->sky;
+    return result;
+}
+
 py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
-                                int radius, const std::string &bot)
+                                int radius,
+                                int minBlockLight, int maxBlockLight,
+                                int minSkyLight, int maxSkyLight,
+                                const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
@@ -1163,7 +1189,15 @@ py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, dou
                         // Extract block ID (part before '[' for block states)
                         QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
                         if (blockId == searchId) {
-                            results.append(QVector3D(worldX, y, worldZ));
+                            if (minBlockLight == 0 && maxBlockLight == 15 && minSkyLight == 0 && maxSkyLight == 15) {
+                                results.append(QVector3D(worldX, y, worldZ));
+                            } else {
+                                auto light = chunkCopy.getLight(x, y, z);
+                                if (light.block >= minBlockLight && light.block <= maxBlockLight &&
+                                    light.sky   >= minSkyLight   && light.sky   <= maxSkyLight) {
+                                    results.append(QVector3D(worldX, y, worldZ));
+                                }
+                            }
                         }
                     }
                 }

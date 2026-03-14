@@ -111,8 +111,12 @@ public:
     // World queries
     static py::object getWeather(const std::string &bot = "");
     static py::object getBlock(double x, double y, double z, const std::string &bot = "");
+    static py::object getLight(double x, double y, double z, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
-                                int radius, const std::string &bot = "");
+                                int radius,
+                                int minBlockLight = 0, int maxBlockLight = 15,
+                                int minSkyLight = 0, int maxSkyLight = 15,
+                                const std::string &bot = "");
     static py::object findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot = "");
     static int getLoadedChunkCount(const std::string &bot = "");
     static size_t getWorldMemoryUsage(const std::string &bot = "");

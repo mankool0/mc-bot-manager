@@ -32,9 +32,9 @@ if block:
         print("Found a chest!")
 ```
 
-### `find_blocks(block_type, center_x, center_y, center_z, radius, bot="")`
+### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot="")`
 
-Find all blocks of a specific type within a spherical radius.
+Find all blocks of a specific type within a spherical radius, with optional light level filters.
 
 This function only searches loaded chunks. Blocks in unloaded chunks will not be found.
 
@@ -45,6 +45,10 @@ This function only searches loaded chunks. Blocks in unloaded chunks will not be
 - `center_y` (`float`) - Search center Y coordinate
 - `center_z` (`float`) - Search center Z coordinate
 - `radius` (`int`) - Search radius in blocks
+- `min_block_light` (`int`, optional) - Minimum block light level, inclusive (default: 0)
+- `max_block_light` (`int`, optional) - Maximum block light level, inclusive (default: 15)
+- `min_sky_light` (`int`, optional) - Minimum sky light level, inclusive (default: 0)
+- `max_sky_light` (`int`, optional) - Maximum sky light level, inclusive (default: 15)
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[tuple]` - List of block positions as `(x, y, z)` tuples of floats
@@ -66,6 +70,14 @@ for x, y, z in diamonds:
 
 # Find all chests near spawn
 chests = world.find_blocks("minecraft:chest", 0, 64, 0, radius=100)
+
+# Find air blocks with no block light and no sky access (fully dark, unlit caves)
+pos = bot.position()
+dark_air = world.find_blocks("minecraft:air",
+                             pos["x"], pos["y"], pos["z"],
+                             radius=128,
+                             max_block_light=0,
+                             max_sky_light=0)
 ```
 
 ### `find_nearest(block_types, max_distance=128, bot="")`
@@ -785,6 +797,42 @@ for mob in mobs:
 The Java client sends `EntityUpdate` messages only when entities change - new arrivals, position/rotation changes, and removals.
 
 On server disconnect, all entity data is cleared so stale entities never persist across reconnections.
+
+---
+
+## Light
+
+### `get_light(x, y, z, bot="")`
+
+Get the light levels at the specified block position.
+
+**Parameters:**
+
+- `x` (`float`) - X coordinate
+- `y` (`float`) - Y coordinate
+- `z` (`float`) - Z coordinate
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict` or `None` if the chunk is not loaded
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `block` | `int` | Block light level (0-15, from torches, lava, etc.) |
+| `sky` | `int` | Raw sky light level (0-15, always 0 in nether/end) |
+
+Light data is captured on chunk load and updated as the server sends light updates (e.g. from placing or removing light sources).
+
+**Note:** `sky` is the raw stored sky light, not the internal sky light used for mob spawning calculations. Internal sky light also depends on time of day and weather, which are not factored in here.
+
+```python
+light = world.get_light(x, y, z)
+if light:
+    utils.log(f"Block light: {light['block']}, Sky light: {light['sky']}")
+
+    # A position with no block light and no sky access is fully dark
+    if light['block'] == 0 and light['sky'] == 0:
+        utils.log("No light sources reach this block")
+```
 
 ---
 

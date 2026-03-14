@@ -238,6 +238,8 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleEntityUpdate(connectionId, clientMsg.entityUpdate());
         } else if (clientMsg.hasWeatherUpdate()) {
             BotManager::handleWeatherUpdate(connectionId, clientMsg.weatherUpdate());
+        } else if (clientMsg.hasLightUpdate()) {
+            BotManager::handleLightUpdate(connectionId, clientMsg.lightUpdate());
         }
         return;
     }
