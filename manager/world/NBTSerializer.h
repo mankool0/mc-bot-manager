@@ -21,6 +21,11 @@ public:
     static nbt::tag_compound sectionToNBT(const ChunkSection& section);
     static nbt::tag_compound createHeightmaps(const ChunkData& chunk);
 
+    // Deserializers - read from NBT back into data structures
+    static ChunkSection nbtToChunkSection(const nbt::tag_compound& section);
+    static ChunkData nbtToChunk(const nbt::tag_compound& root);
+    static QVector<BlockEntityData> nbtToBlockEntities(const nbt::tag_compound& root, const QString& dimension);
+
     // Example: "minecraft:chest[facing=north,type=single]" -> {Name: "minecraft:chest", Properties: {facing: "north", type: "single"}}
     static nbt::tag_compound blockStateToNBT(const QString& blockState);
 
