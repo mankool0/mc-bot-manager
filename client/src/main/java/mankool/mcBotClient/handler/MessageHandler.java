@@ -110,6 +110,8 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleCanReachBlock(msg.getMessageId(), msg.getCanReachBlock()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REGISTRY_RESPONSE,
             msg -> worldOutbound.handleRegistryResponse(msg.getRegistryResponse()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.ITEM_REGISTRY_RESPONSE,
+            msg -> worldOutbound.handleItemRegistryResponse(msg.getItemRegistryResponse()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLICK_CONTAINER_SLOT,
             msg -> inventoryHandler.handleClickContainerSlot(msg.getMessageId(), msg.getClickContainerSlot()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLOSE_CONTAINER,
@@ -130,6 +132,9 @@ public class MessageHandler {
 
         // Send block registry query
         worldOutbound.sendRegistryQuery();
+
+        // Send item registry query
+        worldOutbound.sendItemRegistryQuery();
 
         LOGGER.info("MessageHandler started, processing messages on game tick");
     }

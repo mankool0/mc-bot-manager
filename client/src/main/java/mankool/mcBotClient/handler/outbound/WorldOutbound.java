@@ -3,6 +3,7 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Protocol;
+import mankool.mcbot.protocol.Registry;
 import mankool.mcbot.protocol.World;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
@@ -11,6 +12,7 @@ import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -82,6 +84,77 @@ public class WorldOutbound extends BaseOutbound {
         } else {
             LOGGER.info("Manager already has block registry");
         }
+    }
+
+    /**
+     * Sends a query to the manager to check if it has the item registry for this data version.
+     */
+    public void sendItemRegistryQuery() {
+        int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
+        int protocolVersion = SharedConstants.getProtocolVersion();
+
+        Registry.QueryItemRegistryMessage query = Registry.QueryItemRegistryMessage.newBuilder()
+            .setDataVersion(dataVersion)
+            .setProtocolVersion(protocolVersion)
+            .build();
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setQueryItemRegistry(query)
+            .build();
+
+        connection.sendMessage(message);
+        LOGGER.info("Item registry query sent (data version: {})", dataVersion);
+    }
+
+    /**
+     * Handles the item registry response from the manager.
+     * If the manager needs the registry, builds and sends the full item mapping.
+     */
+    public void handleItemRegistryResponse(Registry.ItemRegistryResponse response) {
+        if (response.getStatus() == World.RegistryStatus.NEED_IT) {
+            LOGGER.info("Manager needs item registry, building and sending...");
+            sendFullItemRegistry();
+        } else {
+            LOGGER.info("Manager already has item registry");
+        }
+    }
+
+    /**
+     * Builds and sends the full item registry to the manager.
+     */
+    private void sendFullItemRegistry() {
+        int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
+
+        Registry.ItemRegistryMessage.Builder builder = Registry.ItemRegistryMessage.newBuilder()
+            .setDataVersion(dataVersion);
+
+        for (Item item : BuiltInRegistries.ITEM) {
+            String itemId = BuiltInRegistries.ITEM.getResourceKey(item)
+                .map(k -> k.identifier().toString())
+                .orElse(null);
+            if (itemId == null) continue;
+
+            net.minecraft.world.item.ItemStack stack = item.getDefaultInstance();
+            int maxStackSize = stack.getMaxStackSize();
+            int maxDamage = stack.getMaxDamage();
+
+            builder.addEntries(Registry.ItemEntry.newBuilder()
+                .setItemId(itemId)
+                .setMaxStackSize(maxStackSize)
+                .setMaxDamage(maxDamage)
+                .build());
+        }
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setItemRegistry(builder.build())
+            .build();
+
+        connection.sendMessage(message);
+        LOGGER.info("Item registry sent: {} items", builder.getEntriesCount());
     }
 
     /**
