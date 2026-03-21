@@ -268,6 +268,19 @@ void BotWorldData::unloadChunk(int chunkX, int chunkZ)
 {
     ChunkPos pos(chunkX, chunkZ);
     chunks.remove(pos);
+
+    // Remove block entities belonging to this chunk
+    int minX = chunkX * 16, maxX = minX + 15;
+    int minZ = chunkZ * 16, maxZ = minZ + 15;
+    auto it = blockEntities.begin();
+    while (it != blockEntities.end()) {
+        const BlockEntityData& be = it.value();
+        if (be.x >= minX && be.x <= maxX && be.z >= minZ && be.z <= maxZ) {
+            it = blockEntities.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 bool BotWorldData::isChunkLoaded(int chunkX, int chunkZ) const
@@ -492,6 +505,13 @@ QVector<EntityData> BotWorldData::findEntitiesNear(double x, double y, double z,
 void BotWorldData::clearEntities()
 {
     entities.clear();
+}
+
+void BotWorldData::clearWorldState()
+{
+    chunks.clear();
+    entities.clear();
+    blockEntities.clear();
 }
 
 void BotWorldData::updateBlockEntity(const BlockEntityData& be)

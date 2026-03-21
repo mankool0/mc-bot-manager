@@ -146,6 +146,7 @@ public:
     QVector<EntityData> findEntitiesNear(double x, double y, double z, double radius,
                                          const QString& typeFilter = "") const;
     void clearEntities();
+    void clearWorldState();
 
     // Block entity tracking
     void updateBlockEntity(const BlockEntityData& be);
