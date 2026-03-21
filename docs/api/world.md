@@ -6,7 +6,7 @@ The world module provides access to chunk data collected from the Minecraft clie
 
 ## Block Queries
 
-### `get_block(x, y, z, bot="")`
+### `get_block(x, y, z, use_disk=False, bot="")`
 
 Get the block state at the specified coordinates.
 
@@ -15,11 +15,14 @@ Get the block state at the specified coordinates.
 - `x` (`int`) - Block X coordinate
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
+- `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read the block from the saved `.mca` region file on disk (default: `False`)
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `str` - Block state string (e.g., `"minecraft:stone"`, `"minecraft:chest[facing=north]"`), or `None` if chunk is not loaded or bot is offline
+**Returns:** `str` - Block state string (e.g., `"minecraft:stone"`, `"minecraft:chest[facing=north]"`), or `None` if chunk is not loaded (and not on disk when `use_disk=True`) or bot is offline
 
 **Raises:** `RuntimeError` if bot not found or not online
+
+**Note:** Disk reads require world saving to be enabled. Returns `None` if the world save path is not available or the chunk has never been saved.
 
 ```python
 # Get block at specific position
@@ -30,6 +33,11 @@ if block:
     # Check block type
     if "chest" in block:
         print("Found a chest!")
+
+# Read a block from a chunk that isn't currently loaded
+block = world.get_block(5000, 64, 5000, use_disk=True)
+if block:
+    print(f"Saved block: {block}")
 ```
 
 ### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot="")`
@@ -161,6 +169,95 @@ if ore:
 else:
     print("No ore found within 50 blocks")
 ```
+
+## Block Entities
+
+Block entities are blocks with attached data: chests, furnaces, signs, shulker boxes, etc. The bot tracks block entities for chunks it has loaded this session. With `use_disk=True`, entities from saved but currently unloaded chunks can also be queried.
+
+### `get_block_entity(x, y, z, use_disk=False, bot="")`
+
+Get the block entity at the specified position.
+
+**Parameters:**
+
+- `x` (`int`) - Block X coordinate
+- `y` (`int`) - Block Y coordinate
+- `z` (`int`) - Block Z coordinate
+- `use_disk` (`bool`, optional) - If `True` and no in-memory data exists, read from the saved `.mca` file (default: `False`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict` or `None` if no block entity exists at that position
+
+| Key | Type | Present when |
+|-----|------|-------------|
+| `type` | `str` | always (e.g. `"minecraft:chest"`) |
+| `x` | `int` | always |
+| `y` | `int` | always |
+| `z` | `int` | always |
+| `items` | `list` | container was opened this session (memory) or in a previous session that was saved to disk |
+
+**Note on `items`:** The Minecraft server only sends container contents when a container is opened, so `items` is only present if the container was opened at some point. Memory always takes priority: if items are already in memory (opened this session), they are returned even when `use_disk=True`. Disk is only consulted when items are absent from memory - in that case, items may be present on disk if the container was opened in a previous session that was saved.
+
+```python
+# items only present if container was opened this session
+be = world.get_block_entity(cx, cy, cz)
+if be and 'items' in be:
+    for item in be['items']:
+        if item['item_id'] != 'minecraft:air':
+            utils.log(f"  {item['count']}x {item['item_id']}")
+
+# also check saved data from previous sessions where container was opened
+be = world.get_block_entity(cx, cy, cz, use_disk=True)
+if be and 'items' in be:
+    utils.log(f"Chest contents from disk: {len(be['items'])} stacks")
+
+# check a saved but unloaded chunk
+be = world.get_block_entity(5000, 64, 5000, use_disk=True)
+if be and be['type'] == 'minecraft:chest':
+    utils.log("Found a chest in saved data")
+```
+
+---
+
+### `get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot="")`
+
+Get all block entities in a chunk.
+
+**Parameters:**
+
+- `chunk_x` (`int`) - Chunk X coordinate (block X divided by 16, rounded down)
+- `chunk_z` (`int`) - Chunk Z coordinate (block Z divided by 16, rounded down)
+- `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded, read from the saved `.mca` file (default: `False`)
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Only relevant for disk reads.
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `list[dict]` - List of block entity dicts (same schema as `get_block_entity`)
+
+Memory always takes priority: if the chunk is loaded, memory data is returned regardless of `use_disk`. Disk is only read when the chunk is not loaded. `items` is present on any container that was opened (either this session from memory, or a previous session from disk).
+
+```python
+import math
+
+# Get all block entities in the chunk under the bot
+pos = bot.position()
+cx = math.floor(pos['x'] / 16)
+cz = math.floor(pos['z'] / 16)
+
+entities = world.get_block_entities_in_chunk(cx, cz)
+for be in entities:
+    utils.log(f"{be['type']} at ({be['x']}, {be['y']}, {be['z']})")
+
+# Scan a saved chunk for chests
+entities = world.get_block_entities_in_chunk(312, -5, use_disk=True)
+chests = [be for be in entities if be['type'] == 'minecraft:chest']
+utils.log(f"Found {len(chests)} chests in saved chunk (312, -5)")
+
+# Scan a chunk in the nether from disk
+nether_ents = world.get_block_entities_in_chunk(10, 10,
+    use_disk=True, dimension="minecraft:the_nether")
+```
+
+---
 
 ## Block Interaction
 
@@ -802,7 +899,7 @@ On server disconnect, all entity data is cleared so stale entities never persist
 
 ## Light
 
-### `get_light(x, y, z, bot="")`
+### `get_light(x, y, z, use_disk=False, bot="")`
 
 Get the light levels at the specified block position.
 
@@ -811,9 +908,10 @@ Get the light levels at the specified block position.
 - `x` (`float`) - X coordinate
 - `y` (`float`) - Y coordinate
 - `z` (`float`) - Z coordinate
+- `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read light data from the saved `.mca` region file on disk (default: `False`)
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `dict` or `None` if the chunk is not loaded
+**Returns:** `dict` or `None` if the chunk is not loaded (and not on disk when `use_disk=True`)
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -832,6 +930,9 @@ if light:
     # A position with no block light and no sky access is fully dark
     if light['block'] == 0 and light['sky'] == 0:
         utils.log("No light sources reach this block")
+
+# Read light from a saved but unloaded chunk
+light = world.get_light(5000, 64, 5000, use_disk=True)
 ```
 
 ---
