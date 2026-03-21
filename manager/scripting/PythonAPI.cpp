@@ -1277,8 +1277,11 @@ static py::dict buildBlockEntityDict(const BlockEntityData& be, bool includeItem
 // getBlock / getLight
 // ---------------------------------------------------------------------------
 
-py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const std::string &bot)
+py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
+    if (!dimension.empty() && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
+
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1286,15 +1289,18 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
     int iy = static_cast<int>(std::floor(y));
     int iz = static_cast<int>(std::floor(z));
 
-    QString dimension = botInstance->dimension;
-    std::optional<QString> blockOpt;
-    {
-        QReadLocker locker(botInstance->worldDataLock.get());
-        blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
-    }
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    if (blockOpt.has_value()) {
-        return py::str(blockOpt.value().toStdString());
+    // Read from memory only when querying the current dimension (chunks carry no dimension key)
+    if (dim == botInstance->dimension) {
+        std::optional<QString> blockOpt;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
+        }
+        if (blockOpt.has_value()) {
+            return py::str(blockOpt.value().toStdString());
+        }
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
@@ -1305,7 +1311,7 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dimension);
+        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("sections")) return py::none();
@@ -1318,8 +1324,11 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
     return py::none();
 }
 
-py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const std::string &bot)
+py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
+    if (!dimension.empty() && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
+
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1327,18 +1336,21 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
     int iy = static_cast<int>(std::floor(y));
     int iz = static_cast<int>(std::floor(z));
 
-    QString dimension = botInstance->dimension;
-    std::optional<ChunkSection::LightLevels> light;
-    {
-        QReadLocker locker(botInstance->worldDataLock.get());
-        light = botInstance->worldData.getLight(ix, iy, iz);
-    }
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    if (light.has_value()) {
-        py::dict result;
-        result["block"] = light->block;
-        result["sky"] = light->sky;
-        return result;
+    // Read from memory only when querying the current dimension (chunks carry no dimension key)
+    if (dim == botInstance->dimension) {
+        std::optional<ChunkSection::LightLevels> light;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            light = botInstance->worldData.getLight(ix, iy, iz);
+        }
+        if (light.has_value()) {
+            py::dict result;
+            result["block"] = light->block;
+            result["sky"] = light->sky;
+            return result;
+        }
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
@@ -1349,7 +1361,7 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dimension);
+        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("sections")) return py::none();
@@ -1366,8 +1378,11 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
 // getBlockEntity
 // ---------------------------------------------------------------------------
 
-py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &bot)
+py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
+    if (!dimension.empty() && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True for get_block_entity");
+
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1375,11 +1390,11 @@ py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk,
     int iy = static_cast<int>(std::floor(y));
     int iz = static_cast<int>(std::floor(z));
 
-    QString dimension = botInstance->dimension;
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
     std::optional<BlockEntityData> beOpt;
     {
         QReadLocker locker(botInstance->worldDataLock.get());
-        beOpt = botInstance->worldData.getBlockEntity(ix, iy, iz, dimension);
+        beOpt = botInstance->worldData.getBlockEntity(ix, iy, iz, dim);
     }
 
     // Use memory if items are known; if use_disk and items are absent, fall through to disk
@@ -1396,7 +1411,7 @@ py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk,
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dimension);
+        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("block_entities")) {
@@ -1433,6 +1448,10 @@ py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk
     BotInstance *botInstance = ensureBotOnline(botName);
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+
+    if (dim != botInstance->dimension && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True when querying a different dimension");
+
     bool chunkLoaded;
     {
         QReadLocker locker(botInstance->worldDataLock.get());

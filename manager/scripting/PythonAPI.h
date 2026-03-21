@@ -111,9 +111,9 @@ public:
 
     // World queries
     static py::object getWeather(const std::string &bot = "");
-    static py::object getBlock(double x, double y, double z, bool useDisk = false, const std::string &bot = "");
-    static py::object getLight(double x, double y, double z, bool useDisk = false, const std::string &bot = "");
-    static py::object getBlockEntity(double x, double y, double z, bool useDisk = false, const std::string &bot = "");
+    static py::object getBlock(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+    static py::object getLight(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+    static py::object getBlockEntity(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
     static py::list getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
     static py::object isBlockSolid(const std::string &blockState, BlockRegistry::Direction face = BlockRegistry::Direction::UP, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,

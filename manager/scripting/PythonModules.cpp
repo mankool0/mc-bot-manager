@@ -201,21 +201,27 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("bot") = "");
     m.def("get_block", &PythonAPI::getBlock,
           "Get block state at position. Returns block ID string or None if not found. "
-          "If use_disk=True, reads saved world data when chunk not loaded.",
+          "If use_disk=True, reads saved world data when chunk not loaded. "
+          "dimension requires use_disk=True.",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("use_disk") = false,
+          py::arg("dimension") = "",
           py::arg("bot") = "");
     m.def("get_light", &PythonAPI::getLight,
           "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if not found. "
-          "If use_disk=True, reads saved world data when chunk not loaded.",
+          "If use_disk=True, reads saved world data when chunk not loaded. "
+          "dimension requires use_disk=True.",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("use_disk") = false,
+          py::arg("dimension") = "",
           py::arg("bot") = "");
     m.def("get_block_entity", &PythonAPI::getBlockEntity,
           "Get block entity at position. Returns dict {type, x, y, z, items?} or None. "
-          "If use_disk=True, falls back to saved world when not in memory.",
+          "If use_disk=True, falls back to saved world when not in memory. "
+          "dimension requires use_disk=True.",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("use_disk") = false,
+          py::arg("dimension") = "",
           py::arg("bot") = "");
     m.def("get_block_entities_in_chunk", &PythonAPI::getBlockEntitiesInChunk,
           "Get all block entities in a chunk as list of dicts {type, x, y, z, items?}. "

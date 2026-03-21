@@ -6,7 +6,7 @@ The world module provides access to chunk data collected from the Minecraft clie
 
 ## Block Queries
 
-### `get_block(x, y, z, use_disk=False, bot="")`
+### `get_block(x, y, z, use_disk=False, dimension="", bot="")`
 
 Get the block state at the specified coordinates.
 
@@ -16,11 +16,12 @@ Get the block state at the specified coordinates.
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read the block from the saved `.mca` region file on disk (default: `False`)
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `str` - Block state string (e.g., `"minecraft:stone"`, `"minecraft:chest[facing=north]"`), or `None` if chunk is not loaded (and not on disk when `use_disk=True`) or bot is offline
 
-**Raises:** `RuntimeError` if bot not found or not online
+**Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
 
 **Note:** Disk reads require world saving to be enabled. Returns `None` if the world save path is not available or the chunk has never been saved.
 
@@ -38,6 +39,9 @@ if block:
 block = world.get_block(5000, 64, 5000, use_disk=True)
 if block:
     print(f"Saved block: {block}")
+
+# Read a block from a different dimension
+block = world.get_block(100, 64, 100, use_disk=True, dimension="minecraft:the_nether")
 ```
 
 ### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot="")`
@@ -174,7 +178,7 @@ else:
 
 Block entities are blocks with attached data: chests, furnaces, signs, shulker boxes, etc. The bot tracks block entities for chunks it has loaded this session. With `use_disk=True`, entities from saved but currently unloaded chunks can also be queried.
 
-### `get_block_entity(x, y, z, use_disk=False, bot="")`
+### `get_block_entity(x, y, z, use_disk=False, dimension="", bot="")`
 
 Get the block entity at the specified position.
 
@@ -184,6 +188,7 @@ Get the block entity at the specified position.
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and no in-memory data exists, read from the saved `.mca` file (default: `False`)
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it.
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `dict` or `None` if no block entity exists at that position
@@ -228,7 +233,7 @@ Get all block entities in a chunk.
 - `chunk_x` (`int`) - Chunk X coordinate (block X divided by 16, rounded down)
 - `chunk_z` (`int`) - Chunk Z coordinate (block Z divided by 16, rounded down)
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded, read from the saved `.mca` file (default: `False`)
-- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Only relevant for disk reads.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. If a different dimension is specified, **requires `use_disk=True`** - raises `ValueError` otherwise.
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[dict]` - List of block entity dicts (same schema as `get_block_entity`)
@@ -899,7 +904,7 @@ On server disconnect, all entity data is cleared so stale entities never persist
 
 ## Light
 
-### `get_light(x, y, z, use_disk=False, bot="")`
+### `get_light(x, y, z, use_disk=False, dimension="", bot="")`
 
 Get the light levels at the specified block position.
 
@@ -909,7 +914,10 @@ Get the light levels at the specified block position.
 - `y` (`float`) - Y coordinate
 - `z` (`float`) - Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read light data from the saved `.mca` region file on disk (default: `False`)
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
 - `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
 
 **Returns:** `dict` or `None` if the chunk is not loaded (and not on disk when `use_disk=True`)
 
