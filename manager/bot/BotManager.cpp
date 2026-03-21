@@ -807,16 +807,16 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
             }
         }
 
-        // Clear entity tracking when bot disconnects from server
+        // Clear world state when bot disconnects from server
         using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
         if (status.status() != Status::SUCCESSFUL) {
-            QWriteLocker locker(bot->worldDataLock.get());
-            bot->worldData.clearEntities();
-
-            // Flush player data on disconnect
+            // Flush all dirty chunks and player data before clearing world data
             if (bot->worldAutoSaver && bot->saveWorldToDisk) {
-                bot->worldAutoSaver->flushPlayerData();
+                bot->worldAutoSaver->flushAll();
             }
+
+            QWriteLocker locker(bot->worldDataLock.get());
+            bot->worldData.clearWorldState();
         }
 
         // Try to initialize WorldAutoSaver now that we have server address

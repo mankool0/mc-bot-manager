@@ -268,6 +268,19 @@ void BotWorldData::unloadChunk(int chunkX, int chunkZ)
 {
     ChunkPos pos(chunkX, chunkZ);
     chunks.remove(pos);
+
+    // Remove block entities belonging to this chunk
+    int minX = chunkX * 16, maxX = minX + 15;
+    int minZ = chunkZ * 16, maxZ = minZ + 15;
+    auto it = blockEntities.begin();
+    while (it != blockEntities.end()) {
+        const BlockEntityData& be = it.value();
+        if (be.x >= minX && be.x <= maxX && be.z >= minZ && be.z <= maxZ) {
+            it = blockEntities.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 bool BotWorldData::isChunkLoaded(int chunkX, int chunkZ) const
@@ -494,6 +507,13 @@ void BotWorldData::clearEntities()
     entities.clear();
 }
 
+void BotWorldData::clearWorldState()
+{
+    chunks.clear();
+    entities.clear();
+    blockEntities.clear();
+}
+
 void BotWorldData::updateBlockEntity(const BlockEntityData& be)
 {
     QString key = QString("%1|%2|%3|%4").arg(be.dimension).arg(be.x).arg(be.y).arg(be.z);
@@ -518,6 +538,14 @@ void BotWorldData::removeBlockEntity(int x, int y, int z, const QString& dimensi
 {
     QString key = QString("%1|%2|%3|%4").arg(dimension).arg(x).arg(y).arg(z);
     blockEntities.remove(key);
+}
+
+std::optional<BlockEntityData> BotWorldData::getBlockEntity(int x, int y, int z, const QString& dimension) const
+{
+    QString key = QString("%1|%2|%3|%4").arg(dimension).arg(x).arg(y).arg(z);
+    auto it = blockEntities.find(key);
+    if (it == blockEntities.end()) return std::nullopt;
+    return it.value();
 }
 
 QVector<BlockEntityData> BotWorldData::getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const

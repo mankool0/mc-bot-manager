@@ -200,12 +200,35 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           "Get current weather state as dict with is_raining, is_thundering, rain_level, thunder_level. Returns None if bot offline.",
           py::arg("bot") = "");
     m.def("get_block", &PythonAPI::getBlock,
-          "Get block state at position, returns block ID string or None if chunk not loaded",
+          "Get block state at position. Returns block ID string or None if not found. "
+          "If use_disk=True, reads saved world data when chunk not loaded. "
+          "dimension requires use_disk=True.",
           py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("use_disk") = false,
+          py::arg("dimension") = "",
           py::arg("bot") = "");
     m.def("get_light", &PythonAPI::getLight,
-          "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if chunk not loaded.",
+          "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if not found. "
+          "If use_disk=True, reads saved world data when chunk not loaded. "
+          "dimension requires use_disk=True.",
           py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("use_disk") = false,
+          py::arg("dimension") = "",
+          py::arg("bot") = "");
+    m.def("get_block_entity", &PythonAPI::getBlockEntity,
+          "Get block entity at position. Returns dict {type, x, y, z, items?} or None. "
+          "If use_disk=True, falls back to saved world when not in memory. "
+          "dimension requires use_disk=True.",
+          py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("use_disk") = false,
+          py::arg("dimension") = "",
+          py::arg("bot") = "");
+    m.def("get_block_entities_in_chunk", &PythonAPI::getBlockEntitiesInChunk,
+          "Get all block entities in a chunk as list of dicts {type, x, y, z, items?}. "
+          "If use_disk=True and chunk not loaded, reads from saved world (no items in result).",
+          py::arg("chunk_x"), py::arg("chunk_z"),
+          py::arg("use_disk") = false,
+          py::arg("dimension") = "",
           py::arg("bot") = "");
     m.def("is_solid", &PythonAPI::isBlockSolid,
           "Check if a block state string has a solid face in the given direction. "

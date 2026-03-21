@@ -449,3 +449,180 @@ std::vector<nbt::tag_compound> NBTSerializer::convertPalette(const QVector<QStri
 
     return result;
 }
+
+ChunkSection NBTSerializer::nbtToChunkSection(const nbt::tag_compound& section) {
+    ChunkSection result;
+
+    if (section.has_key("Y")) {
+        try {
+            result.sectionY = static_cast<int32_t>(
+                static_cast<const nbt::tag_byte&>(section.at("Y").get()).get());
+        } catch (...) {}
+    }
+
+    // Block states
+    if (section.has_key("block_states")) {
+        try {
+            const auto& blockStates = static_cast<const nbt::tag_compound&>(section.at("block_states").get());
+
+            // Parse palette
+            if (blockStates.has_key("palette")) {
+                const auto& paletteList = static_cast<const nbt::tag_list&>(blockStates.at("palette").get());
+                for (const nbt::value& entry : paletteList) {
+                    const auto& entryTag = static_cast<const nbt::tag_compound&>(entry.get());
+                    QString blockName;
+                    if (entryTag.has_key("Name")) {
+                        blockName = QString::fromStdString(
+                            static_cast<const nbt::tag_string&>(entryTag.at("Name").get()).get());
+                    }
+                    if (entryTag.has_key("Properties")) {
+                        const auto& props = static_cast<const nbt::tag_compound&>(entryTag.at("Properties").get());
+                        QStringList propParts;
+                        for (auto it = props.begin(); it != props.end(); ++it) {
+                            QString k = QString::fromStdString(it->first);
+                            QString v = QString::fromStdString(
+                                static_cast<const nbt::tag_string&>(it->second.get()).get());
+                            propParts.append(k + "=" + v);
+                        }
+                        if (!propParts.isEmpty()) {
+                            blockName += "[" + propParts.join(",") + "]";
+                        }
+                    }
+                    result.palette.append(blockName);
+                }
+            }
+
+            // Parse packed block data
+            if (blockStates.has_key("data")) {
+                const auto& dataArr = static_cast<const nbt::tag_long_array&>(blockStates.at("data").get());
+                int paletteSize = result.palette.size();
+                int bitsPerEntry = std::max(4, static_cast<int>(std::ceil(std::log2(std::max(paletteSize, 2)))));
+                if (bitsPerEntry > 8) bitsPerEntry = 15;
+                int entriesPerLong = 64 / bitsPerEntry;
+                uint64_t mask = (1ULL << bitsPerEntry) - 1;
+
+                result.blockIndices.resize(4096, 0);
+                for (int i = 0; i < 4096; i++) {
+                    int longIndex = i / entriesPerLong;
+                    int bitOffset = (i % entriesPerLong) * bitsPerEntry;
+                    if (longIndex < static_cast<int>(dataArr.size())) {
+                        uint64_t longVal = static_cast<uint64_t>(dataArr[longIndex]);
+                        result.blockIndices[i] = static_cast<uint32_t>((longVal >> bitOffset) & mask);
+                    }
+                }
+            } else {
+                // No data array means single-value section (uniform)
+                result.uniform = true;
+            }
+        } catch (...) {}
+    }
+
+    // Biomes
+    if (section.has_key("biomes")) {
+        try {
+            const auto& biomes = static_cast<const nbt::tag_compound&>(section.at("biomes").get());
+            if (biomes.has_key("palette")) {
+                const auto& biomePaletteList = static_cast<const nbt::tag_list&>(biomes.at("palette").get());
+                for (const nbt::value& entry : biomePaletteList) {
+                    result.biomePalette.append(QString::fromStdString(
+                        static_cast<const nbt::tag_string&>(entry.get()).get()));
+                }
+            }
+            if (biomes.has_key("data") && result.biomePalette.size() > 1) {
+                const auto& dataArr = static_cast<const nbt::tag_long_array&>(biomes.at("data").get());
+                int bitsPerEntry = static_cast<int>(std::ceil(std::log2(result.biomePalette.size())));
+                int entriesPerLong = 64 / bitsPerEntry;
+                uint64_t mask = (1ULL << bitsPerEntry) - 1;
+                result.biomeIndices.resize(64, 0);
+                for (int i = 0; i < 64; i++) {
+                    int longIndex = i / entriesPerLong;
+                    int bitOffset = (i % entriesPerLong) * bitsPerEntry;
+                    if (longIndex < static_cast<int>(dataArr.size())) {
+                        uint64_t longVal = static_cast<uint64_t>(dataArr[longIndex]);
+                        result.biomeIndices[i] = static_cast<uint32_t>((longVal >> bitOffset) & mask);
+                    }
+                }
+            } else if (result.biomePalette.size() <= 1) {
+                result.biomeUniform = true;
+            }
+        } catch (...) {}
+    }
+
+    // Light data
+    if (section.has_key("BlockLight")) {
+        try {
+            const auto& arr = static_cast<const nbt::tag_byte_array&>(section.at("BlockLight").get());
+            if (arr.size() == 2048) {
+                result.blockLight.resize(2048);
+                for (int i = 0; i < 2048; i++) {
+                    result.blockLight[i] = static_cast<char>(arr[i]);
+                }
+            }
+        } catch (...) {}
+    }
+    if (section.has_key("SkyLight")) {
+        try {
+            const auto& arr = static_cast<const nbt::tag_byte_array&>(section.at("SkyLight").get());
+            if (arr.size() == 2048) {
+                result.skyLight.resize(2048);
+                for (int i = 0; i < 2048; i++) {
+                    result.skyLight[i] = static_cast<char>(arr[i]);
+                }
+            }
+        } catch (...) {}
+    }
+
+    return result;
+}
+
+ChunkData NBTSerializer::nbtToChunk(const nbt::tag_compound& root) {
+    ChunkData result;
+
+    try {
+        if (root.has_key("xPos")) result.chunkX = static_cast<const nbt::tag_int&>(root.at("xPos").get()).get();
+        if (root.has_key("zPos")) result.chunkZ = static_cast<const nbt::tag_int&>(root.at("zPos").get()).get();
+    } catch (...) {}
+
+    if (root.has_key("sections")) {
+        try {
+            const auto& sectionsList = static_cast<const nbt::tag_list&>(root.at("sections").get());
+            for (const nbt::value& entry : sectionsList) {
+                const auto& sectionTag = static_cast<const nbt::tag_compound&>(entry.get());
+                ChunkSection sec = nbtToChunkSection(sectionTag);
+                result.sections[sec.sectionY] = std::move(sec);
+            }
+        } catch (...) {}
+    }
+
+    if (!result.sections.isEmpty()) {
+        result.minY = result.sections.firstKey() * 16;
+        result.maxY = (result.sections.lastKey() + 1) * 16;
+    }
+
+    return result;
+}
+
+QVector<BlockEntityData> NBTSerializer::nbtToBlockEntities(const nbt::tag_compound& root, const QString& dimension) {
+    QVector<BlockEntityData> result;
+
+    if (!root.has_key("block_entities")) return result;
+
+    try {
+        const auto& beList = static_cast<const nbt::tag_list&>(root.at("block_entities").get());
+        for (const nbt::value& entry : beList) {
+            const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
+            BlockEntityData data;
+            if (be.has_key("id")) {
+                data.type = QString::fromStdString(
+                    static_cast<const nbt::tag_string&>(be.at("id").get()).get());
+            }
+            if (be.has_key("x")) data.x = static_cast<const nbt::tag_int&>(be.at("x").get()).get();
+            if (be.has_key("y")) data.y = static_cast<const nbt::tag_int&>(be.at("y").get()).get();
+            if (be.has_key("z")) data.z = static_cast<const nbt::tag_int&>(be.at("z").get()).get();
+            data.dimension = dimension;
+            result.append(data);
+        }
+    } catch (...) {}
+
+    return result;
+}

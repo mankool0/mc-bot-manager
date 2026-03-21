@@ -21,13 +21,16 @@ import java.io.DataOutputStream;
 public class ProtoUtil {
 
     public static Common.ItemStack buildItemStack(ItemStack itemStack, int slot) {
+        Integer repairCost = itemStack.getComponents().get(DataComponents.REPAIR_COST);
+
         Common.ItemStack.Builder builder = Common.ItemStack.newBuilder()
             .setSlot(slot)
             .setItemId(itemStack.getItem().toString())
             .setCount(itemStack.getCount())
             .setDamage(itemStack.getDamageValue())
             .setMaxDamage(itemStack.getMaxDamage())
-            .setDisplayName(itemStack.getHoverName().getString());
+            .setDisplayName(itemStack.getHoverName().getString())
+            .setRepairCost(repairCost != null ? repairCost : 0);
 
         addEnchantments(itemStack, builder);
         addFullNbt(itemStack, builder);

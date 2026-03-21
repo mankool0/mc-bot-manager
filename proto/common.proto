@@ -24,14 +24,15 @@ message BlockPos {
 
 message ItemStack {
   int32 slot = 1;
-  string item_id = 2;      // minecraft:diamond_sword
+  string item_id = 2;                     // minecraft:diamond_sword
   int32 count = 3;
-  int32 damage = 4;        // Durability damage (0 = undamaged)
-  int32 max_damage = 5;    // Maximum durability
-  string display_name = 6; // Display name of the item
-  bytes nbt = 7;           // Full item NBT as binary compound payload (Java big-endian, no type/name header)
-  map<string, int32> enchantments = 8; // enchantment id -> level
+  int32 damage = 4;                       // Durability damage (0 = undamaged)
+  int32 max_damage = 5;                   // Maximum durability
+  string display_name = 6;                // Display name of the item
+  bytes nbt = 7;                          // Full item NBT as binary compound payload (Java big-endian, no type/name header)
+  map<string, int32> enchantments = 8;    // enchantment id -> level
   repeated ItemStack container_items = 9; // Contents of container items (shulker boxes, bundles, etc.)
+  int32 repair_cost = 10;                 // Anvil repair cost
 }
 
 enum Hand {

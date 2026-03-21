@@ -4,7 +4,11 @@
 #include "prism/PrismLauncherManager.h"
 #include "crafting/CraftingPlanner.h"
 #include "world/ItemRegistry.h"
+#include "world/NBTSerializer.h"
+#include "world/RegionFile.h"
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QCoreApplication>
 #include <QThread>
 #include <QReadWriteLock>
@@ -582,14 +586,14 @@ static py::dict buildItemDict(const mankool::mcbot::protocol::ItemStack &item)
     itemDict["slot"] = static_cast<int>(item.slot());
     itemDict["item_id"] = item.itemId().toStdString();
     itemDict["count"] = static_cast<int>(item.count());
-    itemDict["damage"] = static_cast<int>(item.damage());
-    itemDict["max_damage"] = static_cast<int>(item.maxDamage());
-    itemDict["display_name"] = item.displayName().toStdString();
+    if (item.damage() > 0)    itemDict["damage"]      = static_cast<int>(item.damage());
+    if (item.maxDamage() > 0) itemDict["max_damage"]  = static_cast<int>(item.maxDamage());
+    if (!item.displayName().isEmpty()) itemDict["display_name"] = item.displayName().toStdString();
+    if (item.repairCost() > 0) itemDict["repair_cost"] = static_cast<int>(item.repairCost());
     py::dict enchantDict;
-    for (const auto &[name, level] : item.enchantments().asKeyValueRange()) {
+    for (const auto &[name, level] : item.enchantments().asKeyValueRange())
         enchantDict[name.toStdString().c_str()] = static_cast<int>(level);
-    }
-    itemDict["enchantments"] = enchantDict;
+    if (!enchantDict.empty()) itemDict["enchantments"] = enchantDict;
     const auto &containerItems = item.containerItems();
     if (!containerItems.isEmpty()) {
         py::list containerList;
@@ -1060,30 +1064,271 @@ void PythonAPI::error(const std::string &message)
 // World Data API
 // ============================================================================
 
-py::object PythonAPI::getBlock(double x, double y, double z, const std::string &bot)
+// ---------------------------------------------------------------------------
+// Private disk-read helpers
+// ---------------------------------------------------------------------------
+
+static QString dimensionRegionPath(const QString& worldPath, const QString& dimension)
 {
+    if (dimension == "minecraft:overworld" || dimension.isEmpty()) {
+        return worldPath + "/region";
+    } else if (dimension == "minecraft:the_nether") {
+        return worldPath + "/DIM-1/region";
+    } else if (dimension == "minecraft:the_end") {
+        return worldPath + "/DIM1/region";
+    }
+    return {};
+}
+
+static nbt::tag_compound readChunkNBT(const QString& worldPath, int chunkX, int chunkZ,
+                                      const QString& dimension)
+{
+    QString regionDir = dimensionRegionPath(worldPath, dimension);
+    if (regionDir.isEmpty()) return {};
+
+    int regionX = chunkX >> 5;
+    int regionZ = chunkZ >> 5;
+    QString regionPath = QString("%1/r.%2.%3.mca").arg(regionDir).arg(regionX).arg(regionZ);
+
+    RegionFile regionFile(regionPath);
+    if (!regionFile.isValid()) return {};
+
+    return regionFile.readChunk(chunkX & 31, chunkZ & 31);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers for building Python block entity dicts
+// ---------------------------------------------------------------------------
+
+// Forward declaration
+static py::object nbtValueToPy(const nbt::value& val);
+
+static py::dict nbtCompoundToPy(const nbt::tag_compound& compound) {
+    py::dict d;
+    for (auto it = compound.begin(); it != compound.end(); ++it) {
+        d[it->first.c_str()] = nbtValueToPy(it->second);
+    }
+    return d;
+}
+
+static py::object nbtValueToPy(const nbt::value& val) {
+    switch (val.get_type()) {
+    case nbt::tag_type::Byte:   return py::int_(static_cast<const nbt::tag_byte&>(val.get()).get());
+    case nbt::tag_type::Short:  return py::int_(static_cast<const nbt::tag_short&>(val.get()).get());
+    case nbt::tag_type::Int:    return py::int_(static_cast<const nbt::tag_int&>(val.get()).get());
+    case nbt::tag_type::Long:   return py::int_(static_cast<const nbt::tag_long&>(val.get()).get());
+    case nbt::tag_type::Float:  return py::float_(static_cast<const nbt::tag_float&>(val.get()).get());
+    case nbt::tag_type::Double: return py::float_(static_cast<const nbt::tag_double&>(val.get()).get());
+    case nbt::tag_type::String: return py::str(static_cast<const nbt::tag_string&>(val.get()).get());
+    case nbt::tag_type::Compound:
+        return nbtCompoundToPy(static_cast<const nbt::tag_compound&>(val.get()));
+    case nbt::tag_type::List: {
+        py::list lst;
+        for (const auto& entry : static_cast<const nbt::tag_list&>(val.get()))
+            lst.append(nbtValueToPy(entry));
+        return lst;
+    }
+    case nbt::tag_type::Byte_Array: {
+        py::list lst;
+        for (int8_t b : static_cast<const nbt::tag_byte_array&>(val.get())) lst.append(py::int_(b));
+        return lst;
+    }
+    case nbt::tag_type::Int_Array: {
+        py::list lst;
+        for (int32_t v : static_cast<const nbt::tag_int_array&>(val.get())) lst.append(py::int_(v));
+        return lst;
+    }
+    case nbt::tag_type::Long_Array: {
+        py::list lst;
+        for (int64_t v : static_cast<const nbt::tag_long_array&>(val.get())) lst.append(py::int_(v));
+        return lst;
+    }
+    default: return py::none();
+    }
+}
+
+// explicitSlot >= 0 overrides reading Slot from the compound (used for minecraft:container entries)
+static py::dict diskItemToDict(const nbt::tag_compound& itemTag,
+                               const std::shared_ptr<ItemRegistry>& registry,
+                               int explicitSlot = -1)
+{
+    py::dict d;
+
+    int slot = explicitSlot;
+    if (slot < 0 && itemTag.has_key("Slot"))
+        slot = static_cast<int>(static_cast<const nbt::tag_byte&>(itemTag.at("Slot").get()).get());
+    d["slot"] = slot >= 0 ? slot : 0;
+
+    std::string itemId = "minecraft:air";
+    if (itemTag.has_key("id"))
+        itemId = static_cast<const nbt::tag_string&>(itemTag.at("id").get()).get();
+    d["item_id"] = itemId;
+
+    int count = 1;
+    if (itemTag.has_key("count"))
+        count = static_cast<const nbt::tag_int&>(itemTag.at("count").get()).get();
+    else if (itemTag.has_key("Count"))
+        count = static_cast<int>(static_cast<const nbt::tag_byte&>(itemTag.at("Count").get()).get());
+    d["count"] = count;
+
+    bool hasMaxDamage = false;
+
+    if (itemTag.has_key("components")) {
+        try {
+            const auto& components = static_cast<const nbt::tag_compound&>(itemTag.at("components").get());
+
+            // Merge all components into the top-level dict, stripping "minecraft:" prefix
+            static const std::string mcPrefix = "minecraft:";
+            for (auto it = components.begin(); it != components.end(); ++it) {
+                const std::string& key = it->first;
+                const char* dictKey = key.size() > mcPrefix.size() && key.compare(0, mcPrefix.size(), mcPrefix) == 0
+                    ? key.c_str() + mcPrefix.size()
+                    : key.c_str();
+                d[dictKey] = nbtValueToPy(it->second);
+                if (std::strcmp(dictKey, "max_damage") == 0)
+                    hasMaxDamage = true;
+            }
+        } catch (...) {}
+    }
+
+    // max_damage needs registry fallback (not stored in NBT when it equals the item default)
+    if (!hasMaxDamage && registry) {
+        auto info = registry->getItem(QString::fromStdString(itemId));
+        if (info.has_value() && info->maxDamage > 0)
+            d["max_damage"] = info->maxDamage;
+    }
+
+    // Map custom_name -> display_name if no display_name set
+    if (!d.contains("display_name") && d.contains("custom_name"))
+        d["display_name"] = d["custom_name"];
+
+    // Normalize minecraft:container component -> container_items list of proper item dicts
+    if (d.contains("container") && itemTag.has_key("components")) {
+        try {
+            const auto& components = static_cast<const nbt::tag_compound&>(itemTag.at("components").get());
+            if (components.has_key("minecraft:container")) {
+                py::list containerItems;
+                const auto& containerList = static_cast<const nbt::tag_list&>(components.at("minecraft:container").get());
+                for (const nbt::value& entry : containerList) {
+                    const auto& entryComp = static_cast<const nbt::tag_compound&>(entry.get());
+                    if (!entryComp.has_key("item") || !entryComp.has_key("slot")) continue;
+                    int containerSlot = static_cast<const nbt::tag_int&>(entryComp.at("slot").get()).get();
+                    const auto& itemComp = static_cast<const nbt::tag_compound&>(entryComp.at("item").get());
+                    containerItems.append(diskItemToDict(itemComp, registry, containerSlot));
+                }
+                d["container_items"] = containerItems;
+                PyDict_DelItemString(d.ptr(), "container");
+            }
+        } catch (...) {}
+    }
+
+    return d;
+}
+
+// Converts a block_entity compound from a chunk's block_entities list into a Python dict,
+// including items parsed from the NBT Items list.
+static py::dict diskBlockEntityToDict(const nbt::tag_compound& be,
+                                      const std::shared_ptr<ItemRegistry>& registry)
+{
+    py::dict d;
+
+    if (be.has_key("id")) {
+        d["type"] = static_cast<const nbt::tag_string&>(be.at("id").get()).get();
+    } else {
+        d["type"] = std::string("");
+    }
+    d["x"] = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
+    d["y"] = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
+    d["z"] = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
+
+    if (be.has_key("Items")) {
+        try {
+            const auto& itemsList = static_cast<const nbt::tag_list&>(be.at("Items").get());
+            py::list items;
+            for (const nbt::value& entry : itemsList) {
+                const auto& itemTag = static_cast<const nbt::tag_compound&>(entry.get());
+                items.append(diskItemToDict(itemTag, registry));
+            }
+            d["items"] = items;
+        } catch (...) {}
+    }
+
+    return d;
+}
+
+static py::dict buildBlockEntityDict(const BlockEntityData& be, bool includeItems)
+{
+    py::dict d;
+    d["type"] = be.type.toStdString();
+    d["x"] = be.x;
+    d["y"] = be.y;
+    d["z"] = be.z;
+    if (includeItems && !be.items.isEmpty()) {
+        py::list items;
+        for (const auto& item : be.items) {
+            items.append(buildItemDict(item));
+        }
+        d["items"] = items;
+    }
+    return d;
+}
+
+// ---------------------------------------------------------------------------
+// getBlock / getLight
+// ---------------------------------------------------------------------------
+
+py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
+{
+    if (!dimension.empty() && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
+
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    // Convert to integers
     int ix = static_cast<int>(std::floor(x));
     int iy = static_cast<int>(std::floor(y));
     int iz = static_cast<int>(std::floor(z));
 
-    std::optional<QString> blockOpt;
-    {
-        QReadLocker locker(botInstance->worldDataLock.get());
-        blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+
+    // Read from memory only when querying the current dimension (chunks carry no dimension key)
+    if (dim == botInstance->dimension) {
+        std::optional<QString> blockOpt;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
+        }
+        if (blockOpt.has_value()) {
+            return py::str(blockOpt.value().toStdString());
+        }
     }
 
-    if (blockOpt.has_value()) {
-        return py::str(blockOpt.value().toStdString());
+    if (!useDisk || !botInstance->worldAutoSaver) {
+        return py::none();
+    }
+
+    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
+    nbt::tag_compound chunkNbt;
+    {
+        py::gil_scoped_release gil;
+        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+    }
+
+    if (!chunkNbt.has_key("sections")) return py::none();
+
+    ChunkData chunkData = NBTSerializer::nbtToChunk(chunkNbt);
+    auto block = chunkData.getBlock(ix & 15, iy, iz & 15);
+    if (block.has_value()) {
+        return py::str(block.value().toStdString());
     }
     return py::none();
 }
 
-py::object PythonAPI::getLight(double x, double y, double z, const std::string &bot)
+py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
+    if (!dimension.empty() && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
+
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1091,17 +1336,162 @@ py::object PythonAPI::getLight(double x, double y, double z, const std::string &
     int iy = static_cast<int>(std::floor(y));
     int iz = static_cast<int>(std::floor(z));
 
-    std::optional<ChunkSection::LightLevels> light;
-    {
-        QReadLocker locker(botInstance->worldDataLock.get());
-        light = botInstance->worldData.getLight(ix, iy, iz);
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+
+    // Read from memory only when querying the current dimension (chunks carry no dimension key)
+    if (dim == botInstance->dimension) {
+        std::optional<ChunkSection::LightLevels> light;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            light = botInstance->worldData.getLight(ix, iy, iz);
+        }
+        if (light.has_value()) {
+            py::dict result;
+            result["block"] = light->block;
+            result["sky"] = light->sky;
+            return result;
+        }
     }
 
-    if (!light.has_value()) return py::none();
+    if (!useDisk || !botInstance->worldAutoSaver) {
+        return py::none();
+    }
 
+    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
+    nbt::tag_compound chunkNbt;
+    {
+        py::gil_scoped_release gil;
+        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+    }
+
+    if (!chunkNbt.has_key("sections")) return py::none();
+
+    ChunkData chunkData = NBTSerializer::nbtToChunk(chunkNbt);
+    auto levels = chunkData.getLight(ix & 15, iy, iz & 15);
     py::dict result;
-    result["block"] = light->block;
-    result["sky"] = light->sky;
+    result["block"] = levels.block;
+    result["sky"] = levels.sky;
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// getBlockEntity
+// ---------------------------------------------------------------------------
+
+py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
+{
+    if (!dimension.empty() && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True for get_block_entity");
+
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    int ix = static_cast<int>(std::floor(x));
+    int iy = static_cast<int>(std::floor(y));
+    int iz = static_cast<int>(std::floor(z));
+
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    std::optional<BlockEntityData> beOpt;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        beOpt = botInstance->worldData.getBlockEntity(ix, iy, iz, dim);
+    }
+
+    // Use memory if items are known; if use_disk and items are absent, fall through to disk
+    if (beOpt.has_value() && (!useDisk || !beOpt->items.isEmpty())) {
+        return buildBlockEntityDict(beOpt.value(), true);
+    }
+
+    if (!useDisk || !botInstance->worldAutoSaver) {
+        if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
+        return py::none();
+    }
+
+    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
+    nbt::tag_compound chunkNbt;
+    {
+        py::gil_scoped_release gil;
+        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+    }
+
+    if (!chunkNbt.has_key("block_entities")) {
+        if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
+        return py::none();
+    }
+
+    try {
+        const auto& beList = static_cast<const nbt::tag_list&>(chunkNbt.at("block_entities").get());
+        for (const nbt::value& entry : beList) {
+            const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
+            int bex = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
+            int bey = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
+            int bez = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
+            if (bex == ix && bey == iy && bez == iz) {
+                return diskBlockEntityToDict(be, botInstance->itemRegistry);
+            }
+        }
+    } catch (...) {}
+
+    // Disk didn't find it - fall back to memory data if available
+    if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
+    return py::none();
+}
+
+// ---------------------------------------------------------------------------
+// getBlockEntitiesInChunk
+// ---------------------------------------------------------------------------
+
+py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk,
+                                            const std::string &dimension, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+
+    if (dim != botInstance->dimension && !useDisk)
+        throw std::invalid_argument("dimension parameter requires use_disk=True when querying a different dimension");
+
+    bool chunkLoaded;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        chunkLoaded = botInstance->worldData.isChunkLoaded(chunkX, chunkZ);
+    }
+
+    if (chunkLoaded) {
+        QVector<BlockEntityData> bees;
+        {
+            QReadLocker locker(botInstance->worldDataLock.get());
+            bees = botInstance->worldData.getBlockEntitiesInChunk(chunkX, chunkZ, dim);
+        }
+        py::list result;
+        for (const auto& be : bees) {
+            result.append(buildBlockEntityDict(be, true));
+        }
+        return result;
+    }
+
+    if (!useDisk || !botInstance->worldAutoSaver) {
+        return py::list();
+    }
+
+    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
+    nbt::tag_compound chunkNbt;
+    {
+        py::gil_scoped_release gil;
+        chunkNbt = readChunkNBT(worldPath, chunkX, chunkZ, dim);
+    }
+
+    if (!chunkNbt.has_key("block_entities")) return py::list();
+
+    py::list result;
+    try {
+        const auto& beList = static_cast<const nbt::tag_list&>(chunkNbt.at("block_entities").get());
+        for (const nbt::value& entry : beList) {
+            const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
+            result.append(diskBlockEntityToDict(be, botInstance->itemRegistry));
+        }
+    } catch (...) {}
     return result;
 }
 

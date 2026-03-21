@@ -37,8 +37,10 @@ public:
                            const QString& dimension);
     void setPlayerData(const PlayerSaveData& data);
     void flushPlayerData();
+    void flushAll();  // Flush all dirty chunks + entities + player data; call before clearing world data
 
     int getDataVersion() const { return m_version.dataVersion; }
+    QString getWorldPath() const { return m_worldPath; }
 
 signals:
     void chunkReadyForSaving(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,

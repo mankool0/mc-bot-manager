@@ -121,6 +121,10 @@ void WorldAutoSaver::flushPlayerData() {
     emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
 }
 
+void WorldAutoSaver::flushAll() {
+    flushPeriodic();
+}
+
 void WorldAutoSaver::flushPeriodic() {
     if (!m_isInitialized) return;
 
