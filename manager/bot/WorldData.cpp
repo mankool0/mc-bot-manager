@@ -540,6 +540,14 @@ void BotWorldData::removeBlockEntity(int x, int y, int z, const QString& dimensi
     blockEntities.remove(key);
 }
 
+std::optional<BlockEntityData> BotWorldData::getBlockEntity(int x, int y, int z, const QString& dimension) const
+{
+    QString key = QString("%1|%2|%3|%4").arg(dimension).arg(x).arg(y).arg(z);
+    auto it = blockEntities.find(key);
+    if (it == blockEntities.end()) return std::nullopt;
+    return it.value();
+}
+
 QVector<BlockEntityData> BotWorldData::getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const
 {
     QVector<BlockEntityData> result;

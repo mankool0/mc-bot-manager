@@ -151,6 +151,7 @@ public:
     // Block entity tracking
     void updateBlockEntity(const BlockEntityData& be);
     void removeBlockEntity(int x, int y, int z, const QString& dimension);
+    std::optional<BlockEntityData> getBlockEntity(int x, int y, int z, const QString& dimension) const;
     QVector<BlockEntityData> getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const;
 
 private:
