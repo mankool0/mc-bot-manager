@@ -2547,13 +2547,13 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         // used to preserve item data for containers opened earlier this session,
         // and to detect broken blocks (zombie cleanup).
         auto existingBEs = bot->worldData.getBlockEntitiesInChunk(chunk.chunkX, chunk.chunkZ, chunk.dimension);
-        QHash<QString, BlockEntityData> existingMap;
+        QHash<BlockEntityPos, BlockEntityData> existingMap;
         for (const auto& e : existingBEs) {
-            existingMap[QString("%1|%2|%3|%4").arg(e.dimension).arg(e.x).arg(e.y).arg(e.z)] = e;
+            existingMap[{e.dimension, e.x, e.y, e.z}] = e;
         }
 
         // Parse all block entity NBT from chunk and update worldData.
-        QSet<QString> rawNbtPositions;
+        QSet<BlockEntityPos> rawNbtPositions;
         for (const QByteArray& beBytes : chunkData.blockEntityNbt()) {
             if (beBytes.isEmpty()) continue;
             try {
@@ -2571,7 +2571,7 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
                 }
                 be.dimension = chunkData.dimension();
 
-                QString posKey = QString("%1|%2|%3|%4").arg(be.dimension).arg(be.x).arg(be.y).arg(be.z);
+                BlockEntityPos posKey{be.dimension, be.x, be.y, be.z};
                 rawNbtPositions.insert(posKey);
 
                 // If we already have items for this block entity (container opened earlier this
@@ -2591,8 +2591,7 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         // Zombie cleanup: remove worldData entries for this chunk that the server no longer
         // reports (the block was broken since the last chunk load).
         for (const auto& existing : existingBEs) {
-            QString posKey = QString("%1|%2|%3|%4").arg(existing.dimension).arg(existing.x).arg(existing.y).arg(existing.z);
-            if (!rawNbtPositions.contains(posKey)) {
+            if (!rawNbtPositions.contains({existing.dimension, existing.x, existing.y, existing.z})) {
                 bot->worldData.removeBlockEntity(existing.x, existing.y, existing.z, existing.dimension);
             }
         }
