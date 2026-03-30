@@ -10,6 +10,19 @@
 #include "bot/WorldData.h"
 #include "world/WorldExporter.h"
 
+struct DimChunkPos {
+    QString dimension;
+    int chunkX = 0, chunkZ = 0;
+
+    bool operator==(const DimChunkPos& other) const {
+        return chunkX == other.chunkX && chunkZ == other.chunkZ && dimension == other.dimension;
+    }
+};
+
+inline size_t qHash(const DimChunkPos& pos, size_t seed = 0) {
+    return qHashMulti(seed, pos.dimension, pos.chunkX, pos.chunkZ);
+}
+
 struct WorldSaveSettings {
     bool saveBlockEntities = true;
     bool saveEntities      = true;
@@ -41,6 +54,7 @@ public:
 
     int getDataVersion() const { return m_version.dataVersion; }
     QString getWorldPath() const { return m_worldPath; }
+    const WorldSaveSettings& getSaveSettings() const { return m_saveSettings; }
 
 signals:
     void chunkReadyForSaving(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,
@@ -71,14 +85,14 @@ private:
         QString dimension;
     };
     QHash<int, TrackedEntity> m_trackedEntities;
-    QSet<QString> m_dirtyEntityChunks;  // "dimension|cx,cz"
+    QSet<DimChunkPos> m_dirtyEntityChunks;
     QTimer* m_periodicFlushTimer;
 
-    // Player data
-    PlayerSaveData m_latestPlayerData;
-    bool m_playerDataDirty = false;
+    // Player data (per-UUID to support multiple bots on the same server)
+    QHash<QString, PlayerSaveData> m_playerDataByUuid;
+    QSet<QString> m_dirtyPlayerUuids;
 
     // Dirty block chunk tracking for periodic flush
-    QSet<QString> m_dirtyBlockChunks;  // "dimension|cx,cz"
+    QSet<DimChunkPos> m_dirtyBlockChunks;
     ChunkProvider m_chunkProvider;
 };

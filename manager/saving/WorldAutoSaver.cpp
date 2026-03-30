@@ -51,8 +51,10 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
 
 WorldAutoSaver::~WorldAutoSaver() {
     // Flush player data on destruction
-    if (m_isInitialized && m_saveSettings.savePlayerData && m_playerDataDirty) {
-        emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
+    if (m_isInitialized && m_saveSettings.savePlayerData) {
+        for (const QString& uuid : m_dirtyPlayerUuids) {
+            emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
+        }
     }
 
     m_workerThread->quit();
@@ -80,7 +82,7 @@ void WorldAutoSaver::setChunkProvider(ChunkProvider provider) {
 }
 
 void WorldAutoSaver::markBlockChunkDirty(int chunkX, int chunkZ, const QString& dimension) {
-    m_dirtyBlockChunks.insert(QString("%1|%2,%3").arg(dimension).arg(chunkX).arg(chunkZ));
+    m_dirtyBlockChunks.insert({dimension, chunkX, chunkZ});
 }
 
 void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
@@ -95,7 +97,7 @@ void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, cons
 
         int chunkX = static_cast<int>(std::floor(e.x / 16.0));
         int chunkZ = static_cast<int>(std::floor(e.z / 16.0));
-        m_dirtyEntityChunks.insert(QString("%1|%2,%3").arg(dimension).arg(chunkX).arg(chunkZ));
+        m_dirtyEntityChunks.insert({dimension, chunkX, chunkZ});
     }
 
     for (int id : removed) {
@@ -103,7 +105,7 @@ void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, cons
         if (it != m_trackedEntities.end()) {
             int chunkX = static_cast<int>(std::floor(it->data.x / 16.0));
             int chunkZ = static_cast<int>(std::floor(it->data.z / 16.0));
-            m_dirtyEntityChunks.insert(QString("%1|%2,%3").arg(it->dimension).arg(chunkX).arg(chunkZ));
+            m_dirtyEntityChunks.insert({it->dimension, chunkX, chunkZ});
             m_trackedEntities.erase(it);
         }
     }
@@ -111,14 +113,17 @@ void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, cons
 
 void WorldAutoSaver::setPlayerData(const PlayerSaveData& data) {
     if (!m_saveSettings.savePlayerData) return;
-    m_latestPlayerData = data;
-    m_playerDataDirty = true;
+    m_playerDataByUuid[data.uuid] = data;
+    m_dirtyPlayerUuids.insert(data.uuid);
 }
 
 void WorldAutoSaver::flushPlayerData() {
-    if (!m_isInitialized || !m_saveSettings.savePlayerData || !m_playerDataDirty) return;
-    m_playerDataDirty = false;
-    emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
+    if (!m_isInitialized || !m_saveSettings.savePlayerData || m_dirtyPlayerUuids.isEmpty()) return;
+    QSet<QString> dirty = m_dirtyPlayerUuids;
+    m_dirtyPlayerUuids.clear();
+    for (const QString& uuid : dirty) {
+        emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
+    }
 }
 
 void WorldAutoSaver::flushAll() {
@@ -130,49 +135,30 @@ void WorldAutoSaver::flushPeriodic() {
 
     // Flush entities
     if (m_saveSettings.saveEntities && !m_dirtyEntityChunks.isEmpty()) {
-        QSet<QString> dirtyChunks = m_dirtyEntityChunks;
+        QSet<DimChunkPos> dirtyChunks = m_dirtyEntityChunks;
         m_dirtyEntityChunks.clear();
 
-        // Group entities by "dimension|cx,cz" key
-        QHash<QString, QVector<EntityData>> chunkEntityMap;
+        // Group entities by chunk
+        QHash<DimChunkPos, QVector<EntityData>> chunkEntityMap;
         for (const auto& tracked : m_trackedEntities) {
             int chunkX = static_cast<int>(std::floor(tracked.data.x / 16.0));
             int chunkZ = static_cast<int>(std::floor(tracked.data.z / 16.0));
-            QString key = QString("%1|%2,%3").arg(tracked.dimension).arg(chunkX).arg(chunkZ);
-            chunkEntityMap[key].append(tracked.data);
+            chunkEntityMap[{tracked.dimension, chunkX, chunkZ}].append(tracked.data);
         }
 
-        for (const QString& key : dirtyChunks) {
-            int sepIdx = key.indexOf('|');
-            if (sepIdx < 0) continue;
-            QString dim = key.left(sepIdx);
-            QString coordStr = key.mid(sepIdx + 1);
-            int commaIdx = coordStr.indexOf(',');
-            if (commaIdx < 0) continue;
-            int chunkX = coordStr.left(commaIdx).toInt();
-            int chunkZ = coordStr.mid(commaIdx + 1).toInt();
-
+        for (const DimChunkPos& key : dirtyChunks) {
             QVector<EntityData> entities = chunkEntityMap.value(key);
-            emit entityChunkReadyForSaving(chunkX, chunkZ, dim, entities, m_worldPath, m_version.dataVersion);
+            emit entityChunkReadyForSaving(key.chunkX, key.chunkZ, key.dimension, entities, m_worldPath, m_version.dataVersion);
         }
     }
 
     // Flush dirty block chunks
     if (!m_dirtyBlockChunks.isEmpty() && m_chunkProvider) {
-        QSet<QString> dirtyChunks = m_dirtyBlockChunks;
+        QSet<DimChunkPos> dirtyChunks = m_dirtyBlockChunks;
         m_dirtyBlockChunks.clear();
 
-        for (const QString& key : dirtyChunks) {
-            int sepIdx = key.indexOf('|');
-            if (sepIdx < 0) continue;
-            QString dim = key.left(sepIdx);
-            QString coordStr = key.mid(sepIdx + 1);
-            int commaIdx = coordStr.indexOf(',');
-            if (commaIdx < 0) continue;
-            int chunkX = coordStr.left(commaIdx).toInt();
-            int chunkZ = coordStr.mid(commaIdx + 1).toInt();
-
-            auto result = m_chunkProvider(chunkX, chunkZ, dim);
+        for (const DimChunkPos& key : dirtyChunks) {
+            auto result = m_chunkProvider(key.chunkX, key.chunkZ, key.dimension);
             if (result) {
                 saveChunkAsync(result->first, result->second);
             }
@@ -180,9 +166,12 @@ void WorldAutoSaver::flushPeriodic() {
     }
 
     // Flush player data
-    if (m_saveSettings.savePlayerData && m_playerDataDirty) {
-        m_playerDataDirty = false;
-        emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
+    if (m_saveSettings.savePlayerData && !m_dirtyPlayerUuids.isEmpty()) {
+        QSet<QString> dirty = m_dirtyPlayerUuids;
+        m_dirtyPlayerUuids.clear();
+        for (const QString& uuid : dirty) {
+            emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
+        }
     }
 }
 

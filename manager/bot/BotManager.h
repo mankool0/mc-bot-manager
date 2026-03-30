@@ -453,6 +453,7 @@ private:
     };
 
     QVector<BotInstance> botInstances;
+    QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
     QMutex m_pendingCanReachBlockMutex;
     QHash<QString, PendingCanReachBlockEntry*> m_pendingCanReachBlockRequests;

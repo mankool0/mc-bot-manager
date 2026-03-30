@@ -68,6 +68,19 @@ inline uint qHash(const ChunkPos& pos, uint seed = 0) {
     return qHash(static_cast<qint64>(pos.x) << 32 | static_cast<quint32>(pos.z), seed);
 }
 
+struct BlockEntityPos {
+    QString dimension;
+    int x = 0, y = 0, z = 0;
+
+    bool operator==(const BlockEntityPos& other) const {
+        return x == other.x && y == other.y && z == other.z && dimension == other.dimension;
+    }
+};
+
+inline size_t qHash(const BlockEntityPos& pos, size_t seed = 0) {
+    return qHashMulti(seed, pos.dimension, pos.x, pos.y, pos.z);
+}
+
 // 16x16x16 chunk section with palette-based block storage (matches Minecraft format).
 struct ChunkSection {
     int32_t sectionY = 0;
@@ -158,7 +171,7 @@ private:
     QHash<ChunkPos, ChunkData> chunks;
     QString currentDimension;
     QHash<int, EntityData> entities;
-    QHash<QString, BlockEntityData> blockEntities;  // key: "dim|x|y|z"
+    QHash<BlockEntityPos, BlockEntityData> blockEntities;
 
     bool blockMatches(const QString& blockState, const QStringList& blockTypes) const;  // Handles exact matches and wildcards
 };

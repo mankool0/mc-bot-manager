@@ -516,7 +516,7 @@ void BotWorldData::clearWorldState()
 
 void BotWorldData::updateBlockEntity(const BlockEntityData& be)
 {
-    QString key = QString("%1|%2|%3|%4").arg(be.dimension).arg(be.x).arg(be.y).arg(be.z);
+    BlockEntityPos key{be.dimension, be.x, be.y, be.z};
 
     // When a container is opened we get items but no rawNbt. Preserve the rawNbt that
     // arrived with the chunk load so blockEntityToNBT can patch items into it rather
@@ -536,14 +536,12 @@ void BotWorldData::updateBlockEntity(const BlockEntityData& be)
 
 void BotWorldData::removeBlockEntity(int x, int y, int z, const QString& dimension)
 {
-    QString key = QString("%1|%2|%3|%4").arg(dimension).arg(x).arg(y).arg(z);
-    blockEntities.remove(key);
+    blockEntities.remove({dimension, x, y, z});
 }
 
 std::optional<BlockEntityData> BotWorldData::getBlockEntity(int x, int y, int z, const QString& dimension) const
 {
-    QString key = QString("%1|%2|%3|%4").arg(dimension).arg(x).arg(y).arg(z);
-    auto it = blockEntities.find(key);
+    auto it = blockEntities.find({dimension, x, y, z});
     if (it == blockEntities.end()) return std::nullopt;
     return it.value();
 }
