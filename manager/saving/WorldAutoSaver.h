@@ -41,6 +41,7 @@ public:
 
     int getDataVersion() const { return m_version.dataVersion; }
     QString getWorldPath() const { return m_worldPath; }
+    const WorldSaveSettings& getSaveSettings() const { return m_saveSettings; }
 
 signals:
     void chunkReadyForSaving(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,
@@ -74,9 +75,9 @@ private:
     QSet<QString> m_dirtyEntityChunks;  // "dimension|cx,cz"
     QTimer* m_periodicFlushTimer;
 
-    // Player data
-    PlayerSaveData m_latestPlayerData;
-    bool m_playerDataDirty = false;
+    // Player data (per-UUID to support multiple bots on the same server)
+    QHash<QString, PlayerSaveData> m_playerDataByUuid;
+    QSet<QString> m_dirtyPlayerUuids;
 
     // Dirty block chunk tracking for periodic flush
     QSet<QString> m_dirtyBlockChunks;  // "dimension|cx,cz"

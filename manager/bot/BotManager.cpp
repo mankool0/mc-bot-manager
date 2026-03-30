@@ -628,36 +628,82 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         return;
     }
 
-    // Check if WorldAutoSaver already exists for this server
+    // Check if already using the correct saver
     if (bot->worldAutoSaver && bot->worldAutoSaverServerIp == bot->server) {
         return;
     }
 
-    // Check if server changed
+    // Server changed - disassociate from old saver
     if (bot->worldAutoSaver && bot->worldAutoSaverServerIp != bot->server) {
-        LogManager::log(QString("[%1] Server changed from %2 to %3 - creating new WorldAutoSaver")
+        LogManager::log(QString("[%1] Server changed from %2 to %3 - switching WorldAutoSaver")
                        .arg(bot->name).arg(bot->worldAutoSaverServerIp).arg(bot->server), LogManager::Info);
+        QString oldKey = bot->worldAutoSaverServerIp;
+        bot->worldAutoSaver.reset();
+
+        bool stillUsed = false;
+        for (const auto& b : botInstances) {
+            if (&b != bot && b.worldAutoSaverServerIp == oldKey) {
+                stillUsed = true;
+                break;
+            }
+        }
+        if (!stillUsed) {
+            m_sharedWorldSavers.remove(oldKey);
+        }
     }
 
-    MinecraftVersion version;
-    version.dataVersion = bot->dataVersion;
-    version.versionName = bot->versionName;
-    version.series = bot->versionSeries;
-    version.isSnapshot = bot->versionIsSnapshot;
+    const QString serverKey = bot->server;
 
-    LogManager::log(QString("[%1] Creating WorldAutoSaver for %2 with version %3 (data version %4)")
-                   .arg(bot->name).arg(bot->server).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
-    bot->worldAutoSaver = std::make_shared<WorldAutoSaver>(bot->server, version, bot->worldSaveSettings);
-    bot->worldAutoSaverServerIp = bot->server;
+    // Reuse existing shared saver if one already exists for this server
+    auto it = m_sharedWorldSavers.find(serverKey);
+    if (it != m_sharedWorldSavers.end()) {
+        LogManager::log(QString("[%1] Attaching to existing WorldAutoSaver for %2")
+                       .arg(bot->name).arg(serverKey), LogManager::Info);
 
-    bot->worldAutoSaver->setChunkProvider([bot](int cx, int cz, const QString& dim)
-        -> std::optional<std::pair<ChunkData, QVector<BlockEntityData>>> {
-        QReadLocker locker(bot->worldDataLock.get());
-        const ChunkData* chunk = bot->worldData.getChunk(cx, cz);
-        if (!chunk) return std::nullopt;
-        auto bes = bot->worldData.getBlockEntitiesInChunk(cx, cz, dim);
-        return std::make_pair(*chunk, bes);
-    });
+        // Warn if this bot's save settings differ from the shared saver's
+        const WorldSaveSettings& existing = (*it)->getSaveSettings();
+        const WorldSaveSettings& incoming = bot->worldSaveSettings;
+        if (existing.saveBlockEntities != incoming.saveBlockEntities ||
+            existing.saveEntities      != incoming.saveEntities      ||
+            existing.saveItemEntities  != incoming.saveItemEntities  ||
+            existing.savePlayerData    != incoming.savePlayerData)
+        {
+            LogManager::log(QString("[%1] WorldSaveSettings mismatch for %2 - using settings from first bot that connected")
+                           .arg(bot->name).arg(serverKey), LogManager::Warning);
+        }
+
+        bot->worldAutoSaver = *it;
+        bot->worldAutoSaverServerIp = serverKey;
+    } else {
+        MinecraftVersion version;
+        version.dataVersion = bot->dataVersion;
+        version.versionName = bot->versionName;
+        version.series = bot->versionSeries;
+        version.isSnapshot = bot->versionIsSnapshot;
+
+        LogManager::log(QString("[%1] Creating WorldAutoSaver for %2 with version %3 (data version %4)")
+                       .arg(bot->name).arg(serverKey).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
+
+        auto saver = std::make_shared<WorldAutoSaver>(serverKey, version, bot->worldSaveSettings);
+
+        // Chunk provider searches all bots connected to this server, so it works for any number of bots
+        saver->setChunkProvider([serverKey, this](int cx, int cz, const QString& dim)
+            -> std::optional<std::pair<ChunkData, QVector<BlockEntityData>>> {
+            for (auto& b : botInstances) {
+                if (b.server != serverKey) continue;
+                QReadLocker locker(b.worldDataLock.get());
+                const ChunkData* chunk = b.worldData.getChunk(cx, cz);
+                if (!chunk) continue;
+                auto bes = b.worldData.getBlockEntitiesInChunk(cx, cz, dim);
+                return std::make_pair(*chunk, bes);
+            }
+            return std::nullopt;
+        });
+
+        m_sharedWorldSavers[serverKey] = saver;
+        bot->worldAutoSaver = saver;
+        bot->worldAutoSaverServerIp = serverKey;
+    }
 
     // Process any chunks that were queued before the saver was ready
     if (!bot->earlyChunkQueue.isEmpty()) {
@@ -709,7 +755,23 @@ void BotManager::removeBotImpl(const QString &name)
                 botInstances[i].baritoneWidget = nullptr;
             }
 
+            QString serverKey = botInstances[i].worldAutoSaverServerIp;
             botInstances.removeAt(i);
+
+            // Remove shared saver if no remaining bot uses this server
+            if (!serverKey.isEmpty()) {
+                bool stillUsed = false;
+                for (const auto& b : botInstances) {
+                    if (b.worldAutoSaverServerIp == serverKey) {
+                        stillUsed = true;
+                        break;
+                    }
+                }
+                if (!stillUsed) {
+                    m_sharedWorldSavers.remove(serverKey);
+                }
+            }
+
             emit botRemoved(name);
             return;
         }

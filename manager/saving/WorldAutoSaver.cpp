@@ -51,8 +51,10 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
 
 WorldAutoSaver::~WorldAutoSaver() {
     // Flush player data on destruction
-    if (m_isInitialized && m_saveSettings.savePlayerData && m_playerDataDirty) {
-        emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
+    if (m_isInitialized && m_saveSettings.savePlayerData) {
+        for (const QString& uuid : m_dirtyPlayerUuids) {
+            emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
+        }
     }
 
     m_workerThread->quit();
@@ -111,14 +113,17 @@ void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, cons
 
 void WorldAutoSaver::setPlayerData(const PlayerSaveData& data) {
     if (!m_saveSettings.savePlayerData) return;
-    m_latestPlayerData = data;
-    m_playerDataDirty = true;
+    m_playerDataByUuid[data.uuid] = data;
+    m_dirtyPlayerUuids.insert(data.uuid);
 }
 
 void WorldAutoSaver::flushPlayerData() {
-    if (!m_isInitialized || !m_saveSettings.savePlayerData || !m_playerDataDirty) return;
-    m_playerDataDirty = false;
-    emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
+    if (!m_isInitialized || !m_saveSettings.savePlayerData || m_dirtyPlayerUuids.isEmpty()) return;
+    QSet<QString> dirty = m_dirtyPlayerUuids;
+    m_dirtyPlayerUuids.clear();
+    for (const QString& uuid : dirty) {
+        emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
+    }
 }
 
 void WorldAutoSaver::flushAll() {
@@ -180,9 +185,12 @@ void WorldAutoSaver::flushPeriodic() {
     }
 
     // Flush player data
-    if (m_saveSettings.savePlayerData && m_playerDataDirty) {
-        m_playerDataDirty = false;
-        emit playerDataReadyForSaving(m_latestPlayerData, m_worldPath, m_version.dataVersion);
+    if (m_saveSettings.savePlayerData && !m_dirtyPlayerUuids.isEmpty()) {
+        QSet<QString> dirty = m_dirtyPlayerUuids;
+        m_dirtyPlayerUuids.clear();
+        for (const QString& uuid : dirty) {
+            emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
+        }
     }
 }
 
