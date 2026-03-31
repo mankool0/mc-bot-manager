@@ -139,11 +139,13 @@ public class WorldOutbound extends BaseOutbound {
             net.minecraft.world.item.ItemStack stack = item.getDefaultInstance();
             int maxStackSize = stack.getMaxStackSize();
             int maxDamage = stack.getMaxDamage();
+            String displayName = stack.getDisplayName().getString();
 
             builder.addEntries(Registry.ItemEntry.newBuilder()
                 .setItemId(itemId)
                 .setMaxStackSize(maxStackSize)
                 .setMaxDamage(maxDamage)
+                .setDisplayName(displayName)
                 .build());
         }
 

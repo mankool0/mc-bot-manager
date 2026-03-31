@@ -18,6 +18,7 @@ message ItemEntry {
   string item_id = 1;       // "minecraft:stick"
   int32 max_stack_size = 2;
   int32 max_damage = 3;
+  string display_name = 4;  // "Stick"
 }
 
 message ItemRegistryMessage {

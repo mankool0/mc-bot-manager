@@ -10,18 +10,19 @@ struct ItemInfo {
     QString itemId;
     int maxStackSize;
     int maxDamage;
+    QString displayName;
 };
 
 class ItemRegistry {
 public:
     static constexpr quint32 MAGIC_NUMBER = 0x4954454D;  // "ITEM"
-    static constexpr qint32 FORMAT_VERSION = 1;
+    static constexpr qint32 FORMAT_VERSION = 2;
 
     ItemRegistry() = default;
 
     bool loadFromCache(int dataVersion);
     void saveToCache();
-    void addItem(const QString& itemId, int maxStackSize, int maxDamage);
+    void addItem(const QString& itemId, int maxStackSize, int maxDamage, const QString& displayName);
     std::optional<ItemInfo> getItem(const QString& itemId) const;
 
     int getDataVersion() const { return dataVersion; }

@@ -1198,9 +1198,16 @@ static py::dict diskItemToDict(const nbt::tag_compound& itemTag,
             d["max_damage"] = info->maxDamage;
     }
 
-    // Map custom_name -> display_name if no display_name set
-    if (!d.contains("display_name") && d.contains("custom_name"))
-        d["display_name"] = d["custom_name"];
+    // Map custom_name -> display_name if no display_name set, fall back to registry
+    if (!d.contains("display_name")) {
+        if (d.contains("custom_name"))
+            d["display_name"] = d["custom_name"];
+        else if (registry) {
+            auto info = registry->getItem(QString::fromStdString(itemId));
+            if (info.has_value() && !info->displayName.isEmpty())
+                d["display_name"] = info->displayName.toStdString();
+        }
+    }
 
     // Normalize minecraft:container component -> container_items list of proper item dicts
     if (d.contains("container") && itemTag.has_key("components")) {
@@ -1944,6 +1951,7 @@ py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &
         if (itemInfo) {
             py::dict result;
             result["item_id"] = itemInfo->itemId.toStdString();
+            result["display_name"] = itemInfo->displayName.toStdString();
             result["max_stack_size"] = itemInfo->maxStackSize;
             result["max_damage"] = itemInfo->maxDamage;
             return result;
