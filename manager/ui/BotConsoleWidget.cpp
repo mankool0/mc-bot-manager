@@ -85,7 +85,7 @@ void BotConsoleWidget::setupUI()
     connect(inputEdit, &QLineEdit::returnPressed, this, &BotConsoleWidget::onSendCommand);
     connect(inputEdit, &QLineEdit::textChanged, this, &BotConsoleWidget::onInputChanged);
 
-    appendOutput("Console ready. Type a command or start typing for suggestions.", QColor("#0066cc"));
+    appendOutput(QString("[%1] Console ready. Type a command or start typing for suggestions.").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), QColor(0, 102, 204));
 }
 
 void BotConsoleWidget::setupCompleter()
@@ -312,7 +312,7 @@ void BotConsoleWidget::appendResponse(bool success, const QString &message)
 void BotConsoleWidget::clearOutput()
 {
     outputEdit->clear();
-    appendOutput("Console cleared.", QColor(0, 102, 204)); // blue
+    appendOutput(QString("[%1] Console cleared.").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), QColor(0, 102, 204));
 }
 
 void BotConsoleWidget::setCommandHistory(const QStringList &history)
