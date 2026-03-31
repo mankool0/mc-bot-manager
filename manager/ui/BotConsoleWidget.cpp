@@ -11,7 +11,22 @@
 BotConsoleWidget::BotConsoleWidget(QWidget *parent)
     : QWidget(parent)
     , historyIndex(-1)
+    , m_ringCapacity(0)
+    , m_ringHead(0)
+    , m_ringTail(0)
+    , m_ringCount(0)
+    , m_droppedCount(0)
+    , m_flushTimer(new QTimer(this))
 {
+    QSettings settings("MCBotManager", "MCBotManager");
+    m_ringCapacity = settings.value("Console/maxPendingLines", 500).toInt();
+    m_ring.resize(m_ringCapacity);
+
+    m_flushTimer->setInterval(50);
+    m_flushTimer->setSingleShot(false);
+    connect(m_flushTimer, &QTimer::timeout, this, &BotConsoleWidget::flushPendingOutput);
+    m_flushTimer->start();
+
     setupUI();
     setupCompleter();
     initializeCommands();
@@ -187,11 +202,94 @@ void BotConsoleWidget::appendOutput(const QString &text, const QColor &color)
 {
     QTextCursor cursor = outputEdit->textCursor();
     cursor.movePosition(QTextCursor::End);
-
     QTextCharFormat format;
     format.setForeground(color);
-
     cursor.insertText(text + "\n", format);
+    if (autoScrollCheckBox->isChecked()) {
+        outputEdit->setTextCursor(cursor);
+        outputEdit->ensureCursorVisible();
+    }
+}
+
+void BotConsoleWidget::setMaxLines(int maxLines)
+{
+    outputEdit->setMaximumBlockCount(maxLines);
+}
+
+void BotConsoleWidget::setRingCapacity(int capacity)
+{
+    QMutexLocker locker(&m_ringMutex);
+
+    // Copy existing items into a flat list (oldest first)
+    int keep = qMin(m_ringCount, capacity);
+    int drop = m_ringCount - keep;
+    QVector<PendingLine> preserved(keep);
+    for (int i = 0; i < keep; i++)
+        preserved[i] = m_ring[(m_ringHead + drop + i) % m_ringCapacity];
+
+    m_ringCapacity = capacity;
+    m_ring.resize(capacity);
+
+    // Write preserved items back sequentially from index 0
+    for (int i = 0; i < keep; i++)
+        m_ring[i] = preserved[i];
+
+    m_ringHead = 0;
+    m_ringTail = keep % capacity;
+    m_ringCount = keep;
+    // Don't reset m_droppedCount - items lost during resize count as dropped
+    m_droppedCount += drop;
+}
+
+void BotConsoleWidget::pushLogLine(const QString &text, const QColor &color)
+{
+    QMutexLocker locker(&m_ringMutex);
+    if (m_ringCount == m_ringCapacity) {
+        // Buffer full - overwrite oldest entry
+        m_ringHead = (m_ringHead + 1) % m_ringCapacity;
+        m_droppedCount++;
+    } else {
+        m_ringCount++;
+    }
+    m_ring[m_ringTail] = {text, color};
+    m_ringTail = (m_ringTail + 1) % m_ringCapacity;
+}
+
+void BotConsoleWidget::flushPendingOutput()
+{
+    QVector<PendingLine> batch;
+    int dropped = 0;
+    {
+        QMutexLocker locker(&m_ringMutex);
+        if (m_ringCount == 0 && m_droppedCount == 0)
+            return;
+        batch.resize(m_ringCount);
+        for (int i = 0; i < m_ringCount; i++)
+            batch[i] = m_ring[(m_ringHead + i) % m_ringCapacity];
+        dropped = m_droppedCount;
+        m_ringHead = 0;
+        m_ringTail = 0;
+        m_ringCount = 0;
+        m_droppedCount = 0;
+    }
+
+    QTextCursor cursor = outputEdit->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    cursor.beginEditBlock();
+
+    if (dropped > 0) {
+        QTextCharFormat fmt;
+        fmt.setForeground(Qt::darkYellow);
+        QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+        cursor.insertText(QString("[%1] [...%2 messages dropped...]\n").arg(ts).arg(dropped), fmt);
+    }
+    for (const auto &line : batch) {
+        QTextCharFormat fmt;
+        fmt.setForeground(line.color);
+        cursor.insertText(line.text + "\n", fmt);
+    }
+
+    cursor.endEditBlock();
 
     if (autoScrollCheckBox->isChecked()) {
         outputEdit->setTextCursor(cursor);

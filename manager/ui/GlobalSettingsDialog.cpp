@@ -1,8 +1,9 @@
 #include "GlobalSettingsDialog.h"
+#include "BotConsoleWidget.h"
+#include "bot/BotManager.h"
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QSettings>
-#include <QLabel>
 #include <QGuiApplication>
 #include <QStyleHints>
 
@@ -44,14 +45,14 @@ void GlobalSettingsDialog::setupUI()
 
     consoleLayout->addRow("Max Lines:", maxLinesLayout);
 
-    QLabel *infoLabel = new QLabel(
-        "Note: Changes to console settings will apply to new console instances.\n"
-        "Restart the application for changes to take effect on existing consoles.",
-        this
-    );
-    infoLabel->setStyleSheet("QLabel { color: #666; font-style: italic; }");
-    infoLabel->setWordWrap(true);
-    consoleLayout->addRow(infoLabel);
+    consolePendingLinesSpinBox = new QSpinBox(this);
+    consolePendingLinesSpinBox->setRange(100, 100000);
+    consolePendingLinesSpinBox->setValue(500);
+    consolePendingLinesSpinBox->setSingleStep(100);
+    consolePendingLinesSpinBox->setToolTip("Max lines buffered per bot between UI flushes. "
+                                           "Excess lines are dropped with a notice.");
+    consoleLayout->addRow("Max Buffered Lines:", consolePendingLinesSpinBox);
+
 
     mainLayout->addWidget(consoleGroup);
 
@@ -105,6 +106,8 @@ void GlobalSettingsDialog::loadSettings()
         consoleMaxLinesSpinBox->setEnabled(true);
     }
 
+    consolePendingLinesSpinBox->setValue(settings.value("Console/maxPendingLines", 500).toInt());
+
     int scheme = settings.value("Appearance/colorScheme", static_cast<int>(Qt::ColorScheme::Unknown)).toInt();
     for (int i = 0; i < colorSchemeComboBox->count(); ++i) {
         if (colorSchemeComboBox->itemData(i).toInt() == scheme) {
@@ -120,6 +123,15 @@ void GlobalSettingsDialog::saveSettings()
 
     int maxLines = consoleUnlimitedCheckBox->isChecked() ? 0 : consoleMaxLinesSpinBox->value();
     settings.setValue("Console/maxLines", maxLines);
+    int pendingLines = consolePendingLinesSpinBox->value();
+    settings.setValue("Console/maxPendingLines", pendingLines);
+
+    for (BotInstance &bot : BotManager::getBots()) {
+        if (bot.consoleWidget) {
+            bot.consoleWidget->setMaxLines(maxLines);
+            bot.consoleWidget->setRingCapacity(pendingLines);
+        }
+    }
 
     int scheme = colorSchemeComboBox->currentData().toInt();
     settings.setValue("Appearance/colorScheme", scheme);
