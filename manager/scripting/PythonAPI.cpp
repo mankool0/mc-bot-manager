@@ -1944,6 +1944,7 @@ py::object PythonAPI::getItemInfo(const std::string &itemId, const std::string &
         if (itemInfo) {
             py::dict result;
             result["item_id"] = itemInfo->itemId.toStdString();
+            result["display_name"] = itemInfo->displayName.toStdString();
             result["max_stack_size"] = itemInfo->maxStackSize;
             result["max_damage"] = itemInfo->maxDamage;
             return result;

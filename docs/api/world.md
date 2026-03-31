@@ -741,12 +741,14 @@ Get item metadata from the item registry.
 | Field | Type | Description |
 |---|---|---|
 | `item_id` | `str` | Item ID |
+| `display_name` | `str` | Human-readable item name (e.g., `"Diamond Pickaxe"`) |
 | `max_stack_size` | `int` | Maximum stack size (usually 1, 16, or 64) |
 | `max_damage` | `int` | Maximum durability (0 for non-damageable items) |
 
 ```python
 info = world.get_item_info("minecraft:diamond_pickaxe")
 if info:
+    print(f"Name: {info['display_name']}")
     print(f"Max durability: {info['max_damage']}")
     print(f"Stack size: {info['max_stack_size']}")
 ```

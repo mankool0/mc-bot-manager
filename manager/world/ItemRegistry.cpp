@@ -81,8 +81,9 @@ bool ItemRegistry::loadFromCache(int dataVersion)
         QString id;
         qint32 stackSize;
         qint32 maxDmg;
-        in >> id >> stackSize >> maxDmg;
-        items[id] = ItemInfo{id, stackSize, maxDmg};
+        QString displayName;
+        in >> id >> stackSize >> maxDmg >> displayName;
+        items[id] = ItemInfo{id, stackSize, maxDmg, displayName};
     }
 
     this->dataVersion = dataVersion;
@@ -123,7 +124,7 @@ void ItemRegistry::saveToCache()
     out << quint32(items.size());
 
     for (auto it = items.constBegin(); it != items.constEnd(); ++it) {
-        out << it.value().itemId << qint32(it.value().maxStackSize) << qint32(it.value().maxDamage);
+        out << it.value().itemId << qint32(it.value().maxStackSize) << qint32(it.value().maxDamage) << it.value().displayName;
     }
 
     file.close();
@@ -132,10 +133,10 @@ void ItemRegistry::saveToCache()
                    .arg(cachePath).arg(items.size()), LogManager::Success);
 }
 
-void ItemRegistry::addItem(const QString& itemId, int maxStackSize, int maxDamage)
+void ItemRegistry::addItem(const QString& itemId, int maxStackSize, int maxDamage, const QString& displayName)
 {
     QMutexLocker locker(&mutex);
-    items[itemId] = ItemInfo{itemId, maxStackSize, maxDamage};
+    items[itemId] = ItemInfo{itemId, maxStackSize, maxDamage, displayName};
 }
 
 std::optional<ItemInfo> ItemRegistry::getItem(const QString& itemId) const

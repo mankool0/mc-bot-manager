@@ -2211,7 +2211,7 @@ void BotManager::handleItemRegistryImpl(int connectionId, const mankool::mcbot::
     bot->itemRegistry->setDataVersion(dataVersion);
 
     for (const auto &entry : registry.entries()) {
-        bot->itemRegistry->addItem(entry.itemId(), entry.maxStackSize(), entry.maxDamage());
+        bot->itemRegistry->addItem(entry.itemId(), entry.maxStackSize(), entry.maxDamage(), entry.displayName());
     }
 
     bot->itemRegistry->saveToCache();
