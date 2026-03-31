@@ -28,6 +28,7 @@ private:
 
     QSpinBox *consoleMaxLinesSpinBox;
     QCheckBox *consoleUnlimitedCheckBox;
+    QSpinBox *consolePendingLinesSpinBox;
     QComboBox *colorSchemeComboBox;
 
     QDialogButtonBox *buttonBox;

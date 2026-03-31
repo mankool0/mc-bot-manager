@@ -1035,9 +1035,7 @@ void PythonAPI::log(const std::string &message)
         if (bot && bot->consoleWidget) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
-            QMetaObject::invokeMethod(bot->consoleWidget, [widget = bot->consoleWidget, msg = formattedMsg]() {
-                widget->appendOutput(msg, Qt::darkGreen);
-            }, Qt::QueuedConnection);
+            bot->consoleWidget->pushLogLine(formattedMsg, Qt::darkGreen);
         }
     }
 }
@@ -1053,9 +1051,7 @@ void PythonAPI::error(const std::string &message)
         if (bot && bot->consoleWidget) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
-            QMetaObject::invokeMethod(bot->consoleWidget, [widget = bot->consoleWidget, msg = formattedMsg]() {
-                widget->appendOutput(msg, Qt::red);
-            }, Qt::QueuedConnection);
+            bot->consoleWidget->pushLogLine(formattedMsg, Qt::red);
         }
     }
 }
