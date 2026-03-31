@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QMap>
 #include <QList>
+#include <QReadWriteLock>
 
 #undef slots
 #include <pybind11/pybind11.h>
@@ -31,6 +32,7 @@ struct ScriptContext {
     py::object mainModule;
 
     QMap<QString, QList<py::function>> eventHandlers;
+    mutable QReadWriteLock handlersLock;
 
     ScriptThread *thread = nullptr;
 

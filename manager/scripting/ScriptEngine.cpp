@@ -9,6 +9,7 @@
 #include "logging/LogManager.h"
 #include <QDebug>
 #include <QDateTime>
+#include <QWriteLocker>
 
 namespace py = pybind11;
 
@@ -23,6 +24,18 @@ ScriptEngine::ScriptEngine(BotInstance *bot, QObject *parent)
         initializePython();
     }
     engineCount++;
+
+    qRegisterMetaType<ScriptEvent>("ScriptEvent");
+    qRegisterMetaType<ScriptContext*>("ScriptContext*");
+
+    m_eventWorkerThread = new QThread(this);
+    m_eventWorker = new ScriptEventWorker(bot);
+    m_eventWorker->moveToThread(m_eventWorkerThread);
+    connect(m_eventWorkerThread, &QThread::finished, m_eventWorker, &QObject::deleteLater);
+    connect(this, &ScriptEngine::eventReady,
+            m_eventWorker, &ScriptEventWorker::processEvent,
+            Qt::QueuedConnection);
+    m_eventWorkerThread->start();
 }
 
 ScriptEngine::~ScriptEngine()
@@ -36,6 +49,10 @@ ScriptEngine::~ScriptEngine()
     ScriptFileManager::saveScriptStates(botInstance->name, states);
 
     stopAllScripts();
+
+    // Drain the event worker queue before destroying Python objects.
+    m_eventWorkerThread->quit();
+    m_eventWorkerThread->wait();
 
     {
         py::gil_scoped_acquire acquire;
@@ -276,6 +293,8 @@ void ScriptEngine::stopScript(const QString &filename)
         ctx->running = false;
 
         {
+            // Lock order: handlersLock first, then GIL. Consistent with processEvent().
+            QWriteLocker locker(&ctx->handlersLock);
             py::gil_scoped_acquire acquire;
             ctx->eventHandlers.clear();
         }
@@ -308,55 +327,23 @@ void ScriptEngine::stopAllScripts()
 
 void ScriptEngine::fireEvent(const QString &eventName, const QVariantList &args)
 {
-    py::gil_scoped_acquire acquire;
-
+    // Called on the main thread. Must not block - post to worker thread instead.
     for (auto it = scripts.begin(); it != scripts.end(); ++it) {
         ScriptContext *ctx = it.value();
 
-        if (!ctx->running) {
+        if (!ctx->running)
             continue;
-        }
 
-        if (!ctx->eventHandlers.contains(eventName)) {
+        if (!ctx->eventHandlers.contains(eventName))
             continue;
-        }
 
-        const QList<py::function> &handlers = ctx->eventHandlers[eventName];
-        for (const py::function &handler : handlers) {
-            try {
-                PythonAPI::setCurrentBot(botInstance->name);
-                PythonAPI::setCurrentScript(ctx->filename);
+        ScriptEvent event;
+        event.scriptFilename = ctx->filename;
+        event.eventName = eventName;
+        event.args = args;
+        event.botName = botInstance->name;
 
-                py::list pyArgs;
-                for (const QVariant &arg : args) {
-                    pyArgs.append(PythonAPI::qVariantToPyObject(arg));
-                }
-
-                handler(*pyArgs);
-
-            } catch (py::error_already_set &e) {
-                QString stringError = QString::fromStdString(e.what());
-
-                emit scriptError(ctx->filename,
-                                 QString("Event handler error in '%1': %2")
-                                     .arg(eventName, stringError));
-
-                if (botInstance->consoleWidget) {
-                    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-                    QString headerMsg = QString("[%1] [Event Error in %2 - %3 handler]").arg(ts, ctx->filename, eventName);
-                    QStringList errorLines = stringError.split("\n");
-                    QMetaObject::invokeMethod(botInstance->consoleWidget, [widget = botInstance->consoleWidget, headerMsg, errorLines]() {
-                        widget->appendOutput(headerMsg, Qt::red);
-                        for (const QString &line : errorLines) {
-                            widget->appendOutput(line, Qt::red);
-                        }
-                    }, Qt::QueuedConnection);
-                }
-            } catch (std::exception &e) {
-                QString error = QString("Event handler exception: %1").arg(e.what());
-                emit scriptError(ctx->filename, error);
-            }
-        }
+        emit eventReady(event, ctx);
     }
 }
 

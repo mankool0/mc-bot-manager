@@ -5,6 +5,8 @@
 #include <QMap>
 #include <QString>
 #include <QVariantList>
+#include <QThread>
+#include "ScriptEventWorker.h"
 
 #undef slots
 #include <pybind11/embed.h>
@@ -50,10 +52,14 @@ signals:
     void scriptStopped(const QString &filename);
     void scriptError(const QString &filename, const QString &error);
     void scriptOutput(const QString &filename, const QString &output);
+    void eventReady(const ScriptEvent &event, ScriptContext *ctx);
 
 private:
     BotInstance *botInstance;
     QMap<QString, ScriptContext*> scripts;
+
+    QThread *m_eventWorkerThread;
+    ScriptEventWorker *m_eventWorker;
 
     static bool pythonInitialized;
     static int engineCount;
