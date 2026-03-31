@@ -227,8 +227,9 @@ bool ScriptEngine::runScript(const QString &filename)
         emit scriptError(filename, error);
 
         if (botInstance->consoleWidget) {
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             botInstance->consoleWidget->appendOutput(
-                QString("[Script Error in %1]").arg(filename),
+                QString("[%1] [Script Error in %2]").arg(ts, filename),
                 Qt::red
             );
             QStringList errorLines = error.split("\n");
@@ -264,7 +265,8 @@ void ScriptEngine::stopScript(const QString &filename)
         ctx->thread->stop();
 
         if (botInstance->consoleWidget) {
-            QString msg = QString("[%1] Sending stop signal...").arg(filename);
+            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+            QString msg = QString("[%1] [%2] Sending stop signal...").arg(ts, filename);
             QMetaObject::invokeMethod(botInstance->consoleWidget, [widget = botInstance->consoleWidget, msg]() {
                 widget->appendOutput(msg, Qt::darkYellow);
             }, Qt::QueuedConnection);
@@ -340,7 +342,8 @@ void ScriptEngine::fireEvent(const QString &eventName, const QVariantList &args)
                                      .arg(eventName, stringError));
 
                 if (botInstance->consoleWidget) {
-                    QString headerMsg = QString("[Event Error in %1 - %2 handler]").arg(ctx->filename, eventName);
+                    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+                    QString headerMsg = QString("[%1] [Event Error in %2 - %3 handler]").arg(ts, ctx->filename, eventName);
                     QStringList errorLines = stringError.split("\n");
                     QMetaObject::invokeMethod(botInstance->consoleWidget, [widget = botInstance->consoleWidget, headerMsg, errorLines]() {
                         widget->appendOutput(headerMsg, Qt::red);
