@@ -71,12 +71,16 @@ void BotConsoleWidget::setupUI()
     sendButton = new QPushButton("Send", this);
     inputLayout->addWidget(sendButton);
 
+    QPushButton *clearButton = new QPushButton("Clear", this);
+    inputLayout->addWidget(clearButton);
+
     autoScrollCheckBox = new QCheckBox("Auto-scroll", this);
     autoScrollCheckBox->setChecked(true);
     inputLayout->addWidget(autoScrollCheckBox);
 
     mainLayout->addLayout(inputLayout);
 
+    connect(clearButton, &QPushButton::clicked, this, &BotConsoleWidget::clearOutput);
     connect(sendButton, &QPushButton::clicked, this, &BotConsoleWidget::onSendCommand);
     connect(inputEdit, &QLineEdit::returnPressed, this, &BotConsoleWidget::onSendCommand);
     connect(inputEdit, &QLineEdit::textChanged, this, &BotConsoleWidget::onInputChanged);
