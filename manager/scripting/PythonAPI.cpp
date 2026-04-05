@@ -650,14 +650,91 @@ py::object PythonAPI::getScreen(const std::string &botName)
         return py::none();
     }
 
-    QString screenClass = bot->currentScreenClass;
+    QMutexLocker locker(bot->dataMutex.get());
 
-    // Return None for empty screen (in-game, no GUI)
-    if (screenClass.isEmpty()) {
+    if (bot->screenState.screenClass.isEmpty()) {
         return py::none();
     }
 
-    return py::cast(screenClass.toStdString());
+    PyScreenState result;
+    result.screenId = bot->screenState.screenId.toStdString();
+    result.screenClass = bot->screenState.screenClass.toStdString();
+    result.title = bot->screenState.title.toStdString();
+    result.width = bot->screenState.width;
+    result.height = bot->screenState.height;
+
+    for (const auto &w : bot->screenState.widgets) {
+        PyGuiWidget pw;
+        pw.index = w.index;
+        pw.widgetType = w.widgetType.toStdString();
+        pw.className = w.className.toStdString();
+        pw.x = w.x;
+        pw.y = w.y;
+        pw.width = w.width;
+        pw.height = w.height;
+        pw.active = w.active;
+        pw.visible = w.visible;
+        pw.text = w.text.toStdString();
+        pw.editValue = w.editValue.toStdString();
+        pw.editEditable = w.editEditable;
+        pw.selected = w.selected;
+        result.widgets.push_back(pw);
+    }
+
+    for (const auto &s : bot->screenState.guiSlots) {
+        PyGuiSlot ps;
+        ps.index = s.index;
+        ps.x = s.x;
+        ps.y = s.y;
+        ps.active = s.active;
+        ps.itemId = s.item.itemId().toStdString();
+        ps.count = s.item.count();
+        ps.displayName = s.item.displayName().toStdString();
+        ps.damage = s.item.damage();
+        ps.maxDamage = s.item.maxDamage();
+        ps.repairCost = s.item.repairCost();
+        for (const auto &[name, level] : s.item.enchantments().asKeyValueRange())
+            ps.enchantments[name.toStdString()] = static_cast<int>(level);
+        result.guiSlots.push_back(ps);
+    }
+
+    return py::cast(std::move(result));
+}
+
+void PythonAPI::typeText(const std::string &screenId, const std::string &text, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendTypeText(name, QString::fromStdString(screenId), QString::fromStdString(text));
+}
+
+void PythonAPI::pressKey(const std::string &screenId, int keyCode, int modifiers, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendPressKey(name, QString::fromStdString(screenId), keyCode, modifiers);
+}
+
+void PythonAPI::clickScreenPosition(const std::string &screenId, double x, double y, MouseButton button, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendClickScreenPosition(name, QString::fromStdString(screenId), x, y, static_cast<int>(button));
+}
+
+void PythonAPI::openGameMenu(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendOpenGameMenu(name);
+}
+
+void PythonAPI::clickScreenWidget(const std::string &screenId, int widgetIndex, MouseButton button, const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendClickScreenWidget(botName, QString::fromStdString(screenId), widgetIndex, static_cast<int>(button));
 }
 
 py::dict PythonAPI::getNetworkStats(const std::string &botName)

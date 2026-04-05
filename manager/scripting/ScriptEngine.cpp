@@ -347,6 +347,27 @@ void ScriptEngine::fireEvent(const QString &eventName, const QVariantList &args)
     }
 }
 
+void ScriptEngine::fireEvent(const QString &eventName, std::function<void(void*)> argBuilder)
+{
+    for (auto it = scripts.begin(); it != scripts.end(); ++it) {
+        ScriptContext *ctx = it.value();
+
+        if (!ctx->running)
+            continue;
+
+        if (!ctx->eventHandlers.contains(eventName))
+            continue;
+
+        ScriptEvent event;
+        event.scriptFilename = ctx->filename;
+        event.eventName = eventName;
+        event.botName = botInstance->name;
+        event.argBuilder = argBuilder;
+
+        emit eventReady(event, ctx);
+    }
+}
+
 QStringList ScriptEngine::getScriptNames() const
 {
     return scripts.keys();

@@ -268,7 +268,33 @@ struct BotInstance {
     QMap<QString, BaritoneCommandData> baritoneCommands;
     BaritoneProcessStatus baritoneProcessStatus;
 
-    QString currentScreenClass;
+    // Screen state (from ScreenDump)
+    struct GuiWidgetData {
+        int index = 0;
+        QString widgetType;
+        QString className;
+        int x = 0, y = 0, width = 0, height = 0;
+        bool active = false, visible = false, selected = false;
+        QString text;
+        QString editValue;
+        bool editEditable = false;
+    };
+
+    struct GuiSlotData {
+        int index = 0;
+        int x = 0, y = 0;
+        bool active = false;
+        mankool::mcbot::protocol::ItemStack item;
+    };
+
+    struct ScreenState {
+        QString screenId;
+        QString screenClass;
+        QString title;
+        int width = 0, height = 0;
+        QVector<GuiWidgetData> widgets;
+        QVector<GuiSlotData> guiSlots;
+    } screenState;
 
     // World data
     BotWorldData worldData;
@@ -349,7 +375,7 @@ public:
     static void handleChunkUnload(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     static void handleLightUpdate(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     static void handleContainerUpdate(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
-    static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
+    static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
 
     // World interaction commands
     static bool sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak = false, int timeoutMs = 3000);
@@ -364,6 +390,13 @@ public:
     static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
     static void sendCloseContainer(const QString &botName);
     static void sendOpenInventory(const QString &botName);
+
+    // Screen widget interaction commands
+    static void sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button);
+    static void sendClickScreenPosition(const QString &botName, const QString &screenId, double x, double y, int button);
+    static void sendTypeText(const QString &botName, const QString &screenId, const QString &text);
+    static void sendPressKey(const QString &botName, const QString &screenId, int keyCode, int modifiers);
+    static void sendOpenGameMenu(const QString &botName);
     static void sendSwitchHotbarSlot(const QString &botName, int slot);
     static void sendLookAt(const QString &botName, double x, double y, double z);
 
@@ -423,7 +456,7 @@ private:
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     void handleLightUpdateImpl(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
-    void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen);
+    void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
     bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
@@ -434,6 +467,11 @@ private:
     void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
     void sendCloseContainerImpl(const QString &botName);
     void sendOpenInventoryImpl(const QString &botName);
+    void sendClickScreenWidgetImpl(const QString &botName, const QString &screenId, int widgetIndex, int button);
+    void sendClickScreenPositionImpl(const QString &botName, const QString &screenId, double x, double y, int button);
+    void sendTypeTextImpl(const QString &botName, const QString &screenId, const QString &text);
+    void sendPressKeyImpl(const QString &botName, const QString &screenId, int keyCode, int modifiers);
+    void sendOpenGameMenuImpl(const QString &botName);
     void sendSwitchHotbarSlotImpl(const QString &botName, int slot);
     void sendLookAtImpl(const QString &botName, double x, double y, double z);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);

@@ -11,6 +11,8 @@
     "InventoryMixin",
     "BlockInteractionMixin",
     "AbstractContainerMenuAccessor",
+    "EditBoxAccessor",
+    "AbstractSignEditScreenAccessor",
     "ClientCommonDisconnectMixin",
     "LoginDisconnectMixin",
     "baritone.BaritoneSettingMixin"

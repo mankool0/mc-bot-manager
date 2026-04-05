@@ -5,6 +5,7 @@
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
 #include "scripting/ScriptEngine.h"
+#include "scripting/PythonAPI.h"
 #include <io/stream_reader.h>
 #include <nbt_tags.h>
 #include <optional>
@@ -3028,7 +3029,7 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
     }
 }
 
-void BotManager::handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)
+void BotManager::handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen)
 {
     instance().handleScreenUpdateImpl(connectionId, screen);
 }
@@ -3088,34 +3089,73 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
     }
 }
 
-void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenUpdate &screen)
+void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) {
         return;
     }
 
+    QMutexLocker locker(bot->dataMutex.get());
+
     QString screenClass = screen.screenClass();
-    bot->currentScreenClass = screenClass;
 
     // If screen is closed (null/empty) and container was open, close the container
-    {
-        QMutexLocker locker(bot->dataMutex.get());
-        if (bot->containerState.isOpen && screenClass.isEmpty()) {
-            bot->containerState.isOpen = false;
-            bot->containerState.containerId = -1;
-            bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
-            bot->containerState.items.clear();
-        }
+    if (bot->containerState.isOpen && screenClass.isEmpty()) {
+        bot->containerState.isOpen = false;
+        bot->containerState.containerId = -1;
+        bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+        bot->containerState.items.clear();
     }
+
+    // Update screen state
+    bot->screenState.screenId = screen.screenId();
+    bot->screenState.screenClass = screenClass;
+    bot->screenState.title = screen.title();
+    bot->screenState.width = screen.width();
+    bot->screenState.height = screen.height();
+
+    bot->screenState.widgets.clear();
+    for (const auto &w : screen.widgets()) {
+        BotInstance::GuiWidgetData wd;
+        wd.index = w.index();
+        wd.widgetType = w.widgetType();
+        wd.className = w.className();
+        wd.x = w.x();
+        wd.y = w.y();
+        wd.width = w.width();
+        wd.height = w.height();
+        wd.active = w.active();
+        wd.visible = w.visible();
+        wd.text = w.text();
+        wd.editValue = w.editValue();
+        wd.editEditable = w.editEditable();
+        wd.selected = w.selected();
+        bot->screenState.widgets.append(wd);
+    }
+
+    bot->screenState.guiSlots.clear();
+    for (const auto &s : screen.guiSlots()) {
+        BotInstance::GuiSlotData sd;
+        sd.index = s.index();
+        sd.x = s.x();
+        sd.y = s.y();
+        sd.active = s.active();
+        sd.item = s.item();
+        bot->screenState.guiSlots.append(sd);
+    }
+
+    locker.unlock();
 
     emit botUpdated(bot->name);
 
-    // Fire script event
     if (bot->scriptEngine) {
-        QVariantList args;
-        args << bot->currentScreenClass;
-        bot->scriptEngine->fireEvent("screen_changed", args);
+        std::string botNameStr = bot->name.toStdString();
+        bot->scriptEngine->fireEvent("screen_updated", [botNameStr](void* listPtr) {
+            auto& pyArgs = *reinterpret_cast<py::list*>(listPtr);
+            py::module_::import("bot");
+            pyArgs.append(PythonAPI::getScreen(botNameStr));
+        });
     }
 }
 
@@ -3369,6 +3409,204 @@ void BotManager::sendOpenInventoryImpl(const QString &botName)
 
     mankool::mcbot::protocol::OpenInventoryCommand command;
     message.setOpenInventory(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+
+void BotManager::sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button)
+{
+    instance().sendClickScreenWidgetImpl(botName, screenId, widgetIndex, button);
+}
+
+void BotManager::sendClickScreenWidgetImpl(const QString &botName, const QString &screenId, int widgetIndex, int button)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot click screen widget: bot '%1' not found").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::ClickScreenWidgetCommand command;
+    command.setScreenId(screenId);
+    command.setWidgetIndex(widgetIndex);
+    command.setButton(button);
+
+    message.setClickScreenWidget(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+
+void BotManager::sendClickScreenPosition(const QString &botName, const QString &screenId, double x, double y, int button)
+{
+    instance().sendClickScreenPositionImpl(botName, screenId, x, y, button);
+}
+
+void BotManager::sendClickScreenPositionImpl(const QString &botName, const QString &screenId, double x, double y, int button)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot click screen position: bot '%1' not found").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::ClickScreenPositionCommand command;
+    command.setScreenId(screenId);
+    command.setX(x);
+    command.setY(y);
+    command.setButton(button);
+    message.setClickScreenPosition(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+
+void BotManager::sendTypeText(const QString &botName, const QString &screenId, const QString &text)
+{
+    instance().sendTypeTextImpl(botName, screenId, text);
+}
+
+void BotManager::sendTypeTextImpl(const QString &botName, const QString &screenId, const QString &text)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot type text: bot '%1' not found").arg(botName), LogManager::Error);
+        return;
+    }
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName), LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::TypeTextCommand command;
+    command.setScreenId(screenId);
+    command.setText(text);
+    message.setTypeText(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+
+void BotManager::sendPressKey(const QString &botName, const QString &screenId, int keyCode, int modifiers)
+{
+    instance().sendPressKeyImpl(botName, screenId, keyCode, modifiers);
+}
+
+void BotManager::sendPressKeyImpl(const QString &botName, const QString &screenId, int keyCode, int modifiers)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot press key: bot '%1' not found").arg(botName), LogManager::Error);
+        return;
+    }
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName), LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::PressKeyCommand command;
+    command.setScreenId(screenId);
+    command.setKeyCode(keyCode);
+    command.setModifiers(modifiers);
+    message.setPressKey(command);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&message);
+    QByteArray fullMessage;
+    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    fullMessage.append(protoData);
+    PipeServer::sendToClient(bot->connectionId, fullMessage);
+}
+
+void BotManager::sendOpenGameMenu(const QString &botName)
+{
+    instance().sendOpenGameMenuImpl(botName);
+}
+
+void BotManager::sendOpenGameMenuImpl(const QString &botName)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot open game menu: bot '%1' not found").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::OpenGameMenuCommand command;
+    message.setOpenGameMenu(command);
 
     QProtobufSerializer serializer;
     QByteArray protoData = serializer.serialize(&message);

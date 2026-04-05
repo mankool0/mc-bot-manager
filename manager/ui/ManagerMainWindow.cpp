@@ -491,10 +491,10 @@ void ManagerMainWindow::updateInstancesTable()
         QString screenText;
         if (bot.status != BotStatus::Online) {
             screenText = "-";
-        } else if (bot.currentScreenClass.isEmpty()) {
+        } else if (bot.screenState.screenClass.isEmpty()) {
             screenText = "Game";
         } else {
-            screenText = bot.currentScreenClass;
+            screenText = bot.screenState.screenClass;
         }
         screenItem->setText(screenText);
 
