@@ -242,7 +242,7 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
     arguments << "-l" << bot->instance;    // Launch instance
     arguments << "-a" << bot->account;     // Use account
 
-    if (!bot->server.isEmpty()) {
+    if (!bot->server.isEmpty() && bot->autoConnect) {
         arguments << "-s" << bot->server;
     }
 

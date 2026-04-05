@@ -148,6 +148,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->serverLineEdit, &QLineEdit::textChanged, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->memorySpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->restartThresholdSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->autoConnectCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->autoRestartCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->tokenRefreshCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->debugModeCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
@@ -656,6 +657,7 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->server = ui->serverLineEdit->text();
             bot->maxMemory = ui->memorySpinBox->value();
             bot->restartThreshold = ui->restartThresholdSpinBox->value();
+            bot->autoConnect = ui->autoConnectCheckBox->isChecked();
             bot->autoRestart = ui->autoRestartCheckBox->isChecked();
             bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
             bot->debugLogging = ui->debugModeCheckBox->isChecked();
@@ -705,6 +707,7 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     ui->pipeStatusLabel->setText(QString("Connection %1 [%2]").arg(bot.connectionId).arg(bot.status == BotStatus::Online ? "Connected" : "Not Connected"));
     ui->memorySpinBox->setValue(bot.maxMemory);
     ui->restartThresholdSpinBox->setValue(bot.restartThreshold);
+    ui->autoConnectCheckBox->setChecked(bot.autoConnect);
     ui->autoRestartCheckBox->setChecked(bot.autoRestart);
     ui->tokenRefreshCheckBox->setChecked(bot.tokenRefresh);
     ui->debugModeCheckBox->setChecked(bot.debugLogging);
@@ -875,6 +878,7 @@ void ManagerMainWindow::loadSettingsFromFile()
             bot->server = ui->serverLineEdit->text();
             bot->maxMemory = ui->memorySpinBox->value();
             bot->restartThreshold = ui->restartThresholdSpinBox->value();
+            bot->autoConnect = ui->autoConnectCheckBox->isChecked();
             bot->autoRestart = ui->autoRestartCheckBox->isChecked();
             bot->tokenRefresh = ui->tokenRefreshCheckBox->isChecked();
             bot->debugLogging = ui->debugModeCheckBox->isChecked();
@@ -1155,6 +1159,7 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("server", bot.server);
     settings.setValue("maxMemory", bot.maxMemory);
     settings.setValue("restartThreshold", bot.restartThreshold);
+    settings.setValue("autoConnect", bot.autoConnect);
     settings.setValue("autoRestart", bot.autoRestart);
     settings.setValue("tokenRefresh", bot.tokenRefresh);
     settings.setValue("debugLogging", bot.debugLogging);
@@ -1182,6 +1187,7 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
     bot.currentMemory = 0;
     bot.restartThreshold = settings.value("restartThreshold", 48.0).toDouble();
+    bot.autoConnect = settings.value("autoConnect", true).toBool();
     bot.autoRestart = settings.value("autoRestart", true).toBool();
     bot.tokenRefresh = settings.value("tokenRefresh", true).toBool();
     bot.debugLogging = settings.value("debugLogging", false).toBool();
