@@ -490,8 +490,8 @@ void ScriptsWidget::setupEditor()
 
     codeEditor->setCompletionEnabled(true);
     codeEditor->setCompletionThreshold(2);
-    codeEditor->setCompletionCallback([this](const QString &) {
-        return getCompletions();
+    codeEditor->setCompletionCallback([this](const QString &, const QString &, const QString &) {
+        return QtFuture::makeReadyValueFuture(getCompletions());
     });
 }
 
