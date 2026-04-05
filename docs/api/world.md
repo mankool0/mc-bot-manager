@@ -410,6 +410,119 @@ world.click_slot(5, button=world.MouseButton.RIGHT)
 
 ---
 
+### `click_widget(screen_id, widget_index, button=world.MouseButton.LEFT, bot="")`
+
+Click a widget (button, etc.) on the currently open screen.
+
+**Parameters:**
+
+- `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
+- `widget_index` (`int`) - The `index` from a `GuiWidget` in `bot.get_screen().widgets`
+- `button` (`MouseButton`, optional) - Mouse button (default: `LEFT`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found, not online, or `screen_id` doesn't match the currently open screen
+
+> **Note:** Only use for non-slot widgets (buttons, checkboxes, etc.). For container slots, use `click_slot()`.
+
+```python
+screen = bot.get_screen()
+if screen is not None:
+    for w in screen.widgets:
+        if w.text == "Accept" and w.active:
+            world.click_widget(screen.id, w.index)
+            break
+```
+
+---
+
+### `click_screen(screen_id, x, y, button=world.MouseButton.LEFT, bot="")`
+
+Click at specific pixel coordinates on the currently open screen. Useful for sliders and other widgets where you need to control the exact click position.
+
+**Parameters:**
+
+- `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
+- `x` (`float`) - Screen pixel X coordinate
+- `y` (`float`) - Screen pixel Y coordinate
+- `button` (`MouseButton`, optional) - Mouse button (default: `LEFT`)
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found, not online, or `screen_id` doesn't match the currently open screen
+
+```python
+screen = bot.get_screen()
+if screen is not None:
+    for w in screen.widgets:
+        if w.text.startswith("Max Framerate"):
+            # Slider range: 10-260 fps
+            fraction = (90 - 10) / (260 - 10)
+            click_x = w.x + fraction * w.width
+            world.click_screen(screen.id, click_x, w.y + w.height / 2)
+            break
+```
+
+---
+
+### `type_text(screen_id, text, bot="")`
+
+Type text into the currently focused element on the open screen (sign lines, chat, edit boxes). Sends individual `charTyped` events for each character.
+
+**Parameters:**
+
+- `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
+- `text` (`str`) - The text to type
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+screen = bot.get_screen()
+if screen and "SignEditScreen" in screen.screen_class:
+    world.type_text(screen.id, "Hello world")
+    world.press_key(screen.id, world.Key.ENTER)
+```
+
+---
+
+### `press_key(screen_id, key_code, modifiers=0, bot="")`
+
+Press a key on the currently open screen (sends `keyPressed` + `keyReleased`).
+
+**Parameters:**
+
+- `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
+- `key_code` (`int`) - GLFW key code - use `world.Key.*` constants
+- `modifiers` (`int`, optional) - GLFW modifier flags - use `world.KeyMod.*` constants, default `0`
+- `bot` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+**`world.Key` constants:**
+
+| Group | Constants |
+|---|---|
+| Navigation | `UP`, `DOWN`, `LEFT`, `RIGHT`, `HOME`, `END`, `PAGE_UP`, `PAGE_DOWN`, `INSERT`, `DELETE` |
+| Control | `ESCAPE`, `ENTER`, `TAB`, `BACKSPACE`, `SPACE`, `CAPS_LOCK`, `SCROLL_LOCK`, `NUM_LOCK`, `PRINT_SCREEN`, `PAUSE`, `MENU` |
+| Letters | `A`-`Z` |
+| Digits | `NUM_0`-`NUM_9` |
+| Punctuation | `APOSTROPHE`, `COMMA`, `MINUS`, `PERIOD`, `SLASH`, `SEMICOLON`, `EQUAL`, `LEFT_BRACKET`, `BACKSLASH`, `RIGHT_BRACKET`, `GRAVE_ACCENT` |
+| Function | `F1`-`F12` |
+| Keypad | `KP_0`-`KP_9`, `KP_DECIMAL`, `KP_DIVIDE`, `KP_MULTIPLY`, `KP_SUBTRACT`, `KP_ADD`, `KP_ENTER`, `KP_EQUAL` |
+| Modifiers | `LEFT_SHIFT`, `LEFT_CONTROL`, `LEFT_ALT`, `LEFT_SUPER`, `RIGHT_SHIFT`, `RIGHT_CONTROL`, `RIGHT_ALT`, `RIGHT_SUPER` |
+
+**`world.KeyMod` constants:** `SHIFT`, `CONTROL`, `ALT`, `SUPER`, `CAPS_LOCK`, `NUM_LOCK`
+
+```python
+screen = bot.get_screen()
+if screen is not None:
+    # Select all text and delete it
+    world.press_key(screen.id, world.Key.A, world.KeyMod.CONTROL)
+    world.press_key(screen.id, world.Key.DELETE)
+```
+
+---
+
 ### `close_container(bot="")`
 
 Close the currently open container.
