@@ -207,6 +207,7 @@ struct BotInstance {
     bool tokenRefresh;
     bool tokenRefreshPending = false;
     bool debugLogging;
+    bool autoConnect = true;
     bool saveWorldToDisk = true;
     bool manualStop = false;
     QDateTime startTime;

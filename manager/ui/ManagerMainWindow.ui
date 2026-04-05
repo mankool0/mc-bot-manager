@@ -337,6 +337,16 @@
                 </property>
                 <layout class="QVBoxLayout" name="featuresLayout">
                  <item>
+                  <widget class="QCheckBox" name="autoConnectCheckBox">
+                   <property name="text">
+                    <string>Auto connect to server on launch</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QCheckBox" name="autoRestartCheckBox">
                    <property name="text">
                     <string>Enable automatic restart on crash</string>
