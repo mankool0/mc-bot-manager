@@ -66,7 +66,7 @@ message ClientToManagerMessage {
     BlockRegistryMessage block_registry = 23;
 
     // Screen updates
-    ScreenUpdate screen = 26;
+    ScreenDump screen = 26;
 
     // Item registry
     QueryItemRegistryMessage query_item_registry = 27;
@@ -137,6 +137,15 @@ message ManagerToClientMessage {
     ClickContainerSlotCommand click_container_slot = 22;
     CloseContainerCommand close_container = 23;
     OpenInventoryCommand open_inventory = 25;
+
+    // Screen widget interaction
+    ClickScreenWidgetCommand click_screen_widget = 27;
+    ClickScreenPositionCommand click_screen_position = 29;
+    TypeTextCommand type_text = 30;
+    PressKeyCommand press_key = 31;
+
+    // Game menu
+    OpenGameMenuCommand open_game_menu = 28;
 
     // Item registry response
     ItemRegistryResponse item_registry_response = 24;

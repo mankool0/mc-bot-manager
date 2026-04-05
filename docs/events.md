@@ -114,25 +114,23 @@ def inv_update(selected_slot, inventory):
         utils.log(f"  {item['display_name']} x{item['count']} in slot {item['slot']}")
 ```
 
-### `screen_changed`
+### `screen_updated`
 
-Fired when the current GUI screen changes.
+Fired when the current GUI screen changes or its state is refreshed (e.g. after a button click or key press).
 
 **Parameters:**
 
-- `screen_class` (`str`) - Fully qualified class name of the new screen, or empty string if no screen (in-game)
+- `screen` (`ScreenState` or `None`) - Full current screen state, or `None` if no screen is open (back in-game)
 
 ```python
-@on("screen_changed")
-def on_screen_change(screen_class):
-    if not screen_class:
+@on("screen_updated")
+def on_screen_update(screen):
+    if screen is None:
         utils.log("Back in-game")
-    elif "ChatScreen" in screen_class:
-        utils.log("Chat opened")
-    elif "DeathScreen" in screen_class:
+    elif "DeathScreen" in screen.screen_class:
         bot.chat("I died!")
     else:
-        utils.log(f"Screen: {screen_class}")
+        utils.log(f"Screen: {screen.title or screen.screen_class}, {len(screen.widgets)} widgets")
 ```
 
 ### `baritone_status_update`

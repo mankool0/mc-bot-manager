@@ -132,31 +132,88 @@ The item dict schema used by `bot.inventory()`, `world.get_container()`, and ent
 | `display_name` | `str` | Display name (may include formatting) |
 | `enchantments` | `dict[str, int]` | Map of enchantment ID to level (e.g. `{"minecraft:sharpness": 3}`) |
 
-### `screen(bot_name="")`
+### `get_screen(bot_name="")`
 
-Get current screen class name.
+Get full screen dump as a `ScreenState` object.
 
-**Returns:** `str` - Fully qualified class name of the current screen, or `None` if no screen is open (in-game)
+**Returns:** `ScreenState` or `None` if no screen is open (in-game)
+
+**`ScreenState` attributes:**
+
+| Attribute | Type | Description |
+|---|---|---|
+| `id` | `str` | Stable screen ID - pass to `world.click_widget()` |
+| `screen_class` | `str` | Fully qualified Java class name |
+| `title` | `str` | Display title of the screen |
+| `width` | `int` | Screen width in pixels |
+| `height` | `int` | Screen height in pixels |
+| `widgets` | `list[GuiWidget]` | All interactive widgets (buttons, edit boxes, sliders, etc.) - includes widgets nested inside list-based screens like Video Settings |
+| `slots` | `list[GuiSlot]` | Container slots (only present for inventory-like screens) |
+
+**`GuiWidget` attributes:**
+
+| Attribute | Type | Description |
+|---|---|---|
+| `index` | `int` | Widget index - pass to `world.click_widget()` |
+| `type` | `str` | `"Button"`, `"EditBox"`, `"Checkbox"`, `"ListEntry"`, `"SignLine"`, or simple class name for others |
+| `class_name` | `str` | Fully qualified class name |
+| `x`, `y` | `int` | Screen pixel coordinates |
+| `width`, `height` | `int` | Widget dimensions |
+| `active` | `bool` | Whether the widget can be interacted with |
+| `visible` | `bool` | Whether the widget is rendered |
+| `text` | `str` | Button label or widget text |
+| `edit_value` | `str` | Current text (EditBox only) |
+| `edit_editable` | `bool` | Whether the EditBox can be edited |
+| `selected` | `bool` | Whether this widget is currently focused/selected (e.g. selected entry in the multiplayer or world list) |
+
+**`GuiSlot` attributes:**
+
+| Attribute | Type | Description |
+|---|---|---|
+| `index` | `int` | Slot index - pass to `world.click_slot()` |
+| `x`, `y` | `int` | Screen pixel coordinates |
+| `active` | `bool` | Whether the slot is active |
+| `item_id` | `str` | Item ID (e.g. `"minecraft:diamond"`, `"minecraft:air"` if empty) |
+| `count` | `int` | Stack count |
+| `display_name` | `str` | Display name |
+| `damage` | `int` | Current durability damage |
+| `max_damage` | `int` | Max durability (0 if not damageable) |
+| `enchantments` | `dict[str, int]` | Enchantment ID to level |
+| `repair_cost` | `int` | Anvil repair cost |
 
 ```python
-current_screen = bot.screen()
+# Click a button by label on any screen
+screen = bot.get_screen()
+if screen is not None:
+    for w in screen.widgets:
+        if w.text == "Multiplayer" and w.active:
+            world.click_widget(screen.id, w.index)
+            break
 
-if current_screen is None:
-    print("In-game, no GUI open")
-elif "ChatScreen" in current_screen:
-    print("Chat is open")
-elif "InventoryScreen" in current_screen:
-    print("Inventory is open")
-elif "TitleScreen" in current_screen:
-    print("At main menu")
-else:
-    print(f"Screen: {current_screen}")
+# Auction house: slots act as buttons, items describe what they do
+screen = bot.get_screen()
+if screen is not None:
+    for slot in screen.slots:
+        if "Buy" in slot.display_name:
+            world.click_slot(slot.index)
+            break
 ```
 
-**Note:** Works with all vanilla and modded screens. Screen class names follow the pattern:
+### `open_game_menu(bot_name="")`
 
-- Vanilla: `net.minecraft.client.gui.screens.*`
-- Modded: `com.modname.gui.*` or similar
+Open the game/pause menu, equivalent to pressing ESC while in-game.
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+**Note:** The client performs additional checks before opening the menu (screen already open, not in a world) and will send a failure response if these conditions aren't met.
+
+```python
+bot.open_game_menu()
+```
 
 ### `network_stats(bot_name="")`
 

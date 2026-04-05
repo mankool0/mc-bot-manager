@@ -3,11 +3,49 @@
 
 #undef slots
 #include <pybind11/embed.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 
 PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.doc() = "Bot state and control";
+
+    py::class_<PyGuiWidget>(m, "GuiWidget")
+        .def_readonly("index", &PyGuiWidget::index)
+        .def_readonly("type", &PyGuiWidget::widgetType)
+        .def_readonly("class_name", &PyGuiWidget::className)
+        .def_readonly("x", &PyGuiWidget::x)
+        .def_readonly("y", &PyGuiWidget::y)
+        .def_readonly("width", &PyGuiWidget::width)
+        .def_readonly("height", &PyGuiWidget::height)
+        .def_readonly("active", &PyGuiWidget::active)
+        .def_readonly("visible", &PyGuiWidget::visible)
+        .def_readonly("text", &PyGuiWidget::text)
+        .def_readonly("edit_value", &PyGuiWidget::editValue)
+        .def_readonly("edit_editable", &PyGuiWidget::editEditable)
+        .def_readonly("selected", &PyGuiWidget::selected);
+
+    py::class_<PyGuiSlot>(m, "GuiSlot")
+        .def_readonly("index", &PyGuiSlot::index)
+        .def_readonly("x", &PyGuiSlot::x)
+        .def_readonly("y", &PyGuiSlot::y)
+        .def_readonly("active", &PyGuiSlot::active)
+        .def_readonly("item_id", &PyGuiSlot::itemId)
+        .def_readonly("count", &PyGuiSlot::count)
+        .def_readonly("display_name", &PyGuiSlot::displayName)
+        .def_readonly("damage", &PyGuiSlot::damage)
+        .def_readonly("max_damage", &PyGuiSlot::maxDamage)
+        .def_readonly("enchantments", &PyGuiSlot::enchantments)
+        .def_readonly("repair_cost", &PyGuiSlot::repairCost);
+
+    py::class_<PyScreenState>(m, "ScreenState")
+        .def_readonly("id", &PyScreenState::screenId)
+        .def_readonly("screen_class", &PyScreenState::screenClass)
+        .def_readonly("title", &PyScreenState::title)
+        .def_readonly("width", &PyScreenState::width)
+        .def_readonly("height", &PyScreenState::height)
+        .def_readonly("widgets", &PyScreenState::widgets)
+        .def_readonly("slots", &PyScreenState::guiSlots);
 
     m.def("position", &PythonAPI::getPosition,
           "Get position as dict {x, y, z}",
@@ -61,8 +99,11 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.def("get_cursor_item", &PythonAPI::getCursorItem,
           "Get item currently held on the cursor (slot=-1, item_id='minecraft:air' if empty)",
           py::arg("bot_name") = "");
-    m.def("screen", &PythonAPI::getScreen,
-          "Get current screen class name (None if in-game)",
+    m.def("get_screen", &PythonAPI::getScreen,
+          "Get current screen state (None if in-game with no GUI open)",
+          py::arg("bot_name") = "");
+    m.def("open_game_menu", &PythonAPI::openGameMenu,
+          "Open the game/pause menu (equivalent to pressing ESC in-game). Raises if bot is not online or a screen is already open.",
           py::arg("bot_name") = "");
     m.def("network_stats", &PythonAPI::getNetworkStats,
           "Get network stats dict",
@@ -345,6 +386,106 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     m.def("get_container", &PythonAPI::getContainer,
           "Get current open container info (None if no container open)",
           py::arg("bot") = "");
+    m.def("click_widget", &PythonAPI::clickScreenWidget,
+          "Click a widget on the current screen by index from bot.get_screen(). Raises if screen_id doesn't match.",
+          py::arg("screen_id"),
+          py::arg("widget_index"),
+          py::arg("button") = PythonAPI::MouseButton::LEFT,
+          py::arg("bot") = "");
+    m.def("click_screen", &PythonAPI::clickScreenPosition,
+          "Click at specific pixel coordinates on the current screen. Raises if screen_id doesn't match.",
+          py::arg("screen_id"),
+          py::arg("x"),
+          py::arg("y"),
+          py::arg("button") = PythonAPI::MouseButton::LEFT,
+          py::arg("bot") = "");
+    m.def("type_text", &PythonAPI::typeText,
+          "Type text into the current screen (sends charTyped events). Raises if screen_id doesn't match.",
+          py::arg("screen_id"),
+          py::arg("text"),
+          py::arg("bot") = "");
+    m.def("press_key", &PythonAPI::pressKey,
+          "Press a key on the current screen. Use world.Key.* for key codes and world.KeyMod.* for modifiers. Raises if screen_id doesn't match.",
+          py::arg("screen_id"),
+          py::arg("key_code"),
+          py::arg("modifiers") = 0,
+          py::arg("bot") = "");
+
+    py::enum_<PythonAPI::Key>(m, "Key")
+        .value("SPACE", PythonAPI::Key::SPACE)
+        .value("APOSTROPHE", PythonAPI::Key::APOSTROPHE)
+        .value("COMMA", PythonAPI::Key::COMMA)
+        .value("MINUS", PythonAPI::Key::MINUS)
+        .value("PERIOD", PythonAPI::Key::PERIOD)
+        .value("SLASH", PythonAPI::Key::SLASH)
+        .value("NUM_0", PythonAPI::Key::NUM_0).value("NUM_1", PythonAPI::Key::NUM_1)
+        .value("NUM_2", PythonAPI::Key::NUM_2).value("NUM_3", PythonAPI::Key::NUM_3)
+        .value("NUM_4", PythonAPI::Key::NUM_4).value("NUM_5", PythonAPI::Key::NUM_5)
+        .value("NUM_6", PythonAPI::Key::NUM_6).value("NUM_7", PythonAPI::Key::NUM_7)
+        .value("NUM_8", PythonAPI::Key::NUM_8).value("NUM_9", PythonAPI::Key::NUM_9)
+        .value("SEMICOLON", PythonAPI::Key::SEMICOLON).value("EQUAL", PythonAPI::Key::EQUAL)
+        .value("A", PythonAPI::Key::A).value("B", PythonAPI::Key::B).value("C", PythonAPI::Key::C)
+        .value("D", PythonAPI::Key::D).value("E", PythonAPI::Key::E).value("F", PythonAPI::Key::F)
+        .value("G", PythonAPI::Key::G).value("H", PythonAPI::Key::H).value("I", PythonAPI::Key::I)
+        .value("J", PythonAPI::Key::J).value("K", PythonAPI::Key::K).value("L", PythonAPI::Key::L)
+        .value("M", PythonAPI::Key::M).value("N", PythonAPI::Key::N).value("O", PythonAPI::Key::O)
+        .value("P", PythonAPI::Key::P).value("Q", PythonAPI::Key::Q).value("R", PythonAPI::Key::R)
+        .value("S", PythonAPI::Key::S).value("T", PythonAPI::Key::T).value("U", PythonAPI::Key::U)
+        .value("V", PythonAPI::Key::V).value("W", PythonAPI::Key::W).value("X", PythonAPI::Key::X)
+        .value("Y", PythonAPI::Key::Y).value("Z", PythonAPI::Key::Z)
+        .value("LEFT_BRACKET", PythonAPI::Key::LEFT_BRACKET)
+        .value("BACKSLASH", PythonAPI::Key::BACKSLASH)
+        .value("RIGHT_BRACKET", PythonAPI::Key::RIGHT_BRACKET)
+        .value("GRAVE_ACCENT", PythonAPI::Key::GRAVE_ACCENT)
+        .value("ESCAPE", PythonAPI::Key::ESCAPE).value("ENTER", PythonAPI::Key::ENTER)
+        .value("TAB", PythonAPI::Key::TAB).value("BACKSPACE", PythonAPI::Key::BACKSPACE)
+        .value("INSERT", PythonAPI::Key::INSERT).value("DELETE", PythonAPI::Key::DELETE)
+        .value("RIGHT", PythonAPI::Key::RIGHT).value("LEFT", PythonAPI::Key::LEFT)
+        .value("DOWN", PythonAPI::Key::DOWN).value("UP", PythonAPI::Key::UP)
+        .value("PAGE_UP", PythonAPI::Key::PAGE_UP).value("PAGE_DOWN", PythonAPI::Key::PAGE_DOWN)
+        .value("HOME", PythonAPI::Key::HOME).value("END", PythonAPI::Key::END)
+        .value("CAPS_LOCK", PythonAPI::Key::CAPS_LOCK)
+        .value("SCROLL_LOCK", PythonAPI::Key::SCROLL_LOCK)
+        .value("NUM_LOCK", PythonAPI::Key::NUM_LOCK)
+        .value("PRINT_SCREEN", PythonAPI::Key::PRINT_SCREEN)
+        .value("PAUSE", PythonAPI::Key::PAUSE)
+        .value("F1", PythonAPI::Key::F1).value("F2", PythonAPI::Key::F2)
+        .value("F3", PythonAPI::Key::F3).value("F4", PythonAPI::Key::F4)
+        .value("F5", PythonAPI::Key::F5).value("F6", PythonAPI::Key::F6)
+        .value("F7", PythonAPI::Key::F7).value("F8", PythonAPI::Key::F8)
+        .value("F9", PythonAPI::Key::F9).value("F10", PythonAPI::Key::F10)
+        .value("F11", PythonAPI::Key::F11).value("F12", PythonAPI::Key::F12)
+        .value("KP_0", PythonAPI::Key::KP_0).value("KP_1", PythonAPI::Key::KP_1)
+        .value("KP_2", PythonAPI::Key::KP_2).value("KP_3", PythonAPI::Key::KP_3)
+        .value("KP_4", PythonAPI::Key::KP_4).value("KP_5", PythonAPI::Key::KP_5)
+        .value("KP_6", PythonAPI::Key::KP_6).value("KP_7", PythonAPI::Key::KP_7)
+        .value("KP_8", PythonAPI::Key::KP_8).value("KP_9", PythonAPI::Key::KP_9)
+        .value("KP_DECIMAL", PythonAPI::Key::KP_DECIMAL)
+        .value("KP_DIVIDE", PythonAPI::Key::KP_DIVIDE)
+        .value("KP_MULTIPLY", PythonAPI::Key::KP_MULTIPLY)
+        .value("KP_SUBTRACT", PythonAPI::Key::KP_SUBTRACT)
+        .value("KP_ADD", PythonAPI::Key::KP_ADD)
+        .value("KP_ENTER", PythonAPI::Key::KP_ENTER)
+        .value("KP_EQUAL", PythonAPI::Key::KP_EQUAL)
+        .value("LEFT_SHIFT", PythonAPI::Key::LEFT_SHIFT)
+        .value("LEFT_CONTROL", PythonAPI::Key::LEFT_CONTROL)
+        .value("LEFT_ALT", PythonAPI::Key::LEFT_ALT)
+        .value("LEFT_SUPER", PythonAPI::Key::LEFT_SUPER)
+        .value("RIGHT_SHIFT", PythonAPI::Key::RIGHT_SHIFT)
+        .value("RIGHT_CONTROL", PythonAPI::Key::RIGHT_CONTROL)
+        .value("RIGHT_ALT", PythonAPI::Key::RIGHT_ALT)
+        .value("RIGHT_SUPER", PythonAPI::Key::RIGHT_SUPER)
+        .value("MENU", PythonAPI::Key::MENU)
+        .export_values();
+
+    py::enum_<PythonAPI::KeyMod>(m, "KeyMod")
+        .value("SHIFT", PythonAPI::KeyMod::SHIFT)
+        .value("CONTROL", PythonAPI::KeyMod::CONTROL)
+        .value("ALT", PythonAPI::KeyMod::ALT)
+        .value("SUPER", PythonAPI::KeyMod::SUPER)
+        .value("CAPS_LOCK", PythonAPI::KeyMod::CAPS_LOCK)
+        .value("NUM_LOCK", PythonAPI::KeyMod::NUM_LOCK)
+        .export_values();
 
     // Recipe registry
     m.def("get_recipe", &PythonAPI::getRecipe,

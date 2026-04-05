@@ -29,6 +29,7 @@ public class MessageHandler {
     private final MeteorModuleHandler meteorModuleHandler;
     private final BaritoneHandler baritoneHandler;
     private final WorldInteractionHandler worldInteractionHandler;
+    private final ScreenInteractionHandler screenInteractionHandler;
 
     // Outbound handlers (send data updates)
     private final ServerOutbound serverOutbound;
@@ -62,6 +63,7 @@ public class MessageHandler {
         this.containerOutbound = new ContainerOutbound(this.client, connection);
         this.screenOutbound = new ScreenOutbound(this.client, connection);
         this.entityOutbound = new EntityOutbound(this.client, connection);
+        this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
@@ -118,6 +120,16 @@ public class MessageHandler {
             msg -> inventoryHandler.handleCloseContainer(msg.getMessageId(), msg.getCloseContainer()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.OPEN_INVENTORY,
             msg -> inventoryHandler.handleOpenInventory(msg.getMessageId(), msg.getOpenInventory()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLICK_SCREEN_WIDGET,
+            msg -> screenInteractionHandler.handleClickScreenWidget(msg.getMessageId(), msg.getClickScreenWidget()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CLICK_SCREEN_POSITION,
+            msg -> screenInteractionHandler.handleClickScreenPosition(msg.getMessageId(), msg.getClickScreenPosition()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.TYPE_TEXT,
+            msg -> screenInteractionHandler.handleTypeText(msg.getMessageId(), msg.getTypeText()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.PRESS_KEY,
+            msg -> screenInteractionHandler.handlePressKey(msg.getMessageId(), msg.getPressKey()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.OPEN_GAME_MENU,
+            msg -> screenInteractionHandler.handleOpenGameMenu(msg.getMessageId()));
     }
 
     public void start() {

@@ -75,6 +75,38 @@ message CloseContainerCommand {
 message OpenInventoryCommand {
 }
 
+// Click a widget (button etc.) by index; fails if screen_id doesn't match
+message ClickScreenWidgetCommand {
+  string screen_id = 1;
+  int32 widget_index = 2; // GuiWidget.index
+  int32 button = 3;       // 0=left, 1=right, 2=middle
+}
+
+// Click at pixel coordinates; fails if screen_id doesn't match
+message ClickScreenPositionCommand {
+  string screen_id = 1;
+  double x = 2;
+  double y = 3;
+  int32 button = 4; // 0=left, 1=right, 2=middle
+}
+
+// Type text into the current screen; fails if screen_id doesn't match
+message TypeTextCommand {
+  string screen_id = 1;
+  string text = 2;
+}
+
+// Press a key (GLFW key code); fails if screen_id doesn't match
+message PressKeyCommand {
+  string screen_id = 1;
+  int32 key_code = 2;
+  int32 modifiers = 3; // 0 for none
+}
+
+// Open the game/pause menu (ESC)
+message OpenGameMenuCommand {
+}
+
 // Tell client to shut down the process
 message ShutdownCommand {
   string reason = 1;           // Optional reason for shutdown

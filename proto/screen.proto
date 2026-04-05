@@ -2,7 +2,39 @@ syntax = "proto3";
 
 package mankool.mcbot.protocol;
 
-// Screen update message (Client -> Manager)
-message ScreenUpdate {
-  string screen_class = 1;  // Fully qualified class name (empty string = no screen)
+import "common.proto";
+
+// Sent whenever a screen opens or its widgets change (Client -> Manager)
+message ScreenDump {
+  string screen_id = 1;    // Unique per screen open, used to validate commands
+  string screen_class = 2; // Fully qualified Java class name (empty = no screen)
+  string title = 3;
+  int32 width = 4;
+  int32 height = 5;
+  repeated GuiWidget widgets = 6;
+  repeated GuiSlot gui_slots = 7; // Only for AbstractContainerScreen (named gui_slots to avoid Qt 'slots' macro)
+}
+
+message GuiWidget {
+  int32 index = 1;         // Position in Screen.children()
+  string widget_type = 2;  // "Button", "EditBox", "Checkbox", "ListEntry", "SignLine", or simple class name
+  string class_name = 3;   // Fully qualified class name
+  int32 x = 4;
+  int32 y = 5;
+  int32 width = 6;
+  int32 height = 7;
+  bool active = 8;
+  bool visible = 9;
+  string text = 10;        // getMessage() as plain string
+  string edit_value = 11;  // EditBox only
+  bool edit_editable = 12; // EditBox only
+  bool selected = 13;      // Focused/selected state
+}
+
+message GuiSlot {
+  int32 index = 1; // Used in ClickContainerSlotCommand
+  int32 x = 2;
+  int32 y = 3;
+  bool active = 4;
+  ItemStack item = 5; // minecraft:air if empty
 }

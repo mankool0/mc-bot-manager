@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantList>
+#include <functional>
 
 struct BotInstance;
 struct ScriptContext;
@@ -13,6 +14,7 @@ struct ScriptEvent {
     QString eventName;
     QVariantList args;
     QString botName;
+    std::function<void(void*)> argBuilder;
 };
 
 Q_DECLARE_METATYPE(ScriptEvent)

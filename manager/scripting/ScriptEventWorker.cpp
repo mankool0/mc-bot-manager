@@ -38,8 +38,25 @@ void ScriptEventWorker::processEvent(const ScriptEvent &event, ScriptContext *ct
     PythonAPI::setCurrentScript(event.scriptFilename);
 
     py::list pyArgs;
-    for (const QVariant &arg : event.args) {
-        pyArgs.append(PythonAPI::qVariantToPyObject(arg));
+    try {
+        if (event.argBuilder) {
+            event.argBuilder(&pyArgs);
+        } else {
+            for (const QVariant &arg : event.args) {
+                pyArgs.append(PythonAPI::qVariantToPyObject(arg));
+            }
+        }
+    } catch (py::error_already_set &e) {
+        QString stringError = QString::fromStdString(e.what());
+        QMetaObject::invokeMethod(botInstance->scriptEngine,
+            [engine = botInstance->scriptEngine,
+             filename = event.scriptFilename,
+             eventName = event.eventName,
+             stringError]() {
+                emit engine->scriptError(filename,
+                    QString("Error building args for '%1' event: %2").arg(eventName, stringError));
+            }, Qt::QueuedConnection);
+        return;
     }
 
     for (const py::function &handler : handlers) {

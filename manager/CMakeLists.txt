@@ -60,8 +60,9 @@ qt_add_protobuf(mc-bot-manager-proto
 )
 target_compile_options(mc-bot-manager-proto PRIVATE ${PROJECT_WARNING_FLAGS})
 
+set(PROJECT_MAIN_SOURCE "main.cpp")
+
 file(GLOB_RECURSE PROJECT_SOURCES
-    "main.cpp"
     "ui/*.cpp"
     "ui/*.h"
     "ui/*.ui"
@@ -90,6 +91,7 @@ endif()
 
 qt_add_executable(mc-bot-manager
     MANUAL_FINALIZATION
+    ${PROJECT_MAIN_SOURCE}
     ${PROJECT_SOURCES}
     ${app_icon_resource_windows}
     pythonlibs.qrc

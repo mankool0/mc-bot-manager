@@ -37,6 +37,7 @@ public:
     void stopAllScripts();
 
     void fireEvent(const QString &eventName, const QVariantList &args);
+    void fireEvent(const QString &eventName, std::function<void(void*)> argBuilder);
 
     QStringList getScriptNames() const;
     ScriptContext* getScript(const QString &filename);
