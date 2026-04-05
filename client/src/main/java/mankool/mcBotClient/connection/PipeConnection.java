@@ -107,6 +107,8 @@ public class PipeConnection {
                 break;
             } catch (Exception e) {
                 LOGGER.error("Error sending message: {}", e.getMessage(), e);
+                disconnect();
+                break;
             }
         }
     }
