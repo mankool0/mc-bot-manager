@@ -12,14 +12,17 @@ LogManager::LogManager(QObject *parent)
 
 void LogManager::logImpl(const QString &message, LogLevel level)
 {
-    if (!managerLogWidget) return;
+    if (managerLogWidget) {
+        QString formattedMessage = formatMessage(message, level);
+        managerLogWidget->appendHtml(formattedMessage);
 
-    QString formattedMessage = formatMessage(message, level);
-    managerLogWidget->appendHtml(formattedMessage);
-
-    if (autoScroll) {
-        managerLogWidget->moveCursor(QTextCursor::End);
+        if (autoScroll) {
+            managerLogWidget->moveCursor(QTextCursor::End);
+        }
     }
+
+    if (m_fileSink)
+        m_fileSink->write(formatPlainText(message, level));
 }
 
 void LogManager::logPrismImpl(const QString &message)
@@ -82,6 +85,22 @@ QString LogManager::formatMessage(const QString &message, LogLevel level)
     return QString("<span style='color: gray'>%1</span> "
                    "<span style='color: %2; font-weight: bold'>[%3]</span> %4")
         .arg(timestamp, color, prefix, message);
+}
+
+QString LogManager::formatPlainText(const QString &message, LogLevel level)
+{
+    QString timestamp = QDateTime::currentDateTime().toString("[hh:mm:ss]");
+
+    QString prefix;
+    switch (level) {
+    case Debug:   prefix = "DEBUG"; break;
+    case Info:    prefix = "INFO";  break;
+    case Warning: prefix = "WARN";  break;
+    case Error:   prefix = "ERROR"; break;
+    case Success: prefix = "OK";    break;
+    }
+
+    return QString("%1 [%2] %3").arg(timestamp, prefix, message);
 }
 
 QString LogManager::formatPrismMessage(const QString &message)

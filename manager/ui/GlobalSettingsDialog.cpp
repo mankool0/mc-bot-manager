@@ -1,11 +1,15 @@
 #include "GlobalSettingsDialog.h"
 #include "BotConsoleWidget.h"
 #include "bot/BotManager.h"
+#include "logging/LogManager.h"
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QSettings>
 #include <QGuiApplication>
 #include <QStyleHints>
+#include <QCoreApplication>
+#include <QFileDialog>
+#include <QHBoxLayout>
 
 GlobalSettingsDialog::GlobalSettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -22,7 +26,7 @@ void GlobalSettingsDialog::setupUI()
 {
     setWindowTitle("Global Settings");
     setModal(true);
-    resize(500, 300);
+    resize(500, 450);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
@@ -55,6 +59,48 @@ void GlobalSettingsDialog::setupUI()
 
 
     mainLayout->addWidget(consoleGroup);
+
+    QGroupBox *loggingGroup = new QGroupBox("File Logging", this);
+    QFormLayout *loggingLayout = new QFormLayout(loggingGroup);
+
+    loggingEnabledCheckBox = new QCheckBox("Enable file logging", this);
+    loggingLayout->addRow(loggingEnabledCheckBox);
+
+    QHBoxLayout *logDirLayout = new QHBoxLayout();
+    logDirEdit = new QLineEdit(this);
+    logDirEdit->setReadOnly(true);
+    logDirEdit->setToolTip("Directory where log files are saved");
+    logDirBrowseButton = new QPushButton("Browse...", this);
+    logDirLayout->addWidget(logDirEdit);
+    logDirLayout->addWidget(logDirBrowseButton);
+    loggingLayout->addRow("Log Directory:", logDirLayout);
+
+    logMaxSizeMiBSpinBox = new QSpinBox(this);
+    logMaxSizeMiBSpinBox->setRange(1, 1000);
+    logMaxSizeMiBSpinBox->setValue(10);
+    logMaxSizeMiBSpinBox->setSuffix(" MiB");
+    logMaxSizeMiBSpinBox->setToolTip("Maximum log file size before rollover");
+    loggingLayout->addRow("Max File Size:", logMaxSizeMiBSpinBox);
+
+    logMaxFilesSpinBox = new QSpinBox(this);
+    logMaxFilesSpinBox->setRange(0, 10000);
+    logMaxFilesSpinBox->setSpecialValueText("Unlimited");
+    logMaxFilesSpinBox->setToolTip("Total number of log files to keep per bot (0 = unlimited)");
+    loggingLayout->addRow("Max Files:", logMaxFilesSpinBox);
+
+    mainLayout->addWidget(loggingGroup);
+
+    connect(loggingEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        logDirEdit->setEnabled(checked);
+        logDirBrowseButton->setEnabled(checked);
+        logMaxSizeMiBSpinBox->setEnabled(checked);
+        logMaxFilesSpinBox->setEnabled(checked);
+    });
+    connect(logDirBrowseButton, &QPushButton::clicked, this, [this]() {
+        QString dir = QFileDialog::getExistingDirectory(this, "Select Log Directory", logDirEdit->text());
+        if (!dir.isEmpty())
+            logDirEdit->setText(dir);
+    });
 
     QGroupBox *appearanceGroup = new QGroupBox("Appearance", this);
     QFormLayout *appearanceLayout = new QFormLayout(appearanceGroup);
@@ -108,6 +154,17 @@ void GlobalSettingsDialog::loadSettings()
 
     consolePendingLinesSpinBox->setValue(settings.value("Console/maxPendingLines", 500).toInt());
 
+    bool loggingEnabled = settings.value("Logging/enabled", true).toBool();
+    loggingEnabledCheckBox->setChecked(loggingEnabled);
+    QString defaultLogDir = QCoreApplication::applicationDirPath() + "/logs";
+    logDirEdit->setText(settings.value("Logging/logDir", defaultLogDir).toString());
+    logMaxSizeMiBSpinBox->setValue(settings.value("Logging/maxSizeMiB", 10).toInt());
+    logMaxFilesSpinBox->setValue(settings.value("Logging/maxFiles", 0).toInt());
+    logDirEdit->setEnabled(loggingEnabled);
+    logDirBrowseButton->setEnabled(loggingEnabled);
+    logMaxSizeMiBSpinBox->setEnabled(loggingEnabled);
+    logMaxFilesSpinBox->setEnabled(loggingEnabled);
+
     int scheme = settings.value("Appearance/colorScheme", static_cast<int>(Qt::ColorScheme::Unknown)).toInt();
     for (int i = 0; i < colorSchemeComboBox->count(); ++i) {
         if (colorSchemeComboBox->itemData(i).toInt() == scheme) {
@@ -131,6 +188,26 @@ void GlobalSettingsDialog::saveSettings()
             bot.consoleWidget->setMaxLines(maxLines);
             bot.consoleWidget->setRingCapacity(pendingLines);
         }
+    }
+
+    bool loggingEnabled = loggingEnabledCheckBox->isChecked();
+    QString logDir = logDirEdit->text().trimmed();
+    int logMaxSizeMiB = logMaxSizeMiBSpinBox->value();
+    int logMaxFiles = logMaxFilesSpinBox->value();
+    settings.setValue("Logging/enabled", loggingEnabled);
+    settings.setValue("Logging/logDir", logDir);
+    settings.setValue("Logging/maxSizeMiB", logMaxSizeMiB);
+    settings.setValue("Logging/maxFiles", logMaxFiles);
+
+    qint64 maxSizeBytes = (qint64)logMaxSizeMiB * 1024 * 1024;
+    if (loggingEnabled) {
+        LogManager::initFileSink(logDir, maxSizeBytes, logMaxFiles);
+        for (BotInstance &bot : BotManager::getBots()) {
+            if (bot.consoleWidget)
+                bot.consoleWidget->attachLogFile(logDir, bot.name, maxSizeBytes, logMaxFiles);
+        }
+    } else {
+        LogManager::closeFileSink();
     }
 
     int scheme = colorSchemeComboBox->currentData().toInt();

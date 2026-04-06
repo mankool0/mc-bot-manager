@@ -1,4 +1,5 @@
 #include "BotConsoleWidget.h"
+#include "logging/LogFileSink.h"
 #include <QDateTime>
 #include <QTextCursor>
 #include <QTextCharFormat>
@@ -34,6 +35,19 @@ BotConsoleWidget::BotConsoleWidget(QWidget *parent)
 
 BotConsoleWidget::~BotConsoleWidget()
 {
+    delete m_fileSink;
+}
+
+void BotConsoleWidget::attachLogFile(const QString &logDir, const QString &botName, qint64 maxSizeBytes, int maxFiles)
+{
+    QMutexLocker locker(&m_ringMutex);
+    delete m_fileSink;
+    m_fileSink = new LogFileSink();
+    m_fileSink->setMaxSizeBytes(maxSizeBytes);
+    m_fileSink->setMaxFiles(maxFiles);
+    // Unlock before open() to avoid holding mutex during I/O
+    locker.unlock();
+    m_fileSink->open(logDir + "/bots/" + botName, botName);
 }
 
 void BotConsoleWidget::setupUI()
@@ -257,6 +271,9 @@ void BotConsoleWidget::pushLogLine(const QString &text, const QColor &color)
     }
     m_ring[m_ringTail] = {text, color};
     m_ringTail = (m_ringTail + 1) % m_ringCapacity;
+
+    if (m_fileSink)
+        m_fileSink->write(text);
 }
 
 void BotConsoleWidget::flushPendingOutput()

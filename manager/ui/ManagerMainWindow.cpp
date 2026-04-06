@@ -13,6 +13,8 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTimer>
+#include <QSettings>
+#include <QCoreApplication>
 #include <QProcess>
 #include <QDateTime>
 #include <QTextCursor>
@@ -32,6 +34,17 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
 
     LogManager::setManagerLogWidget(ui->managerLogTextEdit);
     LogManager::setPrismLogWidget(ui->prismLogTextEdit);
+
+    {
+        QSettings settings("MCBotManager", "MCBotManager");
+        if (settings.value("Logging/enabled", true).toBool()) {
+            QString logDir = settings.value("Logging/logDir",
+                QCoreApplication::applicationDirPath() + "/logs").toString();
+            int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
+            int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
+            LogManager::initFileSink(logDir, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
+        }
+    }
 
     PrismLauncherManager::setPrismConfig(&prismConfig);
 
@@ -109,6 +122,8 @@ void ManagerMainWindow::closeEvent(QCloseEvent *event)
 {
     QVector<BotInstance> &bots = BotManager::getBots();
     for (BotInstance &bot : bots) {
+        if (bot.scriptEngine)
+            bot.scriptEngine->stopAllScripts();
         if (bot.status == BotStatus::Online) {
             bot.manualStop = true;
             BotManager::sendShutdownCommand(bot.name, "Manager closing");
@@ -302,6 +317,17 @@ void ManagerMainWindow::addNewBot()
                 connect(bot->consoleWidget, &BotConsoleWidget::commandEntered,
                         this, &ManagerMainWindow::onConsoleCommandEntered);
                 bot->consoleWidget->hide();
+
+                {
+                    QSettings settings("MCBotManager", "MCBotManager");
+                    if (settings.value("Logging/enabled", true).toBool()) {
+                        QString logDir = settings.value("Logging/logDir",
+                            QCoreApplication::applicationDirPath() + "/logs").toString();
+                        int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
+                        int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
+                        bot->consoleWidget->attachLogFile(logDir, bot->name, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
+                    }
+                }
 
                 QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->consoleTab->layout());
                 if (layout) {
@@ -1446,6 +1472,13 @@ void ManagerMainWindow::setupConsoleTab()
     }
 
     QVector<BotInstance> &bots = BotManager::getBots();
+    QSettings settings("MCBotManager", "MCBotManager");
+    bool loggingEnabled = settings.value("Logging/enabled", true).toBool();
+    QString logDir = settings.value("Logging/logDir",
+        QCoreApplication::applicationDirPath() + "/logs").toString();
+    int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
+    int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
+
     for (BotInstance &bot : bots) {
         if (!bot.consoleWidget) {
             bot.consoleWidget = new BotConsoleWidget(this);
@@ -1453,6 +1486,9 @@ void ManagerMainWindow::setupConsoleTab()
                     this, &ManagerMainWindow::onConsoleCommandEntered);
             bot.consoleWidget->hide();
             layout->addWidget(bot.consoleWidget);
+
+            if (loggingEnabled)
+                bot.consoleWidget->attachLogFile(logDir, bot.name, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
         }
     }
 }

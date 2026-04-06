@@ -7,6 +7,8 @@
 #include <QPlainTextEdit>
 #include <QTextCursor>
 #include <QPointer>
+#include <memory>
+#include "LogFileSink.h"
 
 class LogManager : public QObject
 {
@@ -34,6 +36,16 @@ public:
         instance().autoScroll = enabled;
     }
 
+    static void initFileSink(const QString &logDir, qint64 maxSizeBytes, int maxFiles) {
+        instance().m_fileSink = std::make_unique<LogFileSink>();
+        instance().m_fileSink->setMaxSizeBytes(maxSizeBytes);
+        instance().m_fileSink->setMaxFiles(maxFiles);
+        instance().m_fileSink->open(logDir + "/manager", "manager");
+    }
+    static void closeFileSink() {
+        instance().m_fileSink.reset();
+    }
+
     static void log(const QString &message, LogLevel level = Info) {
         emit instance().logRequested(message, level);
     }
@@ -59,6 +71,7 @@ private:
     QPointer<QPlainTextEdit> managerLogWidget;
     QPointer<QPlainTextEdit> prismLogWidget;
     bool autoScroll = true;
+    std::unique_ptr<LogFileSink> m_fileSink;
 
     void logImpl(const QString &message, LogLevel level);
     void logPrismImpl(const QString &message);
@@ -66,6 +79,7 @@ private:
     void clearPrismLogImpl();
 
     QString formatMessage(const QString &message, LogLevel level);
+    QString formatPlainText(const QString &message, LogLevel level);
     QString formatPrismMessage(const QString &message);
 };
 
