@@ -15,6 +15,7 @@
 #include <QTimer>
 #include <QMutex>
 #include <QVector>
+class LogFileSink;
 
 class BotConsoleWidget : public QWidget
 {
@@ -31,6 +32,9 @@ public:
 
     // Called from any thread - writes into ring buffer, flushed every 50ms
     void pushLogLine(const QString &text, const QColor &color);
+
+    // Attach a file sink; takes ownership. Closes any previous sink.
+    void attachLogFile(const QString &logDir, const QString &botName, qint64 maxSizeBytes, int maxFiles);
 
     // Called from main thread - resizes ring buffer, preserving most recent contents
     void setRingCapacity(int capacity);
@@ -80,6 +84,7 @@ private:
     QMutex m_ringMutex;
 
     QTimer *m_flushTimer;
+    LogFileSink *m_fileSink = nullptr;
 
     struct CommandInfo {
         QString name;

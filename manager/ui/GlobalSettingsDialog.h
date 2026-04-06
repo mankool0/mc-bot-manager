@@ -7,6 +7,8 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QLineEdit>
+#include <QPushButton>
 #include <Qt>
 
 class GlobalSettingsDialog : public QDialog
@@ -30,6 +32,12 @@ private:
     QCheckBox *consoleUnlimitedCheckBox;
     QSpinBox *consolePendingLinesSpinBox;
     QComboBox *colorSchemeComboBox;
+
+    QCheckBox *loggingEnabledCheckBox;
+    QLineEdit *logDirEdit;
+    QPushButton *logDirBrowseButton;
+    QSpinBox *logMaxSizeMiBSpinBox;
+    QSpinBox *logMaxFilesSpinBox;
 
     QDialogButtonBox *buttonBox;
 };
