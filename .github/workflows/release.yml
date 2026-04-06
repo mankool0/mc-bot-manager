@@ -68,7 +68,6 @@ jobs:
           target: desktop
           arch: linux_gcc_64
           modules: qtgrpc
-          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@refs/pull/1000/head'
 
       - name: Install protobuf compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
@@ -114,6 +113,7 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           modules: qtgrpc
+          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
 
       - name: Install protobuf compiler and ninja
         shell: cmd
