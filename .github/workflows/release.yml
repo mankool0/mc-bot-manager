@@ -49,7 +49,7 @@ jobs:
       - name: Build with Gradle
         working-directory: client
         run: |
-          ./gradlew generateProto build \
+          ./gradlew build \
             -Pminecraft_version=${{ matrix.mc_version }} \
             -Pmod_version="$(git describe --always --tags --first-parent | sed 's/^v//')"
 

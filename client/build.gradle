@@ -69,6 +69,9 @@ protobuf {
     }
 }
 
+tasks.withType(JavaCompile).configureEach { dependsOn tasks.named('generateProto') }
+tasks.withType(Jar).configureEach { dependsOn tasks.named('generateProto') }
+
 // Fix duplicate proto files issue
 tasks.withType(Copy).configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
