@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.api.baritone.IBaritoneSettingChangeListener;
+import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -425,14 +426,14 @@ public class BaritoneHandler extends BaseInboundHandler {
 
                 for (String item : protoValue.getListValue().getItemsList()) {
                     if (elementType == net.minecraft.world.level.block.Block.class) {
-                        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(item);
-                        if (id != null) {
-                            list.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(id));
+                        net.minecraft.world.level.block.Block block = VersionCompat.registryGet(net.minecraft.core.registries.BuiltInRegistries.BLOCK, item);
+                        if (block != null) {
+                            list.add(block);
                         }
                     } else if (elementType == net.minecraft.world.item.Item.class) {
-                        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(item);
-                        if (id != null) {
-                            list.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(id));
+                        net.minecraft.world.item.Item it = VersionCompat.registryGet(net.minecraft.core.registries.BuiltInRegistries.ITEM, item);
+                        if (it != null) {
+                            list.add(it);
                         }
                     } else {
                         list.add(item);
@@ -448,18 +449,16 @@ public class BaritoneHandler extends BaseInboundHandler {
                         String keyId = entry.getKey();
                         StringList valueList = entry.getValue();
 
-                        net.minecraft.resources.Identifier keyIdentifier = net.minecraft.resources.Identifier.tryParse(keyId);
-                        if (keyIdentifier == null) {
+                        net.minecraft.world.level.block.Block keyBlock = VersionCompat.registryGet(net.minecraft.core.registries.BuiltInRegistries.BLOCK, keyId);
+                        if (keyBlock == null) {
                             LOGGER.warn("Invalid block ID for map key: {}", keyId);
                             continue;
                         }
-                        net.minecraft.world.level.block.Block keyBlock = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(keyIdentifier);
 
                         List<net.minecraft.world.level.block.Block> valueBlocks = new ArrayList<>();
                         for (String blockId : valueList.getItemsList()) {
-                            net.minecraft.resources.Identifier blockIdentifier = net.minecraft.resources.Identifier.tryParse(blockId);
-                            if (blockIdentifier != null) {
-                                net.minecraft.world.level.block.Block block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(blockIdentifier);
+                            net.minecraft.world.level.block.Block block = VersionCompat.registryGet(net.minecraft.core.registries.BuiltInRegistries.BLOCK, blockId);
+                            if (block != null) {
                                 valueBlocks.add(block);
                             } else {
                                 LOGGER.warn("Invalid block ID in map value: {}", blockId);

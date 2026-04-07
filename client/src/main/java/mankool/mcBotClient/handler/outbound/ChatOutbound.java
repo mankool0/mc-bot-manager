@@ -3,6 +3,7 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Chat;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.VersionCompat;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.orbit.EventHandler;
@@ -45,7 +46,7 @@ public class ChatOutbound {
                 String senderName = "";
                 PlayerInfo playerInfo = client.getConnection().getPlayerInfo(senderUuid);
                 if (playerInfo != null) {
-                    senderName = playerInfo.getProfile().name();
+                    senderName = VersionCompat.profileName(playerInfo.getProfile());
                 }
 
                 String content = packet.body().content();
@@ -55,7 +56,7 @@ public class ChatOutbound {
                 long timestamp = packet.body().timeStamp().toEpochMilli();
 
                 String chatTypeStr = packet.chatType().chatType().unwrapKey()
-                    .map(key -> key.identifier().toString())
+                    .map(VersionCompat::keyId)
                     .orElse("minecraft:chat");
 
                 Chat.ChatMessage.MinecraftChatType chatType = switch (chatTypeStr) {

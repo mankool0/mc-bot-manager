@@ -7,6 +7,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.inventory.ClickType;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ public class InventoryHandler extends BaseInboundHandler {
         }
 
         try {
-            player.getInventory().setSelectedSlot(slot);
+            VersionCompat.setSelectedSlot(player.getInventory(), slot);
             sendSuccess(messageId, "Switched to hotbar slot " + slot);
         } catch (Exception e) {
             LOGGER.error("Failed to switch hotbar slot: {}", e.getMessage());

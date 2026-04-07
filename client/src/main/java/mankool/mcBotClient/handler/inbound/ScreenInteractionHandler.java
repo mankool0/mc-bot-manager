@@ -2,13 +2,10 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.handler.outbound.ScreenOutbound;
+import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcbot.protocol.Commands;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.input.MouseButtonInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +40,7 @@ public class ScreenInteractionHandler extends BaseInboundHandler {
 
         client.execute(() -> {
             try {
-                MouseButtonEvent event = new MouseButtonEvent(x, y, new MouseButtonInfo(button, 0));
-                screen.mouseClicked(event, false);
+                VersionCompat.screenMouseClicked(screen, x, y, button);
 
                 sendSuccess(messageId, "Clicked screen at (" + (int)x + "," + (int)y + ")");
             } catch (Exception e) {
@@ -72,7 +68,7 @@ public class ScreenInteractionHandler extends BaseInboundHandler {
         client.execute(() -> {
             try {
                 text.codePoints().forEach(cp ->
-                    screen.charTyped(new CharacterEvent(cp, 0))
+                    VersionCompat.screenCharTyped(screen, cp)
                 );
 
                 sendSuccess(messageId, "Typed " + text.length() + " character(s)");
@@ -102,8 +98,8 @@ public class ScreenInteractionHandler extends BaseInboundHandler {
 
         client.execute(() -> {
             try {
-                screen.keyPressed(new KeyEvent(key, 0, modifiers));
-                screen.keyReleased(new KeyEvent(key, 0, modifiers));
+                VersionCompat.screenKeyPressed(screen, key, modifiers);
+                VersionCompat.screenKeyReleased(screen, key, modifiers);
 
                 sendSuccess(messageId, "Pressed key " + key);
             } catch (Exception e) {
@@ -162,8 +158,7 @@ public class ScreenInteractionHandler extends BaseInboundHandler {
                 double clickX = target.centerX();
                 double clickY = target.centerY();
 
-                MouseButtonEvent event = new MouseButtonEvent(clickX, clickY, new MouseButtonInfo(button, 0));
-                screen.mouseClicked(event, false);
+                VersionCompat.screenMouseClicked(screen, clickX, clickY, button);
 
                 sendSuccess(messageId, "Clicked widget " + widgetIndex + " at (" + (int)clickX + "," + (int)clickY + ")");
             } catch (Exception e) {

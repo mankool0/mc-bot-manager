@@ -13,7 +13,7 @@ version = project.mod_version
 group = project.maven_group
 
 base {
-    archivesName = project.archives_base_name
+    archivesName = "${project.archives_base_name}-${project.minecraft_version}"
 }
 
 loom {
@@ -30,11 +30,28 @@ fabricApi {
     }
 }
 
+def mcVersions = [
+    '1.21.4':  [loader: '0.18.6', fabric: '0.119.4+1.21.4',  meteor: '1.21.4-SNAPSHOT',  baritone: '1.21.4-SNAPSHOT',  compat: 'src/compat/legacy/java'],
+    '1.21.11': [loader: '0.18.6', fabric: '0.141.3+1.21.11', meteor: '1.21.11-SNAPSHOT', baritone: '1.21.11-SNAPSHOT', compat: 'src/compat/modern/java'],
+]
+
+def mcVer = project.findProperty('minecraft_version') ?: project.minecraft_version
+def mcDeps = mcVersions[mcVer]
+if (mcDeps == null) throw new GradleException("Unknown minecraft_version: $mcVer. Valid: ${mcVersions.keySet()}")
+
+ext.loader_version   = mcDeps.loader
+ext.fabric_version   = mcDeps.fabric
+ext.meteor_version   = mcDeps.meteor
+ext.baritone_version = mcDeps.baritone
+
 sourceSets {
     main {
         proto {
             //noinspection GroovyAssignabilityCheck
             srcDir '../proto'
+        }
+        java {
+            srcDirs += [mcDeps.compat]
         }
     }
 }
@@ -85,15 +102,15 @@ dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
 
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
     // Meteor Client - utility mod
-    modImplementation "meteordevelopment:meteor-client:${project.meteor_version}"
+    modImplementation "meteordevelopment:meteor-client:${meteor_version}"
 
     // Baritone (https://github.com/MeteorDevelopment/baritone)
-    modImplementation "meteordevelopment:baritone:${project.baritone_version}"
+    modImplementation "meteordevelopment:baritone:${baritone_version}"
 
     // Baritone's nether-pathfinder dependency (from babbaj-repo)
     modImplementation "dev.babbaj:nether-pathfinder:1.6"
@@ -107,13 +124,13 @@ dependencies {
 processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
-    inputs.property "loader_version", project.loader_version
+    inputs.property "loader_version", loader_version
     filteringCharset "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
                 "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version
+                "loader_version": loader_version
     }
 }
 

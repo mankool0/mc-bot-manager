@@ -4,6 +4,7 @@ import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Inventory;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.util.ProtoUtil;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import mankool.mcBotClient.connection.PipeConnection;
@@ -12,6 +13,7 @@ import java.util.UUID;
 public class InventoryOutbound extends BaseOutbound {
     private static InventoryOutbound instance;
     private boolean pendingUpdate = false;
+    private int lastSelectedSlot = -1;
 
     public InventoryOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
@@ -24,6 +26,13 @@ public class InventoryOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
+        if (client.player != null) {
+            int currentSlot = VersionCompat.getSelectedSlot(client.player.getInventory());
+            if (currentSlot != lastSelectedSlot) {
+                lastSelectedSlot = currentSlot;
+                pendingUpdate = true;
+            }
+        }
         // Send batched inventory update once per tick
         if (pendingUpdate) {
             pendingUpdate = false;
@@ -40,7 +49,7 @@ public class InventoryOutbound extends BaseOutbound {
         if (player == null) return;
 
         Inventory.InventoryUpdate.Builder inventoryBuilder = Inventory.InventoryUpdate.newBuilder()
-            .setSelectedSlot(player.getInventory().getSelectedSlot());
+            .setSelectedSlot(VersionCompat.getSelectedSlot(player.getInventory()));
 
         // Add all inventory slots
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
