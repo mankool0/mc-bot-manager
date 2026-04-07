@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.util.ProtoUtil;
+import mankool.mcBotClient.util.VersionCompat;
 import java.util.UUID;
 
 public class PlayerOutbound extends BaseOutbound {
@@ -47,7 +48,7 @@ public class PlayerOutbound extends BaseOutbound {
             .setFlying(player.getAbilities().flying)
             .setBurning(player.isOnFire())
             .setAbsorption(player.getAbsorptionAmount())
-            .setDimension(player.level().dimension().identifier().toString())
+            .setDimension(VersionCompat.keyId(player.level().dimension()))
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

@@ -1,11 +1,12 @@
 package mankool.mcBotClient.handler.outbound;
 
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.VersionCompat;
+import net.minecraft.SharedConstants;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcbot.protocol.Registry;
 import mankool.mcbot.protocol.World;
-import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
@@ -55,7 +56,7 @@ public class WorldOutbound extends BaseOutbound {
      * Called on connection initialization.
      */
     public void sendRegistryQuery() {
-        int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
+        int dataVersion = VersionCompat.getDataVersion();
         int protocolVersion = SharedConstants.getProtocolVersion();
 
         World.QueryBlockRegistryMessage query = World.QueryBlockRegistryMessage.newBuilder()
@@ -90,7 +91,7 @@ public class WorldOutbound extends BaseOutbound {
      * Sends a query to the manager to check if it has the item registry for this data version.
      */
     public void sendItemRegistryQuery() {
-        int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
+        int dataVersion = VersionCompat.getDataVersion();
         int protocolVersion = SharedConstants.getProtocolVersion();
 
         Registry.QueryItemRegistryMessage query = Registry.QueryItemRegistryMessage.newBuilder()
@@ -125,14 +126,14 @@ public class WorldOutbound extends BaseOutbound {
      * Builds and sends the full item registry to the manager.
      */
     private void sendFullItemRegistry() {
-        int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
+        int dataVersion = VersionCompat.getDataVersion();
 
         Registry.ItemRegistryMessage.Builder builder = Registry.ItemRegistryMessage.newBuilder()
             .setDataVersion(dataVersion);
 
         for (Item item : BuiltInRegistries.ITEM) {
             String itemId = BuiltInRegistries.ITEM.getResourceKey(item)
-                .map(k -> k.identifier().toString())
+                .map(VersionCompat::keyId)
                 .orElse(null);
             if (itemId == null) continue;
 
@@ -163,7 +164,7 @@ public class WorldOutbound extends BaseOutbound {
      * Builds and sends the full block state registry to the manager.
      */
     private void sendFullRegistry() {
-        int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
+        int dataVersion = VersionCompat.getDataVersion();
         Map<Integer, String> stateMap = new HashMap<>();
         Map<Integer, Integer> faceMasks = new HashMap<>();
 
@@ -242,7 +243,7 @@ public class WorldOutbound extends BaseOutbound {
         World.ChunkUnloadMessage unload = World.ChunkUnloadMessage.newBuilder()
             .setChunkX(chunkX)
             .setChunkZ(chunkZ)
-            .setDimension(client.level.dimension().identifier().toString())
+            .setDimension(VersionCompat.keyId(client.level.dimension()))
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
@@ -265,7 +266,7 @@ public class WorldOutbound extends BaseOutbound {
         World.BlockUpdateMessage update = World.BlockUpdateMessage.newBuilder()
             .setPosition(toProtoBlockPos(pos))
             .setStateId(stateId)
-            .setDimension(client.level.dimension().identifier().toString())
+            .setDimension(VersionCompat.keyId(client.level.dimension()))
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
@@ -286,7 +287,7 @@ public class WorldOutbound extends BaseOutbound {
         }
 
         World.MultiBlockUpdateMessage.Builder builder = World.MultiBlockUpdateMessage.newBuilder()
-            .setDimension(client.level.dimension().identifier().toString());
+            .setDimension(VersionCompat.keyId(client.level.dimension()));
 
         for (int i = 0; i < positions.size(); i++) {
             builder.addPositions(toProtoBlockPos(positions.get(i)));
@@ -327,7 +328,7 @@ public class WorldOutbound extends BaseOutbound {
         World.ChunkDataMessage.Builder chunkBuilder = World.ChunkDataMessage.newBuilder()
             .setChunkX(chunk.getPos().x)
             .setChunkZ(chunk.getPos().z)
-            .setDimension(client.level.dimension().identifier().toString())
+            .setDimension(VersionCompat.keyId(client.level.dimension()))
             .setMinY(chunk.getMinY())
             .setMaxY(chunk.getMaxY());
 
@@ -428,7 +429,7 @@ public class WorldOutbound extends BaseOutbound {
                 for (int bx = 0; bx < 4; bx++) {
                     Holder<Biome> holder = biomeContainer.get(bx, by, bz);
                     String biomeId = holder.unwrapKey()
-                        .map(k -> k.identifier().toString())
+                        .map(VersionCompat::keyId)
                         .orElse("minecraft:the_void");
                     if (firstBiome == null) {
                         firstBiome = biomeId;
@@ -483,7 +484,7 @@ public class WorldOutbound extends BaseOutbound {
         World.LightUpdateMessage.Builder builder = World.LightUpdateMessage.newBuilder()
             .setChunkX(chunkX)
             .setChunkZ(chunkZ)
-            .setDimension(client.level.dimension().identifier().toString());
+            .setDimension(VersionCompat.keyId(client.level.dimension()));
 
         // Sky light: non-empty sections
         java.util.BitSet skyYMask = lightData.getSkyYMask();
@@ -559,7 +560,7 @@ public class WorldOutbound extends BaseOutbound {
         World.LightUpdateMessage.Builder builder = World.LightUpdateMessage.newBuilder()
             .setChunkX(chunkX)
             .setChunkZ(chunkZ)
-            .setDimension(client.level.dimension().identifier().toString());
+            .setDimension(VersionCompat.keyId(client.level.dimension()));
 
         boolean hasData = false;
         if (blockLayer != null && !blockLayer.isEmpty()) {

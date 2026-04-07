@@ -6,6 +6,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundDisconnectPacket;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ public class ConnectionHandler extends BaseInboundHandler {
         try {
             // Disconnect from current server if connected
             if (client.getConnection() != null) {
-                client.level.disconnect(Component.literal("Connecting to another server"));
+                VersionCompat.disconnectLevel(client.level);
                 client.disconnect(null, false);
             }
 

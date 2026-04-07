@@ -24,7 +24,7 @@ public class InventoryMixin {
         notifyInventoryChange();
     }
 
-    @Inject(method = "setSelectedSlot", at = @At("TAIL"))
+    @Inject(method = "setSelectedSlot", at = @At("TAIL"), require = 0)
     private void onSetSelectedSlot(int slot, CallbackInfo ci) {
         notifyInventoryChange();
     }

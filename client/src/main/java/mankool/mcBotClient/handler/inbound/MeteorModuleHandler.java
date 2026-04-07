@@ -13,7 +13,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
@@ -328,13 +328,13 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case EnchantmentListSetting ignored -> {
                     VanillaRegistries.createLookup().lookup(Registries.ENCHANTMENT).ifPresent(enchantmentRegistry ->
                             enchantmentRegistry.listElements().forEach(holder ->
-                                    builder.addPossibleValues(holder.key().identifier().toString())));
+                                    builder.addPossibleValues(VersionCompat.keyId(holder.key()))));
                 }
                 case StorageBlockListSetting ignored -> {
                     for (BlockEntityType<?> blockEntityType : StorageBlockListSetting.STORAGE_BLOCKS) {
-                        Identifier id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(blockEntityType);
+                        String id = VersionCompat.registryGetKeyId(BuiltInRegistries.BLOCK_ENTITY_TYPE, blockEntityType);
                         if (id != null) {
-                            builder.addPossibleValues(id.toString());
+                            builder.addPossibleValues(id);
                         }
                     }
                 }
@@ -482,7 +482,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case BlockListSetting blockListSetting -> {
                     if (protoValue.hasBlockListValue()) {
                         List<Block> blocks = protoValue.getBlockListValue().getBlocksList().stream()
-                                .map(name -> BuiltInRegistries.BLOCK.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.BLOCK, name))
                                 .filter(block -> block != Blocks.AIR)
                                 .collect(Collectors.toList());
                         blockListSetting.set(blocks);
@@ -494,7 +494,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case ItemListSetting itemListSetting -> {
                     if (protoValue.hasItemListValue()) {
                         List<Item> items = protoValue.getItemListValue().getItemsList().stream()
-                                .map(name -> BuiltInRegistries.ITEM.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.ITEM, name))
                                 .filter(item -> item != Items.AIR)
                                 .collect(Collectors.toList());
                         itemListSetting.set(items);
@@ -506,7 +506,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case EntityTypeListSetting entityTypeListSetting -> {
                     if (protoValue.hasEntityTypeListValue()) {
                         java.util.Set<EntityType<?>> entities = protoValue.getEntityTypeListValue().getEntityTypesList().stream()
-                                .map(name -> BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.ENTITY_TYPE, name))
                                 .collect(Collectors.toSet());
                         entityTypeListSetting.set(entities);
                     } else {
@@ -517,7 +517,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case StatusEffectListSetting statusEffectListSetting -> {
                     if (protoValue.hasStatusEffectListValue()) {
                         List<MobEffect> effects = protoValue.getStatusEffectListValue().getEffectsList().stream()
-                                .map(name -> BuiltInRegistries.MOB_EFFECT.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.MOB_EFFECT, name))
                                 .collect(Collectors.toList());
                         statusEffectListSetting.set(effects);
                     } else {
@@ -568,7 +568,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
 
                             BlockESPConfigMap configMap = protoValue.getBlockEspConfigMapValue();
                             for (var entry : configMap.getConfigsMap().entrySet()) {
-                                Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(entry.getKey()));
+                                Block block = VersionCompat.registryGet(BuiltInRegistries.BLOCK, entry.getKey());
                                 if (block != Blocks.AIR) {
                                     meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData espData =
                                             new meteordevelopment.meteorclient.systems.modules.render.blockesp.ESPBlockData(
@@ -596,7 +596,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case ParticleTypeListSetting particleTypeListSetting -> {
                     if (protoValue.hasParticleTypeListValue()) {
                         List<ParticleType<?>> particles = protoValue.getParticleTypeListValue().getParticlesList().stream()
-                                .map(name -> BuiltInRegistries.PARTICLE_TYPE.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.PARTICLE_TYPE, name))
                                 .collect(Collectors.toList());
                         particleTypeListSetting.set(particles);
                     } else {
@@ -632,9 +632,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     if (protoValue.hasEnchantmentListValue()) {
                         java.util.Set<ResourceKey<Enchantment>> enchantments =
                                 protoValue.getEnchantmentListValue().getEnchantmentsList().stream()
-                                .map(id -> ResourceKey.create(
-                                        Registries.ENCHANTMENT,
-                                        Identifier.parse(id)))
+                                .map(id -> VersionCompat.parseResourceKey(Registries.ENCHANTMENT, id))
                                 .collect(Collectors.toSet());
                         enchantmentListSetting.set(enchantments);
                     } else {
@@ -646,7 +644,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     if (protoValue.hasStorageBlockListValue()) {
                         List<BlockEntityType<?>> storageBlocks =
                                 protoValue.getStorageBlockListValue().getStorageBlocksList().stream()
-                                .map(name -> BuiltInRegistries.BLOCK_ENTITY_TYPE.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.BLOCK_ENTITY_TYPE, name))
                                 .collect(Collectors.toList());
                         storageBlockListSetting.set(storageBlocks);
                     } else {
@@ -657,7 +655,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case SoundEventListSetting soundEventListSetting -> {
                     if (protoValue.hasSoundEventListValue()) {
                         List<SoundEvent> sounds = protoValue.getSoundEventListValue().getSoundsList().stream()
-                                .map(name -> BuiltInRegistries.SOUND_EVENT.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.SOUND_EVENT, name))
                                 .collect(Collectors.toList());
                         soundEventListSetting.set(sounds);
                     } else {
@@ -668,7 +666,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 case ScreenHandlerListSetting screenHandlerListSetting -> {
                     if (protoValue.hasScreenHandlerListValue()) {
                         List<MenuType<?>> handlers = protoValue.getScreenHandlerListValue().getHandlersList().stream()
-                                .map(name -> BuiltInRegistries.MENU.getValue(Identifier.parse(name)))
+                                .map(name -> VersionCompat.registryGet(BuiltInRegistries.MENU, name))
                                 .collect(Collectors.toList());
                         screenHandlerListSetting.set(handlers);
                     } else {
@@ -799,7 +797,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case EnchantmentListSetting enchantmentListSetting -> {
                     List<String> enchantmentIds = enchantmentListSetting.get().stream()
-                            .map(key -> key.identifier().toString())
+                            .map(key -> VersionCompat.keyId(key))
                             .collect(Collectors.toList());
                     builder.setEnchantmentListValue(EnchantmentList.newBuilder().addAllEnchantments(enchantmentIds).build());
                 }

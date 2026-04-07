@@ -3,9 +3,10 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Connection;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcBotClient.mixin.client.ClientPlayNetworkHandlerAccessor;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +49,10 @@ public class ServerOutbound extends BaseOutbound {
         long maxMemory = runtime.maxMemory();
 
         // Get version info
-        var worldVersion = SharedConstants.getCurrentVersion();
-        int dataVersion = worldVersion.dataVersion().version();
-        String versionName = worldVersion.name();
-        String versionSeries = worldVersion.dataVersion().series();
-        boolean isSnapshot = !worldVersion.stable();
+        int dataVersion = VersionCompat.getDataVersion();
+        String versionName = VersionCompat.getVersionName();
+        String versionSeries = VersionCompat.getVersionSeries();
+        boolean isSnapshot = VersionCompat.isVersionSnapshot();
 
         Connection.ConnectionInfo infoBuilder = Connection.ConnectionInfo.newBuilder()
             .setClientVersion(versionName)

@@ -4,6 +4,7 @@ import mankool.mcbot.protocol.Entities;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.util.ProtoUtil;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
@@ -46,7 +47,7 @@ public class EntityOutbound extends BaseOutbound {
         }
 
         Entities.EntityUpdate.Builder builder = Entities.EntityUpdate.newBuilder()
-                .setDimension(client.level.dimension().identifier().toString());
+                .setDimension(VersionCompat.keyId(client.level.dimension()));
 
         Set<Integer> currentIds = new HashSet<>();
 
@@ -98,8 +99,8 @@ public class EntityOutbound extends BaseOutbound {
     }
 
     private Entities.EntityData buildEntityData(Entity entity) {
-        var typeKey = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
-        if (typeKey == null) {
+        String typeId = VersionCompat.registryGetKeyId(BuiltInRegistries.ENTITY_TYPE, entity.getType());
+        if (typeId == null) {
             return null;
         }
 
@@ -108,7 +109,7 @@ public class EntityOutbound extends BaseOutbound {
         Entities.EntityData.Builder builder = Entities.EntityData.newBuilder()
                 .setEntityId(entity.getId())
                 .setUuid(entity.getUUID().toString())
-                .setType(typeKey.toString())
+                .setType(typeId)
                 .setX(entity.getX())
                 .setY(entity.getY())
                 .setZ(entity.getZ())

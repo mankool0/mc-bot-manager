@@ -2,6 +2,7 @@ package mankool.mcBotClient.mixin.client;
 
 import mankool.mcBotClient.handler.outbound.ContainerOutbound;
 import mankool.mcBotClient.handler.outbound.InventoryOutbound;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -39,7 +40,7 @@ public abstract class ContainerMixin {
     private void onContainerContent(ClientboundContainerSetContentPacket packet, CallbackInfo ci) {
         ContainerOutbound handler = ContainerOutbound.getInstance();
         if (handler != null) {
-            handler.onContainerContentSet(packet.containerId());
+            handler.onContainerContentSet(VersionCompat.getContainerId(packet));
         }
     }
 

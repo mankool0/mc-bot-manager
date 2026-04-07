@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
 import net.minecraft.world.level.storage.LevelSummary;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
 import mankool.mcBotClient.util.ProtoUtil;
+import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcbot.protocol.Screen;
 import net.minecraft.client.Minecraft;
@@ -238,8 +239,10 @@ public class ScreenOutbound extends BaseOutbound {
                     ServerData data = serverEntry.getServerData();
                     text = data.name + " (" + data.ip + ")";
                 } else if (listener instanceof WorldSelectionList.WorldListEntry worldEntry) {
-                    LevelSummary summary = worldEntry.getLevelSummary();
-                    text = summary.getLevelName() + " (" + summary.getLevelId() + ")";
+                    LevelSummary summary = VersionCompat.getLevelSummary(worldEntry);
+                    if (summary != null) {
+                        text = summary.getLevelName() + " (" + summary.getLevelId() + ")";
+                    }
                 }
                 dump.addWidgets(Screen.GuiWidget.newBuilder()
                     .setIndex(idx.getAndIncrement())
