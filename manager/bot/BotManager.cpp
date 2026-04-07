@@ -1031,7 +1031,7 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
         LogManager::log(QString("[%1] InventoryUpdate received: %2 items, selected slot %3")
                             .arg(bot->name)
                             .arg(inventory.items().size())
-                            .arg(inventory.selectedSlot()),
+                            .arg(static_cast<int>(inventory.selectedSlot())),
                         LogManager::Debug);
     }
 }

@@ -18,7 +18,7 @@ on:
         type: boolean
 
 env:
-  QT_VERSION: 6.10.0
+  QT_VERSION: 6.11.0
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
   WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
 
@@ -120,6 +120,7 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           modules: qtgrpc
+          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
 
       - name: Install protobuf compiler and ninja
         shell: cmd
