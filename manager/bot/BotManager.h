@@ -209,6 +209,19 @@ struct BotInstance {
     bool debugLogging;
     bool autoConnect = true;
     bool saveWorldToDisk = true;
+
+    struct ProxySettings {
+        bool enabled = false;
+        QString type = "SOCKS5";
+        QString host;
+        int port = 1080;
+        QString username;
+        QString password;
+    } proxySettings;
+
+    enum class ProxyHealth { Unknown, Alive, Dead } proxyHealth = ProxyHealth::Unknown;
+    bool proxyDisabledAutoReconnect = false;
+
     bool manualStop = false;
     QDateTime startTime;
 
@@ -408,6 +421,8 @@ public:
     static void sendBaritoneCommand(const QString &botName, const QString &commandText);
     static void sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QVariant &value);
     static void sendMeteorSettingChange(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
+    static void setMeteorModuleEnabled(const QString &botName, const QString &moduleName, bool enabled);
+    static void sendProxyConfig(const QString &botName);
 
     static QString getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting);
 

@@ -130,6 +130,8 @@ public class MessageHandler {
             msg -> screenInteractionHandler.handlePressKey(msg.getMessageId(), msg.getPressKey()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.OPEN_GAME_MENU,
             msg -> screenInteractionHandler.handleOpenGameMenu(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_PROXY_CONFIG,
+            msg -> connectionHandler.handleSetProxyConfig(msg.getMessageId(), msg.getSetProxyConfig()));
     }
 
     public void start() {

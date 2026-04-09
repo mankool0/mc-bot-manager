@@ -832,6 +832,9 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
 
         emit botUpdated(bot->name);
 
+        // Send proxy config immediately so it's applied before any server connection
+        sendProxyConfig(bot->name);
+
         LogManager::log(QString("[%1] Connected (Connection ID: %2)")
                        .arg(playerName).arg(connectionId), LogManager::Success);
     } else {
@@ -1524,6 +1527,10 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
     if (cmd == "connect") {
         if (parts.size() < 2) {
             LogManager::log("Usage: connect <server_address>", LogManager::Warning);
+            return;
+        }
+        if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
+            LogManager::log(QString("Cannot connect bot '%1': proxy is unreachable").arg(botName), LogManager::Error);
             return;
         }
         mankool::mcbot::protocol::ConnectToServerCommand connectCmd;
@@ -2449,6 +2456,73 @@ void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QStri
         LogManager::log(QString("Failed to serialize Meteor setting change for bot '%1'").arg(botName), LogManager::Error);
         return;
     }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+
+void BotManager::setMeteorModuleEnabled(const QString &botName, const QString &moduleName, bool enabled)
+{
+    BotInstance *bot = instance().getBotByNameImpl(botName);
+    if (!bot) return;
+    if (bot->connectionId <= 0) return;
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
+    setModuleCmd.setModuleName(moduleName);
+    setModuleCmd.setEnabled(enabled);
+    msg.setSetModuleConfig(setModuleCmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize module enable/disable for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+
+void BotManager::sendProxyConfig(const QString &botName)
+{
+    BotInstance *bot = instance().getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0) return;
+
+    mankool::mcbot::protocol::ProxyConfig pc;
+    pc.setEnabled(bot->proxySettings.enabled);
+    pc.setHost(bot->proxySettings.host);
+    pc.setPort(bot->proxySettings.port);
+    pc.setUsername(bot->proxySettings.username);
+    pc.setPassword(bot->proxySettings.password);
+    pc.setSocksVersion(bot->proxySettings.type == "SOCKS4"
+        ? mankool::mcbot::protocol::SocksVersionGadget::SocksVersion::SOCKS_VERSION_4
+        : mankool::mcbot::protocol::SocksVersionGadget::SocksVersion::SOCKS_VERSION_5);
+
+    mankool::mcbot::protocol::SetProxyConfigCommand proxyCmd;
+    proxyCmd.setConfig(pc);
+
+    mankool::mcbot::protocol::ManagerToClientMessage proxyMsg;
+    proxyMsg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    proxyMsg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+    proxyMsg.setSetProxyConfig(proxyCmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&proxyMsg);
+    if (protoData.isEmpty()) return;
 
     QByteArray message;
     QDataStream stream(&message, QIODevice::WriteOnly);
