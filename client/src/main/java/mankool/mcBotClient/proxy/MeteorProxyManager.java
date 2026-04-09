@@ -38,9 +38,11 @@ public class MeteorProxyManager {
             .address(config.getHost())
             .port(config.getPort())
             .username(config.getUsername())
-            .password(config.getPassword())
             .enabled(false)
             .build();
+        if (!config.getPassword().isEmpty()) {
+            proxy.password.set(config.getPassword());
+        }
 
         proxies.add(proxy);
         proxies.setEnabled(proxy, true);
