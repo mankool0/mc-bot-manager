@@ -104,6 +104,7 @@ public:
     static py::object getServer(const std::string &botName = "");
     static py::object getAccount(const std::string &botName = "");
     static py::object getUptime(const std::string &botName = "");
+    static py::object getProxy(const std::string &botName = "");
     static bool isOnline(const std::string &botName = "");
     static std::string getStatus(const std::string &botName = "");
     static py::object getInventory(const std::string &botName = "");

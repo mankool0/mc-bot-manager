@@ -536,6 +536,33 @@ py::object PythonAPI::getAccount(const std::string &botName)
     return py::cast(bot->account.toStdString());
 }
 
+py::object PythonAPI::getProxy(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->proxySettings.host.isEmpty()) {
+        return py::none();
+    }
+
+    QString healthStr;
+    switch (bot->proxyHealth) {
+        case BotInstance::ProxyHealth::Alive:   healthStr = "Alive"; break;
+        case BotInstance::ProxyHealth::Dead:    healthStr = "Dead"; break;
+        default:                                healthStr = "Unknown"; break;
+    }
+
+    py::dict d;
+    d["enabled"]  = bot->proxySettings.enabled;
+    d["host"]     = bot->proxySettings.host.toStdString();
+    d["port"]     = bot->proxySettings.port;
+    d["type"]     = bot->proxySettings.type.toStdString();
+    d["username"] = bot->proxySettings.username.toStdString();
+    d["password"] = bot->proxySettings.password.toStdString();
+    d["health"]   = healthStr.toStdString();
+    return d;
+}
+
 py::object PythonAPI::getUptime(const std::string &botName)
 {
     QString name = resolveBotName(botName);
