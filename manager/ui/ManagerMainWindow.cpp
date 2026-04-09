@@ -855,6 +855,42 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     loadingConfiguration = false;
 }
 
+static QPair<bool, qint64> testSocksHandshake(const QString &host, int port, bool isSocks4)
+{
+    QTcpSocket socket;
+    QElapsedTimer timer;
+    timer.start();
+
+    socket.connectToHost(host, port);
+    if (!socket.waitForConnected(5000)) return {false, -1};
+
+    if (isSocks4) {
+        // SOCKS4 CONNECT request to 0.0.0.1:80 (expect reject or grant, both confirm SOCKS4)
+        QByteArray req("\x04\x01\x00\x50\x00\x00\x00\x01\x00", 9);
+        socket.write(req);
+        if (!socket.waitForReadyRead(5000)) return {false, -1};
+        QByteArray resp = socket.read(8);
+        socket.disconnectFromHost();
+        qint64 ms = timer.elapsed();
+        if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x00) return {false, ms};
+        quint8 status = static_cast<quint8>(resp[1]);
+        // 0x5A = granted, 0x5B = rejected - both are valid SOCKS4 responses
+        if (status != 0x5A && status != 0x5B) return {false, ms};
+        return {true, ms};
+    } else {
+        // SOCKS5 greeting: version=5, 2 methods (no-auth=0x00, user/pass=0x02)
+        QByteArray greeting("\x05\x02\x00\x02", 4);
+        socket.write(greeting);
+        if (!socket.waitForReadyRead(5000)) return {false, -1};
+        QByteArray resp = socket.read(2);
+        socket.disconnectFromHost();
+        qint64 ms = timer.elapsed();
+        if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x05) return {false, ms};
+        if (static_cast<quint8>(resp[1]) != 0x00 && static_cast<quint8>(resp[1]) != 0x02) return {false, ms};
+        return {true, ms};
+    }
+}
+
 void ManagerMainWindow::onTestProxyClicked()
 {
     QString host = ui->proxyHostLineEdit->text().trimmed();
@@ -868,38 +904,7 @@ void ManagerMainWindow::onTestProxyClicked()
     ui->proxyStatusLabel->setStyleSheet("");
 
     QFuture<QPair<bool, qint64>> future = QtConcurrent::run([host, port, isSocks4]() -> QPair<bool, qint64> {
-        QTcpSocket socket;
-        QElapsedTimer timer;
-        timer.start();
-
-        socket.connectToHost(host, port);
-        if (!socket.waitForConnected(5000)) return {false, -1};
-
-        if (isSocks4) {
-            // SOCKS4 CONNECT request to 0.0.0.1:80 (expect reject or grant, both confirm SOCKS4)
-            QByteArray req("\x04\x01\x00\x50\x00\x00\x00\x01\x00", 9);
-            socket.write(req);
-            if (!socket.waitForReadyRead(5000)) return {false, -1};
-            QByteArray resp = socket.read(8);
-            socket.disconnectFromHost();
-            qint64 ms = timer.elapsed();
-            if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x00) return {false, ms};
-            quint8 status = static_cast<quint8>(resp[1]);
-            // 0x5A = granted, 0x5B = rejected - both are valid SOCKS4 responses
-            if (status != 0x5A && status != 0x5B) return {false, ms};
-            return {true, ms};
-        } else {
-            // SOCKS5 greeting: version=5, 2 methods (no-auth=0x00, user/pass=0x02)
-            QByteArray greeting("\x05\x02\x00\x02", 4);
-            socket.write(greeting);
-            if (!socket.waitForReadyRead(5000)) return {false, -1};
-            QByteArray resp = socket.read(2);
-            socket.disconnectFromHost();
-            qint64 ms = timer.elapsed();
-            if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x05) return {false, ms};
-            if (static_cast<quint8>(resp[1]) != 0x00 && static_cast<quint8>(resp[1]) != 0x02) return {false, ms};
-            return {true, ms};
-        }
+        return testSocksHandshake(host, port, isSocks4);
     });
 
     auto* watcher = new QFutureWatcher<QPair<bool, qint64>>(this);
@@ -1571,27 +1576,7 @@ void ManagerMainWindow::checkBotProxyHealth(const QString &botName)
     bool isSocks4 = (bot->proxySettings.type == "SOCKS4");
 
     QFuture<bool> future = QtConcurrent::run([host, port, isSocks4]() -> bool {
-        QTcpSocket socket;
-        socket.connectToHost(host, port);
-        if (!socket.waitForConnected(5000)) return false;
-        if (isSocks4) {
-            QByteArray req("\x04\x01\x00\x50\x00\x00\x00\x01\x00", 9);
-            socket.write(req);
-            if (!socket.waitForReadyRead(5000)) return false;
-            QByteArray resp = socket.read(8);
-            socket.disconnectFromHost();
-            if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x00) return false;
-            quint8 status = static_cast<quint8>(resp[1]);
-            return status == 0x5A || status == 0x5B;
-        } else {
-            QByteArray greeting("\x05\x02\x00\x02", 4);
-            socket.write(greeting);
-            if (!socket.waitForReadyRead(5000)) return false;
-            QByteArray resp = socket.read(2);
-            socket.disconnectFromHost();
-            if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x05) return false;
-            return static_cast<quint8>(resp[1]) == 0x00 || static_cast<quint8>(resp[1]) == 0x02;
-        }
+        return testSocksHandshake(host, port, isSocks4).first;
     });
 
     auto *watcher = new QFutureWatcher<bool>(this);
