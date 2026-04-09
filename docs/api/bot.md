@@ -86,6 +86,28 @@ Get bot uptime in seconds.
 
 **Returns:** `int` or `None`
 
+### `proxy(bot_name="")`
+
+Get proxy configuration and health state.
+
+**Returns:** `dict` or `None` if no proxy is configured (host is empty)
+
+Keys:
+
+- `enabled` (`bool`) - Whether the proxy is currently enabled
+- `host` (`str`) - Proxy host address
+- `port` (`int`) - Proxy port
+- `type` (`str`) - Proxy type: `"SOCKS4"` or `"SOCKS5"`
+- `username` (`str`) - Username (empty string if not set)
+- `password` (`str`) - Password (empty string if not set)
+- `health` (`str`) - One of: `"Unknown"`, `"Alive"`, `"Dead"`
+
+```python
+p = bot.proxy()
+if p and p["health"] == "Dead":
+    utils.log("Proxy is down")
+```
+
 ### `dimension(bot_name="")`
 
 Get current dimension.
