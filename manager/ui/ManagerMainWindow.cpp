@@ -300,6 +300,8 @@ void ManagerMainWindow::setupUI()
             this, &ManagerMainWindow::onBaritoneCommandsReceived);
     connect(&BotManager::instance(), &BotManager::baritoneSingleSettingUpdated,
             this, &ManagerMainWindow::onBaritoneSingleSettingUpdated);
+    connect(&BotManager::instance(), &BotManager::proxyDisconnectDetected,
+            this, &ManagerMainWindow::onProxyDisconnectDetected);
 
     launchSchedulerTimer = new QTimer(this);
     connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
@@ -1540,79 +1542,105 @@ void ManagerMainWindow::checkBotUptimes()
 
 void ManagerMainWindow::checkProxyHealth()
 {
+    using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
     QVector<BotInstance> &bots = BotManager::getBots();
     for (BotInstance &bot : bots) {
         if (!bot.proxySettings.enabled || bot.proxySettings.host.isEmpty()) continue;
 
-        QString host = bot.proxySettings.host;
-        int port = bot.proxySettings.port;
-        bool isSocks4 = (bot.proxySettings.type == "SOCKS4");
-        QString botName = bot.name;
-
-        QFuture<bool> future = QtConcurrent::run([host, port, isSocks4]() -> bool {
-            QTcpSocket socket;
-            socket.connectToHost(host, port);
-            if (!socket.waitForConnected(5000)) return false;
-            if (isSocks4) {
-                QByteArray req("\x04\x01\x00\x50\x00\x00\x00\x01\x00", 9);
-                socket.write(req);
-                if (!socket.waitForReadyRead(5000)) return false;
-                QByteArray resp = socket.read(8);
-                socket.disconnectFromHost();
-                if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x00) return false;
-                quint8 status = static_cast<quint8>(resp[1]);
-                return status == 0x5A || status == 0x5B;
-            } else {
-                QByteArray greeting("\x05\x02\x00\x02", 4);
-                socket.write(greeting);
-                if (!socket.waitForReadyRead(5000)) return false;
-                QByteArray resp = socket.read(2);
-                socket.disconnectFromHost();
-                if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x05) return false;
-                return static_cast<quint8>(resp[1]) == 0x00 || static_cast<quint8>(resp[1]) == 0x02;
+        // If actively connected to MC server, the working connection proves proxy is alive
+        // skip the check to avoid interfering with 1-connection proxies
+        if (bot.status == BotStatus::Online && bot.serverConnectionStatus == Status::SUCCESSFUL) {
+            if (bot.proxyHealth != BotInstance::ProxyHealth::Alive) {
+                BotInstance *b = BotManager::getBotByName(bot.name);
+                if (b) b->proxyHealth = BotInstance::ProxyHealth::Alive;
             }
-        });
+            continue;
+        }
 
-        auto *watcher = new QFutureWatcher<bool>(this);
-        connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, botName]() {
-            bool alive = watcher->result();
-            watcher->deleteLater();
-
-            BotInstance *b = BotManager::getBotByName(botName);
-            if (!b || !b->proxySettings.enabled) return;
-
-            BotInstance::ProxyHealth prev = b->proxyHealth;
-
-            if (alive) {
-                b->proxyHealth = BotInstance::ProxyHealth::Alive;
-                if (prev == BotInstance::ProxyHealth::Dead) {
-                    LogManager::log(QString("[%1] Proxy recovered - re-checking auto-reconnect state").arg(botName), LogManager::Info);
-                    if (b->proxyDisabledAutoReconnect) {
-                        BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", true);
-                        b->proxyDisabledAutoReconnect = false;
-                        LogManager::log(QString("[%1] Re-enabled auto-reconnect module").arg(botName), LogManager::Info);
-                    }
-                }
-            } else {
-                b->proxyHealth = BotInstance::ProxyHealth::Dead;
-                if (prev != BotInstance::ProxyHealth::Dead) {
-                    LogManager::log(QString("[%1] Proxy is unreachable - blocking connections").arg(botName), LogManager::Error);
-
-                    // Check if auto-reconnect is currently enabled for this bot
-                    bool autoReconnectEnabled = false;
-                    if (b->meteorModules.contains("auto-reconnect")) {
-                        autoReconnectEnabled = b->meteorModules["auto-reconnect"].enabled;
-                    }
-                    if (autoReconnectEnabled) {
-                        BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", false);
-                        b->proxyDisabledAutoReconnect = true;
-                        LogManager::log(QString("[%1] Disabled auto-reconnect module due to dead proxy").arg(botName), LogManager::Warning);
-                    }
-                }
-            }
-        });
-        watcher->setFuture(future);
+        checkBotProxyHealth(bot.name);
     }
+}
+
+void ManagerMainWindow::checkBotProxyHealth(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (!bot || !bot->proxySettings.enabled || bot->proxySettings.host.isEmpty()) return;
+
+    QString host = bot->proxySettings.host;
+    int port = bot->proxySettings.port;
+    bool isSocks4 = (bot->proxySettings.type == "SOCKS4");
+
+    QFuture<bool> future = QtConcurrent::run([host, port, isSocks4]() -> bool {
+        QTcpSocket socket;
+        socket.connectToHost(host, port);
+        if (!socket.waitForConnected(5000)) return false;
+        if (isSocks4) {
+            QByteArray req("\x04\x01\x00\x50\x00\x00\x00\x01\x00", 9);
+            socket.write(req);
+            if (!socket.waitForReadyRead(5000)) return false;
+            QByteArray resp = socket.read(8);
+            socket.disconnectFromHost();
+            if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x00) return false;
+            quint8 status = static_cast<quint8>(resp[1]);
+            return status == 0x5A || status == 0x5B;
+        } else {
+            QByteArray greeting("\x05\x02\x00\x02", 4);
+            socket.write(greeting);
+            if (!socket.waitForReadyRead(5000)) return false;
+            QByteArray resp = socket.read(2);
+            socket.disconnectFromHost();
+            if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x05) return false;
+            return static_cast<quint8>(resp[1]) == 0x00 || static_cast<quint8>(resp[1]) == 0x02;
+        }
+    });
+
+    auto *watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, botName]() {
+        bool alive = watcher->result();
+        watcher->deleteLater();
+
+        BotInstance *b = BotManager::getBotByName(botName);
+        if (!b || !b->proxySettings.enabled) return;
+
+        BotInstance::ProxyHealth prev = b->proxyHealth;
+
+        if (alive) {
+            b->proxyHealth = BotInstance::ProxyHealth::Alive;
+            if (prev == BotInstance::ProxyHealth::Dead) {
+                LogManager::log(QString("[%1] Proxy recovered").arg(botName), LogManager::Info);
+                if (b->proxyDisabledAutoReconnect) {
+                    BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", true);
+                    b->proxyDisabledAutoReconnect = false;
+                    LogManager::log(QString("[%1] Re-enabled auto-reconnect module").arg(botName), LogManager::Info);
+                }
+            }
+        } else {
+            b->proxyHealth = BotInstance::ProxyHealth::Dead;
+            if (prev != BotInstance::ProxyHealth::Dead) {
+                LogManager::log(QString("[%1] Proxy is unreachable - blocking connections").arg(botName), LogManager::Error);
+
+                // Check if auto-reconnect is currently enabled for this bot
+                bool autoReconnectEnabled = false;
+                if (b->meteorModules.contains("auto-reconnect")) {
+                    autoReconnectEnabled = b->meteorModules["auto-reconnect"].enabled;
+                }
+                if (autoReconnectEnabled) {
+                    BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", false);
+                    b->proxyDisabledAutoReconnect = true;
+                    LogManager::log(QString("[%1] Disabled auto-reconnect module due to dead proxy").arg(botName), LogManager::Warning);
+                }
+            }
+        }
+    });
+    watcher->setFuture(future);
+}
+
+void ManagerMainWindow::onProxyDisconnectDetected(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (!bot || !bot->proxySettings.enabled || bot->proxySettings.host.isEmpty()) return;
+    LogManager::log(QString("[%1] Abrupt MC connection drop detected - checking proxy health").arg(botName), LogManager::Info);
+    checkBotProxyHealth(botName);
 }
 
 void ManagerMainWindow::checkScheduledLaunches()

@@ -430,6 +430,7 @@ signals:
     void botAdded(const QString &name);
     void botRemoved(const QString &name);
     void botUpdated(const QString &name);
+    void proxyDisconnectDetected(const QString &botName);
     void meteorModulesReceived(const QString &botName);
     void meteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
     void baritoneSettingsReceived(const QString &botName);

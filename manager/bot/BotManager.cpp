@@ -864,6 +864,11 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
         }
         bot->serverConnectionStatus = status.status();
 
+        // Detect abrupt connection drop (no disconnect packet) - may indicate proxy failure
+        if (bot->proxySettings.enabled && status.disconnectReason() == "NETWORK_DROP") {
+            emit proxyDisconnectDetected(bot->name);
+        }
+
         // Detect invalid session (expired token) - set flag so manager can re-launch via Prism
         if (status.disconnectReason() == "INVALID_SESSION") {
             if (bot->tokenRefresh) {

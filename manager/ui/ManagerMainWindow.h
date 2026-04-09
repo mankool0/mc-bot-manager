@@ -74,6 +74,7 @@ private slots:
     void showAboutDialog();
     void onTestProxyClicked();
     void checkProxyHealth();
+    void onProxyDisconnectDetected(const QString &botName);
 
 private:
     Ui::ManagerMainWindow *ui;
@@ -120,6 +121,7 @@ private:
 
     void checkScheduledLaunches();
     void checkBotUptimes();
+    void checkBotProxyHealth(const QString &botName);
 
     void saveColumnVisibility();
     void loadColumnVisibility();
