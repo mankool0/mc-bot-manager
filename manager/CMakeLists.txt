@@ -17,7 +17,7 @@ else()
     set(PROJECT_WARNING_FLAGS -Wall -Wextra -Werror)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent)
 
 include(FetchContent)
 
@@ -101,6 +101,7 @@ target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::Protobuf
+    Qt6::Concurrent
     mc-bot-manager-proto
     pybind11::embed
     Python3::Python

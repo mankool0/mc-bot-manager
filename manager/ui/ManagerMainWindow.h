@@ -19,6 +19,8 @@
 #include <QTimer>
 #include <QDockWidget>
 #include <QCloseEvent>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrent>
 
 #include "bot/BotManager.h"
 #include "ui_ManagerMainWindow.h"
@@ -70,11 +72,18 @@ private slots:
     void stopAllBots();
     void showNetworkStats(bool show);
     void showAboutDialog();
+    void onTestProxyClicked();
+    void checkProxyHealth();
+    void onProxyDisconnectDetected(const QString &botName);
 
 private:
     Ui::ManagerMainWindow *ui;
     QString selectedBotName;
     PrismConfig prismConfig;
+
+    bool m_proxyTestPassed = false;
+    QString m_proxyTestedHost;
+    int m_proxyTestedPort = 0;
     bool loadingConfiguration;
     bool detailsPinned;
     static QString worldSaveBasePath;
@@ -91,6 +100,7 @@ private:
     QTimer *launchSchedulerTimer = nullptr;
     QTimer *uptimeCheckTimer = nullptr;
     QDockWidget *networkStatsDock = nullptr;
+    QTimer *proxyHealthTimer = nullptr;
 
     void setupUI();
     void updateInstancesTable();
@@ -111,6 +121,7 @@ private:
 
     void checkScheduledLaunches();
     void checkBotUptimes();
+    void checkBotProxyHealth(const QString &botName);
 
     void saveColumnVisibility();
     void loadColumnVisibility();

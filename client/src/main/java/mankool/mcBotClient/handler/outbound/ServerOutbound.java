@@ -78,6 +78,21 @@ public class ServerOutbound extends BaseOutbound {
         LOGGER.info("  Version: {} (data version: {}, series: {}, snapshot: {})", versionName, dataVersion, versionSeries, isSnapshot);
     }
 
+    public void sendNetworkDropStatus() {
+        Connection.ServerConnectionStatus status = Connection.ServerConnectionStatus.newBuilder()
+            .setStatus(Connection.ServerConnectionStatus.Status.INITIAL)
+            .setServerAddress("Disconnected")
+            .setDisconnectReason("NETWORK_DROP")
+            .build();
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(java.util.UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setServerStatus(status)
+            .build();
+        connection.sendMessage(message);
+        LOGGER.info("Sent NETWORK_DROP status to manager");
+    }
+
     public void sendInvalidSessionStatus() {
         Connection.ServerConnectionStatus status = Connection.ServerConnectionStatus.newBuilder()
             .setStatus(Connection.ServerConnectionStatus.Status.INITIAL)

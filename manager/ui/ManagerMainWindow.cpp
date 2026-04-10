@@ -20,6 +20,13 @@
 #include <QTextCursor>
 #include <QRegularExpression>
 #include <QActionGroup>
+#include <QElapsedTimer>
+#include <QTcpSocket>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrent>
+#include <memory>
+#include <QGuiApplication>
+#include <QClipboard>
 
 // Initialize static member
 QString ManagerMainWindow::worldSaveBasePath = "worldSaves";
@@ -172,6 +179,74 @@ void ManagerMainWindow::setupUI()
     connect(ui->saveEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->saveItemEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->savePlayerDataCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->proxyEnabledCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->proxyEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (!checked || selectedBotName.isEmpty()) return;
+        BotInstance *bot = BotManager::getBotByName(selectedBotName);
+        if (bot && bot->connectionId > 0)
+            BotManager::sendProxyConfig(bot->name);
+    });
+    connect(ui->proxyTypeComboBox, &QComboBox::currentTextChanged, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->proxyTestButton, &QPushButton::clicked, this, &ManagerMainWindow::onTestProxyClicked);
+
+    auto resetProxyTest = [this]() {
+        m_proxyTestPassed = false;
+        ui->proxyEnabledCheckBox->setChecked(false);
+        ui->proxyEnabledCheckBox->setEnabled(false);
+        ui->proxyStatusLabel->clear();
+    };
+    connect(ui->proxyTypeComboBox, &QComboBox::currentTextChanged, this, resetProxyTest);
+    connect(ui->proxyPortSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, resetProxyTest);
+    connect(ui->proxyUsernameLineEdit, &QLineEdit::textChanged, this, resetProxyTest);
+    connect(ui->proxyPasswordLineEdit, &QLineEdit::textChanged, this, resetProxyTest);
+
+    connect(ui->proxyHostLineEdit, &QLineEdit::textChanged, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->proxyPortSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->proxyUsernameLineEdit, &QLineEdit::textChanged, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->proxyPasswordLineEdit, &QLineEdit::textChanged, this, &ManagerMainWindow::onConfigurationChanged);
+
+    auto prevLen = std::make_shared<int>(0);
+    auto tryApplyProxy = [this, prevLen](const QString &candidate) -> bool {
+        if (!candidate.contains(':')) return false;
+        QStringList parts = candidate.trimmed().split(':');
+        if (parts.size() < 2 || parts[0].isEmpty()) return false;
+        bool portOk = false;
+        int port = parts[1].toInt(&portOk);
+        if (!portOk || port <= 0 || port > 65535) return false;
+
+        ui->proxyHostLineEdit->blockSignals(true);
+        ui->proxyPortSpinBox->blockSignals(true);
+        ui->proxyUsernameLineEdit->blockSignals(true);
+        ui->proxyPasswordLineEdit->blockSignals(true);
+
+        ui->proxyHostLineEdit->setText(parts[0]);
+        ui->proxyPortSpinBox->setValue(port);
+        ui->proxyUsernameLineEdit->setText(parts.size() >= 3 ? parts[2] : QString());
+        ui->proxyPasswordLineEdit->setText(parts.size() >= 4 ? parts[3] : QString());
+
+        ui->proxyHostLineEdit->blockSignals(false);
+        ui->proxyPortSpinBox->blockSignals(false);
+        ui->proxyUsernameLineEdit->blockSignals(false);
+        ui->proxyPasswordLineEdit->blockSignals(false);
+
+        *prevLen = parts[0].length();
+        onConfigurationChanged();
+        return true;
+    };
+
+    connect(ui->proxyHostLineEdit, &QLineEdit::textChanged, this, [this, prevLen, resetProxyTest, tryApplyProxy](const QString &text) {
+        int delta = text.length() - *prevLen;
+        *prevLen = text.length();
+
+        resetProxyTest();
+
+        if (qAbs(delta) <= 1) return;
+
+        if (tryApplyProxy(text)) return;
+
+        QString clip = QGuiApplication::clipboard()->text().trimmed();
+        if (!clip.isEmpty() && text.contains(clip)) tryApplyProxy(clip);
+    });
 
     auto updateSaveSubSettings = [this](bool enabled) {
         ui->saveBlockEntitiesCheckBox->setVisible(enabled);
@@ -225,6 +300,8 @@ void ManagerMainWindow::setupUI()
             this, &ManagerMainWindow::onBaritoneCommandsReceived);
     connect(&BotManager::instance(), &BotManager::baritoneSingleSettingUpdated,
             this, &ManagerMainWindow::onBaritoneSingleSettingUpdated);
+    connect(&BotManager::instance(), &BotManager::proxyDisconnectDetected,
+            this, &ManagerMainWindow::onProxyDisconnectDetected);
 
     launchSchedulerTimer = new QTimer(this);
     connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
@@ -232,6 +309,10 @@ void ManagerMainWindow::setupUI()
     uptimeCheckTimer = new QTimer(this);
     connect(uptimeCheckTimer, &QTimer::timeout, this, &ManagerMainWindow::checkBotUptimes);
     uptimeCheckTimer->start(60000);
+
+    proxyHealthTimer = new QTimer(this);
+    connect(proxyHealthTimer, &QTimer::timeout, this, &ManagerMainWindow::checkProxyHealth);
+    proxyHealthTimer->start(60000);
 
     setupPipeServer();
     setupCodeEditorThemeMenu();
@@ -692,6 +773,12 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->worldSaveSettings.saveEntities = ui->saveEntitiesCheckBox->isChecked();
             bot->worldSaveSettings.saveItemEntities = ui->saveItemEntitiesCheckBox->isChecked();
             bot->worldSaveSettings.savePlayerData = ui->savePlayerDataCheckBox->isChecked();
+            bot->proxySettings.enabled = ui->proxyEnabledCheckBox->isChecked();
+            bot->proxySettings.type = ui->proxyTypeComboBox->currentText();
+            bot->proxySettings.host = ui->proxyHostLineEdit->text().trimmed();
+            bot->proxySettings.port = ui->proxyPortSpinBox->value();
+            bot->proxySettings.username = ui->proxyUsernameLineEdit->text();
+            bot->proxySettings.password = ui->proxyPasswordLineEdit->text();
             updateInstancesTable();
         }
     }
@@ -743,8 +830,107 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     ui->saveItemEntitiesCheckBox->setChecked(bot.worldSaveSettings.saveItemEntities);
     ui->savePlayerDataCheckBox->setChecked(bot.worldSaveSettings.savePlayerData);
 
+    ui->proxyTypeComboBox->setCurrentText(bot.proxySettings.type.isEmpty() ? "SOCKS5" : bot.proxySettings.type);
+    ui->proxyHostLineEdit->setText(bot.proxySettings.host);
+    ui->proxyPortSpinBox->setValue(bot.proxySettings.port);
+    ui->proxyUsernameLineEdit->setText(bot.proxySettings.username);
+    ui->proxyPasswordLineEdit->setText(bot.proxySettings.password);
+    if (bot.proxySettings.enabled && !bot.proxySettings.host.isEmpty()) {
+        m_proxyTestPassed = true;
+        m_proxyTestedHost = bot.proxySettings.host;
+        m_proxyTestedPort = bot.proxySettings.port;
+        ui->proxyEnabledCheckBox->setEnabled(true);
+        ui->proxyEnabledCheckBox->setChecked(true);
+        ui->proxyStatusLabel->setText("Previously enabled - click Test to re-verify");
+        ui->proxyStatusLabel->setStyleSheet("color: gray;");
+    } else {
+        m_proxyTestPassed = false;
+        ui->proxyEnabledCheckBox->setChecked(false);
+        ui->proxyEnabledCheckBox->setEnabled(!bot.proxySettings.host.isEmpty() && m_proxyTestPassed);
+        ui->proxyStatusLabel->clear();
+        ui->proxyStatusLabel->setStyleSheet("");
+    }
+
     // Clear flag to allow user changes to sync to memory
     loadingConfiguration = false;
+}
+
+static QPair<bool, qint64> testSocksHandshake(const QString &host, int port, bool isSocks4)
+{
+    QTcpSocket socket;
+    QElapsedTimer timer;
+    timer.start();
+
+    socket.connectToHost(host, port);
+    if (!socket.waitForConnected(5000)) return {false, -1};
+
+    if (isSocks4) {
+        // SOCKS4 CONNECT request to 0.0.0.1:80 (expect reject or grant, both confirm SOCKS4)
+        QByteArray req("\x04\x01\x00\x50\x00\x00\x00\x01\x00", 9);
+        socket.write(req);
+        if (!socket.waitForReadyRead(5000)) return {false, -1};
+        QByteArray resp = socket.read(8);
+        socket.disconnectFromHost();
+        qint64 ms = timer.elapsed();
+        if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x00) return {false, ms};
+        quint8 status = static_cast<quint8>(resp[1]);
+        // 0x5A = granted, 0x5B = rejected - both are valid SOCKS4 responses
+        if (status != 0x5A && status != 0x5B) return {false, ms};
+        return {true, ms};
+    } else {
+        // SOCKS5 greeting: version=5, 2 methods (no-auth=0x00, user/pass=0x02)
+        QByteArray greeting("\x05\x02\x00\x02", 4);
+        socket.write(greeting);
+        if (!socket.waitForReadyRead(5000)) return {false, -1};
+        QByteArray resp = socket.read(2);
+        socket.disconnectFromHost();
+        qint64 ms = timer.elapsed();
+        if (resp.size() < 2 || static_cast<quint8>(resp[0]) != 0x05) return {false, ms};
+        if (static_cast<quint8>(resp[1]) != 0x00 && static_cast<quint8>(resp[1]) != 0x02) return {false, ms};
+        return {true, ms};
+    }
+}
+
+void ManagerMainWindow::onTestProxyClicked()
+{
+    QString host = ui->proxyHostLineEdit->text().trimmed();
+    int port = ui->proxyPortSpinBox->value();
+    if (host.isEmpty() || port == 0) return;
+
+    bool isSocks4 = (ui->proxyTypeComboBox->currentText() == "SOCKS4");
+
+    ui->proxyTestButton->setEnabled(false);
+    ui->proxyStatusLabel->setText("Testing...");
+    ui->proxyStatusLabel->setStyleSheet("");
+
+    QFuture<QPair<bool, qint64>> future = QtConcurrent::run([host, port, isSocks4]() -> QPair<bool, qint64> {
+        return testSocksHandshake(host, port, isSocks4);
+    });
+
+    auto* watcher = new QFutureWatcher<QPair<bool, qint64>>(this);
+    connect(watcher, &QFutureWatcher<QPair<bool, qint64>>::finished, this, [this, watcher, host, port]() {
+        auto result = watcher->result();
+        bool ok = result.first;
+        qint64 ms = result.second;
+
+        ui->proxyTestButton->setEnabled(true);
+        if (ok) {
+            ui->proxyStatusLabel->setText(QString("OK (%1ms)").arg(ms));
+            ui->proxyStatusLabel->setStyleSheet("color: green;");
+            m_proxyTestPassed = true;
+            m_proxyTestedHost = host;
+            m_proxyTestedPort = port;
+            ui->proxyEnabledCheckBox->setEnabled(true);
+        } else {
+            ui->proxyStatusLabel->setText(ms < 0 ? "Failed: no connection" : "Failed: not SOCKS5");
+            ui->proxyStatusLabel->setStyleSheet("color: red;");
+            m_proxyTestPassed = false;
+            ui->proxyEnabledCheckBox->setChecked(false);
+            ui->proxyEnabledCheckBox->setEnabled(false);
+        }
+        watcher->deleteLater();
+    });
+    watcher->setFuture(future);
 }
 
 void ManagerMainWindow::updateStatusDisplay()
@@ -1195,6 +1381,13 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.setValue("saveItemEntities", bot.worldSaveSettings.saveItemEntities);
     settings.setValue("savePlayerData", bot.worldSaveSettings.savePlayerData);
 
+    settings.setValue("proxyEnabled", bot.proxySettings.enabled);
+    settings.setValue("proxyType", bot.proxySettings.type);
+    settings.setValue("proxyHost", bot.proxySettings.host);
+    settings.setValue("proxyPort", bot.proxySettings.port);
+    settings.setValue("proxyUsername", bot.proxySettings.username);
+    settings.setValue("proxyPassword", bot.proxySettings.password);
+
     settings.endGroup();
 }
 
@@ -1222,6 +1415,13 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.worldSaveSettings.saveEntities = settings.value("saveEntities", true).toBool();
     bot.worldSaveSettings.saveItemEntities = settings.value("saveItemEntities", true).toBool();
     bot.worldSaveSettings.savePlayerData = settings.value("savePlayerData", true).toBool();
+
+    bot.proxySettings.enabled = settings.value("proxyEnabled", false).toBool();
+    bot.proxySettings.type = settings.value("proxyType", "SOCKS5").toString();
+    bot.proxySettings.host = settings.value("proxyHost", "").toString();
+    bot.proxySettings.port = settings.value("proxyPort", 1080).toInt();
+    bot.proxySettings.username = settings.value("proxyUsername", "").toString();
+    bot.proxySettings.password = settings.value("proxyPassword", "").toString();
 
     bot.position = QVector3D(0, 0, 0);
     bot.dimension = "";
@@ -1343,6 +1543,89 @@ void ManagerMainWindow::checkBotUptimes()
             }
         }
     }
+}
+
+void ManagerMainWindow::checkProxyHealth()
+{
+    using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
+    QVector<BotInstance> &bots = BotManager::getBots();
+    for (BotInstance &bot : bots) {
+        if (!bot.proxySettings.enabled || bot.proxySettings.host.isEmpty()) continue;
+
+        // If actively connected to MC server, the working connection proves proxy is alive
+        // skip the check to avoid interfering with 1-connection proxies
+        if (bot.status == BotStatus::Online && bot.serverConnectionStatus == Status::SUCCESSFUL) {
+            if (bot.proxyHealth != BotInstance::ProxyHealth::Alive) {
+                BotInstance *b = BotManager::getBotByName(bot.name);
+                if (b) b->proxyHealth = BotInstance::ProxyHealth::Alive;
+            }
+            continue;
+        }
+
+        checkBotProxyHealth(bot.name);
+    }
+}
+
+void ManagerMainWindow::checkBotProxyHealth(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (!bot || !bot->proxySettings.enabled || bot->proxySettings.host.isEmpty()) return;
+
+    QString host = bot->proxySettings.host;
+    int port = bot->proxySettings.port;
+    bool isSocks4 = (bot->proxySettings.type == "SOCKS4");
+
+    QFuture<bool> future = QtConcurrent::run([host, port, isSocks4]() -> bool {
+        return testSocksHandshake(host, port, isSocks4).first;
+    });
+
+    auto *watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, botName]() {
+        bool alive = watcher->result();
+        watcher->deleteLater();
+
+        BotInstance *b = BotManager::getBotByName(botName);
+        if (!b || !b->proxySettings.enabled) return;
+
+        BotInstance::ProxyHealth prev = b->proxyHealth;
+
+        if (alive) {
+            b->proxyHealth = BotInstance::ProxyHealth::Alive;
+            if (prev == BotInstance::ProxyHealth::Dead) {
+                LogManager::log(QString("[%1] Proxy recovered").arg(botName), LogManager::Info);
+                if (b->proxyDisabledAutoReconnect) {
+                    BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", true);
+                    b->proxyDisabledAutoReconnect = false;
+                    LogManager::log(QString("[%1] Re-enabled auto-reconnect module").arg(botName), LogManager::Info);
+                }
+            }
+        } else {
+            b->proxyHealth = BotInstance::ProxyHealth::Dead;
+            if (prev != BotInstance::ProxyHealth::Dead) {
+                LogManager::log(QString("[%1] Proxy is unreachable - blocking connections").arg(botName), LogManager::Error);
+
+                // Check if auto-reconnect is currently enabled for this bot
+                bool autoReconnectEnabled = false;
+                if (b->meteorModules.contains("auto-reconnect")) {
+                    autoReconnectEnabled = b->meteorModules["auto-reconnect"].enabled;
+                }
+                if (autoReconnectEnabled) {
+                    BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", false);
+                    b->proxyDisabledAutoReconnect = true;
+                    LogManager::log(QString("[%1] Disabled auto-reconnect module due to dead proxy").arg(botName), LogManager::Warning);
+                }
+            }
+        }
+    });
+    watcher->setFuture(future);
+}
+
+void ManagerMainWindow::onProxyDisconnectDetected(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (!bot || !bot->proxySettings.enabled || bot->proxySettings.host.isEmpty()) return;
+    LogManager::log(QString("[%1] Abrupt MC connection drop detected - checking proxy health").arg(botName), LogManager::Info);
+    checkBotProxyHealth(botName);
 }
 
 void ManagerMainWindow::checkScheduledLaunches()

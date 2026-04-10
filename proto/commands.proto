@@ -7,6 +7,26 @@ import "common.proto";
 // Command messages (Manager -> Client)
 // Each command is a separate message type for clarity
 
+enum SocksVersion {
+  SOCKS_VERSION_5 = 0;  // default
+  SOCKS_VERSION_4 = 1;
+}
+
+// Proxy configuration (used in SetProxyConfigCommand)
+message ProxyConfig {
+  bool enabled = 1;
+  string host = 2;
+  int32 port = 3;
+  string username = 4;       // optional auth
+  string password = 5;       // optional auth
+  SocksVersion socks_version = 6;
+}
+
+// Tell client to configure its proxy (sent by manager on bot connect)
+message SetProxyConfigCommand {
+  ProxyConfig config = 1;
+}
+
 // Tell client to connect to a server
 message ConnectToServerCommand {
   string server_address = 1;    // IP:port to connect to

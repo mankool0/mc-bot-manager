@@ -1,6 +1,7 @@
 package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
+import mankool.mcBotClient.proxy.MeteorProxyManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.chat.Component;
@@ -67,6 +68,11 @@ public class ConnectionHandler extends BaseInboundHandler {
             LOGGER.error("Failed to disconnect: {}", e.getMessage());
             sendFailure(messageId, "Failed to disconnect: " + e.getMessage());
         }
+    }
+
+    public void handleSetProxyConfig(String messageId, Commands.SetProxyConfigCommand command) {
+        MeteorProxyManager.apply(command.getConfig());
+        sendSuccess(messageId, "Proxy config applied");
     }
 
     public void handleShutdown(String messageId, Commands.ShutdownCommand command) {

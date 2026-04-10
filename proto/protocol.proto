@@ -149,5 +149,8 @@ message ManagerToClientMessage {
 
     // Item registry response
     ItemRegistryResponse item_registry_response = 24;
+
+    // Proxy configuration
+    SetProxyConfigCommand set_proxy_config = 32;
   }
 }

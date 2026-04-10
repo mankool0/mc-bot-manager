@@ -87,6 +87,9 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.def("uptime", &PythonAPI::getUptime,
           "Get bot uptime in seconds",
           py::arg("bot_name") = "");
+    m.def("proxy", &PythonAPI::getProxy,
+          "Get proxy info",
+          py::arg("bot_name") = "");
     m.def("is_online", &PythonAPI::isOnline,
           "Check if bot is online",
           py::arg("bot_name") = "");

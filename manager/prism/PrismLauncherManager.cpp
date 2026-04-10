@@ -243,7 +243,11 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
     arguments << "-a" << bot->account;     // Use account
 
     if (!bot->server.isEmpty() && bot->autoConnect) {
-        arguments << "-s" << bot->server;
+        if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
+            LogManager::log(QString("Skipping auto-connect for bot '%1': proxy is unreachable").arg(bot->name), LogManager::Warning);
+        } else {
+            arguments << "-s" << bot->server;
+        }
     }
 
     bot->process = new QProcess(this);
