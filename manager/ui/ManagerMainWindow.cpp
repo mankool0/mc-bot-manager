@@ -333,13 +333,13 @@ void ManagerMainWindow::showInstancesContextMenu(const QPoint &pos)
             botAtPos = true;
             const BotInstance &bot = bots[row];
             bool isOnline = (bot.status == BotStatus::Online);
-            bool isOffline = (bot.status == BotStatus::Offline);
+            bool canLaunch = (bot.status == BotStatus::Offline || bot.status == BotStatus::Error);
             bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
                                               [&bot](const ScheduledLaunch &s) { return s.botName == bot.name; });
 
             contextMenu.addSeparator();
 
-            if (isOffline && !inLaunchQueue) {
+            if (canLaunch && !inLaunchQueue) {
                 QAction *launchAction = contextMenu.addAction("Launch Bot");
                 connect(launchAction, &QAction::triggered, this, &ManagerMainWindow::launchBot);
             } else if (isOnline) {
