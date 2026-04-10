@@ -1,0 +1,32 @@
+name: Bump Version
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    # Don't run on the version bump commit itself
+    if: "!startsWith(github.event.head_commit.message, 'bump version')"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        run: |
+          chmod +x bump_version.sh
+          ./bump_version.sh --tag
+
+      - name: Push
+        run: git push origin HEAD:master --tags

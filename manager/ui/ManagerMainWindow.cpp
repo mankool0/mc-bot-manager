@@ -2003,7 +2003,7 @@ void ManagerMainWindow::showAboutDialog()
         "<h2>MC Bot Manager</h2>"
         "<p>Version " APP_VERSION "</p>"
         "<p>A Qt-based GUI application for managing multiple Minecraft bot instances.</p>"
-        "<p>Copyright © 2025 mankool</p>"
+        "<p>Copyright © 2025-2026 mankool</p>"
         "<p>Licensed under the GNU General Public License v3.0</p>"
         "<p>This program comes with ABSOLUTELY NO WARRANTY. "
         "This is free software, and you are welcome to redistribute it "
