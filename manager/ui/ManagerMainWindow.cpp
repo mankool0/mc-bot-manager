@@ -155,6 +155,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->stopBotButton, &QPushButton::clicked, this, &ManagerMainWindow::stopBot);
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
 
+    connect(ui->actionLaunchPrism, &QAction::triggered, this, &ManagerMainWindow::launchPrismLauncher);
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
     connect(ui->actionWorldSavePath, &QAction::triggered, this, &ManagerMainWindow::configureWorldSavePath);
     connect(ui->actionGlobalSettings, &QAction::triggered, this, &ManagerMainWindow::openGlobalSettings);
@@ -1168,6 +1169,11 @@ void ManagerMainWindow::openGlobalSettings()
     dialog.exec();
 }
 
+void ManagerMainWindow::launchPrismLauncher()
+{
+    PrismLauncherManager::openPrismGUI();
+}
+
 void ManagerMainWindow::configurePrismLauncher()
 {
     PrismSettingsDialog dialog(this);
@@ -2017,7 +2023,7 @@ void ManagerMainWindow::showAboutDialog()
 void ManagerMainWindow::setupCodeEditorThemeMenu()
 {
     QMenu *themeMenu = new QMenu("Code Editor Theme", this);
-    ui->menuTools->insertMenu(ui->actionPrismSettings, themeMenu);
+    ui->menuTools->insertMenu(ui->actionNetworkStats, themeMenu);
 
     QActionGroup *themeGroup = new QActionGroup(this);
     themeGroup->setExclusive(true);
