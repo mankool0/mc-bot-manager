@@ -2023,7 +2023,7 @@ void ManagerMainWindow::showAboutDialog()
 void ManagerMainWindow::setupCodeEditorThemeMenu()
 {
     QMenu *themeMenu = new QMenu("Code Editor Theme", this);
-    ui->menuTools->insertMenu(ui->actionPrismSettings, themeMenu);
+    ui->menuTools->insertMenu(ui->actionNetworkStats, themeMenu);
 
     QActionGroup *themeGroup = new QActionGroup(this);
     themeGroup->setExclusive(true);
