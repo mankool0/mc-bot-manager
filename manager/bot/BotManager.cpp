@@ -815,9 +815,6 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
             break;
         }
     }
-    if (!bot) {
-        bot = getBotByNameImpl(playerName);
-    }
 
     if (bot) {
         bot->connectionId = connectionId;
