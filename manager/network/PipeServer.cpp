@@ -179,9 +179,11 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
     mankool::mcbot::protocol::ClientToManagerMessage clientMsg;
     if (serializer.deserialize(&clientMsg, data)) {
         if (clientMsg.hasConnectionInfo()) {
-            connectionBotNames[connectionId] = clientMsg.connectionInfo().playerName();
             BotManager::handleConnectionInfo(connectionId, clientMsg.connectionInfo());
-            emit clientConnected(connectionId, clientMsg.connectionInfo().playerName());
+            BotInstance *connectedBot = BotManager::getBotByConnectionId(connectionId);
+            QString botName = connectedBot ? connectedBot->name : clientMsg.connectionInfo().playerName();
+            connectionBotNames[connectionId] = botName;
+            emit clientConnected(connectionId, botName);
         } else if (clientMsg.hasHeartbeat()) {
             BotManager::handleHeartbeat(connectionId, clientMsg.heartbeat());
         } else if (clientMsg.hasServerStatus()) {

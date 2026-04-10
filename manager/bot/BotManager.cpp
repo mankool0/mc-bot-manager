@@ -807,7 +807,18 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     QString modVersion = info.modVersion();
     QString playerUuid = info.playerUuid();
 
-    BotInstance *bot = getBotByNameImpl(playerName);
+    BotInstance *bot = nullptr;
+    for (BotInstance &b : botInstances) {
+        if (b.status == BotStatus::Starting && !b.accountId.isEmpty() &&
+            QString(b.accountId).remove('-') == QString(playerUuid).remove('-')) {
+            bot = &b;
+            break;
+        }
+    }
+    if (!bot) {
+        bot = getBotByNameImpl(playerName);
+    }
+
     if (bot) {
         bot->connectionId = connectionId;
         bot->status = BotStatus::Online;
@@ -835,8 +846,8 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         // Send proxy config immediately so it's applied before any server connection
         sendProxyConfig(bot->name);
 
-        LogManager::log(QString("[%1] Connected (Connection ID: %2)")
-                       .arg(playerName).arg(connectionId), LogManager::Success);
+        LogManager::log(QString("[%1] Connected as '%2' (Connection ID: %3)")
+                       .arg(bot->name).arg(playerName).arg(connectionId), LogManager::Success);
     } else {
         LogManager::log(QString("Received ConnectionInfo for unknown bot '%1'")
                        .arg(playerName), LogManager::Warning);
