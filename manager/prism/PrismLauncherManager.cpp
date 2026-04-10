@@ -185,12 +185,13 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
     });
 
     connect(prismGUIProcess, &QProcess::started, this, [this, bot]() {
-        LogManager::log("PrismLauncher GUI started, waiting for initialization...", LogManager::Info);
-        emit prismGUIStarted();
-
         if (bot != nullptr) {
+            LogManager::log("PrismLauncher GUI started, waiting for initialization...", LogManager::Info);
             QTimer::singleShot(2000, this, [this, bot]() { sendLaunchCommandImpl(bot); });
+        } else {
+            LogManager::log("PrismLauncher GUI started", LogManager::Info);
         }
+        emit prismGUIStarted();
     });
 
     connect(prismGUIProcess,
