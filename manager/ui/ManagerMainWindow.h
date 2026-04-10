@@ -63,6 +63,7 @@ private slots:
     void launchBot();
     void stopBot();
     void restartBot();
+    void launchPrismLauncher();
     void configurePrismLauncher();
     void configureWorldSavePath();
     void openGlobalSettings();

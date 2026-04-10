@@ -51,6 +51,24 @@ void PrismLauncherManager::launchBotImpl(BotInstance *bot)
     }
 }
 
+void PrismLauncherManager::openPrismGUI()
+{
+    instance().openPrismGUIImpl();
+}
+
+void PrismLauncherManager::openPrismGUIImpl()
+{
+    if (!prismConfig) {
+        LogManager::log("PrismLauncher config not set", LogManager::Error);
+        return;
+    }
+    if (prismGUIProcess != nullptr && prismGUIProcess->state() == QProcess::Running) {
+        LogManager::log("PrismLauncher GUI is already running", LogManager::Info);
+        return;
+    }
+    launchPrismGUIImpl(nullptr);
+}
+
 void PrismLauncherManager::stopPrismGUI()
 {
     instance().stopPrismGUIImpl();
@@ -170,7 +188,9 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
         LogManager::log("PrismLauncher GUI started, waiting for initialization...", LogManager::Info);
         emit prismGUIStarted();
 
-        QTimer::singleShot(2000, this, [this, bot]() { sendLaunchCommandImpl(bot); });
+        if (bot != nullptr) {
+            QTimer::singleShot(2000, this, [this, bot]() { sendLaunchCommandImpl(bot); });
+        }
     });
 
     connect(prismGUIProcess,

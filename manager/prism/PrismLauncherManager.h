@@ -22,6 +22,7 @@ public:
 
     static void setPrismConfig(PrismConfig *config);
     static void launchBot(BotInstance *bot);
+    static void openPrismGUI();
     static void stopBot(qint64 minecraftPid);
     static void stopPrismGUI();
     static bool isPrismGUIRunning();
@@ -40,6 +41,7 @@ private:
     PrismLauncherManager& operator=(const PrismLauncherManager&) = delete;
 
     void launchBotImpl(BotInstance *bot);
+    void openPrismGUIImpl();
     void stopBotImpl(qint64 minecraftPid);
     void stopPrismGUIImpl();
     void launchPrismGUIImpl(BotInstance *bot);

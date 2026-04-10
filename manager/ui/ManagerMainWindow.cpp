@@ -155,6 +155,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->stopBotButton, &QPushButton::clicked, this, &ManagerMainWindow::stopBot);
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
 
+    connect(ui->actionLaunchPrism, &QAction::triggered, this, &ManagerMainWindow::launchPrismLauncher);
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
     connect(ui->actionWorldSavePath, &QAction::triggered, this, &ManagerMainWindow::configureWorldSavePath);
     connect(ui->actionGlobalSettings, &QAction::triggered, this, &ManagerMainWindow::openGlobalSettings);
@@ -1166,6 +1167,11 @@ void ManagerMainWindow::openGlobalSettings()
 {
     GlobalSettingsDialog dialog(this);
     dialog.exec();
+}
+
+void ManagerMainWindow::launchPrismLauncher()
+{
+    PrismLauncherManager::openPrismGUI();
 }
 
 void ManagerMainWindow::configurePrismLauncher()

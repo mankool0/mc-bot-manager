@@ -676,6 +676,7 @@
     <property name="title">
      <string>Tools</string>
     </property>
+    <addaction name="actionLaunchPrism"/>
     <addaction name="actionPrismSettings"/>
     <addaction name="actionWorldSavePath"/>
     <addaction name="separator"/>
@@ -873,6 +874,11 @@
   <action name="actionStopAll">
    <property name="text">
     <string>Stop All &amp;Bots</string>
+   </property>
+  </action>
+  <action name="actionLaunchPrism">
+   <property name="text">
+    <string>&amp;Launch Prism Launcher</string>
    </property>
   </action>
   <action name="actionPrismSettings">
