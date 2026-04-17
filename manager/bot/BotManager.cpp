@@ -1007,17 +1007,20 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    bot->selectedSlot = inventory.selectedSlot();
-    bot->cursorItem = inventory.cursorItem();
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->selectedSlot = inventory.selectedSlot();
+        bot->cursorItem = inventory.cursorItem();
 
-    if (bot->inventory.isEmpty()) {
-        bot->inventory.resize(41);
-    }
+        if (bot->inventory.isEmpty()) {
+            bot->inventory.resize(41);
+        }
 
-    for (const auto &item : inventory.items()) {
-        int slot = item.slot();
-        if (slot >= 0 && slot < bot->inventory.size()) {
-            bot->inventory[slot] = item;
+        for (const auto &item : inventory.items()) {
+            int slot = item.slot();
+            if (slot >= 0 && slot < bot->inventory.size()) {
+                bot->inventory[slot] = item;
+            }
         }
     }
 

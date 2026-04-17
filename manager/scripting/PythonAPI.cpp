@@ -641,8 +641,14 @@ py::object PythonAPI::getInventory(const std::string &botName)
         return py::none();
     }
 
+    QVector<mankool::mcbot::protocol::ItemStack> inventoryCopy;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        inventoryCopy = bot->inventory;
+    }
+
     py::list result;
-    for (const auto &item : bot->inventory) {
+    for (const auto &item : inventoryCopy) {
         if (!item.itemId().isEmpty()) {
             result.append(buildItemDict(item));
         }
@@ -660,8 +666,14 @@ py::object PythonAPI::getCursorItem(const std::string &botName)
         return py::none();
     }
 
-    py::dict itemDict = buildItemDict(bot->cursorItem);
-    if (bot->cursorItem.itemId().isEmpty()) {
+    mankool::mcbot::protocol::ItemStack cursorCopy;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        cursorCopy = bot->cursorItem;
+    }
+
+    py::dict itemDict = buildItemDict(cursorCopy);
+    if (cursorCopy.itemId().isEmpty()) {
         itemDict["item_id"] = std::string("minecraft:air");
     }
     itemDict["slot"] = -1;
