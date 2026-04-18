@@ -1,4 +1,8 @@
-# MC Bot Manager
+<p align="center">
+<img src="manager/icons/mc-bot-manager.svg" width="25%"/>
+</p>
+
+<h1 align="center">MC Bot Manager</h1>
 
 ![MC Bot Manager](docs/screenshots/manager.png)
 

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="189 189 646 646">
+  <defs>
+    <linearGradient id="cg-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16181d"/><stop offset="1" stop-color="#07090d"/>
+    </linearGradient>
+    <linearGradient id="cg-top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#a7b2c3" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="cg-left" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b4656"/><stop offset="1" stop-color="#1b2230"/>
+    </linearGradient>
+    <linearGradient id="cg-right" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5e6c80"/><stop offset="1" stop-color="#2c3442"/>
+    </linearGradient>
+    <linearGradient id="cg-screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0f14"/><stop offset="1" stop-color="#1a2230"/>
+    </linearGradient>
+    <linearGradient id="cg-hl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <polygon points="512,192 789.1281292110205,352 512,511.99999999999994 234.8718707889796,352"   fill="url(#cg-top)"    stroke="rgba(0,0,0,0.35)" stroke-width="5" stroke-linejoin="round"/>
+  <polygon points="234.8718707889796,352 512,511.99999999999994 512,832 234.8718707889796,672"  fill="url(#cg-left)"   stroke="rgba(0,0,0,0.35)" stroke-width="5" stroke-linejoin="round"/>
+  <polygon points="512,511.99999999999994 789.1281292110205,352 789.1281292110205,672 512,832" fill="url(#cg-right)"  stroke="rgba(0,0,0,0.35)" stroke-width="5" stroke-linejoin="round"/>
+  <polygon points="532.7846096908265,524 768.3435195201939,388 768.3435195201939,660 532.7846096908265,796" fill="url(#cg-screen)" stroke="rgba(255,255,255,0.12)" stroke-width="3"/>
+  <g stroke="#53b56d" stroke-width="19.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="610.9347421283343,590.24 635.3220174989041,600.8 610.9347421283343,639.52"/>
+    <line x1="668.8545211334376" y1="599.0400000000001" x2="699.3386153466498" y2="581.44"/>
+  </g>
+</svg>

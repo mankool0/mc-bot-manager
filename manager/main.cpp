@@ -2,6 +2,7 @@
 #include "ui/GlobalSettingsDialog.h"
 
 #include <QApplication>
+#include <QIcon>
 #include "bot/WorldData.h"
 
 int main(int argc, char *argv[])
@@ -15,6 +16,8 @@ int main(int argc, char *argv[])
     Q_INIT_RESOURCE(qutepart_theme_data);
 
     QApplication a(argc, argv);
+    a.setDesktopFileName("mc-bot-manager");
+    a.setWindowIcon(QIcon(":/icons/icons/mc-bot-manager.svg"));
     GlobalSettingsDialog::applyColorScheme();
     ManagerMainWindow w;
     w.show();

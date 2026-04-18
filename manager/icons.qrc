@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/mc-bot-manager.svg</file>
+    </qresource>
+</RCC>
