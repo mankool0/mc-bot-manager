@@ -491,7 +491,10 @@ void ScriptsWidget::setupEditor()
     codeEditor->setCompletionEnabled(true);
     codeEditor->setCompletionThreshold(2);
     codeEditor->setCompletionCallback([this](const QString &, const QString &, const QString &) {
-        return QtFuture::makeReadyValueFuture(getCompletions());
+        QSet<Qutepart::CompletionItem> items;
+        for (const QString &s : getCompletions())
+            items.insert(Qutepart::CompletionItem(s));
+        return QtFuture::makeReadyValueFuture(items);
     });
 }
 
