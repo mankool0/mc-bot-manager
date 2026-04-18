@@ -21,6 +21,8 @@ env:
   QT_VERSION: 6.11.0
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
   WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
+  PYTHON_VERSION: '3.12.13'
+  PYTHON_STANDALONE_DATE: '20260414'
 
 jobs:
   build-client:
@@ -79,6 +81,13 @@ jobs:
       - name: Install protobuf compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
+      - name: Download Python standalone
+        run: |
+          wget -q -O python-standalone.tar.gz \
+            "https://github.com/indygreg/python-build-standalone/releases/download/${{ env.PYTHON_STANDALONE_DATE }}/cpython-${{ env.PYTHON_VERSION }}+${{ env.PYTHON_STANDALONE_DATE }}-x86_64-unknown-linux-gnu-install_only.tar.gz"
+          tar -xf python-standalone.tar.gz -C ${{ github.workspace }}
+          echo "PYTHON_STANDALONE=${{ github.workspace }}/python" >> $GITHUB_ENV
+
       - name: Download linuxdeploy tools
         run: |
           wget -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
@@ -91,7 +100,7 @@ jobs:
           cd manager
           mkdir -p build-appimage
           cd build-appimage
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr -DPython3_ROOT_DIR=${{ env.PYTHON_STANDALONE }}
           cmake --build . -j$(nproc)
           strip mc-bot-manager
           mv ../linuxdeploy*.AppImage .

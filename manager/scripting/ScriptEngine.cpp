@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QDateTime>
 #include <QWriteLocker>
+#include <cstdlib>
 
 namespace py = pybind11;
 
@@ -93,6 +94,10 @@ void ScriptEngine::initializePython()
     if (pythonInitialized) return;
 
     try {
+        if (const char *appdir = getenv("APPDIR")) {
+            static std::string pythonHome = std::string(appdir) + "/usr";
+            setenv("PYTHONHOME", pythonHome.c_str(), 1);
+        }
         py::initialize_interpreter();
         setupPythonPath();
 

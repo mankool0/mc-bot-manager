@@ -154,6 +154,8 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libmc-bot-manager-proto.so AppDir/usr/lib/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.desktop AppDir/usr/share/applications/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/icons/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
+        COMMAND ${CMAKE_COMMAND} -E make_directory "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${Python3_STDLIB}" "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
         COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file AppDir/usr/share/applications/mc-bot-manager.desktop --plugin qt --output appimage
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Building AppImage in build directory..."
