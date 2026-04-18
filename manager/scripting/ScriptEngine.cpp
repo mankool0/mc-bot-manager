@@ -94,10 +94,12 @@ void ScriptEngine::initializePython()
     if (pythonInitialized) return;
 
     try {
+#ifndef _WIN32
         if (const char *appdir = getenv("APPDIR")) {
             static std::string pythonHome = std::string(appdir) + "/usr";
             setenv("PYTHONHOME", pythonHome.c_str(), 1);
         }
+#endif
         py::initialize_interpreter();
         setupPythonPath();
 

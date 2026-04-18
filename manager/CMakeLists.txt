@@ -156,6 +156,7 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/icons/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
         COMMAND ${CMAKE_COMMAND} -E make_directory "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${Python3_STDLIB}" "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
+        COMMAND find "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/lib-dynload" -name "_tkinter*" -delete
         COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file AppDir/usr/share/applications/mc-bot-manager.desktop --plugin qt --output appimage
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Building AppImage in build directory..."
