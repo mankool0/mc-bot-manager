@@ -312,6 +312,15 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("bot") = "");
 
     // World interaction
+    m.def("hold_attack", &PythonAPI::holdAttack,
+          "Hold or release left-click attack in-game."
+          py::arg("enabled"),
+          py::arg("duration_ticks") = 0,
+          py::arg("bot_name") = "");
+    m.def("get_hold_attack", &PythonAPI::getHoldAttack,
+          "Query the current hold-attack state from the client. Returns True if attack is "
+          "currently being held, False otherwise. Blocks until the client responds.",
+          py::arg("bot_name") = "");
     m.def("look_at", &PythonAPI::lookAt,
           "Look at a specific position (x, y, z)",
           py::arg("x"), py::arg("y"), py::arg("z"),

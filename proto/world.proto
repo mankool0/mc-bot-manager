@@ -110,6 +110,20 @@ message ChunkUnloadMessage {
   string dimension = 3;
 }
 
+// Query the current hold-attack state from the client
+message GetHoldAttackStatusCommand {}
+
+message HoldAttackStatusResponse {
+  string command_id = 1;
+  bool enabled = 2;
+}
+
+// Command to hold or release the attack (left-click) button in-game.
+message HoldAttackCommand {
+  bool enabled = 1;
+  int32 duration_ticks = 2;
+}
+
 // Weather state update (Client -> Manager)
 message WeatherUpdate {
   bool is_raining = 1;       // True if it is raining

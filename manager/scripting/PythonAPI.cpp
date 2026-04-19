@@ -1977,6 +1977,20 @@ bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y,
     return result;
 }
 
+void PythonAPI::holdAttack(bool enabled, int durationTicks, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendHoldAttack(name, enabled, durationTicks);
+}
+
+bool PythonAPI::getHoldAttack(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    return BotManager::getHoldAttackStatus(name);
+}
+
 void PythonAPI::lookAt(double x, double y, double z, const std::string &botName)
 {
     QString name = resolveBotName(botName);

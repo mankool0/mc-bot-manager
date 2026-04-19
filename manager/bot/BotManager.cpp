@@ -3339,6 +3339,107 @@ void BotManager::handleCanReachBlockResponseImpl(int connectionId, const mankool
     }
 }
 
+void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks)
+{
+    instance().sendHoldAttackImpl(botName, enabled, durationTicks);
+}
+
+void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot send hold attack: bot '%1' not found or not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+
+    mankool::mcbot::protocol::HoldAttackCommand cmd;
+    cmd.setEnabled(enabled);
+    cmd.setDurationTicks(durationTicks);
+    msg.setHoldAttack(cmd);
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log(QString("Failed to serialize hold attack command for bot '%1'").arg(botName), LogManager::Error);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+
+    PipeServer::sendToClient(bot->connectionId, message);
+}
+
+bool BotManager::getHoldAttackStatus(const QString &botName, int timeoutMs)
+{
+    return instance().getHoldAttackStatusImpl(botName, timeoutMs);
+}
+
+bool BotManager::getHoldAttackStatusImpl(const QString &botName, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return false;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
+    PendingHoldAttackStatusEntry entry;
+    {
+        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
+        m_pendingHoldAttackStatusRequests[msgId] = &entry;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setMessageId(msgId);
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+    msg.setGetHoldAttackStatus(mankool::mcbot::protocol::GetHoldAttackStatusCommand{});
+
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
+        m_pendingHoldAttackStatusRequests.remove(msgId);
+        return false;
+    }
+
+    QByteArray message;
+    QDataStream stream(&message, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    message.append(protoData);
+    PipeServer::sendToClient(bot->connectionId, message);
+
+    bool acquired = entry.sem.tryAcquire(1, timeoutMs);
+    {
+        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
+        m_pendingHoldAttackStatusRequests.remove(msgId);
+    }
+    return acquired && entry.enabled;
+}
+
+void BotManager::handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response)
+{
+    instance().handleHoldAttackStatusResponseImpl(connectionId, response);
+}
+
+void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response)
+{
+    Q_UNUSED(connectionId);
+    QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
+    auto it = m_pendingHoldAttackStatusRequests.find(response.commandId());
+    if (it != m_pendingHoldAttackStatusRequests.end()) {
+        it.value()->enabled = response.enabled();
+        it.value()->sem.release();
+    }
+}
+
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                         mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
 {

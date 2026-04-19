@@ -199,6 +199,8 @@ public:
     static py::list getLoadedChunks(const std::string &bot = "");
 
     // World interaction
+    static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
+    static bool getHoldAttack(const std::string &botName = "");
     static void lookAt(double x, double y, double z, const std::string &botName = "");
     static bool canReachBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
     static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, const std::string &bot = "");

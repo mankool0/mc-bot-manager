@@ -266,6 +266,45 @@ nether_ents = world.get_block_entities_in_chunk(10, 10,
 
 ## Block Interaction
 
+### `hold_attack(enabled, duration_ticks=0, bot_name="")`
+
+Hold or release the left-click attack button in-game. While enabled, the client drives `continueDestroyBlock` every game tick against whatever block the crosshair is currently targeting.
+
+**Parameters:**
+
+- `enabled` (`bool`) - `True` to start holding attack, `False` to release
+- `duration_ticks` (`int`, optional) - Auto-release after this many game ticks. `0` holds indefinitely until an explicit `False` call (default: `0`)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+```python
+# Hold for 100 ticks (5 seconds), then auto-release
+world.hold_attack(True, duration_ticks=100)
+
+# Hold indefinitely
+world.hold_attack(True)
+# ... later:
+world.hold_attack(False)
+```
+
+---
+
+### `get_hold_attack(bot_name="")`
+
+Query whether the client is currently holding the attack button.
+
+**Returns:** `bool` - `True` if attack is being held, `False` otherwise
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+```python
+if world.get_hold_attack():
+    utils.log("Currently mining")
+```
+
+---
+
 ### `look_at(x, y, z, bot_name="")`
 
 Rotate the bot to look at a specific position.

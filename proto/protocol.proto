@@ -74,6 +74,7 @@ message ClientToManagerMessage {
 
     // World interaction responses
     CanReachBlockResponse can_reach_block_response = 29;
+    HoldAttackStatusResponse hold_attack_status_response = 34;
 
     // Entity tracking
     EntityUpdate entity_update = 30;
@@ -152,5 +153,9 @@ message ManagerToClientMessage {
 
     // Proxy configuration
     SetProxyConfigCommand set_proxy_config = 32;
+
+    // In-game attack (left-click) hold toggle and status query
+    HoldAttackCommand hold_attack = 33;
+    GetHoldAttackStatusCommand get_hold_attack_status = 34;
   }
 }

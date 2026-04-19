@@ -132,6 +132,10 @@ public class MessageHandler {
             msg -> screenInteractionHandler.handleOpenGameMenu(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_PROXY_CONFIG,
             msg -> connectionHandler.handleSetProxyConfig(msg.getMessageId(), msg.getSetProxyConfig()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HOLD_ATTACK,
+            msg -> worldInteractionHandler.handleHoldAttack(msg.getHoldAttack()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_ATTACK_STATUS,
+            msg -> worldInteractionHandler.handleGetHoldAttackStatus(msg.getMessageId()));
     }
 
     public void start() {
@@ -189,5 +193,8 @@ public class MessageHandler {
 
         // Tick Baritone handler for setting change polling
         baritoneHandler.tick();
+
+        // Tick world interaction handler for continuous actions
+        worldInteractionHandler.tick();
     }
 }

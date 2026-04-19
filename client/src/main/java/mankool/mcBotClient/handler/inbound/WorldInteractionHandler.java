@@ -26,8 +26,63 @@ public class WorldInteractionHandler extends BaseInboundHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WorldInteractionHandler.class);
 
+    private static WorldInteractionHandler instance;
+
+    private boolean holdingAttack = false;
+    private int holdAttackTicksRemaining = 0;  // 0 = indefinite
+
+    public static boolean isHoldingAttack() {
+        return instance != null && instance.holdingAttack;
+    }
+
     public WorldInteractionHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
+        instance = this;
+    }
+
+    public void handleGetHoldAttackStatus(String messageId) {
+        World.HoldAttackStatusResponse response = World.HoldAttackStatusResponse.newBuilder()
+            .setCommandId(messageId)
+            .setEnabled(holdingAttack)
+            .build();
+        Protocol.ClientToManagerMessage msg = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setHoldAttackStatusResponse(response)
+            .build();
+        connection.sendMessage(msg);
+    }
+
+    public void handleHoldAttack(World.HoldAttackCommand command) {
+        holdingAttack = command.getEnabled();
+        holdAttackTicksRemaining = command.getDurationTicks();
+        if (!holdingAttack && client.gameMode != null) {
+            client.gameMode.stopDestroyBlock();
+        }
+    }
+
+    public void tick() {
+        if (holdAttackTicksRemaining > 0) {
+            holdAttackTicksRemaining--;
+            if (holdAttackTicksRemaining == 0) {
+                holdingAttack = false;
+                if (client.gameMode != null) client.gameMode.stopDestroyBlock();
+                return;
+            }
+        }
+        if (!holdingAttack || client.player == null || client.gameMode == null || client.level == null) return;
+        if (client.hitResult instanceof BlockHitResult bhr) {
+            BlockPos pos = bhr.getBlockPos();
+            if (!client.level.getBlockState(pos).isAir()) {
+                Direction face = bhr.getDirection();
+                if (client.gameMode.continueDestroyBlock(pos, face)) {
+                    client.level.addBreakingBlockEffect(pos, face);
+                    client.player.swing(InteractionHand.MAIN_HAND);
+                }
+                return;
+            }
+        }
+        client.gameMode.stopDestroyBlock();
     }
 
     /**
