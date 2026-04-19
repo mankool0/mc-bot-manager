@@ -397,7 +397,7 @@ Click a slot in the currently open container (or player inventory).
 **Parameters:**
 
 - `slot_index` (`int`) - Slot index using **InventoryMenu numbering** (see note below)
-- `button` (`MouseButton`, optional) - Mouse button or hotbar index for SWAP (default: `LEFT`)
+- `button` (`int` or `MouseButton`, optional) - Mouse button for normal clicks, or hotbar key number (1-9) for `SWAP` (default: `LEFT`)
 - `click_type` (`ClickType`, optional) - Click type (default: `PICKUP`)
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
@@ -440,8 +440,8 @@ import world
 # Shift-click slot 0 of a chest into inventory
 world.click_slot(0, click_type=world.ClickType.QUICK_MOVE)
 
-# Swap chest slot 0 with hotbar slot 8
-world.click_slot(0, button=8, click_type=world.ClickType.SWAP)
+# Swap chest slot 0 with hotbar slot 8 (button = slot index + 1)
+world.click_slot(0, button=9, click_type=world.ClickType.SWAP)
 
 # Right-click a slot (split stack)
 world.click_slot(5, button=world.MouseButton.RIGHT)

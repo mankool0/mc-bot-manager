@@ -386,7 +386,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     m.def("click_slot", &PythonAPI::clickContainerSlot,
           "Click a container slot",
           py::arg("slot_index"),
-          py::arg("button") = PythonAPI::MouseButton::LEFT,
+          py::arg("button") = 0,
           py::arg("click_type") = PythonAPI::ContainerClickType::PICKUP,
           py::arg("bot") = "");
     m.def("close_container", &PythonAPI::closeContainer,

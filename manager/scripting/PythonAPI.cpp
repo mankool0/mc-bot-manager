@@ -2011,12 +2011,12 @@ void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool loo
                                       mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock);
 }
 
-void PythonAPI::clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot)
+void PythonAPI::clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
-    BotManager::sendClickContainerSlot(botName, slotIndex, static_cast<int>(button), static_cast<int>(clickType));
+    BotManager::sendClickContainerSlot(botName, slotIndex, button, static_cast<int>(clickType));
 }
 
 void PythonAPI::closeContainer(const std::string &bot)

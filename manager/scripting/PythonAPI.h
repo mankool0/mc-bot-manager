@@ -207,7 +207,7 @@ public:
     static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
 
     // Container interaction
-    static void clickContainerSlot(int slotIndex, MouseButton button, ContainerClickType clickType, const std::string &bot = "");
+    static void clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot = "");
     static void closeContainer(const std::string &bot = "");
     static void openInventory(const std::string &bot = "");
     static py::object getContainer(const std::string &bot = "");
