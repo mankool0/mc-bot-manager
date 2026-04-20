@@ -313,7 +313,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
 
     // World interaction
     m.def("hold_attack", &PythonAPI::holdAttack,
-          "Hold or release left-click attack in-game."
+          "Hold or release left-click attack in-game.",
           py::arg("enabled"),
           py::arg("duration_ticks") = 0,
           py::arg("bot_name") = "");

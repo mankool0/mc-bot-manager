@@ -16,6 +16,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +77,7 @@ public class WorldInteractionHandler extends BaseInboundHandler {
             if (!client.level.getBlockState(pos).isAir()) {
                 Direction face = bhr.getDirection();
                 if (client.gameMode.continueDestroyBlock(pos, face)) {
-                    client.level.addBreakingBlockEffect(pos, face);
+                    VersionCompat.addBreakingBlockEffect(client.level, pos, face);
                     client.player.swing(InteractionHand.MAIN_HAND);
                 }
                 return;
