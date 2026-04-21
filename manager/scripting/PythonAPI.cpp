@@ -1951,7 +1951,7 @@ py::list PythonAPI::findEntitiesNear(double x, double y, double z, double radius
     return result;
 }
 
-bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, const std::string &bot)
+bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, BlockFace face, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
@@ -1959,12 +1959,12 @@ bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, const std::string
     bool result;
     {
         py::gil_scoped_release release;
-        result = BotManager::sendCanReachBlock(botName, x, y, z, sneak);
+        result = BotManager::sendCanReachBlock(botName, x, y, z, sneak, 3000, static_cast<int>(face));
     }
     return result;
 }
 
-bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, const std::string &bot)
+bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, BlockFace face, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
@@ -1972,7 +1972,7 @@ bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y,
     bool result;
     {
         py::gil_scoped_release release;
-        result = BotManager::sendCanReachBlockFrom(botName, fromX, fromY, fromZ, x, y, z, sneak);
+        result = BotManager::sendCanReachBlockFrom(botName, fromX, fromY, fromZ, x, y, z, sneak, 3000, static_cast<int>(face));
     }
     return result;
 }
@@ -1991,14 +1991,15 @@ bool PythonAPI::getHoldAttack(const std::string &botName)
     return BotManager::getHoldAttackStatus(name);
 }
 
-void PythonAPI::lookAt(double x, double y, double z, const std::string &botName)
+void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak, const std::string &botName)
 {
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
-    BotManager::sendLookAt(name, x, y, z);
+    auto protoFace = static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(static_cast<int>(face));
+    BotManager::sendLookAt(name, x, y, z, protoFace, sneak);
 }
 
-void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, const std::string &bot)
+void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, BlockFace face, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
@@ -2007,8 +2008,9 @@ void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool loo
     int blockY = static_cast<int>(std::floor(y));
     int blockZ = static_cast<int>(std::floor(z));
 
+    auto protoFace = static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(static_cast<int>(face));
     BotManager::sendInteractWithBlock(botName, blockX, blockY, blockZ,
-                                      mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock);
+                                      mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock, protoFace);
 }
 
 void PythonAPI::clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot)

@@ -3253,18 +3253,18 @@ void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::
 // World Interaction Commands
 // ============================================================================
 
-bool BotManager::sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs)
+bool BotManager::sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs, int face)
 {
-    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs);
+    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, false, 0, 0, 0, face);
 }
 
-bool BotManager::sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, int timeoutMs)
+bool BotManager::sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, int timeoutMs, int face)
 {
-    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, true, fromX, fromY, fromZ);
+    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, true, fromX, fromY, fromZ, face);
 }
 
 bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
-                                        bool hasFrom, int fromX, int fromY, int fromZ)
+                                        bool hasFrom, int fromX, int fromY, int fromZ, int face)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot || bot->connectionId <= 0)
@@ -3289,6 +3289,8 @@ bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int
     pos.setZ(z);
     cmd.setPosition(pos);
     cmd.setSneak(sneak);
+    if (face != 0)
+        cmd.setFace(static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(face));
     if (hasFrom) {
         mankool::mcbot::protocol::BlockPos fromPos;
         fromPos.setX(fromX);
@@ -3441,13 +3443,15 @@ void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mank
 }
 
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,
-                                        mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
+                                        mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
+                                        mankool::mcbot::protocol::BlockFaceGadget::BlockFace face)
 {
-    instance().sendInteractWithBlockImpl(botName, x, y, z, hand, sneak, lookAtBlock);
+    instance().sendInteractWithBlockImpl(botName, x, y, z, hand, sneak, lookAtBlock, face);
 }
 
 void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
-                                            mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock)
+                                            mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
+                                            mankool::mcbot::protocol::BlockFaceGadget::BlockFace face)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -3473,6 +3477,7 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
     cmd.setHand(hand);
     cmd.setSneak(sneak);
     cmd.setLookAtBlock(lookAtBlock);
+    cmd.setFace(face);
     msg.setInteractWithBlock(cmd);
 
     QProtobufSerializer serializer;
@@ -3851,12 +3856,14 @@ void BotManager::sendSwitchHotbarSlotImpl(const QString &botName, int slot)
     PipeServer::sendToClient(bot->connectionId, fullMessage);
 }
 
-void BotManager::sendLookAt(const QString &botName, double x, double y, double z)
+void BotManager::sendLookAt(const QString &botName, double x, double y, double z,
+                             mankool::mcbot::protocol::BlockFaceGadget::BlockFace face, bool sneak)
 {
-    instance().sendLookAtImpl(botName, x, y, z);
+    instance().sendLookAtImpl(botName, x, y, z, face, sneak);
 }
 
-void BotManager::sendLookAtImpl(const QString &botName, double x, double y, double z)
+void BotManager::sendLookAtImpl(const QString &botName, double x, double y, double z,
+                                 mankool::mcbot::protocol::BlockFaceGadget::BlockFace face, bool sneak)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -3882,6 +3889,8 @@ void BotManager::sendLookAtImpl(const QString &botName, double x, double y, doub
 
     mankool::mcbot::protocol::LookAtCommand command;
     command.setPosition(pos);
+    command.setFace(face);
+    command.setSneak(sneak);
     message.setLookAt(command);
 
     QProtobufSerializer serializer;

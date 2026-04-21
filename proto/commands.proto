@@ -52,6 +52,8 @@ message LookAtCommand {
     Vec3d position = 1;
     int32 entity_id = 2;
   }
+  BlockFace face = 3;  // Which face to target; AUTO finds best visible face
+  bool sneak = 4;      // Use crouching eye height for raytrace
 }
 
 message SetRotationCommand {

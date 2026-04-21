@@ -305,30 +305,35 @@ if world.get_hold_attack():
 
 ---
 
-### `look_at(x, y, z, bot_name="")`
+### `look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")`
 
-Rotate the bot to look at a specific position.
+Rotate the bot to look at a block. With `face=AUTO` the handler raycasts each face and picks the first visible one. When a specific face is given it uses candidate points on that face (center + near-corners for UP/DOWN, top/bottom for horizontal faces) and picks the first visible candidate. If `sneak=False` and no candidate is visible standing up, it automatically retries with the crouched eye position.
 
 **Parameters:**
 
-- `x` (`float`) - X coordinate to look at
-- `y` (`float`) - Y coordinate to look at
-- `z` (`float`) - Z coordinate to look at
+- `x` (`int`) - Block X coordinate
+- `y` (`int`) - Block Y coordinate
+- `z` (`int`) - Block Z coordinate
+- `face` (`world.BlockFace`, optional) - Which face to target (default: `world.BlockFace.AUTO`)
+- `sneak` (`bool`, optional) - Use crouching eye height for raytrace; when False, tries standing first then sneaking (default: False)
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online
 
 ```python
 # Look at the top face of a block before placing on it
-world.look_at(bx + 0.5, by + 1.0, bz + 0.5)
-world.interact_block(bx, by, bz, sneak=True, look_at_block=False)
+world.look_at(bx, by, bz, face=world.BlockFace.UP)
+world.interact_block(bx, by, bz, sneak=True, look_at_block=False, face=world.BlockFace.UP)
+
+# Auto-find best visible face
+world.look_at(bx, by, bz)
 ```
 
-### `interact_block(x, y, z, sneak=False, look_at_block=True, bot="")`
+### `interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot="")`
 
 Interact with (right-click) a block at the specified position.
 
-This is used to open containers, press buttons, use beds, etc.
+This is used to open containers, press buttons, use beds, place blocks against a neighbour face, etc.
 
 **Parameters:**
 
@@ -337,6 +342,7 @@ This is used to open containers, press buttons, use beds, etc.
 - `z` (`int`) - Block Z coordinate
 - `sneak` (`bool`, optional) - Whether to sneak while interacting (default: False)
 - `look_at_block` (`bool`, optional) - Whether to rotate and look at the block before interacting (default: True)
+- `face` (`world.BlockFace`, optional) - Which face of the block to interact with. When set to anything other than `AUTO`, bypasses the automatic raytrace and clicks the specified face directly regardless of bot position (default: `world.BlockFace.AUTO`)
 - `bot` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online
@@ -348,8 +354,8 @@ world.interact_block(100, 64, 200)
 # Open a chest while sneaking (places block instead if holding one)
 world.interact_block(100, 64, 200, sneak=True)
 
-# Interact without looking at the block
-world.interact_block(100, 64, 200, look_at_block=False)
+# Place a block against the west face of a neighbour
+world.interact_block(nx, ny, nz, sneak=True, face=world.BlockFace.WEST)
 
 # Use a bed
 pos = world.find_nearest(["minecraft:white_bed"])
@@ -357,6 +363,64 @@ if pos:
     x, y, z = pos
     world.interact_block(int(x), int(y), int(z))
 ```
+
+### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot="")`
+
+Check if a block is reachable (visible via raytrace) from the bot's current eye position.
+
+**Parameters:**
+- `x, y, z` (`int`) - Block coordinates
+- `sneak` (`bool`, optional) - Use crouching eye height (default: False)
+- `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `bot` (`str`, optional) - Bot name (default: active bot)
+
+**Returns:** `bool` - True if the block (or specified face) is reachable
+
+```python
+if world.can_reach_block(x, y, z):
+    world.interact_block(x, y, z)
+
+# Check a specific face before placing
+if world.can_reach_block(x, y, z, face=world.BlockFace.UP):
+    world.interact_block(x, y, z, face=world.BlockFace.UP)
+```
+
+---
+
+### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot="")`
+
+Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.
+
+**Parameters:**
+- `from_x, from_y, from_z` (`int`) - Hypothetical foot position (eye height is added automatically)
+- `x, y, z` (`int`) - Block coordinates to check
+- `sneak` (`bool`, optional) - Use crouching eye height (default: False)
+- `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `bot` (`str`, optional) - Bot name (default: active bot)
+
+**Returns:** `bool` - True if the block (or specified face) would be reachable from that position
+
+```python
+# Find a standable position from which the UP face is reachable
+if world.can_reach_block_from(cx, cy, cz, bx, by, bz, face=world.BlockFace.UP):
+    baritone.goto(cx, cy, cz)
+```
+
+---
+
+### `BlockFace` enum
+
+Used with `look_at`, `interact_block`, `can_reach_block`, and `can_reach_block_from` to specify a block face.
+
+| Value | Direction |
+|-------|-----------|
+| `world.BlockFace.AUTO`  | Auto-detect via raytrace from bot eye position (default) |
+| `world.BlockFace.DOWN`  | Bottom face (-Y) |
+| `world.BlockFace.UP`    | Top face (+Y) |
+| `world.BlockFace.NORTH` | North face (-Z) |
+| `world.BlockFace.SOUTH` | South face (+Z) |
+| `world.BlockFace.WEST`  | West face (-X) |
+| `world.BlockFace.EAST`  | East face (+X) |
 
 ## Container Interaction
 

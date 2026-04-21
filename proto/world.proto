@@ -36,6 +36,7 @@ message InteractWithBlockCommand {
   Hand hand = 2;                  // Which hand to use (from common.proto)
   bool sneak = 3;                 // Whether to sneak while interacting
   bool look_at_block = 4;         // Whether to rotate to look at the block before interacting
+  BlockFace face = 5;             // If non-zero, bypasses raytrace and clicks the specified face directly
 }
 
 // Command to check if a block is reachable from the current player position
@@ -43,6 +44,7 @@ message CanReachBlockCommand {
   BlockPos position = 1;
   bool sneak = 2;
   optional BlockPos from_position = 3;  // If set, simulate reach from this floor position instead of current player pos
+  BlockFace face = 4;                   // If non-AUTO, only check the specific face (default AUTO checks all faces)
 }
 
 message CanReachBlockResponse {

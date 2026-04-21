@@ -35,6 +35,16 @@ message ItemStack {
   int32 repair_cost = 10;                 // Anvil repair cost
 }
 
+enum BlockFace {
+  FACE_AUTO  = 0;   // Auto-detect via raytrace
+  FACE_DOWN  = 1;   // Bottom face (-Y)
+  FACE_UP    = 2;   // Top face (+Y)
+  FACE_NORTH = 3;   // North face (-Z)
+  FACE_SOUTH = 4;   // South face (+Z)
+  FACE_WEST  = 5;   // West face (-X)
+  FACE_EAST  = 6;   // East face (+X)
+}
+
 enum Hand {
   MAIN_HAND = 0;
   OFF_HAND = 1;

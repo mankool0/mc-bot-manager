@@ -54,6 +54,17 @@ struct PyScreenState {
 class PythonAPI
 {
 public:
+    // Block face enum for interact_block face override
+    enum class BlockFace {
+        AUTO  = 0,
+        DOWN  = 1,
+        UP    = 2,
+        NORTH = 3,
+        SOUTH = 4,
+        WEST  = 5,
+        EAST  = 6
+    };
+
     // Enums for container interaction
     enum class MouseButton {
         LEFT = 0,
@@ -201,10 +212,10 @@ public:
     // World interaction
     static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
     static bool getHoldAttack(const std::string &botName = "");
-    static void lookAt(double x, double y, double z, const std::string &botName = "");
-    static bool canReachBlock(int x, int y, int z, bool sneak = false, const std::string &bot = "");
-    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, const std::string &bot = "");
-    static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, const std::string &bot = "");
+    static void lookAt(double x, double y, double z, BlockFace face = BlockFace::AUTO, bool sneak = false, const std::string &botName = "");
+    static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
+    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
+    static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
 
     // Container interaction
     static void clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot = "");
