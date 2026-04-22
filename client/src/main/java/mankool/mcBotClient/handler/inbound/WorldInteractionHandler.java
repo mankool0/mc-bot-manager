@@ -11,7 +11,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -86,9 +88,6 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         client.gameMode.stopDestroyBlock();
     }
 
-    /**
-     * Handle block interaction command (right-click on a block).
-     */
     public void handleInteractWithBlock(String messageId, World.InteractWithBlockCommand command) {
         LocalPlayer player = client.player;
         ClientLevel level = client.level;
@@ -110,7 +109,6 @@ public class WorldInteractionHandler extends BaseInboundHandler {
             return;
         }
 
-        // Set sneaking state if requested
         boolean wasSneaking = player.isShiftKeyDown();
         if (command.getSneak() != wasSneaking) {
             player.setShiftKeyDown(command.getSneak());
@@ -120,7 +118,10 @@ public class WorldInteractionHandler extends BaseInboundHandler {
             var ctx = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext();
             double blockReachDistance = ctx.playerController().getBlockReachDistance();
 
-            Optional<BlockHitResult> hitOpt = rayTraceBlock(level, player, player.getEyePosition(), blockPos, blockReachDistance);
+            Common.BlockFace protoFace = command.getFace();
+            Optional<BlockHitResult> hitOpt = (protoFace != Common.BlockFace.FACE_AUTO)
+                ? rayTraceBlockFace(level, player, player.getEyePosition(), blockPos, blockReachDistance, protoFace.getNumber())
+                : rayTraceBlock(level, player, player.getEyePosition(), blockPos, blockReachDistance);
             if (hitOpt.isEmpty()) {
                 sendFailure(messageId, "Block not reachable");
                 return;
@@ -128,11 +129,7 @@ public class WorldInteractionHandler extends BaseInboundHandler {
             BlockHitResult hitResult = hitOpt.get();
 
             if (command.getLookAtBlock()) {
-                Vec3 eye = player.getEyePosition();
-                Vec3 hit = hitResult.getLocation();
-                double dx = hit.x - eye.x, dy = hit.y - eye.y, dz = hit.z - eye.z;
-                player.setYRot((float) Math.toDegrees(Math.atan2(-dx, dz)));
-                player.setXRot((float) Math.toDegrees(-Math.atan2(dy, Math.sqrt(dx * dx + dz * dz))));
+                BlockFaceUtil.applyRotationToward(player, player.getEyePosition(), hitResult.getLocation());
             }
 
             LOGGER.debug("Interacting with {} - hit: {}, face: {}, looked: {}",
@@ -172,16 +169,20 @@ public class WorldInteractionHandler extends BaseInboundHandler {
             var ctx = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext();
             double blockReachDistance = ctx.playerController().getBlockReachDistance();
 
-            Vec3 eyePos;
-            if (command.hasFromPosition()) {
-                Common.BlockPos from = command.getFromPosition();
-                double eyeY = command.getSneak() ? from.getY() + 1.27 : from.getY() + 1.62;
-                eyePos = new Vec3(from.getX() + 0.5, eyeY, from.getZ() + 0.5);
-            } else {
-                eyePos = player.getEyePosition();
-            }
+            Common.BlockPos from = command.hasFromPosition() ? command.getFromPosition() : null;
+            double baseX = from != null ? from.getX() + 0.5 : player.getX();
+            double baseY = from != null ? from.getY()       : player.getY();
+            double baseZ = from != null ? from.getZ() + 0.5 : player.getZ();
+            Vec3 eyePos = new Vec3(baseX, baseY + player.getEyeHeight(command.getSneak() ? Pose.CROUCHING : Pose.STANDING), baseZ);
 
-            sendCanReachBlockResponse(messageId, rayTraceBlock(level, player, eyePos, blockPos, blockReachDistance).isPresent());
+            int faceOrdinal = command.getFace().getNumber();
+            boolean reachable;
+            if (faceOrdinal == 0) { // AUTO - check all faces
+                reachable = rayTraceBlock(level, player, eyePos, blockPos, blockReachDistance).isPresent();
+            } else {
+                reachable = rayTraceBlockFace(level, player, eyePos, blockPos, blockReachDistance, faceOrdinal).isPresent();
+            }
+            sendCanReachBlockResponse(messageId, reachable);
 
         } catch (Exception e) {
             LOGGER.error("Error checking reachability", e);
@@ -191,30 +192,42 @@ public class WorldInteractionHandler extends BaseInboundHandler {
 
     private Optional<BlockHitResult> rayTraceBlock(ClientLevel level, LocalPlayer player, Vec3 eyePos, BlockPos blockPos, double reachDistance) {
         VoxelShape shape = level.getBlockState(blockPos).getShape(level, blockPos);
-        double bx = blockPos.getX(), by = blockPos.getY(), bz = blockPos.getZ();
-        double minX = bx + shape.min(Direction.Axis.X), maxX = bx + shape.max(Direction.Axis.X);
-        double minY = by + shape.min(Direction.Axis.Y), maxY = by + shape.max(Direction.Axis.Y);
-        double minZ = bz + shape.min(Direction.Axis.Z), maxZ = bz + shape.max(Direction.Axis.Z);
-        double midX = (minX + maxX) / 2, midY = (minY + maxY) / 2, midZ = (minZ + maxZ) / 2;
-        Vec3[] candidates = {
-            new Vec3(midX, midY, midZ), // center
-            new Vec3(midX, minY, midZ), // down face
-            new Vec3(midX, maxY, midZ), // up face
-            new Vec3(midX, midY, minZ), // north face
-            new Vec3(midX, midY, maxZ), // south face
-            new Vec3(minX, midY, midZ), // west face
-            new Vec3(maxX, midY, midZ), // east face
-        };
+        if (shape.isEmpty()) return Optional.empty();
+        AABB aabb = shape.bounds();
+        for (Direction face : Direction.values()) {
+            for (Vec3 target : BlockFaceUtil.faceCandidates(blockPos, face, aabb)) {
+                if (eyePos.distanceTo(target) > reachDistance) continue;
+                Vec3 end = BlockFaceUtil.extendRay(eyePos, target);
+                BlockHitResult hit = level.clip(new ClipContext(
+                    eyePos, end,
+                    ClipContext.Block.OUTLINE,
+                    ClipContext.Fluid.NONE,
+                    player
+                ));
+                if (hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(blockPos)) {
+                    return Optional.of(hit);
+                }
+            }
+        }
+        return Optional.empty();
+    }
 
-        for (Vec3 target : candidates) {
+    private Optional<BlockHitResult> rayTraceBlockFace(ClientLevel level, LocalPlayer player, Vec3 eyePos, BlockPos blockPos, double reachDistance, int faceOrdinal) {
+        Direction face = BlockFaceUtil.faceFromOrdinal(faceOrdinal);
+        if (face == null) return Optional.empty();
+        VoxelShape shape = level.getBlockState(blockPos).getShape(level, blockPos);
+        if (shape.isEmpty()) return Optional.empty();
+        AABB aabb = shape.bounds();
+        for (Vec3 target : BlockFaceUtil.faceCandidates(blockPos, face, aabb)) {
             if (eyePos.distanceTo(target) > reachDistance) continue;
+            Vec3 end = BlockFaceUtil.extendRay(eyePos, target);
             BlockHitResult hit = level.clip(new ClipContext(
-                eyePos, target,
+                eyePos, end,
                 ClipContext.Block.OUTLINE,
                 ClipContext.Fluid.NONE,
                 player
             ));
-            if (hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(blockPos)) {
+            if (hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(blockPos) && hit.getDirection() == face) {
                 return Optional.of(hit);
             }
         }

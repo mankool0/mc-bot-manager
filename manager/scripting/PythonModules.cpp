@@ -321,26 +321,45 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           "Query the current hold-attack state from the client. Returns True if attack is "
           "currently being held, False otherwise. Blocks until the client responds.",
           py::arg("bot_name") = "");
+
+    py::enum_<PythonAPI::BlockFace>(m, "BlockFace")
+        .value("AUTO",  PythonAPI::BlockFace::AUTO)
+        .value("DOWN",  PythonAPI::BlockFace::DOWN)
+        .value("UP",    PythonAPI::BlockFace::UP)
+        .value("NORTH", PythonAPI::BlockFace::NORTH)
+        .value("SOUTH", PythonAPI::BlockFace::SOUTH)
+        .value("WEST",  PythonAPI::BlockFace::WEST)
+        .value("EAST",  PythonAPI::BlockFace::EAST)
+        .export_values();
+
     m.def("look_at", &PythonAPI::lookAt,
-          "Look at a specific position (x, y, z)",
+          "Look at a block at (x, y, z). face selects which face to target; AUTO finds the best visible face. "
+          "sneak=False tries standing first, falls back to crouching eye height if nothing is visible.",
           py::arg("x"), py::arg("y"), py::arg("z"),
+          py::arg("face") = PythonAPI::BlockFace::AUTO,
+          py::arg("sneak") = false,
           py::arg("bot_name") = "");
     m.def("can_reach_block", &PythonAPI::canReachBlock,
-          "Check if a block is reachable from the bot's current position",
+          "Check if a block is reachable from the bot's current position. "
+          "face=AUTO checks any face; pass a specific face to check only that face.",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("sneak") = false,
+          py::arg("face") = PythonAPI::BlockFace::AUTO,
           py::arg("bot") = "");
     m.def("can_reach_block_from", &PythonAPI::canReachBlockFrom,
-          "Check if a block (x,y,z) is reachable when standing at (from_x,from_y,from_z)",
+          "Check if a block (x,y,z) is reachable when standing at (from_x,from_y,from_z). "
+          "face=AUTO checks any face; pass a specific face to check only that face.",
           py::arg("from_x"), py::arg("from_y"), py::arg("from_z"),
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("sneak") = false,
+          py::arg("face") = PythonAPI::BlockFace::AUTO,
           py::arg("bot") = "");
     m.def("interact_block", &PythonAPI::interactBlock,
           "Right-click/interact with block at position",
           py::arg("x"), py::arg("y"), py::arg("z"),
           py::arg("sneak") = false,
           py::arg("look_at_block") = true,
+          py::arg("face") = PythonAPI::BlockFace::AUTO,
           py::arg("bot") = "");
 
     // Container interaction enums

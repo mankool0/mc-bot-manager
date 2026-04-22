@@ -6,9 +6,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import mankool.mcBotClient.connection.PipeConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,68 +48,54 @@ public class PlayerActionHandler extends BaseInboundHandler {
                 Common.Vec3d pos = command.getPosition();
                 BlockPos blockPos = new BlockPos((int) pos.getX(), (int) pos.getY(), (int) pos.getZ());
 
-                Vec3 eyePos = player.getEyePosition();
+                Vec3 standingEyePos = player.getEyePosition();
+                Vec3 sneakEyePos = new Vec3(player.getX(), player.getY() + player.getEyeHeight(Pose.CROUCHING), player.getZ());
 
-                Vec3[] faceCenters = new Vec3[]{
-                    new Vec3(blockPos.getX() + 0.5, blockPos.getY(), blockPos.getZ() + 0.5),      // Down
-                    new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 1, blockPos.getZ() + 0.5),  // Up
-                    new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ()),      // North
-                    new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 1),  // South
-                    new Vec3(blockPos.getX(), blockPos.getY() + 0.5, blockPos.getZ() + 0.5),      // West
-                    new Vec3(blockPos.getX() + 1, blockPos.getY() + 0.5, blockPos.getZ() + 0.5)   // East
-                };
+                VoxelShape shape = player.level().getBlockState(blockPos).getShape(player.level(), blockPos);
+                if (shape.isEmpty()) {
+                    sendFailure(messageId, "Block at " + blockPos.toShortString() + " has no collision shape");
+                    return;
+                }
+                AABB aabb = shape.bounds();
 
-                Direction[] directions = new Direction[]{
-                    Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST
-                };
+                Common.BlockFace requestedFace = command.getFace();
+                Direction[] facesToTry = (requestedFace != null && requestedFace != Common.BlockFace.FACE_AUTO)
+                    ? new Direction[]{BlockFaceUtil.protoFaceToDirection(requestedFace)}
+                    : new Direction[]{Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST};
+
+                Vec3[] eyePositions = command.getSneak()
+                    ? new Vec3[]{sneakEyePos}
+                    : new Vec3[]{standingEyePos, sneakEyePos};
 
                 Vec3 targetPos = null;
-                Direction bestFace = null;
-
-                for (int i = 0; i < faceCenters.length; i++) {
-                    Vec3 faceCenter = faceCenters[i];
-
-                    Vec3 direction = faceCenter.subtract(eyePos).normalize();
-                    Vec3 extendedTarget = eyePos.add(direction.scale(eyePos.distanceTo(faceCenter) + 0.5));
-
-                    BlockHitResult hitResult = player.level().clip(new net.minecraft.world.level.ClipContext(
-                        eyePos,
-                        extendedTarget,
-                        net.minecraft.world.level.ClipContext.Block.OUTLINE,
-                        net.minecraft.world.level.ClipContext.Fluid.NONE,
-                        player
-                    ));
-
-                    if (hitResult.getType() == HitResult.Type.BLOCK && hitResult.getBlockPos().equals(blockPos)) {
-                        targetPos = faceCenter;
-                        bestFace = directions[i];
-                        break;
+                Vec3 resolvedEyePos = eyePositions[0];
+                outer:
+                for (Vec3 eyePos : eyePositions) {
+                    for (Direction faceDir : facesToTry) {
+                        for (Vec3 candidate : BlockFaceUtil.faceCandidates(blockPos, faceDir, aabb)) {
+                            Vec3 end = BlockFaceUtil.extendRay(eyePos, candidate);
+                            BlockHitResult hit = player.level().clip(new net.minecraft.world.level.ClipContext(
+                                eyePos, end,
+                                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                                player
+                            ));
+                            if (hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(blockPos) && hit.getDirection() == faceDir) {
+                                targetPos = candidate;
+                                resolvedEyePos = eyePos;
+                                break outer;
+                            }
+                        }
                     }
                 }
 
                 if (targetPos == null) {
                     targetPos = Vec3.atCenterOf(blockPos);
-                    bestFace = null;
                 }
 
-                double dx = targetPos.x - eyePos.x;
-                double dy = targetPos.y - eyePos.y;
-                double dz = targetPos.z - eyePos.z;
+                BlockFaceUtil.applyRotationToward(player, resolvedEyePos, targetPos);
 
-                double distance = Math.sqrt(dx * dx + dz * dz);
-                float yaw = (float) (Math.atan2(-dx, dz) * 180 / Math.PI);
-                float pitch = (float) (Math.atan2(-dy, distance) * 180 / Math.PI);
-
-                player.setYRot(yaw);
-                player.setXRot(pitch);
-
-                if (bestFace != null) {
-                    sendSuccess(messageId, String.format("Looking at block %.0f, %.0f, %.0f (%s face)",
-                        pos.getX(), pos.getY(), pos.getZ(), bestFace.getSerializedName()));
-                } else {
-                    sendSuccess(messageId, String.format("Looking at block %.0f, %.0f, %.0f (center, no face reachable)",
-                        pos.getX(), pos.getY(), pos.getZ()));
-                }
+                sendSuccess(messageId, String.format("Looking at block %d, %d, %d", blockPos.getX(), blockPos.getY(), blockPos.getZ()));
             } else if (command.hasEntityId()) {
                 // TODO: Look at entity by ID
                 LOGGER.info("Look at entity: {}", command.getEntityId());

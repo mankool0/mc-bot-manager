@@ -392,8 +392,8 @@ public:
     static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
 
     // World interaction commands
-    static bool sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak = false, int timeoutMs = 3000);
-    static bool sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, int timeoutMs = 3000);
+    static bool sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak = false, int timeoutMs = 3000, int face = 0);
+    static bool sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, int timeoutMs = 3000, int face = 0);
     static void handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
     static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
@@ -401,7 +401,8 @@ public:
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
-                                      bool lookAtBlock = true);
+                                      bool lookAtBlock = true,
+                                      mankool::mcbot::protocol::BlockFaceGadget::BlockFace face = mankool::mcbot::protocol::BlockFaceGadget::BlockFace::FACE_AUTO);
 
     // Container interaction commands
     static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
@@ -415,7 +416,9 @@ public:
     static void sendPressKey(const QString &botName, const QString &screenId, int keyCode, int modifiers);
     static void sendOpenGameMenu(const QString &botName);
     static void sendSwitchHotbarSlot(const QString &botName, int slot);
-    static void sendLookAt(const QString &botName, double x, double y, double z);
+    static void sendLookAt(const QString &botName, double x, double y, double z,
+                           mankool::mcbot::protocol::BlockFaceGadget::BlockFace face = mankool::mcbot::protocol::BlockFaceGadget::BlockFace::FACE_AUTO,
+                           bool sneak = false);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -480,13 +483,14 @@ private:
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
     bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
-                               bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0);
+                               bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0, int face = 0);
     void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
     void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
-                                   mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock);
+                                   mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
+                                   mankool::mcbot::protocol::BlockFaceGadget::BlockFace face);
     void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
     void sendCloseContainerImpl(const QString &botName);
     void sendOpenInventoryImpl(const QString &botName);
@@ -496,7 +500,8 @@ private:
     void sendPressKeyImpl(const QString &botName, const QString &screenId, int keyCode, int modifiers);
     void sendOpenGameMenuImpl(const QString &botName);
     void sendSwitchHotbarSlotImpl(const QString &botName, int slot);
-    void sendLookAtImpl(const QString &botName, double x, double y, double z);
+    void sendLookAtImpl(const QString &botName, double x, double y, double z,
+                        mankool::mcbot::protocol::BlockFaceGadget::BlockFace face, bool sneak);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);
