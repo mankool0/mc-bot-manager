@@ -11,6 +11,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -174,14 +175,11 @@ public class WorldInteractionHandler extends BaseInboundHandler {
             var ctx = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext();
             double blockReachDistance = ctx.playerController().getBlockReachDistance();
 
-            Vec3 eyePos;
-            if (command.hasFromPosition()) {
-                Common.BlockPos from = command.getFromPosition();
-                double eyeY = command.getSneak() ? from.getY() + 1.27 : from.getY() + 1.62;
-                eyePos = new Vec3(from.getX() + 0.5, eyeY, from.getZ() + 0.5);
-            } else {
-                eyePos = player.getEyePosition();
-            }
+            Common.BlockPos from = command.hasFromPosition() ? command.getFromPosition() : null;
+            double baseX = from != null ? from.getX() + 0.5 : player.getX();
+            double baseY = from != null ? from.getY()       : player.getY();
+            double baseZ = from != null ? from.getZ() + 0.5 : player.getZ();
+            Vec3 eyePos = new Vec3(baseX, baseY + player.getEyeHeight(command.getSneak() ? Pose.CROUCHING : Pose.STANDING), baseZ);
 
             int faceOrdinal = command.getFace().getNumber();
             boolean reachable;
