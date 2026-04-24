@@ -1,16 +1,29 @@
 #ifndef PRISMLAUNCHERMANAGER_H
 #define PRISMLAUNCHERMANAGER_H
 
+#include <QLocalSocket>
 #include <QObject>
 #include <QProcess>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
+#include <QVector>
 #include <QRegularExpression>
 
 struct BotInstance;
 struct PrismConfig;
 enum class BotStatus;
+
+struct PrismAccountInfo {
+    QString uuid;
+    QString name;
+    QString internalId;
+};
+
+struct PrismInstanceInfo {
+    QString id;
+    QString name;
+};
 
 class PrismLauncherManager : public QObject
 {
@@ -40,6 +53,8 @@ signals:
     void accountRefreshStarted(const QString &accountName);
     void accountRefreshSucceeded(const QString &accountName);
     void accountRefreshFailed(const QString &accountName);
+    void accountsUpdated(QVector<PrismAccountInfo> accounts);
+    void instancesUpdated(QVector<PrismInstanceInfo> instances);
 
 private:
     explicit PrismLauncherManager(QObject *parent = nullptr);
@@ -55,6 +70,8 @@ private:
     void processOutput(const QString &output, bool isStderr = false);
     void parsePrismCommand(const QString &command, QString &executable, QStringList &arguments);
     void pingHook();
+    void connectSubscriber();
+    void handleSubscriberData();
 #ifdef Q_OS_WIN
     void injectHookDLL();
 #endif
@@ -64,6 +81,12 @@ private:
     QTimer *hookHeartbeatTimer = nullptr;
     bool m_hookAvailable = false;
     QString m_currentlyRefreshingAccount;
+
+    QLocalSocket *m_subscriberSocket = nullptr;
+    bool m_collectingAccounts = false;
+    bool m_collectingInstances = false;
+    QVector<PrismAccountInfo> m_pendingAccounts;
+    QVector<PrismInstanceInfo> m_pendingInstances;
 };
 
 #endif // PRISMLAUNCHERMANAGER_H

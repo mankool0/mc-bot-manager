@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include <QAbstractListModel>
 #include <QMetaObject>
+#include <QSet>
 #include <QTimer>
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -9,8 +10,10 @@
 #include "minecraft/auth/AccountList.h"
 #include "minecraft/auth/AccountData.h"
 #include "minecraft/auth/MinecraftAccount.h"
-
 #include <cstring>
+
+// InstanceList::InstanceIDRole from launcher/InstanceList.h
+static constexpr int kInstanceIDRole = 0x34B1CB49;
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -19,23 +22,6 @@
 #  include <unistd.h>
 #endif
 
-// Subclass trick: gives us legal access to AccountList's protected m_refreshQueue.
-// We never construct one - we only static_cast an existing AccountList* into this
-// type to call forceRefresh, which has the same binary layout as AccountList.
-// All QList operations resolve to Qt6Core.so/Qt6Core.dll, so no Prism binary symbols
-// are needed.
-class AccountListHook : public AccountList {
-public:
-    void forceRefresh(const QString& accountId)
-    {
-        auto idx = m_refreshQueue.indexOf(accountId);
-        if (idx != -1)
-            m_refreshQueue.removeAt(idx);
-        m_refreshQueue.push_front(accountId);
-        // tryNext is a private slot; invokeMethod bypasses C++ access control.
-        QMetaObject::invokeMethod(this, "tryNext", Qt::DirectConnection);
-    }
-};
 
 static AccountList* findAccountList()
 {
@@ -44,6 +30,17 @@ static AccountList* findAccountList()
     for (QObject* o : app->findChildren<QObject*>()) {
         if (strcmp(o->metaObject()->className(), "AccountList") == 0)
             return static_cast<AccountList*>(o);
+    }
+    return nullptr;
+}
+
+static QAbstractListModel* findInstanceList()
+{
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app) return nullptr;
+    for (QObject* o : app->findChildren<QObject*>()) {
+        if (strcmp(o->metaObject()->className(), "InstanceList") == 0)
+            return static_cast<QAbstractListModel*>(o);
     }
     return nullptr;
 }
@@ -60,6 +57,83 @@ static MinecraftAccountPtr findAccount(AccountList* list, const QString& name)
             return account;
     }
     return nullptr;
+}
+
+static QSet<QLocalSocket*> g_subscribers;
+
+static QByteArray buildAccountsPayload()
+{
+    QByteArray payload = "accounts_changed\n";
+    AccountList* list = findAccountList();
+    if (list) {
+        for (int i = 0, n = list->rowCount({}); i < n; ++i) {
+            auto v = list->data(list->index(i, 0), AccountList::PointerRole);
+            MinecraftAccountPtr account = v.value<MinecraftAccountPtr>();
+            if (!account) continue;
+            AccountData* data = account->accountData();
+            if (!data) continue;
+            payload += QString("account:%1|%2|%3\n")
+                .arg(data->minecraftProfile.id,
+                     data->minecraftProfile.name,
+                     account->internalId())
+                .toUtf8();
+        }
+    }
+    payload += "accounts_end\n";
+    return payload;
+}
+
+static QByteArray buildInstancesPayload()
+{
+    QByteArray payload = "instances_changed\n";
+    QAbstractListModel* list = findInstanceList();
+    if (list) {
+        for (int i = 0, n = list->rowCount({}); i < n; ++i) {
+            QModelIndex idx = list->index(i, 0);
+            QString id = list->data(idx, kInstanceIDRole).toString();
+            QString name = list->data(idx, Qt::DisplayRole).toString();
+            if (id.isEmpty()) continue;
+            payload += QString("instance:%1|%2\n").arg(id, name).toUtf8();
+        }
+    }
+    payload += "instances_end\n";
+    return payload;
+}
+
+static void sendToSubscribers(const QByteArray& data)
+{
+    for (QLocalSocket* s : std::as_const(g_subscribers)) {
+        if (s && s->state() == QLocalSocket::ConnectedState)
+            s->write(data);
+    }
+}
+
+static void initChangeSignals()
+{
+    static bool connected = false;
+    if (connected) return;
+    connected = true;
+
+    auto pushAccounts = []() { sendToSubscribers(buildAccountsPayload()); };
+    auto pushInstances = []() { sendToSubscribers(buildInstancesPayload()); };
+
+    if (auto* accounts = static_cast<QAbstractItemModel*>(findAccountList())) {
+        QObject::connect(accounts, &QAbstractItemModel::rowsInserted,
+                         QCoreApplication::instance(), pushAccounts);
+        QObject::connect(accounts, &QAbstractItemModel::rowsRemoved,
+                         QCoreApplication::instance(), pushAccounts);
+        QObject::connect(accounts, &QAbstractItemModel::modelReset,
+                         QCoreApplication::instance(), pushAccounts);
+    }
+
+    if (auto* instances = static_cast<QAbstractItemModel*>(findInstanceList())) {
+        QObject::connect(instances, &QAbstractItemModel::rowsInserted,
+                         QCoreApplication::instance(), pushInstances);
+        QObject::connect(instances, &QAbstractItemModel::rowsRemoved,
+                         QCoreApplication::instance(), pushInstances);
+        QObject::connect(instances, &QAbstractItemModel::modelReset,
+                         QCoreApplication::instance(), pushInstances);
+    }
 }
 
 class RefreshWatcher : public QObject {
@@ -136,34 +210,20 @@ static void doRefresh(QLocalSocket* socket, const QString& profile)
                      watcher, SLOT(onActivityChanged(bool)));
 
     QString id = account->internalId();
-    static_cast<AccountListHook*>(list)->forceRefresh(id);
+    list->requestRefresh(id);
     socket->write("refreshing\n");
     // socket stays open, RefreshWatcher closes it when activityChanged(false) fires.
 }
 
-static void doListAccounts(QLocalSocket* socket)
+static void doSubscribe(QLocalSocket* socket)
 {
-    AccountList* list = findAccountList();
-    if (!list) {
-        socket->write("error:no_account_list\n");
-        socket->disconnectFromServer();
-        return;
-    }
-
-    for (int i = 0, n = list->rowCount({}); i < n; ++i) {
-        auto v = list->data(list->index(i, 0), AccountList::PointerRole);
-        MinecraftAccountPtr account = v.value<MinecraftAccountPtr>();
-        if (!account) continue;
-        AccountData* data = account->accountData();
-        if (!data) continue;
-        socket->write(QString("account:%1|%2|%3\n")
-            .arg(data->minecraftProfile.id,
-                 data->minecraftProfile.name,
-                 account->internalId())
-            .toUtf8());
-    }
-    socket->write("accounts_end\n");
-    socket->disconnectFromServer();
+    g_subscribers.insert(socket);
+    QObject::connect(socket, &QLocalSocket::disconnected, socket, [socket]() {
+        g_subscribers.remove(socket);
+    });
+    socket->write(buildAccountsPayload());
+    socket->write(buildInstancesPayload());
+    initChangeSignals();
 }
 
 static bool dispatchCommand(QLocalSocket* socket, const QString& cmd)
@@ -171,7 +231,12 @@ static bool dispatchCommand(QLocalSocket* socket, const QString& cmd)
     if (cmd == "ping") {
         socket->write("pong\n");
     } else if (cmd == "list_accounts") {
-        doListAccounts(socket);
+        socket->write(buildAccountsPayload());
+    } else if (cmd == "list_instances") {
+        socket->write(buildInstancesPayload());
+    } else if (cmd == "subscribe") {
+        doSubscribe(socket);
+        return false;  // keep socket open for push notifications
     } else if (cmd.startsWith("refresh:")) {
         doRefresh(socket, cmd.mid(8));
         return false;

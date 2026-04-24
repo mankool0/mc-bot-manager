@@ -84,6 +84,11 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "crafting/*.h"
 )
 
+list(REMOVE_ITEM PROJECT_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/prism/PrismHook.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/prism/PrismHookLoader.cpp"
+)
+
 # Windows resource file for application icon
 if(WIN32)
     set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/mc-bot-manager.rc")
@@ -163,7 +168,7 @@ set(PRISMHOOK_INCLUDE_DIRS
 )
 
 if(WIN32)
-    add_library(prismhook SHARED prism-hook/PrismHook.cpp)
+    add_library(prismhook SHARED prism/PrismHook.cpp)
     target_include_directories(prismhook PRIVATE ${PRISMHOOK_INCLUDE_DIRS})
     target_link_libraries(prismhook PRIVATE Qt6::Core Qt6::Gui Qt6::Network)
 else()
@@ -171,13 +176,13 @@ else()
     # The loader is preloaded and only loads the core if in PrismLauncher.
 
     # Core hook: Qt symbols resolve at runtime from PrismLauncher's loaded libs.
-    add_library(prismhook_core SHARED prism-hook/PrismHook.cpp)
+    add_library(prismhook_core SHARED prism/PrismHook.cpp)
     target_include_directories(prismhook_core PRIVATE ${PRISMHOOK_INCLUDE_DIRS})
     target_link_libraries(prismhook_core PRIVATE Threads::Threads)
     target_link_options(prismhook_core PRIVATE -Wl,--allow-shlib-undefined)
 
     # Proxy loader (no deps, safe to preload into any process)
-    add_library(prismhook SHARED prism-hook/PrismHookLoader.cpp)
+    add_library(prismhook SHARED prism/PrismHookLoader.cpp)
     target_link_libraries(prismhook PRIVATE ${CMAKE_DL_LIBS})
 endif()
 

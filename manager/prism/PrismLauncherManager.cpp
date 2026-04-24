@@ -28,6 +28,15 @@ PrismLauncherManager& PrismLauncherManager::instance()
 PrismLauncherManager::PrismLauncherManager(QObject *parent)
     : QObject(parent)
 {
+    connect(this, &PrismLauncherManager::hookAvailabilityChanged, this, [this](bool available) {
+        if (available) {
+            connectSubscriber();
+        } else if (m_subscriberSocket) {
+            m_subscriberSocket->abort();
+            m_subscriberSocket->deleteLater();
+            m_subscriberSocket = nullptr;
+        }
+    });
 }
 
 PrismLauncherManager::~PrismLauncherManager()
@@ -619,6 +628,65 @@ void PrismLauncherManager::injectHookDLL()
     CloseHandle(hProcess);
 }
 #endif
+
+void PrismLauncherManager::connectSubscriber()
+{
+    if (m_subscriberSocket) {
+        m_subscriberSocket->abort();
+        m_subscriberSocket->deleteLater();
+        m_subscriberSocket = nullptr;
+    }
+
+    m_subscriberSocket = new QLocalSocket(this);
+
+    connect(m_subscriberSocket, &QLocalSocket::connected, this, [this]() {
+        m_subscriberSocket->write("subscribe\n");
+    });
+
+    connect(m_subscriberSocket, &QLocalSocket::readyRead, this,
+            &PrismLauncherManager::handleSubscriberData);
+
+    connect(m_subscriberSocket, &QLocalSocket::disconnected, this, [this]() {
+        m_subscriberSocket->deleteLater();
+        m_subscriberSocket = nullptr;
+    });
+
+    connect(m_subscriberSocket, &QLocalSocket::errorOccurred, this,
+            [this](QLocalSocket::LocalSocketError) {
+        LogManager::log("[PrismHook]: " + m_subscriberSocket->errorString(), LogManager::Error);
+    });
+
+    m_subscriberSocket->connectToServer(hookSocketPath());
+}
+
+void PrismLauncherManager::handleSubscriberData()
+{
+    while (m_subscriberSocket && m_subscriberSocket->canReadLine()) {
+        QString line = QString::fromUtf8(m_subscriberSocket->readLine()).trimmed();
+
+        if (line == "accounts_changed") {
+            m_collectingAccounts = true;
+            m_pendingAccounts.clear();
+        } else if (line == "accounts_end") {
+            m_collectingAccounts = false;
+            emit accountsUpdated(m_pendingAccounts);
+        } else if (m_collectingAccounts && line.startsWith("account:")) {
+            QStringList parts = line.mid(8).split('|');
+            if (parts.size() == 3)
+                m_pendingAccounts.append({parts[0], parts[1], parts[2]});
+        } else if (line == "instances_changed") {
+            m_collectingInstances = true;
+            m_pendingInstances.clear();
+        } else if (line == "instances_end") {
+            m_collectingInstances = false;
+            emit instancesUpdated(m_pendingInstances);
+        } else if (m_collectingInstances && line.startsWith("instance:")) {
+            QStringList parts = line.mid(9).split('|');
+            if (parts.size() == 2)
+                m_pendingInstances.append({parts[0], parts[1]});
+        }
+    }
+}
 
 void PrismLauncherManager::parsePrismCommand(const QString &command, QString &executable, QStringList &arguments)
 {

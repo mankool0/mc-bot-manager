@@ -16,7 +16,13 @@ static void loadHook()
     if (len == -1) return;
     buf[len] = '\0';
 
-    if (!strstr(buf, "prismlauncher") && !strstr(buf, "PrismLauncher") && !strstr(buf, "prismrun"))
+    char* pathCopy = strdup(buf);
+    char* base = basename(pathCopy);
+    int isPrism = (strcmp(base, "prismlauncher") == 0
+                   || strcmp(base, "PrismLauncher") == 0
+                   || strcmp(base, "prismrun") == 0);
+    free(pathCopy);
+    if (!isPrism)
         return;
 
     if (!getenv("MCBM_HOOK_SOCKET"))
@@ -24,12 +30,12 @@ static void loadHook()
 
     Dl_info info;
     if (dladdr((void*)loadHook, &info)) {
-        char* pathCopy = strdup(info.dli_fname);
-        char* dir = dirname(pathCopy);
+        char* libPathCopy = strdup(info.dli_fname);
+        char* dir = dirname(libPathCopy);
 
         char realHookPath[512];
         snprintf(realHookPath, sizeof(realHookPath), "%s/libprismhook_core.so", dir);
-        free(pathCopy);
+        free(libPathCopy);
 
         dlopen(realHookPath, RTLD_LAZY | RTLD_GLOBAL);
     }

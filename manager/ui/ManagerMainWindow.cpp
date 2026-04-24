@@ -93,6 +93,29 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
             [this](bool) { updateStatusDisplay(); });
 
     connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::instancesUpdated,
+            this,
+            [this](const QVector<PrismInstanceInfo> &instances) {
+                prismConfig.instances.clear();
+                for (const PrismInstanceInfo &info : instances)
+                    prismConfig.instances.append(info.id);
+                prismConfig.instances.sort();
+                updateInstanceComboBox();
+            });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountsUpdated,
+            this,
+            [this](const QVector<PrismAccountInfo> &accounts) {
+                prismConfig.accountIdToNameMap.clear();
+                for (const PrismAccountInfo &info : accounts)
+                    prismConfig.accountIdToNameMap.insert(info.uuid, info.name);
+                prismConfig.accounts = prismConfig.accountIdToNameMap.values();
+                prismConfig.accounts.sort();
+                updateAccountComboBox();
+            });
+
+    connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftLaunching,
             this,
             [](const QString &botName) {
@@ -1229,42 +1252,47 @@ void ManagerMainWindow::loadPrismLauncherConfig()
 
 void ManagerMainWindow::updateInstanceComboBox()
 {
-    ui->instanceComboBox->clear();
+    QString current = ui->instanceComboBox->currentText();
+    ui->instanceComboBox->blockSignals(true);
 
-    // Add empty option to allow deselection
+    ui->instanceComboBox->clear();
     ui->instanceComboBox->addItem("(None)");
 
     if (!prismConfig.instances.isEmpty()) {
         QStringList usedInstances = getUsedInstances();
         QString currentBotInstance;
 
-        // Get the current bot's instance if we're editing
         if (!selectedBotName.isEmpty()) {
             BotInstance *bot = BotManager::getBotByName(selectedBotName);
-            if (bot) {
+            if (bot)
                 currentBotInstance = bot->instance;
-            }
         }
 
-        // Add available instances (not used by other bots)
         for (const QString &instance : std::as_const(prismConfig.instances)) {
-            if (!usedInstances.contains(instance) || instance == currentBotInstance) {
+            if (!usedInstances.contains(instance) || instance == currentBotInstance)
                 ui->instanceComboBox->addItem(instance);
-            }
         }
     }
+
+    int idx = ui->instanceComboBox->findText(current);
+    ui->instanceComboBox->setCurrentIndex(idx != -1 ? idx : 0);
+    ui->instanceComboBox->blockSignals(false);
 }
 
 void ManagerMainWindow::updateAccountComboBox()
 {
-    ui->accountComboBox->clear();
+    QString current = ui->accountComboBox->currentText();
+    ui->accountComboBox->blockSignals(true);
 
-    // Add empty option to allow deselection
+    ui->accountComboBox->clear();
     ui->accountComboBox->addItem("(None)");
 
-    if (!prismConfig.accounts.isEmpty()) {
+    if (!prismConfig.accounts.isEmpty())
         ui->accountComboBox->addItems(prismConfig.accounts);
-    }
+
+    int idx = ui->accountComboBox->findText(current);
+    ui->accountComboBox->setCurrentIndex(idx != -1 ? idx : 0);
+    ui->accountComboBox->blockSignals(false);
 }
 
 void ManagerMainWindow::openGlobalSettings()
