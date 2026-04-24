@@ -72,6 +72,38 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="hookGroupBox">
+     <property name="title">
+      <string>Prism Hook</string>
+     </property>
+     <layout class="QVBoxLayout" name="hookLayout">
+      <item>
+       <widget class="QCheckBox" name="useHookCheckBox">
+        <property name="text">
+         <string>Enable Prism hook (allows automatic token refresh)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTextEdit" name="hookNoteLabel">
+        <property name="plainText">
+         <string>When enabled, a shared library is injected into the PrismLauncher process to enable account token refresh without waiting until Prism does a refresh.</string>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="maximumHeight">
+         <number>60</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="statsGroupBox">
      <property name="title">
       <string>Current Statistics</string>

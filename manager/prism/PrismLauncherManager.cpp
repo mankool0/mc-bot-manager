@@ -4,10 +4,19 @@
 #include "bot/BotManager.h"
 #include <QTimer>
 #include <QSettings>
+#include <QCoreApplication>
+#include <QFile>
+#include <QProcessEnvironment>
+#include <QLocalSocket>
+#include <memory>
 
 #ifdef Q_OS_UNIX
 #include <signal.h>
 #include <sys/types.h>
+#endif
+
+#ifdef Q_OS_WIN
+#include <windows.h>
 #endif
 
 PrismLauncherManager& PrismLauncherManager::instance()
@@ -19,6 +28,15 @@ PrismLauncherManager& PrismLauncherManager::instance()
 PrismLauncherManager::PrismLauncherManager(QObject *parent)
     : QObject(parent)
 {
+    connect(this, &PrismLauncherManager::hookAvailabilityChanged, this, [this](bool available) {
+        if (available) {
+            connectSubscriber();
+        } else if (m_subscriberSocket) {
+            m_subscriberSocket->abort();
+            m_subscriberSocket->deleteLater();
+            m_subscriberSocket = nullptr;
+        }
+    });
 }
 
 PrismLauncherManager::~PrismLauncherManager()
@@ -106,12 +124,87 @@ bool PrismLauncherManager::isPrismGUIRunning()
     return instance().prismGUIProcess != nullptr && instance().prismGUIProcess->state() == QProcess::Running;
 }
 
+bool PrismLauncherManager::isHookAvailable()
+{
+    return instance().m_hookAvailable;
+}
+
 qint64 PrismLauncherManager::getPrismGUIPid()
 {
     if (instance().prismGUIProcess && instance().prismGUIProcess->state() == QProcess::Running) {
         return instance().prismGUIProcess->processId();
     }
     return 0;
+}
+
+QString PrismLauncherManager::hookSocketPath()
+{
+#ifdef Q_OS_WIN
+    // QLocalSocket uses named pipes on Windows; connectToServer adds the \\.\pipe prefix
+    return "mcbotmanager-prism-hook";
+#else
+    PrismConfig *cfg = instance().prismConfig;
+    if (cfg && cfg->prismExecutable.contains("flatpak")) {
+        return cfg->prismPath + "/mcbotmanager-hook.sock";
+    }
+    QByteArray xdg = qgetenv("XDG_RUNTIME_DIR");
+    return (xdg.isEmpty() ? QString("/tmp") : QString::fromUtf8(xdg))
+           + "/mcbotmanager-prism-hook";
+#endif
+}
+
+void PrismLauncherManager::pingHook()
+{
+    auto* socket = new QLocalSocket(this);
+    auto* timer = new QTimer(this);
+    timer->setSingleShot(true);
+
+    auto markUnavailable = [this, socket, timer]() {
+        timer->stop();
+        socket->abort();
+        socket->deleteLater();
+        timer->deleteLater();
+        if (m_hookAvailable) {
+            m_hookAvailable = false;
+            emit hookAvailabilityChanged(false);
+        }
+    };
+
+    connect(timer, &QTimer::timeout, this, [this, markUnavailable]() {
+        LogManager::log("Prism hook: no response to ping", LogManager::Warning);
+        markUnavailable();
+    });
+
+    connect(socket, &QLocalSocket::connected, socket, [socket]() {
+        socket->write("ping\n");
+    });
+
+    connect(socket, &QLocalSocket::readyRead, this, [this, socket, timer]() {
+        if (socket->canReadLine()) {
+            QString line = QString::fromUtf8(socket->readLine()).trimmed();
+            if (line == "pong") {
+                if (!m_hookAvailable) {
+                    m_hookAvailable = true;
+                    emit hookAvailabilityChanged(true);
+                }
+            } else {
+                LogManager::log("Prism hook: unexpected ping response: " + line, LogManager::Warning);
+            }
+            timer->stop();
+            socket->disconnectFromServer();
+            socket->deleteLater();
+            timer->deleteLater();
+        }
+    });
+
+    connect(socket, &QLocalSocket::errorOccurred, this,
+            [this, markUnavailable](QLocalSocket::LocalSocketError) {
+        LogManager::log("Prism hook: not reachable", LogManager::Warning);
+        markUnavailable();
+    });
+
+    socket->connectToServer(hookSocketPath());
+    timer->start(5000);
 }
 
 void PrismLauncherManager::stopBot(qint64 minecraftPid)
@@ -192,6 +285,18 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
             LogManager::log("PrismLauncher GUI started", LogManager::Info);
         }
         emit prismGUIStarted();
+
+        if (prismConfig && prismConfig->useHook) {
+            // Start hook heartbeat - first ping after 5s (hook init), then every 30s
+            if (!hookHeartbeatTimer) {
+                hookHeartbeatTimer = new QTimer(this);
+                connect(hookHeartbeatTimer, &QTimer::timeout, this, &PrismLauncherManager::pingHook);
+            }
+            QTimer::singleShot(5000, this, [this]() {
+                pingHook();
+                hookHeartbeatTimer->start(30000);
+            });
+        }
     });
 
     connect(prismGUIProcess,
@@ -207,6 +312,12 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
                                     LogManager::Info);
                 }
                 prismGUIProcess = nullptr;
+                if (hookHeartbeatTimer) hookHeartbeatTimer->stop();
+                if (m_hookAvailable) {
+                    m_hookAvailable = false;
+                    emit hookAvailabilityChanged(false);
+                }
+                m_currentlyRefreshingAccount.clear();
                 emit prismGUIStopped();
             });
 
@@ -225,6 +336,12 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
             LogManager::log("Unknown error occurred with PrismLauncher GUI", LogManager::Error);
         }
         prismGUIProcess = nullptr;
+        if (hookHeartbeatTimer) hookHeartbeatTimer->stop();
+        if (m_hookAvailable) {
+            m_hookAvailable = false;
+            emit hookAvailabilityChanged(false);
+        }
+        m_currentlyRefreshingAccount.clear();
         emit prismGUIStopped();
     });
 
@@ -242,6 +359,66 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
             LogManager::log(QString("Set MaxMemAlloc=%1 for instance '%2'").arg(b.maxMemory).arg(b.instance), LogManager::Info);
         }
     }
+
+#ifndef Q_OS_WIN
+    if (prismConfig->useHook) {
+        bool isFlatpak = prismConfig->prismExecutable.contains("flatpak");
+        QString hookLib;
+        QString hookSocket;
+
+        if (isFlatpak) {
+            hookLib = prismConfig->prismPath + "/libprismhook.so";
+            hookSocket = prismConfig->prismPath + "/mcbotmanager-hook.sock";
+            
+            QString srcLib = QCoreApplication::applicationDirPath() + "/libprismhook.so";
+            QString srcCore = QCoreApplication::applicationDirPath() + "/libprismhook_core.so";
+            
+            auto copyIfChanged = [](const QString &src, const QString &dest) {
+                if (!QFile::exists(src)) return;
+                QFileInfo srcInfo(src), destInfo(dest);
+                if (destInfo.exists()
+                    && destInfo.size() == srcInfo.size()
+                    && destInfo.lastModified() == srcInfo.lastModified()) return;
+                QFile::remove(dest);
+                QFile::copy(src, dest);
+            };
+
+            copyIfChanged(srcLib, hookLib);
+            copyIfChanged(srcCore, prismConfig->prismPath + "/libprismhook_core.so");
+        } else {
+            hookLib = QCoreApplication::applicationDirPath() + "/libprismhook.so";
+            hookSocket = hookSocketPath();
+            // Ensure core exists in the same place
+            QString srcCore = QCoreApplication::applicationDirPath() + "/libprismhook_core.so";
+            if (!QFile::exists(srcCore)) {
+                LogManager::log("Warning: libprismhook_core.so not found", LogManager::Warning);
+            }
+        }
+
+        if (QFile::exists(hookLib)) {
+            if (isFlatpak) {
+                // Use --env for both variables. The hook itself now handles
+                // being loaded into non-Qt processes (like bash) safely via dlsym.
+                arguments.insert(arguments.size() - 1, "--env=LD_PRELOAD=" + hookLib);
+                arguments.insert(arguments.size() - 1, "--env=MCBM_HOOK_SOCKET=" + hookSocket);
+            } else {
+                QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+                QString existing = env.value("LD_PRELOAD");
+                env.insert("LD_PRELOAD", existing.isEmpty() ? hookLib : existing + ":" + hookLib);
+                env.insert("MCBM_HOOK_SOCKET", hookSocket);
+                prismGUIProcess->setProcessEnvironment(env);
+            }
+        }
+    }
+#endif
+
+#ifdef Q_OS_WIN
+    if (prismConfig->useHook) {
+        connect(prismGUIProcess, &QProcess::started, this, [this]() {
+            injectHookDLL();
+        });
+    }
+#endif
 
     LogManager::log(QString("Starting PrismLauncher GUI: %1 %2").arg(prismExe, arguments.join(" ")),
                     LogManager::Info);
@@ -393,6 +570,122 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
                     emit minecraftStopped(bot.name);
                     break;
                 }
+            }
+        }
+
+        // Track Prism's background account refresh schedule
+        if (cleanLine.contains("RefreshSchedule: Processing account")) {
+            static QRegularExpression refreshStartReg(
+                "RefreshSchedule: Processing account \"([^\"]+)\"");
+            QRegularExpressionMatch m = refreshStartReg.match(cleanLine);
+            if (m.hasMatch()) {
+                m_currentlyRefreshingAccount = m.captured(1);
+                emit accountRefreshStarted(m_currentlyRefreshingAccount);
+            }
+        }
+
+        if (!m_currentlyRefreshingAccount.isEmpty()) {
+            if (cleanLine.contains("RefreshSchedule: Background account refresh succeeded")) {
+                emit accountRefreshSucceeded(m_currentlyRefreshingAccount);
+                m_currentlyRefreshingAccount.clear();
+            } else if (cleanLine.contains("RefreshSchedule: Background account refresh failed")) {
+                emit accountRefreshFailed(m_currentlyRefreshingAccount);
+                m_currentlyRefreshingAccount.clear();
+            }
+        }
+    }
+}
+
+#ifdef Q_OS_WIN
+void PrismLauncherManager::injectHookDLL()
+{
+    QString hookDll = QCoreApplication::applicationDirPath() + "/prismhook.dll";
+    if (!QFile::exists(hookDll) || !prismGUIProcess) return;
+
+    DWORD pid = (DWORD)prismGUIProcess->processId();
+    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+    if (!hProcess) {
+        LogManager::log("Failed to open Prism process for hook injection", LogManager::Warning);
+        return;
+    }
+
+    auto pathW = hookDll.toStdWString();
+    size_t pathBytes = (pathW.size() + 1) * sizeof(wchar_t);
+    LPVOID mem = VirtualAllocEx(hProcess, nullptr, pathBytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (mem) {
+        WriteProcessMemory(hProcess, mem, pathW.c_str(), pathBytes, nullptr);
+        FARPROC loadLib = GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "LoadLibraryW");
+        HANDLE thread = CreateRemoteThread(hProcess, nullptr, 0,
+                                           (LPTHREAD_START_ROUTINE)loadLib, mem, 0, nullptr);
+        if (thread) {
+            WaitForSingleObject(thread, 10000);
+            CloseHandle(thread);
+            LogManager::log("Prism hook DLL injected successfully", LogManager::Info);
+        } else {
+            LogManager::log("Failed to inject hook DLL into Prism", LogManager::Warning);
+        }
+        VirtualFreeEx(hProcess, mem, 0, MEM_RELEASE);
+    }
+    CloseHandle(hProcess);
+}
+#endif
+
+void PrismLauncherManager::connectSubscriber()
+{
+    if (m_subscriberSocket) {
+        m_subscriberSocket->abort();
+        m_subscriberSocket->deleteLater();
+        m_subscriberSocket = nullptr;
+    }
+
+    m_subscriberSocket = new QLocalSocket(this);
+
+    connect(m_subscriberSocket, &QLocalSocket::connected, this, [this]() {
+        m_subscriberSocket->write("subscribe\n");
+    });
+
+    connect(m_subscriberSocket, &QLocalSocket::readyRead, this,
+            &PrismLauncherManager::handleSubscriberData);
+
+    connect(m_subscriberSocket, &QLocalSocket::disconnected, this, [this]() {
+        m_subscriberSocket->deleteLater();
+        m_subscriberSocket = nullptr;
+    });
+
+    connect(m_subscriberSocket, &QLocalSocket::errorOccurred, this,
+            [this](QLocalSocket::LocalSocketError) {
+        LogManager::log("[PrismHook]: " + m_subscriberSocket->errorString(), LogManager::Error);
+    });
+
+    m_subscriberSocket->connectToServer(hookSocketPath());
+}
+
+void PrismLauncherManager::handleSubscriberData()
+{
+    while (m_subscriberSocket && m_subscriberSocket->canReadLine()) {
+        QString line = QString::fromUtf8(m_subscriberSocket->readLine()).trimmed();
+
+        if (line == "accounts_changed") {
+            m_collectingAccounts = true;
+            m_pendingAccounts.clear();
+        } else if (line == "accounts_end") {
+            m_collectingAccounts = false;
+            emit accountsUpdated(m_pendingAccounts);
+        } else if (m_collectingAccounts && line.startsWith("account:")) {
+            QStringList parts = line.mid(8).split('|');
+            if (parts.size() == 3) {
+                m_pendingAccounts.append({parts[0], parts[1], parts[2]});
+            }
+        } else if (line == "instances_changed") {
+            m_collectingInstances = true;
+            m_pendingInstances.clear();
+        } else if (line == "instances_end") {
+            m_collectingInstances = false;
+            emit instancesUpdated(m_pendingInstances);
+        } else if (m_collectingInstances && line.startsWith("instance:")) {
+            QStringList parts = line.mid(9).split('|');
+            if (parts.size() == 2) {
+                m_pendingInstances.append({parts[0], parts[1]});
             }
         }
     }

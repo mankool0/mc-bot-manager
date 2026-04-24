@@ -22,6 +22,7 @@
 #include <QActionGroup>
 #include <QElapsedTimer>
 #include <QTcpSocket>
+#include <QLocalSocket>
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrent>
 #include <memory>
@@ -56,6 +57,27 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     PrismLauncherManager::setPrismConfig(&prismConfig);
 
     connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountRefreshStarted,
+            this,
+            [this](const QString &accountName) {
+                m_refreshingAccounts.insert(accountName);
+                updateStatusDisplay();
+            });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountRefreshSucceeded,
+            this,
+            &ManagerMainWindow::onAccountRefreshSucceeded);
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountRefreshFailed,
+            this,
+            [this](const QString &accountName) {
+                m_refreshingAccounts.remove(accountName);
+                updateStatusDisplay();
+            });
+
+    connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::prismGUIStarted,
             this,
             [this]() { updateStatusDisplay(); });
@@ -64,6 +86,36 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
             &PrismLauncherManager::prismGUIStopped,
             this,
             [this]() { updateStatusDisplay(); });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::hookAvailabilityChanged,
+            this,
+            [this](bool) { updateStatusDisplay(); });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::instancesUpdated,
+            this,
+            [this](const QVector<PrismInstanceInfo> &instances) {
+                prismConfig.instances.clear();
+                for (const PrismInstanceInfo &info : instances) {
+                    prismConfig.instances.append(info.id);
+                }
+                prismConfig.instances.sort();
+                updateInstanceComboBox();
+            });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountsUpdated,
+            this,
+            [this](const QVector<PrismAccountInfo> &accounts) {
+                prismConfig.accountIdToNameMap.clear();
+                for (const PrismAccountInfo &info : accounts) {
+                    prismConfig.accountIdToNameMap.insert(info.uuid, info.name);
+                }
+                prismConfig.accounts = prismConfig.accountIdToNameMap.values();
+                prismConfig.accounts.sort();
+                updateAccountComboBox();
+            });
 
     connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::minecraftLaunching,
@@ -154,6 +206,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->launchBotButton, &QPushButton::clicked, this, &ManagerMainWindow::launchBot);
     connect(ui->stopBotButton, &QPushButton::clicked, this, &ManagerMainWindow::stopBot);
     connect(ui->restartBotButton, &QPushButton::clicked, this, &ManagerMainWindow::restartBot);
+    connect(ui->refreshTokenButton, &QPushButton::clicked, this, &ManagerMainWindow::refreshToken);
 
     connect(ui->actionLaunchPrism, &QAction::triggered, this, &ManagerMainWindow::launchPrismLauncher);
     connect(ui->actionPrismSettings, &QAction::triggered, this, &ManagerMainWindow::configurePrismLauncher);
@@ -957,6 +1010,9 @@ void ManagerMainWindow::updateStatusDisplay()
         ui->launchBotButton->setEnabled(canLaunch && !inLaunchQueue);
         ui->stopBotButton->setEnabled(isOnline);
         ui->restartBotButton->setEnabled(isOnline);
+        ui->refreshTokenButton->setEnabled(canLaunch && !selectedBot->account.isEmpty()
+                                           && PrismLauncherManager::isHookAvailable()
+                                           && !m_refreshingAccounts.contains(selectedBot->account));
         ui->instanceComboBox->setEnabled(!isActive);
         ui->accountComboBox->setEnabled(!isActive);
         ui->serverLineEdit->setEnabled(!isActive);
@@ -1003,6 +1059,7 @@ bool ManagerMainWindow::launchBotByName(const QString &botName)
     updateInstancesTable();
     updateStatusDisplay();
 
+    m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
     PrismLauncherManager::launchBot(botToLaunch);
 
     // Startup timeout: if the bot hasn't connected within 2 minutes, mark as Error
@@ -1059,6 +1116,79 @@ void ManagerMainWindow::restartBot()
     if (!selectedBotName.isEmpty()) {
         restartBotByName(selectedBotName, "Manual restart");
     }
+}
+
+void ManagerMainWindow::refreshToken()
+{
+    if (selectedBotName.isEmpty()) return;
+    BotInstance *bot = BotManager::getBotByName(selectedBotName);
+    if (!bot || bot->account.isEmpty()) return;
+
+    const QString account = bot->account;
+    const QString botName = selectedBotName;
+
+    sendHookRefresh(account, botName, [this, account, botName](bool success) {
+        if (success) {
+            m_lastAccountRefreshTime[account] = QDateTime::currentDateTime();
+        }
+    });
+}
+
+void ManagerMainWindow::sendHookRefresh(const QString &account, const QString &botName,
+                                        std::function<void(bool)> onDone)
+{
+    m_refreshingAccounts.insert(account);
+    updateStatusDisplay();
+
+    auto* socket = new QLocalSocket(this);
+    auto* timer = new QTimer(this);
+    timer->setSingleShot(true);
+
+    auto finish = [this, socket, timer, account, botName, onDone = std::move(onDone)](bool success) mutable {
+        timer->stop();
+        socket->disconnect();
+        socket->deleteLater();
+        timer->deleteLater();
+        m_refreshingAccounts.remove(account);
+        updateStatusDisplay();
+        onDone(success);
+    };
+
+    connect(timer, &QTimer::timeout, this, [finish, botName]() mutable {
+        LogManager::log(QString("[%1] Hook refresh timed out").arg(botName), LogManager::Warning);
+        finish(false);
+    });
+
+    connect(socket, &QLocalSocket::connected, socket, [socket, account]() {
+        socket->write(("refresh:" + account + "\n").toUtf8());
+    });
+
+    connect(socket, &QLocalSocket::readyRead, socket, [socket, botName, finish]() mutable {
+        while (socket->canReadLine()) {
+            QString line = QString::fromUtf8(socket->readLine()).trimmed();
+            if (line == "ok") {
+                LogManager::log(QString("[%1] Token refreshed").arg(botName), LogManager::Info);
+                finish(true);
+                return;
+            } else if (line.startsWith("error:")) {
+                LogManager::log(QString("[%1] Hook refresh error: %2").arg(botName, line.mid(6)),
+                                LogManager::Warning);
+                finish(false);
+                return;
+            }
+            // "refreshing" is just ack - keep waiting
+        }
+    });
+
+    connect(socket, &QLocalSocket::errorOccurred, socket,
+            [botName, finish](QLocalSocket::LocalSocketError) mutable {
+        LogManager::log(QString("[%1] Hook connection lost during refresh").arg(botName),
+                        LogManager::Warning);
+        finish(false);
+    });
+
+    socket->connectToServer(PrismLauncherManager::hookSocketPath());
+    timer->start(120000);
 }
 
 void ManagerMainWindow::restartBotByName(const QString &botName, const QString &reason)
@@ -1125,16 +1255,16 @@ void ManagerMainWindow::loadPrismLauncherConfig()
 
 void ManagerMainWindow::updateInstanceComboBox()
 {
-    ui->instanceComboBox->clear();
+    QString current = ui->instanceComboBox->currentText();
+    ui->instanceComboBox->blockSignals(true);
 
-    // Add empty option to allow deselection
+    ui->instanceComboBox->clear();
     ui->instanceComboBox->addItem("(None)");
 
     if (!prismConfig.instances.isEmpty()) {
         QStringList usedInstances = getUsedInstances();
         QString currentBotInstance;
 
-        // Get the current bot's instance if we're editing
         if (!selectedBotName.isEmpty()) {
             BotInstance *bot = BotManager::getBotByName(selectedBotName);
             if (bot) {
@@ -1142,25 +1272,32 @@ void ManagerMainWindow::updateInstanceComboBox()
             }
         }
 
-        // Add available instances (not used by other bots)
         for (const QString &instance : std::as_const(prismConfig.instances)) {
             if (!usedInstances.contains(instance) || instance == currentBotInstance) {
                 ui->instanceComboBox->addItem(instance);
             }
         }
     }
+
+    int idx = ui->instanceComboBox->findText(current);
+    ui->instanceComboBox->setCurrentIndex(idx != -1 ? idx : 0);
+    ui->instanceComboBox->blockSignals(false);
 }
 
 void ManagerMainWindow::updateAccountComboBox()
 {
-    ui->accountComboBox->clear();
+    QString current = ui->accountComboBox->currentText();
+    ui->accountComboBox->blockSignals(true);
 
-    // Add empty option to allow deselection
+    ui->accountComboBox->clear();
     ui->accountComboBox->addItem("(None)");
 
     if (!prismConfig.accounts.isEmpty()) {
         ui->accountComboBox->addItems(prismConfig.accounts);
     }
+    int idx = ui->accountComboBox->findText(current);
+    ui->accountComboBox->setCurrentIndex(idx != -1 ? idx : 0);
+    ui->accountComboBox->blockSignals(false);
 }
 
 void ManagerMainWindow::openGlobalSettings()
@@ -1196,6 +1333,8 @@ void ManagerMainWindow::configurePrismLauncher()
         dialog.setAccountIdToNameMap(prismConfig.accountIdToNameMap);
     }
 
+    dialog.setUseHook(prismConfig.useHook);
+
     if (dialog.exec() == QDialog::Accepted) {
         QString newPath = dialog.getCurrentPath();
         QString newExecutable = dialog.getExecutable();
@@ -1212,6 +1351,7 @@ void ManagerMainWindow::configurePrismLauncher()
 
         // Update executable even if path didn't change
         prismConfig.prismExecutable = newExecutable;
+        prismConfig.useHook = dialog.getUseHook();
     }
 }
 
@@ -1257,6 +1397,7 @@ void ManagerMainWindow::saveSettings()
     settings.setValue("executable", prismConfig.prismExecutable);
     settings.setValue("instances", prismConfig.instances);
     settings.setValue("accounts", prismConfig.accounts);
+    settings.setValue("useHook", prismConfig.useHook);
     settings.endGroup();
 
     // Save world save path
@@ -1295,6 +1436,7 @@ void ManagerMainWindow::loadSettings()
     settings.beginGroup("PrismLauncher");
     prismConfig.prismPath = settings.value("path", "").toString();
     prismConfig.prismExecutable = settings.value("executable", "").toString();
+    prismConfig.useHook = settings.value("useHook", true).toBool();
     settings.endGroup();
 
     // Load world save path
@@ -1739,17 +1881,103 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
         bot->tokenRefreshPending = false;
 
         if (tokenRefreshPending) {
-            LogManager::log(QString("[%1] Token expired, refreshing and relaunching...").arg(botName), LogManager::Warning);
-            QTimer::singleShot(3000, this, [this, botName]() {
-                launchBotByName(botName);
-            });
+            BotInstance *refreshBot = BotManager::getBotByName(botName);
+            QString accountProfile = refreshBot ? refreshBot->account : QString();
+            int attempts = ++m_tokenRefreshAttempts[botName];
+
+            if (attempts == 1) {
+                // First attempt: Prism's background scheduler may have already refreshed.
+                // Just relaunch - if it connects we're done.
+                LogManager::log(
+                    QString("[%1] Invalid session - relaunching (Prism may have auto-refreshed)").arg(botName),
+                    LogManager::Warning);
+                QTimer::singleShot(2000, this, [this, botName]() {
+                    m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
+                    launchBotByName(botName);
+                });
+            } else if (attempts == 2) {
+                // Still invalid after relaunch. Force refresh via hook or wait for Prism.
+                LogManager::log(
+                    QString("[%1] Token still invalid after relaunch - requesting refresh").arg(botName),
+                    LogManager::Warning);
+                QTimer::singleShot(1000, this, [this, botName, accountProfile]() {
+                    refreshAccountThenLaunch(accountProfile, botName);
+                });
+            } else {
+                // Repeated hook-refresh failures - something is fundamentally broken.
+                m_tokenRefreshAttempts.remove(botName);
+                LogManager::log(
+                    QString("[%1] Repeated token refresh failures - leaving bot offline").arg(botName),
+                    LogManager::Error);
+            }
         } else if (shouldAutoRestart) {
+            m_tokenRefreshAttempts.remove(botName);
             LogManager::log(QString("[%1] Crashed, auto-restarting...").arg(botName), LogManager::Warning);
             QTimer::singleShot(2000, this, [this, botName]() {
                 launchBotByName(botName);
             });
         }
     }
+}
+
+void ManagerMainWindow::refreshAccountThenLaunch(const QString &accountProfile,
+                                                  const QString &botName)
+{
+    // If Prism already refreshed this account after our last launch, no need to force it.
+    if (m_lastAccountRefreshTime.contains(accountProfile)
+        && m_lastBotLaunchTime.contains(botName)
+        && m_lastAccountRefreshTime[accountProfile] > m_lastBotLaunchTime[botName]) {
+        LogManager::log(
+            QString("[%1] Account already refreshed by Prism since last launch - relaunching").arg(botName),
+            LogManager::Info);
+        m_tokenRefreshAttempts.remove(botName);
+        m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
+        launchBotByName(botName);
+        return;
+    }
+
+    if (PrismLauncherManager::isHookAvailable()) {
+        sendHookRefresh(accountProfile, botName, [this, botName](bool success) {
+            if (success) {
+                m_tokenRefreshAttempts.remove(botName);
+            } else {
+                LogManager::log(QString("[%1] Refresh failed, relaunching anyway").arg(botName),
+                                LogManager::Warning);
+            }
+            m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
+            launchBotByName(botName);
+        });
+    } else {
+        // No hook: bot stays offline and waits for Prism's background refresh scheduler.
+        // Prism can take up to ~1 hour to trigger a refresh, so no timeout is imposed.
+        LogManager::log(
+            QString("[%1] Hook unavailable - waiting for Prism to refresh account '%2'")
+                .arg(botName, accountProfile),
+            LogManager::Warning);
+
+        auto* conn = new QMetaObject::Connection;
+        *conn = connect(&PrismLauncherManager::instance(),
+                        &PrismLauncherManager::accountRefreshSucceeded,
+                        this,
+                        [this, botName, accountProfile, conn](const QString &name) {
+            if (name != accountProfile) return;
+            disconnect(*conn);
+            delete conn;
+            LogManager::log(
+                QString("[%1] Prism refreshed account '%2' - relaunching").arg(botName, accountProfile),
+                LogManager::Info);
+            m_tokenRefreshAttempts.remove(botName);
+            m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
+            launchBotByName(botName);
+        });
+    }
+}
+
+void ManagerMainWindow::onAccountRefreshSucceeded(const QString &accountName)
+{
+    m_lastAccountRefreshTime[accountName] = QDateTime::currentDateTime();
+    m_refreshingAccounts.remove(accountName);
+    updateStatusDisplay();
 }
 
 void ManagerMainWindow::setupConsoleTab()

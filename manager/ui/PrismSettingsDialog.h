@@ -25,6 +25,9 @@ public:
     void setInstances(const QStringList &instances);
     void setAccountIdToNameMap(const QMap<QString, QString> &idToNameMap);
 
+    void setUseHook(bool enabled);
+    bool getUseHook() const;
+
     QStringList getInstances() const { return instances; }
     QStringList getAccounts() const;
     QMap<QString, QString> getAccountIdToNameMap() const { return accountIdToNameMap; }

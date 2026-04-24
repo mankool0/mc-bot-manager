@@ -97,6 +97,16 @@ QStringList PrismSettingsDialog::getAccounts() const
     return accountNames;
 }
 
+void PrismSettingsDialog::setUseHook(bool enabled)
+{
+    ui->useHookCheckBox->setChecked(enabled);
+}
+
+bool PrismSettingsDialog::getUseHook() const
+{
+    return ui->useHookCheckBox->isChecked();
+}
+
 void PrismSettingsDialog::onBrowseClicked()
 {
     QString selectedPath = QFileDialog::getExistingDirectory(
