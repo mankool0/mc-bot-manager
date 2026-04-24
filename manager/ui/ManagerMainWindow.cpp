@@ -97,8 +97,9 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
             this,
             [this](const QVector<PrismInstanceInfo> &instances) {
                 prismConfig.instances.clear();
-                for (const PrismInstanceInfo &info : instances)
+                for (const PrismInstanceInfo &info : instances) {
                     prismConfig.instances.append(info.id);
+                }
                 prismConfig.instances.sort();
                 updateInstanceComboBox();
             });
@@ -108,8 +109,9 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
             this,
             [this](const QVector<PrismAccountInfo> &accounts) {
                 prismConfig.accountIdToNameMap.clear();
-                for (const PrismAccountInfo &info : accounts)
+                for (const PrismAccountInfo &info : accounts) {
                     prismConfig.accountIdToNameMap.insert(info.uuid, info.name);
+                }
                 prismConfig.accounts = prismConfig.accountIdToNameMap.values();
                 prismConfig.accounts.sort();
                 updateAccountComboBox();
@@ -1126,8 +1128,9 @@ void ManagerMainWindow::refreshToken()
     const QString botName = selectedBotName;
 
     sendHookRefresh(account, botName, [this, account, botName](bool success) {
-        if (success)
+        if (success) {
             m_lastAccountRefreshTime[account] = QDateTime::currentDateTime();
+        }
     });
 }
 
@@ -1264,13 +1267,15 @@ void ManagerMainWindow::updateInstanceComboBox()
 
         if (!selectedBotName.isEmpty()) {
             BotInstance *bot = BotManager::getBotByName(selectedBotName);
-            if (bot)
+            if (bot) {
                 currentBotInstance = bot->instance;
+            }
         }
 
         for (const QString &instance : std::as_const(prismConfig.instances)) {
-            if (!usedInstances.contains(instance) || instance == currentBotInstance)
+            if (!usedInstances.contains(instance) || instance == currentBotInstance) {
                 ui->instanceComboBox->addItem(instance);
+            }
         }
     }
 
@@ -1287,9 +1292,9 @@ void ManagerMainWindow::updateAccountComboBox()
     ui->accountComboBox->clear();
     ui->accountComboBox->addItem("(None)");
 
-    if (!prismConfig.accounts.isEmpty())
+    if (!prismConfig.accounts.isEmpty()) {
         ui->accountComboBox->addItems(prismConfig.accounts);
-
+    }
     int idx = ui->accountComboBox->findText(current);
     ui->accountComboBox->setCurrentIndex(idx != -1 ? idx : 0);
     ui->accountComboBox->blockSignals(false);
@@ -1933,11 +1938,12 @@ void ManagerMainWindow::refreshAccountThenLaunch(const QString &accountProfile,
 
     if (PrismLauncherManager::isHookAvailable()) {
         sendHookRefresh(accountProfile, botName, [this, botName](bool success) {
-            if (success)
+            if (success) {
                 m_tokenRefreshAttempts.remove(botName);
-            else
+            } else {
                 LogManager::log(QString("[%1] Refresh failed, relaunching anyway").arg(botName),
                                 LogManager::Warning);
+            }
             m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
             launchBotByName(botName);
         });

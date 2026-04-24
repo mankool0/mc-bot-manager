@@ -22,11 +22,13 @@ static void loadHook()
                    || strcmp(base, "PrismLauncher") == 0
                    || strcmp(base, "prismrun") == 0);
     free(pathCopy);
-    if (!isPrism)
+    if (!isPrism) {
         return;
+    }
 
-    if (!getenv("MCBM_HOOK_SOCKET"))
+    if (!getenv("MCBM_HOOK_SOCKET")) {
         return;
+    }
 
     Dl_info info;
     if (dladdr((void*)loadHook, &info)) {

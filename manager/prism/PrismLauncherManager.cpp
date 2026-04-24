@@ -144,8 +144,9 @@ QString PrismLauncherManager::hookSocketPath()
     return "mcbotmanager-prism-hook";
 #else
     PrismConfig *cfg = instance().prismConfig;
-    if (cfg && cfg->prismExecutable.contains("flatpak"))
+    if (cfg && cfg->prismExecutable.contains("flatpak")) {
         return cfg->prismPath + "/mcbotmanager-hook.sock";
+    }
     QByteArray xdg = qgetenv("XDG_RUNTIME_DIR");
     return (xdg.isEmpty() ? QString("/tmp") : QString::fromUtf8(xdg))
            + "/mcbotmanager-prism-hook";
@@ -672,8 +673,9 @@ void PrismLauncherManager::handleSubscriberData()
             emit accountsUpdated(m_pendingAccounts);
         } else if (m_collectingAccounts && line.startsWith("account:")) {
             QStringList parts = line.mid(8).split('|');
-            if (parts.size() == 3)
+            if (parts.size() == 3) {
                 m_pendingAccounts.append({parts[0], parts[1], parts[2]});
+            }
         } else if (line == "instances_changed") {
             m_collectingInstances = true;
             m_pendingInstances.clear();
@@ -682,8 +684,9 @@ void PrismLauncherManager::handleSubscriberData()
             emit instancesUpdated(m_pendingInstances);
         } else if (m_collectingInstances && line.startsWith("instance:")) {
             QStringList parts = line.mid(9).split('|');
-            if (parts.size() == 2)
+            if (parts.size() == 2) {
                 m_pendingInstances.append({parts[0], parts[1]});
+            }
         }
     }
 }

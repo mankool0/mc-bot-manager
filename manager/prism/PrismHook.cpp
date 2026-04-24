@@ -28,8 +28,9 @@ static AccountList* findAccountList()
     QCoreApplication* app = QCoreApplication::instance();
     if (!app) return nullptr;
     for (QObject* o : app->findChildren<QObject*>()) {
-        if (strcmp(o->metaObject()->className(), "AccountList") == 0)
+        if (strcmp(o->metaObject()->className(), "AccountList") == 0) {
             return static_cast<AccountList*>(o);
+        }
     }
     return nullptr;
 }
@@ -39,8 +40,9 @@ static QAbstractListModel* findInstanceList()
     QCoreApplication* app = QCoreApplication::instance();
     if (!app) return nullptr;
     for (QObject* o : app->findChildren<QObject*>()) {
-        if (strcmp(o->metaObject()->className(), "InstanceList") == 0)
+        if (strcmp(o->metaObject()->className(), "InstanceList") == 0) {
             return static_cast<QAbstractListModel*>(o);
+        }
     }
     return nullptr;
 }
@@ -53,8 +55,9 @@ static MinecraftAccountPtr findAccount(AccountList* list, const QString& name)
         if (!account) continue;
         AccountData* data = account->accountData();
         if (!data) continue;
-        if (data->minecraftProfile.name == name)
+        if (data->minecraftProfile.name == name) {
             return account;
+        }
     }
     return nullptr;
 }
@@ -103,8 +106,9 @@ static QByteArray buildInstancesPayload()
 static void sendToSubscribers(const QByteArray& data)
 {
     for (QLocalSocket* s : std::as_const(g_subscribers)) {
-        if (s && s->state() == QLocalSocket::ConnectedState)
+        if (s && s->state() == QLocalSocket::ConnectedState) {
             s->write(data);
+        }
     }
 }
 
@@ -181,7 +185,9 @@ static QString hookPath()
     return "mcbotmanager-prism-hook";
 #else
     const char* ov = getenv("MCBM_HOOK_SOCKET");
-    if (ov && *ov) return QString::fromUtf8(ov);
+    if (ov && *ov) {
+        return QString::fromUtf8(ov);
+    }
     const char* xdg = getenv("XDG_RUNTIME_DIR");
     return QString("%1/mcbotmanager-prism-hook").arg(xdg ? xdg : "/tmp");
 #endif
@@ -263,8 +269,9 @@ static void initializeHookServer()
             QObject::connect(socket, &QLocalSocket::readyRead, socket, [socket]() {
                 while (socket->canReadLine()) {
                     QString cmd = QString::fromUtf8(socket->readLine()).trimmed();
-                    if (!dispatchCommand(socket, cmd))
+                    if (!dispatchCommand(socket, cmd)) {
                         return;
+                    }
                 }
             });
             QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
@@ -278,8 +285,9 @@ static void initializeHookServer()
 
 static DWORD WINAPI hookWaiterThread(LPVOID)
 {
-    while (!QCoreApplication::instance())
+    while (!QCoreApplication::instance()) {
         Sleep(50);
+    }
     QMetaObject::invokeMethod(QCoreApplication::instance(),
         []() { initializeHookServer(); },
         Qt::QueuedConnection);
@@ -288,8 +296,9 @@ static DWORD WINAPI hookWaiterThread(LPVOID)
 
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
 {
-    if (reason == DLL_PROCESS_ATTACH)
+    if (reason == DLL_PROCESS_ATTACH) {
         CreateThread(nullptr, 0, hookWaiterThread, nullptr, 0, nullptr);
+    }
     return TRUE;
 }
 
@@ -298,7 +307,9 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
 __attribute__((constructor))
 static void hookInit()
 {
-    if (!getenv("MCBM_HOOK_SOCKET")) return;
+    if (!getenv("MCBM_HOOK_SOCKET")) {
+        return;
+    }
 
     pthread_t t;
     pthread_create(&t, nullptr, [](void*) -> void* {
