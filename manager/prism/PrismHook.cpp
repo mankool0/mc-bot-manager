@@ -12,6 +12,25 @@
 #include "minecraft/auth/MinecraftAccount.h"
 #include <cstring>
 
+#ifdef _WIN32
+bool AccountList::isActive() const
+{
+    return m_activityCount != 0;
+}
+
+void AccountList::requestRefresh(QString accountId)
+{
+    auto index = m_refreshQueue.indexOf(accountId);
+    if (index != -1) {
+        m_refreshQueue.removeAt(index);
+    }
+    m_refreshQueue.push_front(accountId);
+    if (!isActive()) {
+        QMetaObject::invokeMethod(this, "tryNext", Qt::AutoConnection);
+    }
+}
+#endif
+
 // InstanceList::InstanceIDRole from launcher/InstanceList.h
 static constexpr int kInstanceIDRole = 0x34B1CB49;
 
