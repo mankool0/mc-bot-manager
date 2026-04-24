@@ -193,6 +193,8 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/share/icons/hicolor/256x256/apps
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/mc-bot-manager AppDir/usr/bin/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libmc-bot-manager-proto.so AppDir/usr/lib/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libprismhook.so AppDir/usr/bin/
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libprismhook_core.so AppDir/usr/bin/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.desktop AppDir/usr/share/applications/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/icons/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
         COMMAND ${CMAKE_COMMAND} -E make_directory "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"

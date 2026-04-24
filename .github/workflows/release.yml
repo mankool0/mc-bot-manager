@@ -167,6 +167,7 @@ jobs:
           mkdir mc-bot-manager
           copy mc-bot-manager.exe mc-bot-manager\
           copy mc-bot-manager-proto.dll mc-bot-manager\
+          copy prismhook.dll mc-bot-manager\
           windeployqt mc-bot-manager\mc-bot-manager.exe --release
 
       - name: Package Windows build
