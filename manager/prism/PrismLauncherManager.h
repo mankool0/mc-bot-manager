@@ -37,7 +37,9 @@ signals:
     void prismGUIStarted();
     void prismGUIStopped();
     void hookAvailabilityChanged(bool available);
-    void accountRefreshDetected(const QString &accountName);
+    void accountRefreshStarted(const QString &accountName);
+    void accountRefreshSucceeded(const QString &accountName);
+    void accountRefreshFailed(const QString &accountName);
 
 private:
     explicit PrismLauncherManager(QObject *parent = nullptr);

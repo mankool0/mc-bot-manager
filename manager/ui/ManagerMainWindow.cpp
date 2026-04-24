@@ -57,9 +57,25 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     PrismLauncherManager::setPrismConfig(&prismConfig);
 
     connect(&PrismLauncherManager::instance(),
-            &PrismLauncherManager::accountRefreshDetected,
+            &PrismLauncherManager::accountRefreshStarted,
             this,
-            &ManagerMainWindow::onAccountRefreshDetected);
+            [this](const QString &accountName) {
+                m_refreshingAccounts.insert(accountName);
+                updateStatusDisplay();
+            });
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountRefreshSucceeded,
+            this,
+            &ManagerMainWindow::onAccountRefreshSucceeded);
+
+    connect(&PrismLauncherManager::instance(),
+            &PrismLauncherManager::accountRefreshFailed,
+            this,
+            [this](const QString &accountName) {
+                m_refreshingAccounts.remove(accountName);
+                updateStatusDisplay();
+            });
 
     connect(&PrismLauncherManager::instance(),
             &PrismLauncherManager::prismGUIStarted,
@@ -1907,7 +1923,7 @@ void ManagerMainWindow::refreshAccountThenLaunch(const QString &accountProfile,
 
         auto* conn = new QMetaObject::Connection;
         *conn = connect(&PrismLauncherManager::instance(),
-                        &PrismLauncherManager::accountRefreshDetected,
+                        &PrismLauncherManager::accountRefreshSucceeded,
                         this,
                         [this, botName, accountProfile, conn](const QString &name) {
             if (name != accountProfile) return;
@@ -1923,9 +1939,11 @@ void ManagerMainWindow::refreshAccountThenLaunch(const QString &accountProfile,
     }
 }
 
-void ManagerMainWindow::onAccountRefreshDetected(const QString &accountName)
+void ManagerMainWindow::onAccountRefreshSucceeded(const QString &accountName)
 {
     m_lastAccountRefreshTime[accountName] = QDateTime::currentDateTime();
+    m_refreshingAccounts.remove(accountName);
+    updateStatusDisplay();
 }
 
 void ManagerMainWindow::setupConsoleTab()

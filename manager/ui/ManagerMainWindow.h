@@ -132,7 +132,7 @@ private:
     void restartBotByName(const QString &botName, const QString &reason);
     void sendHookRefresh(const QString &account, const QString &botName, std::function<void(bool)> onDone);
     void refreshAccountThenLaunch(const QString &accountProfile, const QString &botName);
-    void onAccountRefreshDetected(const QString &accountName);
+    void onAccountRefreshSucceeded(const QString &accountName);
 
     void checkScheduledLaunches();
     void checkBotUptimes();

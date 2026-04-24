@@ -568,15 +568,18 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
             static QRegularExpression refreshStartReg(
                 "RefreshSchedule: Processing account \"([^\"]+)\"");
             QRegularExpressionMatch m = refreshStartReg.match(cleanLine);
-            if (m.hasMatch())
+            if (m.hasMatch()) {
                 m_currentlyRefreshingAccount = m.captured(1);
+                emit accountRefreshStarted(m_currentlyRefreshingAccount);
+            }
         }
 
         if (!m_currentlyRefreshingAccount.isEmpty()) {
             if (cleanLine.contains("RefreshSchedule: Background account refresh succeeded")) {
-                emit accountRefreshDetected(m_currentlyRefreshingAccount);
+                emit accountRefreshSucceeded(m_currentlyRefreshingAccount);
                 m_currentlyRefreshingAccount.clear();
             } else if (cleanLine.contains("RefreshSchedule: Background account refresh failed")) {
+                emit accountRefreshFailed(m_currentlyRefreshingAccount);
                 m_currentlyRefreshingAccount.clear();
             }
         }
