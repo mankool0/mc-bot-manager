@@ -140,6 +140,47 @@ install(TARGETS mc-bot-manager mc-bot-manager-proto
 
 qt_finalize_executable(mc-bot-manager)
 
+# Prism hook shared library
+FetchContent_Declare(
+    prismlauncher
+    GIT_REPOSITORY https://github.com/PrismLauncher/PrismLauncher.git
+    GIT_TAG        develop
+    GIT_SHALLOW    TRUE
+)
+FetchContent_GetProperties(prismlauncher)
+if(NOT prismlauncher_POPULATED)
+    FetchContent_Populate(prismlauncher)
+endif()
+
+find_package(Threads REQUIRED)
+
+set(PRISMHOOK_INCLUDE_DIRS
+    ${prismlauncher_SOURCE_DIR}/launcher
+    ${prismlauncher_SOURCE_DIR}/libraries/LocalPeer/include
+    $<TARGET_PROPERTY:Qt6::Core,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:Qt6::Gui,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:Qt6::Network,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
+if(WIN32)
+    add_library(prismhook SHARED prism-hook/PrismHook.cpp)
+    target_include_directories(prismhook PRIVATE ${PRISMHOOK_INCLUDE_DIRS})
+    target_link_libraries(prismhook PRIVATE Qt6::Core Qt6::Gui Qt6::Network)
+else()
+    # Linux: split into a proxy loader (no deps) and the real core hook.
+    # The loader is preloaded and only loads the core if in PrismLauncher.
+
+    # Core hook: Qt symbols resolve at runtime from PrismLauncher's loaded libs.
+    add_library(prismhook_core SHARED prism-hook/PrismHook.cpp)
+    target_include_directories(prismhook_core PRIVATE ${PRISMHOOK_INCLUDE_DIRS})
+    target_link_libraries(prismhook_core PRIVATE Threads::Threads)
+    target_link_options(prismhook_core PRIVATE -Wl,--allow-shlib-undefined)
+
+    # Proxy loader (no deps, safe to preload into any process)
+    add_library(prismhook SHARED prism-hook/PrismHookLoader.cpp)
+    target_link_libraries(prismhook PRIVATE ${CMAKE_DL_LIBS})
+endif()
+
 # AppImage support
 option(BUILD_APPIMAGE "Build AppImage" OFF)
 

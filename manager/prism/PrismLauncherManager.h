@@ -27,6 +27,8 @@ public:
     static void stopPrismGUI();
     static bool isPrismGUIRunning();
     static qint64 getPrismGUIPid();
+    static QString hookSocketPath();
+    static bool isHookAvailable();
 
 signals:
     void minecraftLaunching(const QString &botName);
@@ -34,6 +36,8 @@ signals:
     void minecraftStopped(const QString &botName);
     void prismGUIStarted();
     void prismGUIStopped();
+    void hookAvailabilityChanged(bool available);
+    void accountRefreshDetected(const QString &accountName);
 
 private:
     explicit PrismLauncherManager(QObject *parent = nullptr);
@@ -48,8 +52,16 @@ private:
     void sendLaunchCommandImpl(BotInstance *bot);
     void processOutput(const QString &output, bool isStderr = false);
     void parsePrismCommand(const QString &command, QString &executable, QStringList &arguments);
+    void pingHook();
+#ifdef Q_OS_WIN
+    void injectHookDLL();
+#endif
+
     PrismConfig *prismConfig = nullptr;
     QProcess *prismGUIProcess = nullptr;
+    QTimer *hookHeartbeatTimer = nullptr;
+    bool m_hookAvailable = false;
+    QString m_currentlyRefreshingAccount;
 };
 
 #endif // PRISMLAUNCHERMANAGER_H

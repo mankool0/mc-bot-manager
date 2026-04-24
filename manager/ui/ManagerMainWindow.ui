@@ -601,6 +601,13 @@
                  </widget>
                 </item>
                 <item>
+                 <widget class="QPushButton" name="refreshTokenButton">
+                  <property name="text">
+                   <string>Refresh Token</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <spacer name="buttonSpacer">
                   <property name="orientation">
                    <enum>Qt::Orientation::Horizontal</enum>

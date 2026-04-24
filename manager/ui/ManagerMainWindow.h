@@ -18,9 +18,13 @@
 #include <QSettings>
 #include <QTimer>
 #include <QDockWidget>
+#include <QDateTime>
+#include <QMap>
+#include <QSet>
 #include <QCloseEvent>
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrent>
+#include <functional>
 
 #include "bot/BotManager.h"
 #include "ui_ManagerMainWindow.h"
@@ -38,6 +42,7 @@ struct PrismConfig {
     QStringList instances;
     QStringList accounts;
     QMap<QString, QString> accountIdToNameMap;
+    bool useHook = true;
 };
 
 class ManagerMainWindow : public QMainWindow
@@ -63,6 +68,7 @@ private slots:
     void launchBot();
     void stopBot();
     void restartBot();
+    void refreshToken();
     void launchPrismLauncher();
     void configurePrismLauncher();
     void configureWorldSavePath();
@@ -103,6 +109,11 @@ private:
     QDockWidget *networkStatsDock = nullptr;
     QTimer *proxyHealthTimer = nullptr;
 
+    QMap<QString, QDateTime> m_lastAccountRefreshTime;
+    QMap<QString, QDateTime> m_lastBotLaunchTime;
+    QMap<QString, int>       m_tokenRefreshAttempts;
+    QSet<QString>            m_refreshingAccounts;
+
     void setupUI();
     void updateInstancesTable();
     void loadBotConfiguration(const BotInstance &bot);
@@ -119,6 +130,9 @@ private:
 
     bool launchBotByName(const QString &botName);
     void restartBotByName(const QString &botName, const QString &reason);
+    void sendHookRefresh(const QString &account, const QString &botName, std::function<void(bool)> onDone);
+    void refreshAccountThenLaunch(const QString &accountProfile, const QString &botName);
+    void onAccountRefreshDetected(const QString &accountName);
 
     void checkScheduledLaunches();
     void checkBotUptimes();
