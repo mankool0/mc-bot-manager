@@ -191,24 +191,21 @@ struct BaritoneProcessStatus {
     bool hasTicksRemaining = false;
 };
 
-struct BotInstance {
+struct BotConfig {
     QString name;
-    BotStatus status = BotStatus::Offline;
     QString instance;
     QString account;
     QString accountId;
     QString server;
-    mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status serverConnectionStatus = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status::INITIAL;
-    int connectionId = -1;
-    int maxMemory;
-    int currentMemory;
-    double restartThreshold;
-    bool autoRestart;
-    bool tokenRefresh;
-    bool tokenRefreshPending = false;
-    bool debugLogging;
+    int maxMemory = 4096;
+    double restartThreshold = 48.0;
     bool autoConnect = true;
+    bool autoRestart = true;
+    bool tokenRefresh = true;
+    bool debugLogging = false;
     bool saveWorldToDisk = true;
+
+    WorldSaveSettings worldSaveSettings;
 
     struct ProxySettings {
         bool enabled = false;
@@ -218,6 +215,17 @@ struct BotInstance {
         QString username;
         QString password;
     } proxySettings;
+};
+
+struct BotInstance : public BotConfig {
+    BotInstance() = default;
+    explicit BotInstance(const BotConfig &config) : BotConfig(config) {}
+
+    BotStatus status = BotStatus::Offline;
+    mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status serverConnectionStatus = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status::INITIAL;
+    int connectionId = -1;
+    int currentMemory = 0;
+    bool tokenRefreshPending = false;
 
     enum class ProxyHealth { Unknown, Alive, Dead } proxyHealth = ProxyHealth::Unknown;
     bool proxyDisabledAutoReconnect = false;
@@ -248,8 +256,6 @@ struct BotInstance {
     bool enderChestLoaded = false;  // true once ender chest has been opened this session
     int selectedSlot = 0;
     mankool::mcbot::protocol::ItemStack cursorItem;
-
-    WorldSaveSettings worldSaveSettings;
 
     // Container state
     struct {
@@ -344,10 +350,10 @@ public:
     static BotInstance* getBotByConnectionId(int connectionId);
     static BotInstance* getBotByName(const QString &name);
 
-    static void addBot(const BotInstance &bot);
+    static void addBot(const BotConfig &config);
     static void removeBot(const QString &name);
     static void clearAllBots();
-    static void updateBot(const QString &name, const BotInstance &updatedBot);
+    static void updateBot(const QString &name, const BotConfig &config);
 
     // Message handlers
     static void handleConnectionInfo(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
@@ -451,9 +457,9 @@ private:
     QVector<BotInstance*>& getBotsImpl() { return botInstances; }
     BotInstance* getBotByConnectionIdImpl(int connectionId);
     BotInstance* getBotByNameImpl(const QString &name);
-    void addBotImpl(const BotInstance &bot);
+    void addBotImpl(const BotConfig &config);
     void removeBotImpl(const QString &name);
-    void updateBotImpl(const QString &name, const BotInstance &updatedBot);
+    void updateBotImpl(const QString &name, const BotConfig &config);
     void handleConnectionInfoImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     void handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);

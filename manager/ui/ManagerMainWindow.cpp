@@ -425,23 +425,8 @@ void ManagerMainWindow::addNewBot()
                                            QString("NewBot_%1").arg(BotManager::getBots().size() + 1), &ok);
 
     if (ok && !botName.isEmpty()) {
-        BotInstance newBot;
+        BotConfig newBot;
         newBot.name = botName;
-        newBot.status = BotStatus::Offline;
-
-        newBot.instance = "";
-        newBot.account = "";
-        newBot.accountId = "";
-        newBot.server = "";
-        newBot.connectionId = -1;
-        newBot.maxMemory = 4096;
-        newBot.currentMemory = 0;
-        newBot.restartThreshold = 48;
-        newBot.autoRestart = true;
-        newBot.tokenRefresh = true;
-        newBot.debugLogging = false;
-        newBot.position = QVector3D(0, 0, 0);
-        newBot.dimension = "";
 
         BotManager::addBot(newBot);
 
@@ -1450,7 +1435,7 @@ void ManagerMainWindow::loadSettings()
 
     BotManager::clearAllBots();
     for (int i = 0; i < botCount; ++i) {
-        BotInstance bot = loadBotInstance(settings, i);
+        BotConfig bot = loadBotInstance(settings, i);
         if (!bot.name.isEmpty()) {
             BotManager::addBot(bot);
         }
@@ -1508,7 +1493,7 @@ void ManagerMainWindow::loadSettings()
     loadColumnVisibility();
 }
 
-void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &bot, int index)
+void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotConfig &bot, int index)
 {
     settings.beginGroup(QString("Bot_%1").arg(index));
 
@@ -1539,20 +1524,17 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.endGroup();
 }
 
-BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
+BotConfig ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
 {
     settings.beginGroup(QString("Bot_%1").arg(index));
 
-    BotInstance bot;
+    BotConfig bot;
     bot.name = settings.value("name", "").toString();
-    bot.status = BotStatus::Offline;  // Always start as offline
     bot.instance = settings.value("instance", "").toString();
     bot.account = settings.value("account", "").toString();
     bot.accountId = settings.value("accountId", "").toString();
     bot.server = settings.value("server", "").toString();
-    bot.connectionId = -1;
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
-    bot.currentMemory = 0;
     bot.restartThreshold = settings.value("restartThreshold", 48.0).toDouble();
     bot.autoConnect = settings.value("autoConnect", true).toBool();
     bot.autoRestart = settings.value("autoRestart", true).toBool();
@@ -1570,9 +1552,6 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.proxySettings.port = settings.value("proxyPort", 1080).toInt();
     bot.proxySettings.username = settings.value("proxyUsername", "").toString();
     bot.proxySettings.password = settings.value("proxyPassword", "").toString();
-
-    bot.position = QVector3D(0, 0, 0);
-    bot.dimension = "";
 
     settings.endGroup();
     return bot;

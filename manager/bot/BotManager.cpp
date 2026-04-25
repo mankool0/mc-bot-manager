@@ -724,15 +724,15 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
     }
 }
 
-void BotManager::addBot(const BotInstance &bot)
+void BotManager::addBot(const BotConfig &config)
 {
-    instance().addBotImpl(bot);
+    instance().addBotImpl(config);
 }
 
-void BotManager::addBotImpl(const BotInstance &bot)
+void BotManager::addBotImpl(const BotConfig &config)
 {
-    botInstances.append(new BotInstance(bot));
-    emit botAdded(bot.name);
+    botInstances.append(new BotInstance(config));
+    emit botAdded(config.name);
 }
 
 void BotManager::removeBot(const QString &name)
@@ -795,16 +795,16 @@ void BotManager::clearAllBots()
         instance().removeBotImpl(instance().botInstances.first()->name);
 }
 
-void BotManager::updateBot(const QString &name, const BotInstance &updatedBot)
+void BotManager::updateBot(const QString &name, const BotConfig &config)
 {
-    instance().updateBotImpl(name, updatedBot);
+    instance().updateBotImpl(name, config);
 }
 
-void BotManager::updateBotImpl(const QString &name, const BotInstance &updatedBot)
+void BotManager::updateBotImpl(const QString &name, const BotConfig &config)
 {
     for (int i = 0; i < botInstances.size(); ++i) {
         if (botInstances[i]->name == name) {
-            *botInstances[i] = updatedBot;
+            static_cast<BotConfig &>(*botInstances[i]) = config;
             emit botUpdated(name);
             return;
         }
