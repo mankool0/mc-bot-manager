@@ -47,7 +47,7 @@ NetworkStatsWidget::~NetworkStatsWidget()
 
 void NetworkStatsWidget::updateStats()
 {
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     statsTable->setRowCount(bots.size());
 
     QDateTime now = QDateTime::currentDateTime();
@@ -58,7 +58,7 @@ void NetworkStatsWidget::updateStats()
     totalBytesSent = 0;
 
     for (int i = 0; i < bots.size(); ++i) {
-        BotInstance &bot = bots[i];
+        BotInstance &bot = *bots[i];
 
         BotRateData &rateData = botRateData[bot.name];
 

@@ -346,17 +346,17 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
     });
 
     // Set memory config for all bots before Prism GUI starts so it reads correct values on load
-    for (const BotInstance &b : BotManager::getBots()) {
-        if (b.instance.isEmpty()) continue;
-        QString cfgPath = prismConfig->prismPath + "/instances/" + b.instance + "/instance.cfg";
+    for (const BotInstance *b : BotManager::getBots()) {
+        if (b->instance.isEmpty()) continue;
+        QString cfgPath = prismConfig->prismPath + "/instances/" + b->instance + "/instance.cfg";
         QSettings cfg(cfgPath, QSettings::IniFormat);
-        bool needsUpdate = cfg.value("MaxMemAlloc").toInt() != b.maxMemory
+        bool needsUpdate = cfg.value("MaxMemAlloc").toInt() != b->maxMemory
                            || !cfg.value("OverrideMemory").toBool();
         if (needsUpdate) {
-            cfg.setValue("MaxMemAlloc", b.maxMemory);
+            cfg.setValue("MaxMemAlloc", b->maxMemory);
             cfg.setValue("OverrideMemory", true);
             cfg.sync();
-            LogManager::log(QString("Set MaxMemAlloc=%1 for instance '%2'").arg(b.maxMemory).arg(b.instance), LogManager::Info);
+            LogManager::log(QString("Set MaxMemAlloc=%1 for instance '%2'").arg(b->maxMemory).arg(b->instance), LogManager::Info);
         }
     }
 
@@ -518,10 +518,10 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
             || cleanLine.contains("net.minecraft.client.main.Main")
             || cleanLine.contains("cpw.mods.modlauncher.Launcher")) {
             // Find the bot currently in Starting status (only one bot launches at a time)
-            QVector<BotInstance> &bots = BotManager::getBots();
-            for (const BotInstance &bot : bots) {
-                if (bot.status == BotStatus::Starting) {
-                    emit minecraftLaunching(bot.name);
+            QVector<BotInstance*> &bots = BotManager::getBots();
+            for (const BotInstance *bot : bots) {
+                if (bot->status == BotStatus::Starting) {
+                    emit minecraftLaunching(bot->name);
                     break;
                 }
             }
@@ -534,10 +534,10 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
             if (match.hasMatch()) {
                 QString profileId = match.captured(1);
 
-                QVector<BotInstance> &bots = BotManager::getBots();
-                for (const BotInstance &bot : bots) {
-                    if (bot.accountId == profileId && bot.status == BotStatus::Starting) {
-                        emit minecraftStarting(bot.name);
+                QVector<BotInstance*> &bots = BotManager::getBots();
+                for (const BotInstance *bot : bots) {
+                    if (bot->accountId == profileId && bot->status == BotStatus::Starting) {
+                        emit minecraftStarting(bot->name);
                         break;
                     }
                 }
@@ -551,10 +551,10 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
             if (match.hasMatch()) {
                 QString profileId = match.captured(1);
 
-                QVector<BotInstance> &bots = BotManager::getBots();
-                for (const BotInstance &bot : bots) {
-                    if (bot.accountId == profileId) {
-                        emit minecraftStopped(bot.name);
+                QVector<BotInstance*> &bots = BotManager::getBots();
+                for (const BotInstance *bot : bots) {
+                    if (bot->accountId == profileId) {
+                        emit minecraftStopped(bot->name);
                         break;
                     }
                 }
@@ -564,10 +564,10 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
         // Fallback: detect "Process exited with code" for cases where the profile
         // message is never received (e.g. bot crashes before fully starting)
         if (cleanLine.contains("Process exited with code")) {
-            QVector<BotInstance> &bots = BotManager::getBots();
-            for (const BotInstance &bot : bots) {
-                if (bot.status == BotStatus::Starting) {
-                    emit minecraftStopped(bot.name);
+            QVector<BotInstance*> &bots = BotManager::getBots();
+            for (const BotInstance *bot : bots) {
+                if (bot->status == BotStatus::Starting) {
+                    emit minecraftStopped(bot->name);
                     break;
                 }
             }

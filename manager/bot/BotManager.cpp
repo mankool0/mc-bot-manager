@@ -5,6 +5,7 @@
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
 #include "scripting/ScriptEngine.h"
+#include "ui/ScriptsWidget.h"
 #include "scripting/PythonAPI.h"
 #include <io/stream_reader.h>
 #include <nbt_tags.h>
@@ -575,7 +576,7 @@ BotManager& BotManager::instance()
     return instance;
 }
 
-QVector<BotInstance>& BotManager::getBots()
+QVector<BotInstance*>& BotManager::getBots()
 {
     return instance().getBotsImpl();
 }
@@ -587,9 +588,9 @@ BotInstance* BotManager::getBotByConnectionId(int connectionId)
 
 BotInstance* BotManager::getBotByConnectionIdImpl(int connectionId)
 {
-    for (BotInstance &bot : botInstances) {
-        if (bot.connectionId == connectionId) {
-            return &bot;
+    for (BotInstance *bot : botInstances) {
+        if (bot->connectionId == connectionId) {
+            return bot;
         }
     }
     return nullptr;
@@ -602,9 +603,9 @@ BotInstance* BotManager::getBotByName(const QString &name)
 
 BotInstance* BotManager::getBotByNameImpl(const QString &name)
 {
-    for (BotInstance &bot : botInstances) {
-        if (bot.name == name) {
-            return &bot;
+    for (BotInstance *bot : botInstances) {
+        if (bot->name == name) {
+            return bot;
         }
     }
     return nullptr;
@@ -642,8 +643,8 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         bot->worldAutoSaver.reset();
 
         bool stillUsed = false;
-        for (const auto& b : botInstances) {
-            if (&b != bot && b.worldAutoSaverServerIp == oldKey) {
+        for (const auto* b : botInstances) {
+            if (b != bot && b->worldAutoSaverServerIp == oldKey) {
                 stillUsed = true;
                 break;
             }
@@ -690,12 +691,12 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         // Chunk provider searches all bots connected to this server, so it works for any number of bots
         saver->setChunkProvider([serverKey, this](int cx, int cz, const QString& dim)
             -> std::optional<std::pair<ChunkData, QVector<BlockEntityData>>> {
-            for (auto& b : botInstances) {
-                if (b.server != serverKey) continue;
-                QReadLocker locker(b.worldDataLock.get());
-                const ChunkData* chunk = b.worldData.getChunk(cx, cz);
+            for (auto* b : botInstances) {
+                if (b->server != serverKey) continue;
+                QReadLocker locker(b->worldDataLock.get());
+                const ChunkData* chunk = b->worldData.getChunk(cx, cz);
                 if (!chunk) continue;
-                auto bes = b.worldData.getBlockEntitiesInChunk(cx, cz, dim);
+                auto bes = b->worldData.getBlockEntitiesInChunk(cx, cz, dim);
                 return std::make_pair(*chunk, bes);
             }
             return std::nullopt;
@@ -730,7 +731,7 @@ void BotManager::addBot(const BotInstance &bot)
 
 void BotManager::addBotImpl(const BotInstance &bot)
 {
-    botInstances.append(bot);
+    botInstances.append(new BotInstance(bot));
     emit botAdded(bot.name);
 }
 
@@ -742,28 +743,37 @@ void BotManager::removeBot(const QString &name)
 void BotManager::removeBotImpl(const QString &name)
 {
     for (int i = 0; i < botInstances.size(); ++i) {
-        if (botInstances[i].name == name) {
-            if (botInstances[i].consoleWidget) {
-                delete botInstances[i].consoleWidget;
-                botInstances[i].consoleWidget = nullptr;
+        if (botInstances[i]->name == name) {
+            if (botInstances[i]->scriptsWidget) {
+                delete botInstances[i]->scriptsWidget;
+                botInstances[i]->scriptsWidget = nullptr;
             }
-            if (botInstances[i].meteorWidget) {
-                delete botInstances[i].meteorWidget;
-                botInstances[i].meteorWidget = nullptr;
+            if (botInstances[i]->scriptEngine) {
+                delete botInstances[i]->scriptEngine;
+                botInstances[i]->scriptEngine = nullptr;
             }
-            if (botInstances[i].baritoneWidget) {
-                delete botInstances[i].baritoneWidget;
-                botInstances[i].baritoneWidget = nullptr;
+            if (botInstances[i]->consoleWidget) {
+                delete botInstances[i]->consoleWidget;
+                botInstances[i]->consoleWidget = nullptr;
+            }
+            if (botInstances[i]->meteorWidget) {
+                delete botInstances[i]->meteorWidget;
+                botInstances[i]->meteorWidget = nullptr;
+            }
+            if (botInstances[i]->baritoneWidget) {
+                delete botInstances[i]->baritoneWidget;
+                botInstances[i]->baritoneWidget = nullptr;
             }
 
-            QString serverKey = botInstances[i].worldAutoSaverServerIp;
+            QString serverKey = botInstances[i]->worldAutoSaverServerIp;
+            delete botInstances[i];
             botInstances.removeAt(i);
 
             // Remove shared saver if no remaining bot uses this server
             if (!serverKey.isEmpty()) {
                 bool stillUsed = false;
-                for (const auto& b : botInstances) {
-                    if (b.worldAutoSaverServerIp == serverKey) {
+                for (const auto* b : botInstances) {
+                    if (b->worldAutoSaverServerIp == serverKey) {
                         stillUsed = true;
                         break;
                     }
@@ -779,6 +789,12 @@ void BotManager::removeBotImpl(const QString &name)
     }
 }
 
+void BotManager::clearAllBots()
+{
+    while (!instance().botInstances.isEmpty())
+        instance().removeBotImpl(instance().botInstances.first()->name);
+}
+
 void BotManager::updateBot(const QString &name, const BotInstance &updatedBot)
 {
     instance().updateBotImpl(name, updatedBot);
@@ -787,8 +803,8 @@ void BotManager::updateBot(const QString &name, const BotInstance &updatedBot)
 void BotManager::updateBotImpl(const QString &name, const BotInstance &updatedBot)
 {
     for (int i = 0; i < botInstances.size(); ++i) {
-        if (botInstances[i].name == name) {
-            botInstances[i] = updatedBot;
+        if (botInstances[i]->name == name) {
+            *botInstances[i] = updatedBot;
             emit botUpdated(name);
             return;
         }
@@ -808,10 +824,10 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     QString playerUuid = info.playerUuid();
 
     BotInstance *bot = nullptr;
-    for (BotInstance &b : botInstances) {
-        if (b.status == BotStatus::Starting && !b.accountId.isEmpty() &&
-            QString(b.accountId).remove('-') == QString(playerUuid).remove('-')) {
-            bot = &b;
+    for (BotInstance *b : botInstances) {
+        if (b->status == BotStatus::Starting && !b->accountId.isEmpty() &&
+            QString(b->accountId).remove('-') == QString(playerUuid).remove('-')) {
+            bot = b;
             break;
         }
     }

@@ -340,12 +340,13 @@ public:
     BotManager(const BotManager&) = delete;
     BotManager& operator=(const BotManager&) = delete;
 
-    static QVector<BotInstance>& getBots();
+    static QVector<BotInstance*>& getBots();
     static BotInstance* getBotByConnectionId(int connectionId);
     static BotInstance* getBotByName(const QString &name);
 
     static void addBot(const BotInstance &bot);
     static void removeBot(const QString &name);
+    static void clearAllBots();
     static void updateBot(const QString &name, const BotInstance &updatedBot);
 
     // Message handlers
@@ -447,7 +448,7 @@ signals:
 private:
     explicit BotManager(QObject *parent = nullptr);
 
-    QVector<BotInstance>& getBotsImpl() { return botInstances; }
+    QVector<BotInstance*>& getBotsImpl() { return botInstances; }
     BotInstance* getBotByConnectionIdImpl(int connectionId);
     BotInstance* getBotByNameImpl(const QString &name);
     void addBotImpl(const BotInstance &bot);
@@ -523,7 +524,7 @@ private:
         bool enabled = false;
     };
 
-    QVector<BotInstance> botInstances;
+    QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
     QMutex m_pendingCanReachBlockMutex;

@@ -801,13 +801,13 @@ py::list PythonAPI::listAllBots()
 {
     py::list result;
 
-    const QVector<BotInstance> &bots = BotManager::getBots();
-    for (const auto &bot : bots) {
+    const QVector<BotInstance*> &bots = BotManager::getBots();
+    for (const auto *bot : bots) {
         py::dict botDict;
-        botDict["name"] = bot.name.toStdString();
+        botDict["name"] = bot->name.toStdString();
 
         QString statusStr;
-        switch (bot.status) {
+        switch (bot->status) {
             case BotStatus::Offline: statusStr = "Offline"; break;
             case BotStatus::Starting: statusStr = "Starting"; break;
             case BotStatus::Online: statusStr = "Online"; break;

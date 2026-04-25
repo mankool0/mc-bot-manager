@@ -183,10 +183,10 @@ void GlobalSettingsDialog::saveSettings()
     int pendingLines = consolePendingLinesSpinBox->value();
     settings.setValue("Console/maxPendingLines", pendingLines);
 
-    for (BotInstance &bot : BotManager::getBots()) {
-        if (bot.consoleWidget) {
-            bot.consoleWidget->setMaxLines(maxLines);
-            bot.consoleWidget->setRingCapacity(pendingLines);
+    for (BotInstance *bot : BotManager::getBots()) {
+        if (bot->consoleWidget) {
+            bot->consoleWidget->setMaxLines(maxLines);
+            bot->consoleWidget->setRingCapacity(pendingLines);
         }
     }
 
@@ -202,9 +202,9 @@ void GlobalSettingsDialog::saveSettings()
     qint64 maxSizeBytes = (qint64)logMaxSizeMiB * 1024 * 1024;
     if (loggingEnabled) {
         LogManager::initFileSink(logDir, maxSizeBytes, logMaxFiles);
-        for (BotInstance &bot : BotManager::getBots()) {
-            if (bot.consoleWidget)
-                bot.consoleWidget->attachLogFile(logDir, bot.name, maxSizeBytes, logMaxFiles);
+        for (BotInstance *bot : BotManager::getBots()) {
+            if (bot->consoleWidget)
+                bot->consoleWidget->attachLogFile(logDir, bot->name, maxSizeBytes, logMaxFiles);
         }
     } else {
         LogManager::closeFileSink();
