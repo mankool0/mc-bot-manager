@@ -125,8 +125,8 @@ private:
 
     void saveSettings();
     void loadSettings();
-    void saveBotInstance(QSettings &settings, const BotInstance &bot, int index);
-    BotInstance loadBotInstance(QSettings &settings, int index);
+    void saveBotInstance(QSettings &settings, const BotConfig &config, int index);
+    BotConfig loadBotInstance(QSettings &settings, int index);
 
     bool launchBotByName(const QString &botName);
     void restartBotByName(const QString &botName, const QString &reason);

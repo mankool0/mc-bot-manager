@@ -179,13 +179,13 @@ void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
 
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
 {
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (bot.scriptEngine)
-            bot.scriptEngine->stopAllScripts();
-        if (bot.status == BotStatus::Online) {
-            bot.manualStop = true;
-            BotManager::sendShutdownCommand(bot.name, "Manager closing");
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (bot->scriptEngine)
+            bot->scriptEngine->stopAllScripts();
+        if (bot->status == BotStatus::Online) {
+            bot->manualStop = true;
+            BotManager::sendShutdownCommand(bot->name, "Manager closing");
         }
     }
 
@@ -382,10 +382,10 @@ void ManagerMainWindow::showInstancesContextMenu(const QPoint &pos)
     QTableWidgetItem *item = ui->instancesTableWidget->itemAt(pos);
     if (item) {
         int row = item->row();
-        QVector<BotInstance> &bots = BotManager::getBots();
+        QVector<BotInstance*> &bots = BotManager::getBots();
         if (row >= 0 && row < bots.size()) {
             botAtPos = true;
-            const BotInstance &bot = bots[row];
+            const BotInstance &bot = *bots[row];
             bool isOnline = (bot.status == BotStatus::Online);
             bool canLaunch = (bot.status == BotStatus::Offline || bot.status == BotStatus::Error);
             bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
@@ -425,23 +425,8 @@ void ManagerMainWindow::addNewBot()
                                            QString("NewBot_%1").arg(BotManager::getBots().size() + 1), &ok);
 
     if (ok && !botName.isEmpty()) {
-        BotInstance newBot;
+        BotConfig newBot;
         newBot.name = botName;
-        newBot.status = BotStatus::Offline;
-
-        newBot.instance = "";
-        newBot.account = "";
-        newBot.accountId = "";
-        newBot.server = "";
-        newBot.connectionId = -1;
-        newBot.maxMemory = 4096;
-        newBot.currentMemory = 0;
-        newBot.restartThreshold = 48;
-        newBot.autoRestart = true;
-        newBot.tokenRefresh = true;
-        newBot.debugLogging = false;
-        newBot.position = QVector3D(0, 0, 0);
-        newBot.dimension = "";
 
         BotManager::addBot(newBot);
 
@@ -524,9 +509,9 @@ void ManagerMainWindow::removeBot()
     if (selectedItems.isEmpty()) return;
 
     int row = selectedItems[0]->row();
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     if (row >= 0 && row < bots.size()) {
-        QString botName = bots[row].name;
+        QString botName = bots[row]->name;
 
         QMessageBox::StandardButton reply = QMessageBox::question(this,
             "Remove Bot",
@@ -551,11 +536,11 @@ void ManagerMainWindow::removeBot()
 
 void ManagerMainWindow::updateInstancesTable()
 {
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     ui->instancesTableWidget->setRowCount(bots.size());
 
     for (int i = 0; i < bots.size(); ++i) {
-        const BotInstance &bot = bots[i];
+        const BotInstance &bot = *bots[i];
 
         // Name column (0)
         QTableWidgetItem *nameItem = ui->instancesTableWidget->item(i, 0);
@@ -745,9 +730,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
     if (selectedItems.isEmpty() && detailsPinned && !selectedBotName.isEmpty()) {
         BotInstance *pinnedBot = BotManager::getBotByName(selectedBotName);
         if (pinnedBot) {
-            QVector<BotInstance> &bots = BotManager::getBots();
+            QVector<BotInstance*> &bots = BotManager::getBots();
             for (int i = 0; i < bots.size(); ++i) {
-                if (bots[i].name == selectedBotName) {
+                if (bots[i]->name == selectedBotName) {
                     ui->instancesTableWidget->selectRow(i);
                     return;
                 }
@@ -755,19 +740,19 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         }
     }
 
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (bot.consoleWidget) {
-            bot.consoleWidget->hide();
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (bot->consoleWidget) {
+            bot->consoleWidget->hide();
         }
-        if (bot.meteorWidget) {
-            bot.meteorWidget->hide();
+        if (bot->meteorWidget) {
+            bot->meteorWidget->hide();
         }
-        if (bot.baritoneWidget) {
-            bot.baritoneWidget->hide();
+        if (bot->baritoneWidget) {
+            bot->baritoneWidget->hide();
         }
-        if (bot.scriptsWidget) {
-            bot.scriptsWidget->hide();
+        if (bot->scriptsWidget) {
+            bot->scriptsWidget->hide();
         }
     }
 
@@ -782,7 +767,7 @@ void ManagerMainWindow::onInstanceSelectionChanged()
 
     int row = selectedItems[0]->row();
     if (row >= 0 && row < bots.size()) {
-        BotInstance &bot = bots[row];
+        BotInstance &bot = *bots[row];
         selectedBotName = bot.name;
         loadBotConfiguration(bot);
         ui->detailsStackedWidget->setCurrentIndex(1);
@@ -1378,9 +1363,9 @@ void ManagerMainWindow::configureWorldSavePath()
 QStringList ManagerMainWindow::getUsedInstances() const
 {
     QStringList used;
-    for (const BotInstance &bot : BotManager::getBots()) {
-        if (!bot.instance.isEmpty()) {
-            used.append(bot.instance);
+    for (const BotInstance *bot : BotManager::getBots()) {
+        if (!bot->instance.isEmpty()) {
+            used.append(bot->instance);
         }
     }
     return used;
@@ -1407,11 +1392,11 @@ void ManagerMainWindow::saveSettings()
 
     // Save bot instances
     settings.beginGroup("Bots");
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     settings.setValue("count", bots.size());
 
     for (int i = 0; i < bots.size(); ++i) {
-        saveBotInstance(settings, bots[i], i);
+        saveBotInstance(settings, *bots[i], i);
     }
     settings.endGroup();
 
@@ -1448,9 +1433,9 @@ void ManagerMainWindow::loadSettings()
     settings.beginGroup("Bots");
     int botCount = settings.value("count", 0).toInt();
 
-    BotManager::getBots().clear();
+    BotManager::clearAllBots();
     for (int i = 0; i < botCount; ++i) {
-        BotInstance bot = loadBotInstance(settings, i);
+        BotConfig bot = loadBotInstance(settings, i);
         if (!bot.name.isEmpty()) {
             BotManager::addBot(bot);
         }
@@ -1464,24 +1449,24 @@ void ManagerMainWindow::loadSettings()
         prismConfig.accounts = prismConfig.accountIdToNameMap.values();
         prismConfig.accounts.sort();
 
-        QVector<BotInstance> &bots = BotManager::getBots();
-        for (BotInstance &bot : bots) {
-            if (!bot.account.isEmpty()) {
-                QString foundId = prismConfig.accountIdToNameMap.key(bot.account, "");
+        QVector<BotInstance*> &bots = BotManager::getBots();
+        for (BotInstance *bot : bots) {
+            if (!bot->account.isEmpty()) {
+                QString foundId = prismConfig.accountIdToNameMap.key(bot->account, "");
                 if (!foundId.isEmpty()) {
-                    bot.accountId = foundId;
+                    bot->accountId = foundId;
                 } else {
                     LogManager::log(QString("Account '%1' no longer exists for bot '%2', clearing")
-                                        .arg(bot.account, bot.name), LogManager::Warning);
-                    bot.account = "";
-                    bot.accountId = "";
+                                        .arg(bot->account, bot->name), LogManager::Warning);
+                    bot->account = "";
+                    bot->accountId = "";
                 }
             }
 
-            if (!bot.instance.isEmpty() && !prismConfig.instances.contains(bot.instance)) {
+            if (!bot->instance.isEmpty() && !prismConfig.instances.contains(bot->instance)) {
                 LogManager::log(QString("Instance '%1' no longer exists for bot '%2', clearing")
-                                    .arg(bot.instance, bot.name), LogManager::Warning);
-                bot.instance = "";
+                                    .arg(bot->instance, bot->name), LogManager::Warning);
+                bot->instance = "";
             }
         }
     }
@@ -1508,7 +1493,7 @@ void ManagerMainWindow::loadSettings()
     loadColumnVisibility();
 }
 
-void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &bot, int index)
+void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotConfig &bot, int index)
 {
     settings.beginGroup(QString("Bot_%1").arg(index));
 
@@ -1539,20 +1524,17 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotInstance &
     settings.endGroup();
 }
 
-BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
+BotConfig ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
 {
     settings.beginGroup(QString("Bot_%1").arg(index));
 
-    BotInstance bot;
+    BotConfig bot;
     bot.name = settings.value("name", "").toString();
-    bot.status = BotStatus::Offline;  // Always start as offline
     bot.instance = settings.value("instance", "").toString();
     bot.account = settings.value("account", "").toString();
     bot.accountId = settings.value("accountId", "").toString();
     bot.server = settings.value("server", "").toString();
-    bot.connectionId = -1;
     bot.maxMemory = settings.value("maxMemory", 4096).toInt();
-    bot.currentMemory = 0;
     bot.restartThreshold = settings.value("restartThreshold", 48.0).toDouble();
     bot.autoConnect = settings.value("autoConnect", true).toBool();
     bot.autoRestart = settings.value("autoRestart", true).toBool();
@@ -1571,9 +1553,6 @@ BotInstance ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.proxySettings.username = settings.value("proxyUsername", "").toString();
     bot.proxySettings.password = settings.value("proxyPassword", "").toString();
 
-    bot.position = QVector3D(0, 0, 0);
-    bot.dimension = "";
-
     settings.endGroup();
     return bot;
 }
@@ -1585,14 +1564,14 @@ void ManagerMainWindow::launchAllBots()
         return;
     }
 
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     QDateTime now = QDateTime::currentDateTime();
     int delaySeconds = 0;
 
-    for (const BotInstance &bot : std::as_const(bots)) {
-        if (bot.status != BotStatus::Online && bot.status != BotStatus::Starting) {
+    for (const BotInstance *bot : std::as_const(bots)) {
+        if (bot->status != BotStatus::Online && bot->status != BotStatus::Starting) {
             ScheduledLaunch launch;
-            launch.botName = bot.name;
+            launch.botName = bot->name;
             launch.launchTime = now.addSecs(delaySeconds);
             scheduledLaunches.append(launch);
             delaySeconds += 30;
@@ -1616,20 +1595,20 @@ void ManagerMainWindow::stopAllBots()
 
     LogManager::log("Stopping all bots...", LogManager::Info);
 
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (bot.status == BotStatus::Online || bot.status == BotStatus::Starting) {
-            LogManager::log(QString("Stopping bot '%1'").arg(bot.name), LogManager::Info);
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (bot->status == BotStatus::Online || bot->status == BotStatus::Starting) {
+            LogManager::log(QString("Stopping bot '%1'").arg(bot->name), LogManager::Info);
 
-            bot.manualStop = true;
+            bot->manualStop = true;
 
             // Send graceful shutdown first
-            if (bot.minecraftPid > 0) {
-                BotManager::sendShutdownCommand(bot.name, "Stopped by manager");
-                bot.status = BotStatus::Stopping;
+            if (bot->minecraftPid > 0) {
+                BotManager::sendShutdownCommand(bot->name, "Stopped by manager");
+                bot->status = BotStatus::Stopping;
 
-                QString botName = bot.name;
-                qint64 pid = bot.minecraftPid;
+                QString botName = bot->name;
+                qint64 pid = bot->minecraftPid;
                 QTimer::singleShot(5000, this, [botName, pid]() {
                     BotInstance *b = BotManager::getBotByName(botName);
                     if (b && b->status != BotStatus::Offline) {
@@ -1643,10 +1622,10 @@ void ManagerMainWindow::stopAllBots()
                 });
             } else {
                 // If no PID, just update status
-                bot.status = BotStatus::Offline;
-                bot.currentMemory = 0;
-                bot.position = QVector3D(0, 0, 0);
-                bot.dimension = "";
+                bot->status = BotStatus::Offline;
+                bot->currentMemory = 0;
+                bot->position = QVector3D(0, 0, 0);
+                bot->dimension = "";
             }
 
             stoppedCount++;
@@ -1678,16 +1657,16 @@ void ManagerMainWindow::onAutoScrollToggled(bool checked)
 
 void ManagerMainWindow::checkBotUptimes()
 {
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     QDateTime now = QDateTime::currentDateTime();
 
-    for (BotInstance &bot : bots) {
-        if (bot.status == BotStatus::Online && bot.restartThreshold > 0 && bot.startTime.isValid()) {
-            qint64 uptimeSeconds = bot.startTime.secsTo(now);
+    for (BotInstance *bot : bots) {
+        if (bot->status == BotStatus::Online && bot->restartThreshold > 0 && bot->startTime.isValid()) {
+            qint64 uptimeSeconds = bot->startTime.secsTo(now);
             double uptimeHours = uptimeSeconds / 3600.0;
 
-            if (uptimeHours >= bot.restartThreshold) {
-                restartBotByName(bot.name, QString("Uptime threshold reached (%1 hours)").arg(uptimeHours, 0, 'f', 2));
+            if (uptimeHours >= bot->restartThreshold) {
+                restartBotByName(bot->name, QString("Uptime threshold reached (%1 hours)").arg(uptimeHours, 0, 'f', 2));
             }
         }
     }
@@ -1696,21 +1675,20 @@ void ManagerMainWindow::checkBotUptimes()
 void ManagerMainWindow::checkProxyHealth()
 {
     using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (!bot.proxySettings.enabled || bot.proxySettings.host.isEmpty()) continue;
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (!bot->proxySettings.enabled || bot->proxySettings.host.isEmpty()) continue;
 
         // If actively connected to MC server, the working connection proves proxy is alive
         // skip the check to avoid interfering with 1-connection proxies
-        if (bot.status == BotStatus::Online && bot.serverConnectionStatus == Status::SUCCESSFUL) {
-            if (bot.proxyHealth != BotInstance::ProxyHealth::Alive) {
-                BotInstance *b = BotManager::getBotByName(bot.name);
-                if (b) b->proxyHealth = BotInstance::ProxyHealth::Alive;
+        if (bot->status == BotStatus::Online && bot->serverConnectionStatus == Status::SUCCESSFUL) {
+            if (bot->proxyHealth != BotInstance::ProxyHealth::Alive) {
+                bot->proxyHealth = BotInstance::ProxyHealth::Alive;
             }
             continue;
         }
 
-        checkBotProxyHealth(bot.name);
+        checkBotProxyHealth(bot->name);
     }
 }
 
@@ -1988,7 +1966,7 @@ void ManagerMainWindow::setupConsoleTab()
         layout->setContentsMargins(0, 0, 0, 0);
     }
 
-    QVector<BotInstance> &bots = BotManager::getBots();
+    QVector<BotInstance*> &bots = BotManager::getBots();
     QSettings settings("MCBotManager", "MCBotManager");
     bool loggingEnabled = settings.value("Logging/enabled", true).toBool();
     QString logDir = settings.value("Logging/logDir",
@@ -1996,16 +1974,16 @@ void ManagerMainWindow::setupConsoleTab()
     int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
     int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
 
-    for (BotInstance &bot : bots) {
-        if (!bot.consoleWidget) {
-            bot.consoleWidget = new BotConsoleWidget(this);
-            connect(bot.consoleWidget, &BotConsoleWidget::commandEntered,
+    for (BotInstance *bot : bots) {
+        if (!bot->consoleWidget) {
+            bot->consoleWidget = new BotConsoleWidget(this);
+            connect(bot->consoleWidget, &BotConsoleWidget::commandEntered,
                     this, &ManagerMainWindow::onConsoleCommandEntered);
-            bot.consoleWidget->hide();
-            layout->addWidget(bot.consoleWidget);
+            bot->consoleWidget->hide();
+            layout->addWidget(bot->consoleWidget);
 
             if (loggingEnabled)
-                bot.consoleWidget->attachLogFile(logDir, bot.name, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
+                bot->consoleWidget->attachLogFile(logDir, bot->name, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
         }
     }
 }
@@ -2071,16 +2049,16 @@ void ManagerMainWindow::setupMeteorTab()
         layout->setContentsMargins(0, 0, 0, 0);
     }
 
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (!bot.meteorWidget) {
-            bot.meteorWidget = new MeteorModulesWidget(this);
-            connect(bot.meteorWidget, &MeteorModulesWidget::moduleToggled,
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (!bot->meteorWidget) {
+            bot->meteorWidget = new MeteorModulesWidget(this);
+            connect(bot->meteorWidget, &MeteorModulesWidget::moduleToggled,
                     this, &ManagerMainWindow::onMeteorModuleToggled);
-            connect(bot.meteorWidget, &MeteorModulesWidget::settingChanged,
+            connect(bot->meteorWidget, &MeteorModulesWidget::settingChanged,
                     this, &ManagerMainWindow::onMeteorSettingChanged);
-            bot.meteorWidget->hide();
-            layout->addWidget(bot.meteorWidget);
+            bot->meteorWidget->hide();
+            layout->addWidget(bot->meteorWidget);
         }
     }
 }
@@ -2137,14 +2115,14 @@ void ManagerMainWindow::setupBaritoneTab()
         layout->setContentsMargins(0, 0, 0, 0);
     }
 
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (!bot.baritoneWidget) {
-            bot.baritoneWidget = new BaritoneWidget(this);
-            connect(bot.baritoneWidget, &BaritoneWidget::settingChanged,
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (!bot->baritoneWidget) {
+            bot->baritoneWidget = new BaritoneWidget(this);
+            connect(bot->baritoneWidget, &BaritoneWidget::settingChanged,
                     this, &ManagerMainWindow::onBaritoneSettingChanged);
-            bot.baritoneWidget->hide();
-            layout->addWidget(bot.baritoneWidget);
+            bot->baritoneWidget->hide();
+            layout->addWidget(bot->baritoneWidget);
         }
     }
 }
@@ -2201,17 +2179,17 @@ void ManagerMainWindow::setupScriptsTab()
         layout->setContentsMargins(0, 0, 0, 0);
     }
 
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (!bot.scriptEngine) {
-            bot.scriptEngine = new ScriptEngine(&bot, this);
-            bot.scriptEngine->loadScriptsFromDisk();
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (!bot->scriptEngine) {
+            bot->scriptEngine = new ScriptEngine(bot, this);
+            bot->scriptEngine->loadScriptsFromDisk();
         }
 
-        if (!bot.scriptsWidget) {
-            bot.scriptsWidget = new ScriptsWidget(bot.scriptEngine, this);
-            bot.scriptsWidget->hide();
-            layout->addWidget(bot.scriptsWidget);
+        if (!bot->scriptsWidget) {
+            bot->scriptsWidget = new ScriptsWidget(bot->scriptEngine, this);
+            bot->scriptsWidget->hide();
+            layout->addWidget(bot->scriptsWidget);
         }
     }
 }
@@ -2297,10 +2275,10 @@ void ManagerMainWindow::onEditorThemeChanged(const QString &themeName)
 
     LogManager::log(QString("Editor theme changed to: %1").arg(themeName), LogManager::Info);
 
-    QVector<BotInstance> &bots = BotManager::getBots();
-    for (BotInstance &bot : bots) {
-        if (bot.scriptsWidget) {
-            bot.scriptsWidget->reloadTheme();
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (bot->scriptsWidget) {
+            bot->scriptsWidget->reloadTheme();
         }
     }
 }
