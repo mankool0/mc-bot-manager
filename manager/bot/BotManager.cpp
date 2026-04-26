@@ -11,6 +11,7 @@
 #include <nbt_tags.h>
 #include <optional>
 #include <sstream>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDataStream>
 #include <QUuid>
@@ -588,7 +589,7 @@ BotInstance* BotManager::getBotByConnectionId(int connectionId)
 
 BotInstance* BotManager::getBotByConnectionIdImpl(int connectionId)
 {
-    for (BotInstance *bot : botInstances) {
+    for (BotInstance *bot : std::as_const(botInstances)) {
         if (bot->connectionId == connectionId) {
             return bot;
         }
@@ -603,7 +604,7 @@ BotInstance* BotManager::getBotByName(const QString &name)
 
 BotInstance* BotManager::getBotByNameImpl(const QString &name)
 {
-    for (BotInstance *bot : botInstances) {
+    for (BotInstance *bot : std::as_const(botInstances)) {
         if (bot->name == name) {
             return bot;
         }
@@ -638,12 +639,12 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
     // Server changed - disassociate from old saver
     if (bot->worldAutoSaver && bot->worldAutoSaverServerIp != bot->server) {
         LogManager::log(QString("[%1] Server changed from %2 to %3 - switching WorldAutoSaver")
-                       .arg(bot->name).arg(bot->worldAutoSaverServerIp).arg(bot->server), LogManager::Info);
+                       .arg(bot->name, bot->worldAutoSaverServerIp, bot->server), LogManager::Info);
         QString oldKey = bot->worldAutoSaverServerIp;
         bot->worldAutoSaver.reset();
 
         bool stillUsed = false;
-        for (const auto* b : botInstances) {
+        for (const auto* b : std::as_const(botInstances)) {
             if (b != bot && b->worldAutoSaverServerIp == oldKey) {
                 stillUsed = true;
                 break;
@@ -660,7 +661,7 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
     auto it = m_sharedWorldSavers.find(serverKey);
     if (it != m_sharedWorldSavers.end()) {
         LogManager::log(QString("[%1] Attaching to existing WorldAutoSaver for %2")
-                       .arg(bot->name).arg(serverKey), LogManager::Info);
+                       .arg(bot->name, serverKey), LogManager::Info);
 
         // Warn if this bot's save settings differ from the shared saver's
         const WorldSaveSettings& existing = (*it)->getSaveSettings();
@@ -671,7 +672,7 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
             existing.savePlayerData    != incoming.savePlayerData)
         {
             LogManager::log(QString("[%1] WorldSaveSettings mismatch for %2 - using settings from first bot that connected")
-                           .arg(bot->name).arg(serverKey), LogManager::Warning);
+                           .arg(bot->name, serverKey), LogManager::Warning);
         }
 
         bot->worldAutoSaver = *it;
@@ -684,14 +685,14 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         version.isSnapshot = bot->versionIsSnapshot;
 
         LogManager::log(QString("[%1] Creating WorldAutoSaver for %2 with version %3 (data version %4)")
-                       .arg(bot->name).arg(serverKey).arg(version.versionName).arg(version.dataVersion), LogManager::Info);
+                       .arg(bot->name, serverKey, version.versionName).arg(version.dataVersion), LogManager::Info);
 
         auto saver = std::make_shared<WorldAutoSaver>(serverKey, version, bot->worldSaveSettings);
 
         // Chunk provider searches all bots connected to this server, so it works for any number of bots
         saver->setChunkProvider([serverKey, this](int cx, int cz, const QString& dim)
             -> std::optional<std::pair<ChunkData, QVector<BlockEntityData>>> {
-            for (auto* b : botInstances) {
+            for (auto* b : std::as_const(botInstances)) {
                 if (b->server != serverKey) continue;
                 QReadLocker locker(b->worldDataLock.get());
                 const ChunkData* chunk = b->worldData.getChunk(cx, cz);
@@ -711,7 +712,7 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
     if (!bot->earlyChunkQueue.isEmpty()) {
         LogManager::log(QString("[%1] Processing %2 early chunks...")
                        .arg(bot->name).arg(bot->earlyChunkQueue.size()), LogManager::Info);
-        for (const auto& earlyChunk : bot->earlyChunkQueue) {
+        for (const auto& earlyChunk : std::as_const(bot->earlyChunkQueue)) {
             QVector<BlockEntityData> earlyBEs;
             {
                 QReadLocker locker(bot->worldDataLock.get());
@@ -772,7 +773,7 @@ void BotManager::removeBotImpl(const QString &name)
             // Remove shared saver if no remaining bot uses this server
             if (!serverKey.isEmpty()) {
                 bool stillUsed = false;
-                for (const auto* b : botInstances) {
+                for (const auto* b : std::as_const(botInstances)) {
                     if (b->worldAutoSaverServerIp == serverKey) {
                         stillUsed = true;
                         break;
@@ -820,11 +821,10 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
 {
     QString playerName = info.playerName();
     QString clientVersion = info.clientVersion();
-    QString modVersion = info.modVersion();
     QString playerUuid = info.playerUuid();
 
     BotInstance *bot = nullptr;
-    for (BotInstance *b : botInstances) {
+    for (BotInstance *b : std::as_const(botInstances)) {
         if (b->status == BotStatus::Starting && !b->accountId.isEmpty() &&
             QString(b->accountId).remove('-') == QString(playerUuid).remove('-')) {
             bot = b;
@@ -848,6 +848,13 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         bot->versionName = info.clientVersion();
         bot->versionSeries = info.versionSeries();
         bot->versionIsSnapshot = info.versionIsSnapshot();
+        bot->modVersion = info.modVersion();
+
+        if (!bot->modVersion.isEmpty() && bot->modVersion != QCoreApplication::applicationVersion()) {
+            LogManager::log(QString("[%1] Mod version mismatch: mod=%2, manager=%3")
+                                .arg(bot->name, bot->modVersion, QCoreApplication::applicationVersion()),
+                            LogManager::Warning);
+        }
 
         // Load recipes and tags for this version
         if (!bot->recipeRegistry.loadFromCache(clientVersion)) {
@@ -860,7 +867,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         sendProxyConfig(bot->name);
 
         LogManager::log(QString("[%1] Connected as '%2' (Connection ID: %3)")
-                       .arg(bot->name).arg(playerName).arg(connectionId), LogManager::Success);
+                       .arg(bot->name, playerName).arg(connectionId), LogManager::Success);
     } else {
         LogManager::log(QString("Received ConnectionInfo for unknown bot '%1'")
                        .arg(playerName), LogManager::Warning);
@@ -878,7 +885,6 @@ void BotManager::handleServerStatus(int connectionId, const mankool::mcbot::prot
 
 void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status)
 {
-    QString serverName = status.serverName();
     QString serverAddr = status.serverAddress();
 
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
@@ -1042,7 +1048,7 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
 
     if (bot->scriptEngine) {
         QVariantList inventoryList;
-        for (const auto &item : bot->inventory) {
+        for (const auto &item : std::as_const(bot->inventory)) {
             if (!item.itemId().isEmpty()) {
                 QVariantMap itemMap;
                 itemMap["slot"] = static_cast<int>(item.slot());
@@ -2117,8 +2123,7 @@ void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot:
     PipeServer::sendToClient(connectionId, message);
 
     LogManager::log(QString("[%1] Sent block registry response: %2")
-                   .arg(bot->name)
-                   .arg(haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
+                   .arg(bot->name, haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
 
     // Try to initialize WorldAutoSaver now that we have dataVersion
     tryInitializeWorldAutoSaver(bot);
@@ -2227,8 +2232,7 @@ void BotManager::handleQueryItemRegistryImpl(int connectionId, const mankool::mc
     PipeServer::sendToClient(connectionId, message);
 
     LogManager::log(QString("[%1] Sent item registry response: %2")
-                   .arg(bot->name)
-                   .arg(haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
+                   .arg(bot->name, haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
 }
 
 void BotManager::handleItemRegistry(int connectionId, const mankool::mcbot::protocol::ItemRegistryMessage &registry)
@@ -2655,7 +2659,7 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         // and to detect broken blocks (zombie cleanup).
         auto existingBEs = bot->worldData.getBlockEntitiesInChunk(chunk.chunkX, chunk.chunkZ, chunk.dimension);
         QHash<BlockEntityPos, BlockEntityData> existingMap;
-        for (const auto& e : existingBEs) {
+        for (const auto& e : std::as_const(existingBEs)) {
             existingMap[{e.dimension, e.x, e.y, e.z}] = e;
         }
 
@@ -2697,7 +2701,7 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
 
         // Zombie cleanup: remove worldData entries for this chunk that the server no longer
         // reports (the block was broken since the last chunk load).
-        for (const auto& existing : existingBEs) {
+        for (const auto &existing : std::as_const(existingBEs)) {
             if (!rawNbtPositions.contains({existing.dimension, existing.x, existing.y, existing.z})) {
                 bot->worldData.removeBlockEntity(existing.x, existing.y, existing.z, existing.dimension);
             }

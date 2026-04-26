@@ -324,6 +324,7 @@ struct BotInstance : public BotConfig {
     QString versionName;
     QString versionSeries = "main";
     bool versionIsSnapshot = false;
+    QString modVersion;
     std::shared_ptr<WorldAutoSaver> worldAutoSaver;
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;

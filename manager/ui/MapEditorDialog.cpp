@@ -139,7 +139,7 @@ void MapEditorDialog::onAddClicked()
     }
 
     QStringList availableKeys;
-    for (const QString &key : possibleKeys) {
+    for (const QString &key : std::as_const(possibleKeys)) {
         if (!mapData.contains(key)) {
             availableKeys.append(key);
         }
@@ -250,7 +250,7 @@ void MapEditorDialog::onEditKeyClicked()
     }
 
     QStringList availableKeys;
-    for (const QString &key : possibleKeys) {
+    for (const QString &key : std::as_const(possibleKeys)) {
         if (!mapData.contains(key) || key == oldKey) {
             availableKeys.append(key);
         }

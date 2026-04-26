@@ -897,8 +897,8 @@ void SettingEditorFactory::registerAllTypes()
             onChange(QVariant::fromValue(newData));
         };
 
-        QObject::connect(shapeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), emitESPChange);
-        QObject::connect(tracerCheck, &QCheckBox::toggled, [tracerColorLabel, emitESPChange](bool checked) {
+        QObject::connect(shapeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), shapeCombo, emitESPChange);
+        QObject::connect(tracerCheck, &QCheckBox::toggled, tracerCheck, [tracerColorLabel, emitESPChange](bool checked) {
             tracerColorLabel->setEnabled(checked);
             emitESPChange();
         });

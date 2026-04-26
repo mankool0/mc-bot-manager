@@ -264,7 +264,7 @@ QString PrismSettingsDialog::detectPrismLauncherPath()
     searchPaths << home + "/Library/Application Support/PrismLauncher";
 #endif
 
-    for (const QString &path : searchPaths) {
+    for (const QString &path : std::as_const(searchPaths)) {
         QDir dir(path);
         if (dir.exists()) {
             if (dir.exists("instances") && QFile::exists(path + "/accounts.json")) {

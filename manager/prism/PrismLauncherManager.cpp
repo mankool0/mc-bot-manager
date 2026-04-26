@@ -170,7 +170,7 @@ void PrismLauncherManager::pingHook()
         }
     };
 
-    connect(timer, &QTimer::timeout, this, [this, markUnavailable]() {
+    connect(timer, &QTimer::timeout, this, [markUnavailable]() {
         LogManager::log("Prism hook: no response to ping", LogManager::Warning);
         markUnavailable();
     });
@@ -198,7 +198,7 @@ void PrismLauncherManager::pingHook()
     });
 
     connect(socket, &QLocalSocket::errorOccurred, this,
-            [this, markUnavailable](QLocalSocket::LocalSocketError) {
+            [markUnavailable](QLocalSocket::LocalSocketError) {
         LogManager::log("Prism hook: not reachable", LogManager::Warning);
         markUnavailable();
     });
@@ -346,7 +346,7 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
     });
 
     // Set memory config for all bots before Prism GUI starts so it reads correct values on load
-    for (const BotInstance *b : BotManager::getBots()) {
+    for (const BotInstance *b : std::as_const(BotManager::getBots())) {
         if (b->instance.isEmpty()) continue;
         QString cfgPath = prismConfig->prismPath + "/instances/" + b->instance + "/instance.cfg";
         QSettings cfg(cfgPath, QSettings::IniFormat);

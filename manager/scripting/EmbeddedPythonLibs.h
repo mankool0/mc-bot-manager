@@ -48,7 +48,8 @@ public:
             dir.mkpath(".");
         }
 
-        for (const QString &moduleName : getBundledModules()) {
+        const auto modules = getBundledModules();
+        for (const QString &moduleName : modules) {
             ensureModuleExists(scriptsDir, moduleName);
         }
     }

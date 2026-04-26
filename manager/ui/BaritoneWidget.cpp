@@ -212,7 +212,7 @@ void BaritoneWidget::applyFilter()
         const QString &settingName = it.key();
         QTreeWidgetItem *item = it.value();
 
-        bool matches = filterText.isEmpty() || settingName.toLower().contains(filterText);
+        bool matches = filterText.isEmpty() || settingName.contains(filterText, Qt::CaseInsensitive);
         item->setHidden(!matches);
     }
 }

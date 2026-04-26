@@ -331,7 +331,7 @@ py::object PythonAPI::qVariantToPyObject(const QVariant &value)
                 dict["__type__"] = "StringListMap";
                 for (auto it = map.begin(); it != map.end(); ++it) {
                     py::list pyList;
-                    for (const QString &str : it.value()) {
+                    for (const QString &str : std::as_const(it.value())) {
                         pyList.append(str.toStdString());
                     }
                     dict[it.key().toStdString().c_str()] = pyList;
@@ -648,7 +648,7 @@ py::object PythonAPI::getInventory(const std::string &botName)
     }
 
     py::list result;
-    for (const auto &item : inventoryCopy) {
+    for (const auto &item : std::as_const(inventoryCopy)) {
         if (!item.itemId().isEmpty()) {
             result.append(buildItemDict(item));
         }
@@ -702,7 +702,7 @@ py::object PythonAPI::getScreen(const std::string &botName)
     result.width = bot->screenState.width;
     result.height = bot->screenState.height;
 
-    for (const auto &w : bot->screenState.widgets) {
+    for (const auto &w : std::as_const(bot->screenState.widgets)) {
         PyGuiWidget pw;
         pw.index = w.index;
         pw.widgetType = w.widgetType.toStdString();
@@ -720,7 +720,7 @@ py::object PythonAPI::getScreen(const std::string &botName)
         result.widgets.push_back(pw);
     }
 
-    for (const auto &s : bot->screenState.guiSlots) {
+    for (const auto &s : std::as_const(bot->screenState.guiSlots)) {
         PyGuiSlot ps;
         ps.index = s.index;
         ps.x = s.x;
@@ -802,7 +802,7 @@ py::list PythonAPI::listAllBots()
     py::list result;
 
     const QVector<BotInstance*> &bots = BotManager::getBots();
-    for (const auto *bot : bots) {
+    for (const auto *bot : std::as_const(bots)) {
         py::dict botDict;
         botDict["name"] = bot->name.toStdString();
 
@@ -1584,7 +1584,7 @@ py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk
             bees = botInstance->worldData.getBlockEntitiesInChunk(chunkX, chunkZ, dim);
         }
         py::list result;
-        for (const auto& be : bees) {
+        for (const auto& be : std::as_const(bees)) {
             result.append(buildBlockEntityDict(be, true));
         }
         return result;
@@ -1878,7 +1878,7 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     }
 
     py::list chunkList;
-    for (const ChunkPos &pos : chunks) {
+    for (const ChunkPos &pos : std::as_const(chunks)) {
         py::tuple coord = py::make_tuple(pos.x, pos.z);
         chunkList.append(coord);
     }
@@ -1925,7 +1925,7 @@ py::list PythonAPI::getEntities(const std::string &bot)
     }
 
     py::list result;
-    for (const auto &e : ents) {
+    for (const auto &e : std::as_const(ents)) {
         result.append(buildEntityDict(e));
     }
     return result;
@@ -1945,7 +1945,7 @@ py::list PythonAPI::findEntitiesNear(double x, double y, double z, double radius
     }
 
     py::list result;
-    for (const auto &e : ents) {
+    for (const auto &e : std::as_const(ents)) {
         result.append(buildEntityDict(e));
     }
     return result;
@@ -2057,7 +2057,7 @@ py::object PythonAPI::getContainer(const std::string &bot)
     result["type"] = botInstance->containerState.containerType;
 
     py::list items;
-    for (const auto &item : botInstance->containerState.items) {
+    for (const auto &item : std::as_const(botInstance->containerState.items)) {
         items.append(buildItemDict(item));
     }
     result["items"] = items;
@@ -2170,7 +2170,7 @@ py::list PythonAPI::getAllRecipes(const std::string &bot)
 
     py::list result;
     QStringList recipeIds = botInstance->recipeRegistry.getAllRecipeIds();
-    for (const QString &id : recipeIds) {
+    for (const QString &id : std::as_const(recipeIds)) {
         result.append(id.toStdString());
     }
 
@@ -2184,7 +2184,7 @@ py::dict PythonAPI::planRecursiveCraft(const std::string &itemId, int count, con
 
     // Get bot's current inventory
     QMap<QString, int> available;
-    for (const auto &item : botInstance->inventory) {
+    for (const auto &item : std::as_const(botInstance->inventory)) {
         available[item.itemId()] += item.count();
     }
 
@@ -2199,7 +2199,7 @@ py::dict PythonAPI::planRecursiveCraft(const std::string &itemId, int count, con
 
     // Convert steps
     py::list steps;
-    for (const CraftingStep &step : plan.steps) {
+    for (const CraftingStep &step : std::as_const(plan.steps)) {
         py::dict stepDict;
         stepDict["recipe_id"] = step.recipeId.toStdString();
         stepDict["times"] = step.times;

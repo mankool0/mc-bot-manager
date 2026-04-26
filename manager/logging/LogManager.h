@@ -60,7 +60,7 @@ public:
     }
 
 signals:
-    void logRequested(const QString &message, LogLevel level);
+    void logRequested(const QString &message, LogManager::LogLevel level);
     void logPrismRequested(const QString &message);
     void clearManagerLogRequested();
     void clearPrismLogRequested();

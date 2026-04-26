@@ -46,7 +46,8 @@ static AccountList* findAccountList()
 {
     QCoreApplication* app = QCoreApplication::instance();
     if (!app) return nullptr;
-    for (QObject* o : app->findChildren<QObject*>()) {
+    const auto children = app->findChildren<QObject*>();
+    for (QObject* o : children) {
         if (strcmp(o->metaObject()->className(), "AccountList") == 0) {
             return static_cast<AccountList*>(o);
         }
@@ -58,7 +59,8 @@ static QAbstractListModel* findInstanceList()
 {
     QCoreApplication* app = QCoreApplication::instance();
     if (!app) return nullptr;
-    for (QObject* o : app->findChildren<QObject*>()) {
+    const auto children = app->findChildren<QObject*>();
+    for (QObject* o : children) {
         if (strcmp(o->metaObject()->className(), "InstanceList") == 0) {
             return static_cast<QAbstractListModel*>(o);
         }
@@ -81,7 +83,7 @@ static MinecraftAccountPtr findAccount(AccountList* list, const QString& name)
     return nullptr;
 }
 
-static QSet<QLocalSocket*> g_subscribers;
+Q_GLOBAL_STATIC(QSet<QLocalSocket*>, g_subscribers)
 
 static QByteArray buildAccountsPayload()
 {
@@ -124,7 +126,7 @@ static QByteArray buildInstancesPayload()
 
 static void sendToSubscribers(const QByteArray& data)
 {
-    for (QLocalSocket* s : std::as_const(g_subscribers)) {
+    for (QLocalSocket* s : std::as_const(*g_subscribers)) {
         if (s && s->state() == QLocalSocket::ConnectedState) {
             s->write(data);
         }
@@ -242,9 +244,9 @@ static void doRefresh(QLocalSocket* socket, const QString& profile)
 
 static void doSubscribe(QLocalSocket* socket)
 {
-    g_subscribers.insert(socket);
+    g_subscribers->insert(socket);
     QObject::connect(socket, &QLocalSocket::disconnected, socket, [socket]() {
-        g_subscribers.remove(socket);
+        g_subscribers->remove(socket);
     });
     socket->write(buildAccountsPayload());
     socket->write(buildInstancesPayload());

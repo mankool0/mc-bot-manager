@@ -43,8 +43,7 @@ bool PipeServer::startImpl(const QString &pipeName)
 
     if (!server->listen(pipeName)) {
         LogManager::log(QString("Failed to create pipe server '%1': %2")
-                       .arg(pipeName)
-                       .arg(server->errorString()), LogManager::Error);
+                       .arg(pipeName, server->errorString()), LogManager::Error);
         delete server;
         server = nullptr;
         return false;
@@ -75,7 +74,7 @@ void PipeServer::stopImpl()
             socket->deleteLater();
         }
     }
-    for (auto stream : connectionStreams) {
+    for (auto stream : std::as_const(connectionStreams)) {
         delete stream;
     }
     connections.clear();
@@ -319,7 +318,7 @@ void PipeServer::broadcastToAll(const QByteArray &data)
 
 void PipeServer::broadcastToAllImpl(const QByteArray &data)
 {
-    for (QLocalSocket *socket : connections) {
+    for (QLocalSocket *socket : std::as_const(connections)) {
         socket->write(data);
     }
 

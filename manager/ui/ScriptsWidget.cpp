@@ -160,7 +160,7 @@ void ScriptsWidget::refreshScriptList()
     }
 
     QStringList scripts = scriptEngine->getScriptNames();
-    for (const QString &scriptName : scripts) {
+    for (const QString &scriptName : std::as_const(scripts)) {
         QListWidgetItem *item = new QListWidgetItem(scriptName);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
 
@@ -380,7 +380,7 @@ void ScriptsWidget::onScriptItemChanged(QListWidgetItem *item)
 
     QMap<QString, ScriptState> states;
     QStringList scriptNames = scriptEngine->getScriptNames();
-    for (const QString &name : scriptNames) {
+    for (const QString &name : std::as_const(scriptNames)) {
         ScriptState state;
         state.autorun = scriptEngine->isScriptEnabled(name);
         states[name] = state;
@@ -492,7 +492,8 @@ void ScriptsWidget::setupEditor()
     codeEditor->setCompletionThreshold(2);
     codeEditor->setCompletionCallback([this](const QString &, const QString &, const QString &) {
         QSet<Qutepart::CompletionItem> items;
-        for (const QString &s : getCompletions())
+        const auto completions = getCompletions();
+        for (const QString &s : completions)
             items.insert(Qutepart::CompletionItem(s));
         return QtFuture::makeReadyValueFuture(items);
     });

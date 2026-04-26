@@ -31,7 +31,7 @@ bool RecipeRegistry::loadFromJson(const QJsonObject &recipesJson, const QJsonObj
         QStringList items;
         if (tagObj.contains("values")) {
             QJsonArray itemsArray = tagObj["values"].toArray();
-            for (const QJsonValue &val : itemsArray) {
+            for (const QJsonValue &val : std::as_const(itemsArray)) {
                 items.append(val.toString());
             }
         }
@@ -289,7 +289,7 @@ QStringList RecipeRegistry::parseIngredient(const QJsonValue &ingredientValue) c
         // Array of possible ingredients - expand all
         QStringList result;
         QJsonArray arr = ingredientValue.toArray();
-        for (const QJsonValue &val : arr) {
+        for (const QJsonValue &val : std::as_const(arr)) {
             result.append(parseIngredient(val));
         }
         return result;
@@ -317,7 +317,8 @@ QStringList RecipeRegistry::expandTagRecursive(const QString &tagOrItem, QSet<QS
         }
 
         QStringList result;
-        for (const QString &value : tags[tagName]) {
+        const QStringList tagValues = tags.value(tagName);
+        for (const QString &value : tagValues) {
             // Recursively expand (in case this tag contains other tags)
             result.append(expandTagRecursive(value, visited));
         }

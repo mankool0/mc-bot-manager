@@ -18,7 +18,7 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
     QString basePath = ManagerMainWindow::getWorldSaveBasePath();
     m_worldPath = basePath + "/" + sanitizedIp;
     LogManager::log(QString("WorldAutoSaver initialized for %1 with version %2 (data version %3). Saving to: %4")
-                   .arg(serverIp).arg(version.versionName).arg(version.dataVersion).arg(m_worldPath), LogManager::Info);
+                   .arg(serverIp, version.versionName, QString::number(version.dataVersion), m_worldPath), LogManager::Info);
 
     // Setup worker thread
     m_workerThread = new QThread();
@@ -52,7 +52,7 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
 WorldAutoSaver::~WorldAutoSaver() {
     // Flush player data on destruction
     if (m_isInitialized && m_saveSettings.savePlayerData) {
-        for (const QString& uuid : m_dirtyPlayerUuids) {
+        for (const QString& uuid : std::as_const(m_dirtyPlayerUuids)) {
             emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
         }
     }
@@ -140,7 +140,7 @@ void WorldAutoSaver::flushPeriodic() {
 
         // Group entities by chunk
         QHash<DimChunkPos, QVector<EntityData>> chunkEntityMap;
-        for (const auto& tracked : m_trackedEntities) {
+        for (const auto& tracked : std::as_const(m_trackedEntities)) {
             int chunkX = static_cast<int>(std::floor(tracked.data.x / 16.0));
             int chunkZ = static_cast<int>(std::floor(tracked.data.z / 16.0));
             chunkEntityMap[{tracked.dimension, chunkX, chunkZ}].append(tracked.data);
@@ -180,7 +180,7 @@ void WorldAutoSaver::initializeWorld() {
         if (WorldExporter::createLevelDat(m_worldPath, 0, 80, 0, m_serverIp, m_version)) {
             m_isInitialized = true;
             LogManager::log(QString("Successfully created new world structure for %1 with version %2 (data version %3)")
-                           .arg(m_serverIp).arg(m_version.versionName).arg(m_version.dataVersion), LogManager::Success);
+                           .arg(m_serverIp, m_version.versionName, QString::number(m_version.dataVersion)), LogManager::Success);
         } else {
             LogManager::log(QString("Failed to create level.dat for %1").arg(m_serverIp), LogManager::Error);
         }
