@@ -16,22 +16,18 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT }}
 
-      - name: Create version tag if bump commit is present
+      - name: Create version tag
         run: |
-          BEFORE="${{ github.event.before }}"
-          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            RANGE="HEAD~10..HEAD"
-          else
-            RANGE="$BEFORE..${{ github.sha }}"
+          VERSION=$(grep -oP 'project\(mc-bot-manager VERSION \K[0-9]+\.[0-9]+\.[0-9]+' manager/CMakeLists.txt)
+          if [ -z "$VERSION" ]; then
+            echo "Could not read version from CMakeLists.txt"
+            exit 1
           fi
-          BUMP_LINE=$(git log "$RANGE" --pretty=format:"%H %s" | grep "bump version to" | head -1)
-          if [ -z "$BUMP_LINE" ]; then
-            echo "No version bump commit in this push, skipping"
+          TAG="v$VERSION"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
             exit 0
           fi
-          COMMIT_SHA=$(echo "$BUMP_LINE" | awk '{print $1}')
-          COMMIT_MSG=$(echo "$BUMP_LINE" | cut -d' ' -f2-)
-          VERSION="${COMMIT_MSG#bump version to }"
-          echo "Tagging $COMMIT_SHA as v$VERSION"
-          git tag "v$VERSION" "$COMMIT_SHA"
-          git push origin "v$VERSION"
+          echo "Tagging HEAD as $TAG"
+          git tag "$TAG"
+          git push origin "$TAG"
