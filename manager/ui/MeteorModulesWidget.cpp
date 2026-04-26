@@ -345,7 +345,7 @@ QWidget* MeteorModulesWidget::createSettingEditor(const MeteorSettingData &setti
 
             // Find all nested color labels and install event filters
             QList<QLabel*> colorLabels = widget->findChildren<QLabel*>();
-            for (QLabel* colorLabel : colorLabels) {
+            for (QLabel* colorLabel : std::as_const(colorLabels)) {
                 if (colorLabel->property("colorR").isValid()) {
                     colorLabel->installEventFilter(this);
                 }
@@ -381,7 +381,7 @@ void MeteorModulesWidget::applyFilters()
         QTreeWidgetItem *item = it.value();
         const MeteorModuleData &module = allModules[moduleName];
 
-        bool matchesText = filterText.isEmpty() || module.name.toLower().contains(filterText);
+        bool matchesText = filterText.isEmpty() || module.name.contains(filterText, Qt::CaseInsensitive);
         bool matchesCategory = selectedCategory == "All" || module.category == selectedCategory;
 
         item->setHidden(!matchesText || !matchesCategory);

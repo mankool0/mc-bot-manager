@@ -102,7 +102,7 @@ QMap<QString, ScriptState> ScriptFileManager::loadScriptStates(const QString &bo
     QJsonObject root = doc.object();
     QJsonArray scripts = root["scripts"].toArray();
 
-    for (const QJsonValue &val : scripts) {
+    for (const QJsonValue &val : std::as_const(scripts)) {
         QJsonObject obj = val.toObject();
         QString filename = obj["filename"].toString();
         ScriptState state;

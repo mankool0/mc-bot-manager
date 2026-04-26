@@ -1,33 +1,33 @@
 #include "ManagerMainWindow.h"
-#include "BotConsoleWidget.h"
-#include "MeteorModulesWidget.h"
-#include "BaritoneWidget.h"
-#include "ScriptsWidget.h"
-#include "PrismSettingsDialog.h"
-#include "GlobalSettingsDialog.h"
-#include "NetworkStatsWidget.h"
-#include "logging/LogManager.h"
-#include "prism/PrismLauncherManager.h"
-#include "network/PipeServer.h"
-#include "scripting/ScriptEngine.h"
-#include <QMessageBox>
-#include <QInputDialog>
-#include <QTimer>
-#include <QSettings>
-#include <QCoreApplication>
-#include <QProcess>
-#include <QDateTime>
-#include <QTextCursor>
-#include <QRegularExpression>
 #include <QActionGroup>
-#include <QElapsedTimer>
-#include <QTcpSocket>
-#include <QLocalSocket>
-#include <QFutureWatcher>
-#include <QtConcurrent/QtConcurrent>
-#include <memory>
-#include <QGuiApplication>
 #include <QClipboard>
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QElapsedTimer>
+#include <QFutureWatcher>
+#include <QGuiApplication>
+#include <QInputDialog>
+#include <QLocalSocket>
+#include <QMessageBox>
+#include <QProcess>
+#include <QRegularExpression>
+#include <QSettings>
+#include <QTcpSocket>
+#include <QTextCursor>
+#include <QTimer>
+#include <QtConcurrent/QtConcurrentRun>
+#include "BaritoneWidget.h"
+#include "BotConsoleWidget.h"
+#include "GlobalSettingsDialog.h"
+#include "MeteorModulesWidget.h"
+#include "NetworkStatsWidget.h"
+#include "PrismSettingsDialog.h"
+#include "ScriptsWidget.h"
+#include "logging/LogManager.h"
+#include "network/PipeServer.h"
+#include "prism/PrismLauncherManager.h"
+#include "scripting/ScriptEngine.h"
+#include <memory>
 
 // Initialize static member
 QString ManagerMainWindow::worldSaveBasePath = "worldSaves";
@@ -288,7 +288,7 @@ void ManagerMainWindow::setupUI()
         return true;
     };
 
-    connect(ui->proxyHostLineEdit, &QLineEdit::textChanged, this, [this, prevLen, resetProxyTest, tryApplyProxy](const QString &text) {
+    connect(ui->proxyHostLineEdit, &QLineEdit::textChanged, this, [prevLen, resetProxyTest, tryApplyProxy](const QString &text) {
         int delta = text.length() - *prevLen;
         *prevLen = text.length();
 
@@ -1182,7 +1182,7 @@ void ManagerMainWindow::restartBotByName(const QString &botName, const QString &
     if (!bot) return;
 
     if (bot->status == BotStatus::Online) {
-        LogManager::log(QString("Restarting bot '%1': %2").arg(botName).arg(reason), LogManager::Info);
+        LogManager::log(QString("Restarting bot '%1': %2").arg(botName, reason), LogManager::Info);
         bot->manualStop = true;
         bot->status = BotStatus::Stopping;
         BotManager::sendShutdownCommand(botName, reason);
@@ -1363,7 +1363,7 @@ void ManagerMainWindow::configureWorldSavePath()
 QStringList ManagerMainWindow::getUsedInstances() const
 {
     QStringList used;
-    for (const BotInstance *bot : BotManager::getBots()) {
+    for (const BotInstance *bot : std::as_const(BotManager::getBots())) {
         if (!bot->instance.isEmpty()) {
             used.append(bot->instance);
         }
@@ -1706,7 +1706,7 @@ void ManagerMainWindow::checkBotProxyHealth(const QString &botName)
     });
 
     auto *watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, botName]() {
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [watcher, botName]() {
         bool alive = watcher->result();
         watcher->deleteLater();
 
@@ -1933,14 +1933,13 @@ void ManagerMainWindow::refreshAccountThenLaunch(const QString &accountProfile,
                 .arg(botName, accountProfile),
             LogManager::Warning);
 
-        auto* conn = new QMetaObject::Connection;
+        auto conn = std::make_shared<QMetaObject::Connection>();
         *conn = connect(&PrismLauncherManager::instance(),
                         &PrismLauncherManager::accountRefreshSucceeded,
                         this,
-                        [this, botName, accountProfile, conn](const QString &name) {
+                        [this, botName, accountProfile, conn](const QString &name) mutable {
             if (name != accountProfile) return;
             disconnect(*conn);
-            delete conn;
             LogManager::log(
                 QString("[%1] Prism refreshed account '%2' - relaunching").arg(botName, accountProfile),
                 LogManager::Info);
@@ -2012,7 +2011,7 @@ void ManagerMainWindow::onConsoleCommandEntered(const QString &command)
     }
 
     // Check if it's a known Baritone command
-    for (const auto &baritoneCmd : bot->baritoneCommands) {
+    for (const auto &baritoneCmd : std::as_const(bot->baritoneCommands)) {
         if (baritoneCmd.name.toLower() == cmdName) {
             isBaritoneCommand = true;
             break;
@@ -2140,7 +2139,7 @@ void ManagerMainWindow::onBaritoneCommandsReceived(const QString &botName)
     BotInstance *bot = BotManager::getBotByName(botName);
     if (bot && bot->consoleWidget) {
         QVector<QPair<QString, QString>> commands;
-        for (const auto &cmd : bot->baritoneCommands) {
+        for (const auto &cmd : std::as_const(bot->baritoneCommands)) {
             QString description = cmd.shortDesc;
             if (!cmd.longDesc.isEmpty()) {
                 description += QString("\n") + cmd.longDesc.join("\n");
@@ -2245,7 +2244,7 @@ void ManagerMainWindow::setupCodeEditorThemeMenu()
     QSettings settings;
     QString currentTheme = settings.value("editor/theme", "Follow System").toString();
 
-    QStringList themes = ScriptsWidget::getAvailableThemes();
+    const QStringList themes = ScriptsWidget::getAvailableThemes();
     for (const QString &theme : themes) {
         QAction *themeAction = new QAction(theme, this);
         themeAction->setCheckable(true);

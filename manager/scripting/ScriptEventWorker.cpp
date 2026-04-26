@@ -30,7 +30,7 @@ void ScriptEventWorker::processEvent(const ScriptEvent &event, ScriptContext *ct
     if (!ctx->eventHandlers.contains(event.eventName))
         return;
 
-    const QList<py::function> &handlers = ctx->eventHandlers[event.eventName];
+    const QList<py::function> handlers = ctx->eventHandlers.value(event.eventName);
 
     py::gil_scoped_acquire acquire;
 

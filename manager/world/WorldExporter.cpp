@@ -26,7 +26,8 @@ bool WorldExporter::exportWorld(const BotWorldData& worldData,
     std::unordered_map<RegionPos, std::unique_ptr<RegionFile>> regionCache;
 
     int chunksExported = 0;
-    for (const ChunkPos& chunkPos : worldData.getLoadedChunks()) {
+    const auto loadedChunks = worldData.getLoadedChunks();
+    for (const ChunkPos& chunkPos : loadedChunks) {
         const ChunkData* chunk = worldData.getChunk(chunkPos.x, chunkPos.z);
         if (!chunk) {
             continue;
@@ -143,7 +144,7 @@ std::tuple<int, int, int, int> WorldExporter::getChunkBounds(const BotWorldData&
     int minZ = chunks[0].z;
     int maxZ = chunks[0].z;
 
-    for (const ChunkPos& pos : chunks) {
+    for (const ChunkPos& pos : std::as_const(chunks)) {
         minX = std::min(minX, pos.x);
         maxX = std::max(maxX, pos.x);
         minZ = std::min(minZ, pos.z);

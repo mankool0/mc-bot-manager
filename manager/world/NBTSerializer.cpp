@@ -112,7 +112,7 @@ nbt::tag_compound NBTSerializer::entityToNBT(const EntityData& e) {
         std::vector<int32_t> uuidInts;
         for (int i = 0; i < 4; i++) {
             bool ok;
-            uint32_t val = uuidStr.mid(i * 8, 8).toUInt(&ok, 16);
+            uint32_t val = QStringView(uuidStr).mid(i * 8, 8).toUInt(&ok, 16);
             uuidInts.push_back(static_cast<int32_t>(val));
         }
         tag.insert("UUID", nbt::tag_int_array(std::move(uuidInts)));
@@ -400,7 +400,7 @@ nbt::tag_compound NBTSerializer::blockStateToNBT(const QString& blockState) {
         QStringList properties = propertiesStr.split(',');
         if (!properties.isEmpty() && !properties[0].isEmpty()) {
             nbt::tag_compound props;
-            for (const QString& prop : properties) {
+            for (const QString& prop : std::as_const(properties)) {
                 QStringList parts = prop.split('=');
                 if (parts.size() == 2) {
                     props.insert(parts[0].toStdString(), nbt::tag_string(parts[1].toStdString()));

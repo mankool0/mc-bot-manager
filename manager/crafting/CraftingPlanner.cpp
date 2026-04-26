@@ -65,7 +65,7 @@ int CraftingPlanner::calculateRawMaterialCost(
 
                 if (!subRecipes.isEmpty()) {
                     // This item can be crafted - find cheapest sub-recipe
-                    for (const Recipe* subRecipe : subRecipes) {
+                    for (const Recipe* subRecipe : std::as_const(subRecipes)) {
                         int subBatches = (stillNeeded + subRecipe->resultCount - 1) / subRecipe->resultCount;
                         int subCost = calculateRawMaterialCost(subRecipe, subBatches, state, maxDepth - 1, inProgress);
                         minSubCost = qMin(minSubCost, subCost);
@@ -100,7 +100,7 @@ const Recipe* CraftingPlanner::pickBestRecipeForItem(
     int bestCost = 999999;
     long long bestBatches = -1;
 
-    for (const Recipe* r : recipes) {
+    for (const Recipe* r : std::as_const(recipes)) {
         // Count craftable batches from current inventory
         long long batches = std::numeric_limits<long long>::max();
         for (const auto& ing : r->ingredients) {

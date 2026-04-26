@@ -135,7 +135,7 @@ void BotConsoleWidget::initializeCommands()
     };
 
     QStringList commandNames;
-    for (const auto &cmd : availableCommands) {
+    for (const auto &cmd : std::as_const(availableCommands)) {
         commandNames << cmd.name;
     }
     completerModel->setStringList(commandNames);
@@ -152,7 +152,7 @@ void BotConsoleWidget::onSendCommand()
     historyIndex = commandHistory.size();
 
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    appendOutput(QString("[%1] > %2").arg(timestamp, command), QColor("#006600"));
+    appendOutput(QString("[%1] > %2").arg(timestamp, command), QColor(0, 102, 0));
 
     inputEdit->clear();
     hintLabel->setVisible(false);
@@ -186,7 +186,7 @@ QString BotConsoleWidget::findCommandHelp(const QString &commandName)
     QString lowerInput = commandName.toLower().trimmed();
 
     // First, try to find an exact match (case-insensitive)
-    for (const auto &cmd : availableCommands) {
+    for (const auto &cmd : std::as_const(availableCommands)) {
         if (cmd.name.toLower() == lowerInput) {
             // Convert \n to <br/> for HTML rendering
             QString htmlDescription = cmd.description;
@@ -203,7 +203,7 @@ QString BotConsoleWidget::findCommandHelp(const QString &commandName)
         return QString();
     }
 
-    for (const auto &cmd : availableCommands) {
+    for (const auto &cmd : std::as_const(availableCommands)) {
         if (cmd.name.startsWith(lowerInput, Qt::CaseInsensitive)) {
             // Convert \n to <br/> for HTML rendering
             QString htmlDescription = cmd.description;
@@ -304,7 +304,7 @@ void BotConsoleWidget::flushPendingOutput()
         QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
         cursor.insertText(QString("[%1] [...%2 messages dropped...]\n").arg(ts).arg(dropped), fmt);
     }
-    for (const auto &line : batch) {
+    for (const auto &line : std::as_const(batch)) {
         QTextCharFormat fmt;
         fmt.setForeground(line.color);
         cursor.insertText(line.text + "\n", fmt);
@@ -349,7 +349,7 @@ void BotConsoleWidget::addBaritoneCommands(const QVector<QPair<QString, QString>
         availableCommands.end());
 
     // Add new baritone commands with "baritone " prefix
-    for (const auto &cmd : commands) {
+    for (const auto &cmd : std::as_const(commands)) {
         CommandInfo info;
         info.name = "baritone " + cmd.first;
         info.description = cmd.second + " (Baritone)";
@@ -359,7 +359,7 @@ void BotConsoleWidget::addBaritoneCommands(const QVector<QPair<QString, QString>
 
     // Update completer model
     QStringList commandNames;
-    for (const auto &cmd : availableCommands) {
+    for (const auto &cmd : std::as_const(availableCommands)) {
         commandNames << cmd.name;
     }
     completerModel->setStringList(commandNames);

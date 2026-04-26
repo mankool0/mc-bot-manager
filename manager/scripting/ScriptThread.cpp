@@ -160,7 +160,8 @@ void ScriptThread::run()
 
         // Evict bundled libs from sys.modules so disk changes are picked up on each run
         py::dict sysModules = py::module_::import("sys").attr("modules").cast<py::dict>();
-        for (const QString &modName : EmbeddedPythonLibs::getBundledModules()) {
+        const auto bundledModules = EmbeddedPythonLibs::getBundledModules();
+        for (const QString &modName : bundledModules) {
             py::str key(modName.toStdString());
             if (sysModules.contains(key)) {
                 sysModules.attr("__delitem__")(key);
@@ -197,7 +198,7 @@ void ScriptThread::run()
                 py::list handlerList = item.second.cast<py::list>();
 
                 QList<py::function> &funcList = scriptContext->eventHandlers[eventName];
-                for (auto handler : handlerList) {
+                for (auto handler : std::as_const(handlerList)) {
                     funcList.append(handler.cast<py::function>());
                 }
             }

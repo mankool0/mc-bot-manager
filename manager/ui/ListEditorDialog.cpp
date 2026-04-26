@@ -107,7 +107,7 @@ void ListEditorDialog::setupUI()
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-    for (const QString &item : allItems) {
+    for (const QString &item : std::as_const(allItems)) {
         availableList->addItem(item);
         selectedList->addItem(item);
     }
@@ -175,7 +175,7 @@ void ListEditorDialog::updateAvailableList()
 void ListEditorDialog::onAddClicked()
 {
     QList<QListWidgetItem*> items = availableList->selectedItems();
-    for (QListWidgetItem *item : items) {
+    for (QListWidgetItem *item : std::as_const(items)) {
         selectedItems.insert(item->text());
     }
     updateAvailableList();
@@ -185,7 +185,7 @@ void ListEditorDialog::onAddClicked()
 void ListEditorDialog::onRemoveClicked()
 {
     QList<QListWidgetItem*> items = selectedList->selectedItems();
-    for (QListWidgetItem *item : items) {
+    for (QListWidgetItem *item : std::as_const(items)) {
         selectedItems.remove(item->text());
     }
     updateAvailableList();

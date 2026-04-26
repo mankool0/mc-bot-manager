@@ -301,7 +301,7 @@ const ChunkData* BotWorldData::getChunk(int chunkX, int chunkZ) const
 
 QVector<ChunkPos> BotWorldData::getLoadedChunks() const
 {
-    return chunks.keys().toVector();
+    return chunks.keys();
 }
 
 QVector<QVector3D> BotWorldData::findBlocks(const QString& blockType, const QVector3D& center, int radius) const
@@ -479,7 +479,7 @@ void BotWorldData::updateEntities(const QVector<EntityData>& upserted, const QVe
 
 QVector<EntityData> BotWorldData::getAllEntities() const
 {
-    return entities.values().toVector();
+    return entities.values();
 }
 
 QVector<EntityData> BotWorldData::findEntitiesNear(double x, double y, double z, double radius,

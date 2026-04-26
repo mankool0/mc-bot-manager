@@ -107,8 +107,8 @@ void ESPBlockDataMapEditorDialog::updateTable()
     QStringList blockNames = mapData.keys();
     std::sort(blockNames.begin(), blockNames.end());
 
-    for (const QString &blockName : blockNames) {
-        if (!filterText.isEmpty() && !blockName.toLower().contains(filterText)) {
+    for (const QString &blockName : std::as_const(blockNames)) {
+        if (!filterText.isEmpty() && !blockName.contains(filterText, Qt::CaseInsensitive)) {
             continue;
         }
 
@@ -253,7 +253,7 @@ void ESPBlockDataMapEditorDialog::editBlockSettings(const QString &blockName, co
 
         // Install event filters on nested color labels so they're clickable
         QList<QLabel*> colorLabels = editorWidget->findChildren<QLabel*>();
-        for (QLabel* colorLabel : colorLabels) {
+        for (QLabel* colorLabel : std::as_const(colorLabels)) {
             if (colorLabel->property("colorR").isValid()) {
                 colorLabel->installEventFilter(this);
             }
@@ -283,7 +283,7 @@ void ESPBlockDataMapEditorDialog::addNewBlock()
     if (!possibleBlockNames.isEmpty()) {
         // Filter out blocks that are already in the map
         QStringList availableBlocks;
-        for (const QString &block : possibleBlockNames) {
+        for (const QString &block : std::as_const(possibleBlockNames)) {
             if (!mapData.contains(block)) {
                 availableBlocks.append(block);
             }

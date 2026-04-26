@@ -23,7 +23,6 @@
 #include <QSet>
 #include <QCloseEvent>
 #include <QFutureWatcher>
-#include <QtConcurrent/QtConcurrent>
 #include <functional>
 
 #include "bot/BotManager.h"
