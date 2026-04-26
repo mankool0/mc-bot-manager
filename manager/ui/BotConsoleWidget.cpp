@@ -1,4 +1,5 @@
 #include "BotConsoleWidget.h"
+#include "AppColors.h"
 #include "logging/LogFileSink.h"
 #include <QDateTime>
 #include <QTextCursor>
@@ -99,7 +100,7 @@ void BotConsoleWidget::setupUI()
     connect(inputEdit, &QLineEdit::returnPressed, this, &BotConsoleWidget::onSendCommand);
     connect(inputEdit, &QLineEdit::textChanged, this, &BotConsoleWidget::onInputChanged);
 
-    appendOutput(QString("[%1] Console ready. Type a command or start typing for suggestions.").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), QColor(0, 102, 204));
+    appendOutput(QString("[%1] Console ready. Type a command or start typing for suggestions.").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), AppColors::consoleReady());
 }
 
 void BotConsoleWidget::setupCompleter()
@@ -152,7 +153,7 @@ void BotConsoleWidget::onSendCommand()
     historyIndex = commandHistory.size();
 
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    appendOutput(QString("[%1] > %2").arg(timestamp, command), QColor(0, 102, 0));
+    appendOutput(QString("[%1] > %2").arg(timestamp, command), AppColors::consoleInput());
 
     inputEdit->clear();
     hintLabel->setVisible(false);
@@ -300,7 +301,7 @@ void BotConsoleWidget::flushPendingOutput()
 
     if (dropped > 0) {
         QTextCharFormat fmt;
-        fmt.setForeground(Qt::darkYellow);
+        fmt.setForeground(AppColors::consoleDropped());
         QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
         cursor.insertText(QString("[%1] [...%2 messages dropped...]\n").arg(ts).arg(dropped), fmt);
     }
@@ -321,15 +322,15 @@ void BotConsoleWidget::flushPendingOutput()
 void BotConsoleWidget::appendResponse(bool success, const QString &message)
 {
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-    QColor color = success ? QColor(0, 102, 0)  // dark green
-                           : QColor(204, 0, 0); // red
+    QColor color = success ? AppColors::consoleSuccess()
+                           : AppColors::consoleError();
     appendOutput(QString("[%1] %2").arg(timestamp, message), color);
 }
 
 void BotConsoleWidget::clearOutput()
 {
     outputEdit->clear();
-    appendOutput(QString("[%1] Console cleared.").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), QColor(0, 102, 204));
+    appendOutput(QString("[%1] Console cleared.").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), AppColors::consoleReady());
 }
 
 void BotConsoleWidget::setCommandHistory(const QStringList &history)

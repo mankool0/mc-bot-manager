@@ -1,4 +1,5 @@
 #include "NetworkStatsWidget.h"
+#include "AppColors.h"
 #include "bot/BotManager.h"
 #include <QHeaderView>
 #include <QTime>
@@ -89,8 +90,8 @@ void NetworkStatsWidget::updateStats()
         }
         QString statusText = bot.status == BotStatus::Online ? "Online" : "Offline";
         statusItem->setText(statusText);
-        statusItem->setForeground(bot.status == BotStatus::Online ? QColor(76, 175, 80)     // green
-                                                                  : QColor(158, 158, 158)); // gray
+        statusItem->setForeground(bot.status == BotStatus::Online ? AppColors::statusOnline()
+                                                                  : AppColors::statusOffline());
 
         QTableWidgetItem *receivedItem = statsTable->item(i, 2);
         if (!receivedItem) {

@@ -9,6 +9,9 @@
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QTabWidget>
+#include <QColor>
+#include <QVector>
 #include <Qt>
 
 class GlobalSettingsDialog : public QDialog
@@ -27,6 +30,11 @@ private slots:
 
 private:
     void setupUI();
+    void addColorRow(QFormLayout *layout, const QString &label,
+                     const QString &key, const QColor &defaultColor);
+    static void setButtonColor(QPushButton *btn, const QColor &color);
+
+    QTabWidget *tabWidget;
 
     QSpinBox *consoleMaxLinesSpinBox;
     QCheckBox *consoleUnlimitedCheckBox;
@@ -40,6 +48,13 @@ private:
     QSpinBox *logMaxFilesSpinBox;
 
     QDialogButtonBox *buttonBox;
+
+    struct ColorEntry {
+        QString key;
+        QColor defaultColor;
+        QPushButton *button = nullptr;
+    };
+    QVector<ColorEntry> m_colorEntries;
 };
 
 #endif // GLOBALSETTINGSDIALOG_H

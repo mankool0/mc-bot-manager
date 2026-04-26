@@ -1,6 +1,7 @@
 #include "PythonAPI.h"
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
+#include "ui/AppColors.h"
 #include "prism/PrismLauncherManager.h"
 #include "crafting/CraftingPlanner.h"
 #include "world/ItemRegistry.h"
@@ -1151,7 +1152,7 @@ void PythonAPI::log(const std::string &message)
         if (bot && bot->consoleWidget) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
-            bot->consoleWidget->pushLogLine(formattedMsg, Qt::darkGreen);
+            bot->consoleWidget->pushLogLine(formattedMsg, AppColors::scriptLog());
         }
     }
 }
@@ -1167,7 +1168,7 @@ void PythonAPI::error(const std::string &message)
         if (bot && bot->consoleWidget) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
-            bot->consoleWidget->pushLogLine(formattedMsg, Qt::red);
+            bot->consoleWidget->pushLogLine(formattedMsg, AppColors::scriptError());
         }
     }
 }

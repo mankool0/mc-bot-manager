@@ -1,4 +1,5 @@
 #include "ManagerMainWindow.h"
+#include "AppColors.h"
 #include <QActionGroup>
 #include <QClipboard>
 #include <QCoreApplication>
@@ -562,13 +563,13 @@ void ManagerMainWindow::updateInstancesTable()
 
         QColor statusColor;
         if (bot.status == BotStatus::Online) {
-            statusColor = QColor(76, 175, 80); // green
+            statusColor = AppColors::statusOnline();
         } else if (bot.status == BotStatus::Offline) {
-            statusColor = QColor(158, 158, 158); // gray
+            statusColor = AppColors::statusOffline();
         } else if (bot.status == BotStatus::Error) {
-            statusColor = QColor(244, 67, 54); // red
+            statusColor = AppColors::statusError();
         } else {
-            statusColor = QColor(255, 152, 0); // orange
+            statusColor = AppColors::statusOther();
         }
         if (statusItem->foreground().color() != statusColor) {
             statusItem->setForeground(statusColor);
@@ -1415,6 +1416,7 @@ void ManagerMainWindow::saveSettings()
 
 void ManagerMainWindow::loadSettings()
 {
+    AppColors::reload();
     QSettings settings("MCBotManager", "MCBotManager");
 
     // Load PrismLauncher configuration

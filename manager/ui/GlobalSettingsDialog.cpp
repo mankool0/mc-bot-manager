@@ -1,5 +1,6 @@
 #include "GlobalSettingsDialog.h"
 #include "BotConsoleWidget.h"
+#include "AppColors.h"
 #include "bot/BotManager.h"
 #include "logging/LogManager.h"
 #include <QVBoxLayout>
@@ -10,6 +11,9 @@
 #include <QCoreApplication>
 #include <QFileDialog>
 #include <QHBoxLayout>
+#include <QScrollArea>
+#include <QColorDialog>
+#include <QToolButton>
 
 GlobalSettingsDialog::GlobalSettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -22,98 +26,220 @@ GlobalSettingsDialog::~GlobalSettingsDialog()
 {
 }
 
+void GlobalSettingsDialog::setButtonColor(QPushButton *btn, const QColor &color)
+{
+    btn->setProperty("selectedColor", color);
+    btn->setStyleSheet(QString("background-color: %1; border: 1px solid #888;").arg(color.name()));
+}
+
+void GlobalSettingsDialog::addColorRow(QFormLayout *layout, const QString &label,
+                                        const QString &key, const QColor &defaultColor)
+{
+    QWidget *container = new QWidget(this);
+    QHBoxLayout *rowLayout = new QHBoxLayout(container);
+    rowLayout->setContentsMargins(0, 0, 0, 0);
+    rowLayout->setSpacing(4);
+
+    QPushButton *colorBtn = new QPushButton(container);
+    colorBtn->setFixedSize(60, 22);
+    setButtonColor(colorBtn, defaultColor);
+    connect(colorBtn, &QPushButton::clicked, this, [this, colorBtn]() {
+        QColor current = colorBtn->property("selectedColor").value<QColor>();
+        QColor chosen = QColorDialog::getColor(current, this, "Select Color");
+        if (chosen.isValid())
+            setButtonColor(colorBtn, chosen);
+    });
+
+    QToolButton *resetBtn = new QToolButton(container);
+    resetBtn->setText("↺");
+    resetBtn->setFixedSize(22, 22);
+    resetBtn->setToolTip("Reset to default");
+    connect(resetBtn, &QToolButton::clicked, this, [this, colorBtn, defaultColor]() {
+        setButtonColor(colorBtn, defaultColor);
+    });
+
+    rowLayout->addWidget(colorBtn);
+    rowLayout->addWidget(resetBtn);
+    rowLayout->addStretch();
+
+    m_colorEntries.append({key, defaultColor, colorBtn});
+    layout->addRow(label + ":", container);
+}
+
+static QScrollArea *makeScrollArea(QWidget *parent)
+{
+    QScrollArea *sa = new QScrollArea(parent);
+    sa->setWidgetResizable(true);
+    sa->setFrameShape(QFrame::NoFrame);
+    return sa;
+}
+
 void GlobalSettingsDialog::setupUI()
 {
     setWindowTitle("Global Settings");
     setModal(true);
-    resize(500, 450);
+    resize(520, 520);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    tabWidget = new QTabWidget(this);
 
-    QGroupBox *consoleGroup = new QGroupBox("Console Settings", this);
-    QFormLayout *consoleLayout = new QFormLayout(consoleGroup);
+    // ---- Console tab ----
+    {
+        QScrollArea *sa = makeScrollArea(this);
+        QWidget *contents = new QWidget();
+        QVBoxLayout *layout = new QVBoxLayout(contents);
 
-    QHBoxLayout *maxLinesLayout = new QHBoxLayout();
-    consoleMaxLinesSpinBox = new QSpinBox(this);
-    consoleMaxLinesSpinBox->setRange(100, 1000000);
-    consoleMaxLinesSpinBox->setValue(10000);
-    consoleMaxLinesSpinBox->setSingleStep(1000);
-    consoleMaxLinesSpinBox->setToolTip("Maximum number of lines to keep in console output");
+        QGroupBox *consoleGroup = new QGroupBox("Console Settings");
+        QFormLayout *consoleLayout = new QFormLayout(consoleGroup);
 
-    consoleUnlimitedCheckBox = new QCheckBox("Unlimited", this);
-    consoleUnlimitedCheckBox->setToolTip("Set to 0 for unlimited console output");
+        QHBoxLayout *maxLinesLayout = new QHBoxLayout();
+        consoleMaxLinesSpinBox = new QSpinBox(this);
+        consoleMaxLinesSpinBox->setRange(100, 1000000);
+        consoleMaxLinesSpinBox->setValue(10000);
+        consoleMaxLinesSpinBox->setSingleStep(1000);
+        consoleMaxLinesSpinBox->setToolTip("Maximum number of lines to keep in console output");
 
-    maxLinesLayout->addWidget(consoleMaxLinesSpinBox);
-    maxLinesLayout->addWidget(consoleUnlimitedCheckBox);
-    maxLinesLayout->addStretch();
+        consoleUnlimitedCheckBox = new QCheckBox("Unlimited", this);
+        consoleUnlimitedCheckBox->setToolTip("Set to 0 for unlimited console output");
 
-    consoleLayout->addRow("Max Lines:", maxLinesLayout);
+        maxLinesLayout->addWidget(consoleMaxLinesSpinBox);
+        maxLinesLayout->addWidget(consoleUnlimitedCheckBox);
+        maxLinesLayout->addStretch();
+        consoleLayout->addRow("Max Lines:", maxLinesLayout);
 
-    consolePendingLinesSpinBox = new QSpinBox(this);
-    consolePendingLinesSpinBox->setRange(100, 100000);
-    consolePendingLinesSpinBox->setValue(500);
-    consolePendingLinesSpinBox->setSingleStep(100);
-    consolePendingLinesSpinBox->setToolTip("Max lines buffered per bot between UI flushes. "
-                                           "Excess lines are dropped with a notice.");
-    consoleLayout->addRow("Max Buffered Lines:", consolePendingLinesSpinBox);
+        consolePendingLinesSpinBox = new QSpinBox(this);
+        consolePendingLinesSpinBox->setRange(100, 100000);
+        consolePendingLinesSpinBox->setValue(500);
+        consolePendingLinesSpinBox->setSingleStep(100);
+        consolePendingLinesSpinBox->setToolTip("Max lines buffered per bot between UI flushes. "
+                                               "Excess lines are dropped with a notice.");
+        consoleLayout->addRow("Max Buffered Lines:", consolePendingLinesSpinBox);
 
+        layout->addWidget(consoleGroup);
+        layout->addStretch();
+        sa->setWidget(contents);
+        tabWidget->addTab(sa, "Console");
+    }
 
-    mainLayout->addWidget(consoleGroup);
+    // ---- Logging tab ----
+    {
+        QScrollArea *sa = makeScrollArea(this);
+        QWidget *contents = new QWidget();
+        QVBoxLayout *layout = new QVBoxLayout(contents);
 
-    QGroupBox *loggingGroup = new QGroupBox("File Logging", this);
-    QFormLayout *loggingLayout = new QFormLayout(loggingGroup);
+        QGroupBox *loggingGroup = new QGroupBox("File Logging");
+        QFormLayout *loggingLayout = new QFormLayout(loggingGroup);
 
-    loggingEnabledCheckBox = new QCheckBox("Enable file logging", this);
-    loggingLayout->addRow(loggingEnabledCheckBox);
+        loggingEnabledCheckBox = new QCheckBox("Enable file logging", this);
+        loggingLayout->addRow(loggingEnabledCheckBox);
 
-    QHBoxLayout *logDirLayout = new QHBoxLayout();
-    logDirEdit = new QLineEdit(this);
-    logDirEdit->setReadOnly(true);
-    logDirEdit->setToolTip("Directory where log files are saved");
-    logDirBrowseButton = new QPushButton("Browse...", this);
-    logDirLayout->addWidget(logDirEdit);
-    logDirLayout->addWidget(logDirBrowseButton);
-    loggingLayout->addRow("Log Directory:", logDirLayout);
+        QHBoxLayout *logDirLayout = new QHBoxLayout();
+        logDirEdit = new QLineEdit(this);
+        logDirEdit->setReadOnly(true);
+        logDirEdit->setToolTip("Directory where log files are saved");
+        logDirBrowseButton = new QPushButton("Browse...", this);
+        logDirLayout->addWidget(logDirEdit);
+        logDirLayout->addWidget(logDirBrowseButton);
+        loggingLayout->addRow("Log Directory:", logDirLayout);
 
-    logMaxSizeMiBSpinBox = new QSpinBox(this);
-    logMaxSizeMiBSpinBox->setRange(1, 1000);
-    logMaxSizeMiBSpinBox->setValue(10);
-    logMaxSizeMiBSpinBox->setSuffix(" MiB");
-    logMaxSizeMiBSpinBox->setToolTip("Maximum log file size before rollover");
-    loggingLayout->addRow("Max File Size:", logMaxSizeMiBSpinBox);
+        logMaxSizeMiBSpinBox = new QSpinBox(this);
+        logMaxSizeMiBSpinBox->setRange(1, 1000);
+        logMaxSizeMiBSpinBox->setValue(10);
+        logMaxSizeMiBSpinBox->setSuffix(" MiB");
+        logMaxSizeMiBSpinBox->setToolTip("Maximum log file size before rollover");
+        loggingLayout->addRow("Max File Size:", logMaxSizeMiBSpinBox);
 
-    logMaxFilesSpinBox = new QSpinBox(this);
-    logMaxFilesSpinBox->setRange(0, 10000);
-    logMaxFilesSpinBox->setSpecialValueText("Unlimited");
-    logMaxFilesSpinBox->setToolTip("Total number of log files to keep per bot (0 = unlimited)");
-    loggingLayout->addRow("Max Files:", logMaxFilesSpinBox);
+        logMaxFilesSpinBox = new QSpinBox(this);
+        logMaxFilesSpinBox->setRange(0, 10000);
+        logMaxFilesSpinBox->setSpecialValueText("Unlimited");
+        logMaxFilesSpinBox->setToolTip("Total number of log files to keep per bot (0 = unlimited)");
+        loggingLayout->addRow("Max Files:", logMaxFilesSpinBox);
 
-    mainLayout->addWidget(loggingGroup);
+        layout->addWidget(loggingGroup);
+        layout->addStretch();
+        sa->setWidget(contents);
+        tabWidget->addTab(sa, "Logging");
+    }
 
-    connect(loggingEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
-        logDirEdit->setEnabled(checked);
-        logDirBrowseButton->setEnabled(checked);
-        logMaxSizeMiBSpinBox->setEnabled(checked);
-        logMaxFilesSpinBox->setEnabled(checked);
-    });
-    connect(logDirBrowseButton, &QPushButton::clicked, this, [this]() {
-        QString dir = QFileDialog::getExistingDirectory(this, "Select Log Directory", logDirEdit->text());
-        if (!dir.isEmpty())
-            logDirEdit->setText(dir);
-    });
+    // ---- Colors tab ----
+    {
+        QScrollArea *sa = makeScrollArea(this);
+        QWidget *contents = new QWidget();
+        QVBoxLayout *layout = new QVBoxLayout(contents);
 
-    QGroupBox *appearanceGroup = new QGroupBox("Appearance", this);
-    QFormLayout *appearanceLayout = new QFormLayout(appearanceGroup);
+        QGroupBox *consoleColorsGroup = new QGroupBox("Console Colors");
+        QFormLayout *consoleColorsLayout = new QFormLayout(consoleColorsGroup);
+        const auto &d = AppColors::defaults();
+        addColorRow(consoleColorsLayout, "Ready / Cleared",   "Colors/Console/ready",   d.consoleReady);
+        addColorRow(consoleColorsLayout, "User Input",        "Colors/Console/input",   d.consoleInput);
+        addColorRow(consoleColorsLayout, "Success Response",  "Colors/Console/success", d.consoleSuccess);
+        addColorRow(consoleColorsLayout, "Error Response",    "Colors/Console/error",   d.consoleError);
+        addColorRow(consoleColorsLayout, "Dropped Messages",  "Colors/Console/dropped", d.consoleDropped);
+        layout->addWidget(consoleColorsGroup);
 
-    colorSchemeComboBox = new QComboBox(this);
-    colorSchemeComboBox->addItem("Follow System", static_cast<int>(Qt::ColorScheme::Unknown));
-    colorSchemeComboBox->addItem("Light", static_cast<int>(Qt::ColorScheme::Light));
-    colorSchemeComboBox->addItem("Dark", static_cast<int>(Qt::ColorScheme::Dark));
-    appearanceLayout->addRow("Color Scheme:", colorSchemeComboBox);
+        QGroupBox *scriptColorsGroup = new QGroupBox("Script Colors");
+        QFormLayout *scriptColorsLayout = new QFormLayout(scriptColorsGroup);
+        addColorRow(scriptColorsLayout, "Script Completed",    "Colors/Script/success", d.scriptSuccess);
+        addColorRow(scriptColorsLayout, "Script Stopped",      "Colors/Script/stopped", d.scriptStopped);
+        addColorRow(scriptColorsLayout, "Script Error",        "Colors/Script/error",   d.scriptError);
+        addColorRow(scriptColorsLayout, "utils.log() output",  "Colors/Script/log",     d.scriptLog);
+        layout->addWidget(scriptColorsGroup);
 
-    mainLayout->addWidget(appearanceGroup);
+        QGroupBox *statusColorsGroup = new QGroupBox("Bot Status Colors");
+        QFormLayout *statusColorsLayout = new QFormLayout(statusColorsGroup);
+        addColorRow(statusColorsLayout, "Online",  "Colors/Status/online",  d.statusOnline);
+        addColorRow(statusColorsLayout, "Offline", "Colors/Status/offline", d.statusOffline);
+        addColorRow(statusColorsLayout, "Error",   "Colors/Status/error",   d.statusError);
+        addColorRow(statusColorsLayout, "Other",   "Colors/Status/other",   d.statusOther);
+        layout->addWidget(statusColorsGroup);
 
-    mainLayout->addStretch();
+        QGroupBox *logColorsGroup = new QGroupBox("Log Colors");
+        QFormLayout *logColorsLayout = new QFormLayout(logColorsGroup);
+        addColorRow(logColorsLayout, "Timestamp", "Colors/Log/timestamp", d.logTimestamp);
+        addColorRow(logColorsLayout, "Debug",     "Colors/Log/debug",     d.logDebug);
+        addColorRow(logColorsLayout, "Info",      "Colors/Log/info",      d.logInfo);
+        addColorRow(logColorsLayout, "Warning",   "Colors/Log/warning",   d.logWarning);
+        addColorRow(logColorsLayout, "Error",     "Colors/Log/error",     d.logError);
+        addColorRow(logColorsLayout, "Success",   "Colors/Log/success",   d.logSuccess);
+        layout->addWidget(logColorsGroup);
+
+        QHBoxLayout *resetAllLayout = new QHBoxLayout();
+        resetAllLayout->addStretch();
+        QPushButton *resetAllBtn = new QPushButton("Reset All to Defaults", this);
+        connect(resetAllBtn, &QPushButton::clicked, this, [this]() {
+            for (auto &entry : m_colorEntries)
+                setButtonColor(entry.button, entry.defaultColor);
+        });
+        resetAllLayout->addWidget(resetAllBtn);
+        layout->addLayout(resetAllLayout);
+
+        layout->addStretch();
+        sa->setWidget(contents);
+        tabWidget->addTab(sa, "Colors");
+    }
+
+    // ---- Appearance tab ----
+    {
+        QScrollArea *sa = makeScrollArea(this);
+        QWidget *contents = new QWidget();
+        QVBoxLayout *layout = new QVBoxLayout(contents);
+
+        QGroupBox *appearanceGroup = new QGroupBox("Appearance");
+        QFormLayout *appearanceLayout = new QFormLayout(appearanceGroup);
+
+        colorSchemeComboBox = new QComboBox(this);
+        colorSchemeComboBox->addItem("Follow System", static_cast<int>(Qt::ColorScheme::Unknown));
+        colorSchemeComboBox->addItem("Light", static_cast<int>(Qt::ColorScheme::Light));
+        colorSchemeComboBox->addItem("Dark", static_cast<int>(Qt::ColorScheme::Dark));
+        appearanceLayout->addRow("Color Scheme:", colorSchemeComboBox);
+
+        layout->addWidget(appearanceGroup);
+        layout->addStretch();
+        sa->setWidget(contents);
+        tabWidget->addTab(sa, "Appearance");
+    }
+
+    mainLayout->addWidget(tabWidget);
 
     // Buttons
     buttonBox = new QDialogButtonBox(
@@ -133,6 +259,18 @@ void GlobalSettingsDialog::setupUI()
         } else if (consoleMaxLinesSpinBox->value() == 0) {
             consoleMaxLinesSpinBox->setValue(10000);
         }
+    });
+
+    connect(loggingEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        logDirEdit->setEnabled(checked);
+        logDirBrowseButton->setEnabled(checked);
+        logMaxSizeMiBSpinBox->setEnabled(checked);
+        logMaxFilesSpinBox->setEnabled(checked);
+    });
+    connect(logDirBrowseButton, &QPushButton::clicked, this, [this]() {
+        QString dir = QFileDialog::getExistingDirectory(this, "Select Log Directory", logDirEdit->text());
+        if (!dir.isEmpty())
+            logDirEdit->setText(dir);
     });
 }
 
@@ -171,6 +309,11 @@ void GlobalSettingsDialog::loadSettings()
             colorSchemeComboBox->setCurrentIndex(i);
             break;
         }
+    }
+
+    for (auto &entry : m_colorEntries) {
+        QColor color = settings.value(entry.key, entry.defaultColor).value<QColor>();
+        setButtonColor(entry.button, color);
     }
 }
 
@@ -213,7 +356,13 @@ void GlobalSettingsDialog::saveSettings()
     int scheme = colorSchemeComboBox->currentData().toInt();
     settings.setValue("Appearance/colorScheme", scheme);
 
+    for (const auto &entry : m_colorEntries) {
+        QColor color = entry.button->property("selectedColor").value<QColor>();
+        settings.setValue(entry.key, color);
+    }
+
     settings.sync();
+    AppColors::reload();
     applyColorScheme();
     accept();
 }
