@@ -1,0 +1,37 @@
+name: Tag Version
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  tag-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT }}
+
+      - name: Create version tag if bump commit is present
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            RANGE="HEAD~10..HEAD"
+          else
+            RANGE="$BEFORE..${{ github.sha }}"
+          fi
+          BUMP_LINE=$(git log "$RANGE" --pretty=format:"%H %s" | grep "bump version to" | head -1)
+          if [ -z "$BUMP_LINE" ]; then
+            echo "No version bump commit in this push, skipping"
+            exit 0
+          fi
+          COMMIT_SHA=$(echo "$BUMP_LINE" | awk '{print $1}')
+          COMMIT_MSG=$(echo "$BUMP_LINE" | cut -d' ' -f2-)
+          VERSION="${COMMIT_MSG#bump version to }"
+          echo "Tagging $COMMIT_SHA as v$VERSION"
+          git tag "v$VERSION" "$COMMIT_SHA"
+          git push origin "v$VERSION"

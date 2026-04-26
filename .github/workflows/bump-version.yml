@@ -1,32 +1,58 @@
 name: Bump Version
 
 on:
-  push:
+  pull_request:
     branches:
       - master
+    types: [opened, synchronize, reopened]
 
 jobs:
   bump-version:
     runs-on: ubuntu-latest
-    # Don't run on the version bump commit itself
-    if: "!startsWith(github.event.head_commit.message, 'bump version') && (startsWith(github.event.head_commit.message, 'feat') || startsWith(github.event.head_commit.message, 'fix') || startsWith(github.event.head_commit.message, 'add'))"
+    if: |
+      startsWith(github.event.pull_request.title, 'feat') ||
+      startsWith(github.event.pull_request.title, 'fix') ||
+      startsWith(github.event.pull_request.title, 'add')
 
     steps:
-      - name: Checkout repo
+      - name: Checkout PR branch
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
           token: ${{ secrets.PAT }}
 
+      - name: Check if PR already has a version bump commit
+        id: check
+        run: |
+          BASE=$(git merge-base HEAD origin/${{ github.base_ref }})
+          if git log "$BASE"..HEAD --pretty=%s | grep -q "^bump version"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Configure git
+        if: steps.check.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version
+      - name: Bump version and commit to PR branch
+        if: steps.check.outputs.skip == 'false'
         run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if echo "$PR_TITLE" | grep -iE '^(feat|add|feature)' > /dev/null; then
+            BUMP_ARG="--minor"
+          elif echo "$PR_TITLE" | grep -iE '^fix' > /dev/null; then
+            BUMP_ARG="--patch"
+          else
+            echo "Cannot determine bump type from PR title, skipping"
+            exit 0
+          fi
           chmod +x bump_version.sh
-          ./bump_version.sh --tag
-
-      - name: Push
-        run: git push origin HEAD:master --tags
+          ./bump_version.sh "$BUMP_ARG"
+          NEW_VERSION=$(grep -oP 'project\(mc-bot-manager VERSION \K[0-9]+\.[0-9]+\.[0-9]+' manager/CMakeLists.txt)
+          git add manager/CMakeLists.txt client/gradle.properties
+          git commit -m "bump version to $NEW_VERSION"
+          git push origin "HEAD:${{ github.head_ref }}"
