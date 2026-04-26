@@ -1,4 +1,5 @@
 #include "LogManager.h"
+#include "ui/AppColors.h"
 
 LogManager::LogManager(QObject *parent)
     : QObject(parent)
@@ -61,30 +62,30 @@ QString LogManager::formatMessage(const QString &message, LogLevel level)
     QString prefix;
     switch (level) {
     case Debug:
-        color = "gray";
+        color = AppColors::logDebug().name();
         prefix = "DEBUG";
         break;
     case Info:
-        color = "black";
+        color = AppColors::logInfo().name();
         prefix = "INFO";
         break;
     case Warning:
-        color = "#FF8C00"; // Dark orange
+        color = AppColors::logWarning().name();
         prefix = "WARN";
         break;
     case Error:
-        color = "#DC143C"; // Crimson
+        color = AppColors::logError().name();
         prefix = "ERROR";
         break;
     case Success:
-        color = "#228B22"; // Forest green
+        color = AppColors::logSuccess().name();
         prefix = "OK";
         break;
     }
 
-    return QString("<span style='color: gray'>%1</span> "
-                   "<span style='color: %2; font-weight: bold'>[%3]</span> %4")
-        .arg(timestamp, color, prefix, message);
+    return QString("<span style='color: %1'>%2</span> "
+                   "<span style='color: %3; font-weight: bold'>[%4]</span> %5")
+        .arg(AppColors::logTimestamp().name(), timestamp, color, prefix, message);
 }
 
 QString LogManager::formatPlainText(const QString &message, LogLevel level)
@@ -106,5 +107,5 @@ QString LogManager::formatPlainText(const QString &message, LogLevel level)
 QString LogManager::formatPrismMessage(const QString &message)
 {
     QString timestamp = QDateTime::currentDateTime().toString("[hh:mm:ss]");
-    return QString("<span style='color: gray'>%1</span> %2").arg(timestamp, message);
+    return QString("<span style='color: %1'>%2</span> %3").arg(AppColors::logTimestamp().name(), timestamp, message);
 }

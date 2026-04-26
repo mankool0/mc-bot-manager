@@ -6,6 +6,7 @@
 #include "EmbeddedPythonLibs.h"
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
+#include "ui/AppColors.h"
 #include "logging/LogManager.h"
 #include <QDebug>
 #include <QDateTime>
@@ -226,7 +227,7 @@ bool ScriptEngine::runScript(const QString &filename)
                 if (botInstance->consoleWidget) {
                     QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
                     botInstance->consoleWidget->appendOutput(
-                        QString("[%1] [%2] Completed successfully").arg(ts, filename), Qt::darkGreen);
+                        QString("[%1] [%2] Completed successfully").arg(ts, filename), AppColors::scriptSuccess());
                 }
                 emit scriptStopped(filename);
             }
@@ -238,7 +239,7 @@ bool ScriptEngine::runScript(const QString &filename)
             if (ctx->lastError.isEmpty() && botInstance->consoleWidget) {
                 QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
                 botInstance->consoleWidget->appendOutput(
-                    QString("[%1] [%2] Stopped").arg(ts, filename), Qt::darkYellow);
+                    QString("[%1] [%2] Stopped").arg(ts, filename), AppColors::scriptStopped());
             }
 
             emit scriptStopped(filename);
@@ -254,11 +255,11 @@ bool ScriptEngine::runScript(const QString &filename)
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             botInstance->consoleWidget->appendOutput(
                 QString("[%1] [Script Error in %2]").arg(ts, filename),
-                Qt::red
+                AppColors::scriptError()
             );
             QStringList errorLines = error.split("\n");
             for (const QString &line : std::as_const(errorLines)) {
-                botInstance->consoleWidget->appendOutput(line, Qt::red);
+                botInstance->consoleWidget->appendOutput(line, AppColors::scriptError());
             }
         }
     }, Qt::QueuedConnection);
@@ -267,7 +268,7 @@ bool ScriptEngine::runScript(const QString &filename)
         if (!scripts.contains(filename)) return;
 
         if (botInstance->consoleWidget) {
-            botInstance->consoleWidget->appendOutput(message, Qt::darkGreen);
+            botInstance->consoleWidget->appendOutput(message, AppColors::scriptLog());
         }
     }, Qt::QueuedConnection);
 

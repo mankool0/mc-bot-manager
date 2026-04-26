@@ -3,6 +3,7 @@
 #include "PythonAPI.h"
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
+#include "ui/AppColors.h"
 #include "scripting/ScriptEngine.h"
 
 #undef slots
@@ -82,9 +83,9 @@ void ScriptEventWorker::processEvent(const ScriptEvent &event, ScriptContext *ct
                 QStringList errorLines = stringError.split("\n");
                 QMetaObject::invokeMethod(botInstance->consoleWidget,
                     [widget = botInstance->consoleWidget, headerMsg, errorLines]() {
-                        widget->appendOutput(headerMsg, Qt::red);
+                        widget->appendOutput(headerMsg, AppColors::scriptError());
                         for (const QString &line : errorLines) {
-                            widget->appendOutput(line, Qt::red);
+                            widget->appendOutput(line, AppColors::scriptError());
                         }
                     }, Qt::QueuedConnection);
             }
