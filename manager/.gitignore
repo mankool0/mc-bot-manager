@@ -2,7 +2,6 @@
 # ----------------------------------------------------------------------------
 
 *~
-*.autosave
 *.a
 *.core
 *.moc
@@ -43,9 +42,6 @@ CMakeLists.txt.user*
 # xemacs temporary files
 *.flc
 
-# Vim temporary files
-.*.swp
-
 # Visual Studio generated files
 *.ib_pdb_index
 *.idb
@@ -64,9 +60,6 @@ CMakeLists.txt.user*
 # MinGW generated files
 *.Debug
 *.Release
-
-# Python byte code
-*.pyc
 
 # Binaries
 # --------

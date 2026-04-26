@@ -1,0 +1,29 @@
+# Build directories
+build/
+
+# Documentation build
+site/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+claude.md
+*.swp
+*.swo
+
+# Qt
+*.autosave
+*.user
+
+# clangd
+.clangd
+
+# Scripts
+scripts/
+
+plans/
