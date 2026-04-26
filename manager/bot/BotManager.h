@@ -521,6 +521,8 @@ private:
     // Helper to initialize WorldAutoSaver when both server and dataVersion are available
     void tryInitializeWorldAutoSaver(BotInstance* bot);
 
+    bool sendOutboundMessage(int connectionId, mankool::mcbot::protocol::ManagerToClientMessage &msg, bool silent = false, const QString &messageId = {});
+
     struct PendingCanReachBlockEntry {
         QSemaphore sem{0};
         bool reachable = false;
