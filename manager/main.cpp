@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
     Q_INIT_RESOURCE(qutepart_theme_data);
 
     QApplication a(argc, argv);
+    a.setApplicationVersion(APP_VERSION);
     a.setDesktopFileName("mc-bot-manager");
     a.setWindowIcon(QIcon(":/icons/icons/mc-bot-manager.svg"));
     GlobalSettingsDialog::applyColorScheme();

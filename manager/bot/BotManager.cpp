@@ -612,6 +612,28 @@ BotInstance* BotManager::getBotByNameImpl(const QString &name)
     return nullptr;
 }
 
+bool BotManager::sendOutboundMessage(int connectionId, mankool::mcbot::protocol::ManagerToClientMessage &msg, bool silent, const QString &messageId)
+{
+    QString id = messageId.isEmpty() ? QUuid::createUuid().toString(QUuid::WithoutBraces) : messageId;
+    msg.setMessageId(id);
+    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
+    if (silent)
+        silentMessageIds.insert(id);
+    QProtobufSerializer serializer;
+    QByteArray protoData = serializer.serialize(&msg);
+    if (protoData.isEmpty()) {
+        LogManager::log("Failed to serialize outbound message", LogManager::Error);
+        return false;
+    }
+    QByteArray packet;
+    QDataStream stream(&packet, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream << static_cast<quint32>(protoData.size());
+    packet.append(protoData);
+    PipeServer::sendToClient(connectionId, packet);
+    return true;
+}
+
 void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
 {
     if (!bot) return;
@@ -1506,29 +1528,12 @@ void BotManager::sendShutdownCommandImpl(const QString &botName, const QString &
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::ShutdownCommand shutdown;
     shutdown.setReason(reason);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setShutdown(shutdown);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize shutdown command for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    // Wrap with length prefix
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg);
 
     LogManager::log(QString("Sent graceful shutdown command to bot '%1'").arg(botName), LogManager::Info);
 }
@@ -1554,13 +1559,6 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
     QString cmd = parts[0].toLower();
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    QString messageId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    msg.setMessageId(messageId);
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    if (silent) {
-        silentMessageIds.insert(messageId);
-    }
 
     if (cmd == "connect") {
         if (parts.size() < 2) {
@@ -1771,20 +1769,7 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
         return;
     }
 
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize command '%1' for bot '%2'").arg(commandText, botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg, silent);
 }
 
 QString BotManager::getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting)
@@ -2096,31 +2081,13 @@ void BotManager::handleQueryRegistryImpl(int connectionId, const mankool::mcbot:
                        .arg(bot->name).arg(dataVersion), LogManager::Info);
     }
 
-    // Send response
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::BlockRegistryResponse response;
     response.setStatus(haveCached ? mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::HAVE_IT
                                    : mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::NEED_IT);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setRegistryResponse(response);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize block registry response for bot '%1'")
-                       .arg(bot->name), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(connectionId, message);
+    sendOutboundMessage(connectionId, msg);
 
     LogManager::log(QString("[%1] Sent block registry response: %2")
                    .arg(bot->name, haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
@@ -2205,31 +2172,13 @@ void BotManager::handleQueryItemRegistryImpl(int connectionId, const mankool::mc
                        .arg(bot->name).arg(dataVersion), LogManager::Info);
     }
 
-    // Send response
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::ItemRegistryResponse response;
     response.setStatus(haveCached ? mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::HAVE_IT
                                    : mankool::mcbot::protocol::RegistryStatusGadget::RegistryStatus::NEED_IT);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setItemRegistryResponse(response);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize item registry response for bot '%1'")
-                       .arg(bot->name), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(connectionId, message);
+    sendOutboundMessage(connectionId, msg);
 
     LogManager::log(QString("[%1] Sent item registry response: %2")
                    .arg(bot->name, haveCached ? "HAVE_IT" : "NEED_IT"), LogManager::Info);
@@ -2283,26 +2232,8 @@ void BotManager::requestBaritoneSettingsImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::GetBaritoneSettingsRequest request;
-    msg.setGetBaritoneSettings(request);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize Baritone settings request for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    msg.setGetBaritoneSettings(mankool::mcbot::protocol::GetBaritoneSettingsRequest{});
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::requestBaritoneCommands(const QString &botName)
@@ -2324,26 +2255,8 @@ void BotManager::requestBaritoneCommandsImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::GetBaritoneCommandsRequest request;
-    msg.setGetBaritoneCommands(request);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize Baritone commands request for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    msg.setGetBaritoneCommands(mankool::mcbot::protocol::GetBaritoneCommandsRequest{});
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::sendBaritoneCommand(const QString &botName, const QString &commandText)
@@ -2364,28 +2277,12 @@ void BotManager::sendBaritoneCommandImpl(const QString &botName, const QString &
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::ExecuteBaritoneCommand execCmd;
     execCmd.setCommand(commandText);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setExecuteBaritoneCommand(execCmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize Baritone command for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QVariant &value)
@@ -2413,32 +2310,14 @@ void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QSt
 
     BaritoneSettingType type = bot->baritoneSettings[settingName].type;
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::SetBaritoneSettingsCommand setCmd;
     QHash<QString, mankool::mcbot::protocol::BaritoneSettingValue> settings;
-
-    mankool::mcbot::protocol::BaritoneSettingValue protoValue = variantToBaritoneProto(value, type);
-    settings.insert(settingName, protoValue);
+    settings.insert(settingName, variantToBaritoneProto(value, type));
     setCmd.setSettings(settings);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setSetBaritoneSettings(setCmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize Baritone setting change for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::sendMeteorSettingChange(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value)
@@ -2472,34 +2351,16 @@ void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QStri
 
     SettingType type = module.settings[settingPath].type;
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
     setModuleCmd.setModuleName(moduleName);
 
     QHash<QString, mankool::mcbot::protocol::MeteorSettingValue> settings;
-
-    mankool::mcbot::protocol::MeteorSettingValue protoValue = variantToMeteorProto(value, type);
-    settings.insert(settingPath, protoValue);
+    settings.insert(settingPath, variantToMeteorProto(value, type));
     setModuleCmd.setSettings(settings);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setSetModuleConfig(setModuleCmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize Meteor setting change for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::setMeteorModuleEnabled(const QString &botName, const QString &moduleName, bool enabled)
@@ -2508,29 +2369,13 @@ void BotManager::setMeteorModuleEnabled(const QString &botName, const QString &m
     if (!bot) return;
     if (bot->connectionId <= 0) return;
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
     setModuleCmd.setModuleName(moduleName);
     setModuleCmd.setEnabled(enabled);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setSetModuleConfig(setModuleCmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize module enable/disable for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    instance().sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::sendProxyConfig(const QString &botName)
@@ -2552,21 +2397,8 @@ void BotManager::sendProxyConfig(const QString &botName)
     proxyCmd.setConfig(pc);
 
     mankool::mcbot::protocol::ManagerToClientMessage proxyMsg;
-    proxyMsg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    proxyMsg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
     proxyMsg.setSetProxyConfig(proxyCmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&proxyMsg);
-    if (protoData.isEmpty()) return;
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    instance().sendOutboundMessage(bot->connectionId, proxyMsg);
 }
 
 
@@ -3298,15 +3130,12 @@ bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int
         m_pendingCanReachBlockRequests[msgId] = &entry;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(msgId);
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::CanReachBlockCommand cmd;
     mankool::mcbot::protocol::BlockPos pos;
     pos.setX(x);
     pos.setY(y);
     pos.setZ(z);
+
+    mankool::mcbot::protocol::CanReachBlockCommand cmd;
     cmd.setPosition(pos);
     cmd.setSneak(sneak);
     if (face != 0)
@@ -3318,22 +3147,14 @@ bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int
         fromPos.setZ(fromZ);
         cmd.setFromPosition(fromPos);
     }
-    msg.setCanReachBlock(cmd);
 
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setCanReachBlock(cmd);
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
         QMutexLocker lock(&m_pendingCanReachBlockMutex);
         m_pendingCanReachBlockRequests.remove(msgId);
         return false;
     }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-    PipeServer::sendToClient(bot->connectionId, message);
 
     bool acquired = entry.sem.tryAcquire(1, timeoutMs);
 
@@ -3374,29 +3195,13 @@ void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int du
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::HoldAttackCommand cmd;
     cmd.setEnabled(enabled);
     cmd.setDurationTicks(durationTicks);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setHoldAttack(cmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize hold attack command for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 bool BotManager::getHoldAttackStatus(const QString &botName, int timeoutMs)
@@ -3419,24 +3224,12 @@ bool BotManager::getHoldAttackStatusImpl(const QString &botName, int timeoutMs)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(msgId);
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
     msg.setGetHoldAttackStatus(mankool::mcbot::protocol::GetHoldAttackStatusCommand{});
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
         QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
         m_pendingHoldAttackStatusRequests.remove(msgId);
         return false;
     }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-    PipeServer::sendToClient(bot->connectionId, message);
 
     bool acquired = entry.sem.tryAcquire(1, timeoutMs);
     {
@@ -3484,36 +3277,21 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    msg.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::InteractWithBlockCommand cmd;
     mankool::mcbot::protocol::BlockPos pos;
     pos.setX(x);
     pos.setY(y);
     pos.setZ(z);
+
+    mankool::mcbot::protocol::InteractWithBlockCommand cmd;
     cmd.setPosition(pos);
     cmd.setHand(hand);
     cmd.setSneak(sneak);
     cmd.setLookAtBlock(lookAtBlock);
     cmd.setFace(face);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setInteractWithBlock(cmd);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&msg);
-    if (protoData.isEmpty()) {
-        LogManager::log(QString("Failed to serialize interact with block command for bot '%1'").arg(botName), LogManager::Error);
-        return;
-    }
-
-    QByteArray message;
-    QDataStream stream(&message, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    message.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, msg);
 }
 
 void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType)
@@ -3537,27 +3315,14 @@ void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotInde
     }
 
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::ClickContainerSlotCommand command;
     command.setSlotIndex(slotIndex);
     command.setButton(button);
     command.setClickType(static_cast<mankool::mcbot::protocol::ClickContainerSlotCommand::ClickType>(clickType));
 
+    mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setClickContainerSlot(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendCloseContainer(const QString &botName)
@@ -3581,22 +3346,8 @@ void BotManager::sendCloseContainerImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::CloseContainerCommand command;
-    message.setCloseContainer(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    message.setCloseContainer(mankool::mcbot::protocol::CloseContainerCommand{});
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendOpenInventory(const QString &botName)
@@ -3620,22 +3371,8 @@ void BotManager::sendOpenInventoryImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::OpenInventoryCommand command;
-    message.setOpenInventory(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    message.setOpenInventory(mankool::mcbot::protocol::OpenInventoryCommand{});
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button)
@@ -3658,27 +3395,14 @@ void BotManager::sendClickScreenWidgetImpl(const QString &botName, const QString
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::ClickScreenWidgetCommand command;
     command.setScreenId(screenId);
     command.setWidgetIndex(widgetIndex);
     command.setButton(button);
 
+    mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setClickScreenWidget(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendClickScreenPosition(const QString &botName, const QString &screenId, double x, double y, int button)
@@ -3701,27 +3425,15 @@ void BotManager::sendClickScreenPositionImpl(const QString &botName, const QStri
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::ClickScreenPositionCommand command;
     command.setScreenId(screenId);
     command.setX(x);
     command.setY(y);
     command.setButton(button);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setClickScreenPosition(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendTypeText(const QString &botName, const QString &screenId, const QString &text)
@@ -3741,23 +3453,13 @@ void BotManager::sendTypeTextImpl(const QString &botName, const QString &screenI
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::TypeTextCommand command;
     command.setScreenId(screenId);
     command.setText(text);
-    message.setTypeText(command);
 
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setTypeText(command);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendPressKey(const QString &botName, const QString &screenId, int keyCode, int modifiers)
@@ -3777,24 +3479,14 @@ void BotManager::sendPressKeyImpl(const QString &botName, const QString &screenI
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::PressKeyCommand command;
     command.setScreenId(screenId);
     command.setKeyCode(keyCode);
     command.setModifiers(modifiers);
-    message.setPressKey(command);
 
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setPressKey(command);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendOpenGameMenu(const QString &botName)
@@ -3818,22 +3510,8 @@ void BotManager::sendOpenGameMenuImpl(const QString &botName)
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
-    mankool::mcbot::protocol::OpenGameMenuCommand command;
-    message.setOpenGameMenu(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    message.setOpenGameMenu(mankool::mcbot::protocol::OpenGameMenuCommand{});
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendSwitchHotbarSlot(const QString &botName, int slot)
@@ -3856,24 +3534,12 @@ void BotManager::sendSwitchHotbarSlotImpl(const QString &botName, int slot)
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::SwitchHotbarSlotCommand command;
     command.setSlot(slot);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setSwitchHotbar(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::sendLookAt(const QString &botName, double x, double y, double z,
@@ -3898,10 +3564,6 @@ void BotManager::sendLookAtImpl(const QString &botName, double x, double y, doub
         return;
     }
 
-    mankool::mcbot::protocol::ManagerToClientMessage message;
-    message.setMessageId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    message.setTimestamp(QDateTime::currentMSecsSinceEpoch());
-
     mankool::mcbot::protocol::Vec3d pos;
     pos.setX(x);
     pos.setY(y);
@@ -3911,18 +3573,10 @@ void BotManager::sendLookAtImpl(const QString &botName, double x, double y, doub
     command.setPosition(pos);
     command.setFace(face);
     command.setSneak(sneak);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setLookAt(command);
-
-    QProtobufSerializer serializer;
-    QByteArray protoData = serializer.serialize(&message);
-
-    QByteArray fullMessage;
-    QDataStream stream(&fullMessage, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::LittleEndian);
-    stream << static_cast<quint32>(protoData.size());
-    fullMessage.append(protoData);
-
-    PipeServer::sendToClient(bot->connectionId, fullMessage);
+    sendOutboundMessage(bot->connectionId, message);
 }
 
 void BotManager::handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather)
