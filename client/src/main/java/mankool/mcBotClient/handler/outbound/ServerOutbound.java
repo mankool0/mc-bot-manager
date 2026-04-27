@@ -6,6 +6,7 @@ import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcBotClient.mixin.client.ClientPlayNetworkHandlerAccessor;
 import net.minecraft.SharedConstants;
+import net.minecraft.world.level.storage.LevelResource;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
@@ -123,6 +124,7 @@ public class ServerOutbound extends BaseOutbound {
         String version = "";
         int ping = 0;
         boolean enforcesSecureChat = false;
+        boolean isSingleplayer = false;
 
         if (connected) {
             // Determine server address and name
@@ -130,8 +132,17 @@ public class ServerOutbound extends BaseOutbound {
                 serverAddress = client.getCurrentServer().ip;
                 serverName = client.getCurrentServer().name;
             } else if (client.isLocalServer()) {
-                serverAddress = "Singleplayer";
-                serverName = "Singleplayer";
+                var singleplayerServer = client.getSingleplayerServer();
+                String worldId = "unknown";
+                if (singleplayerServer != null) {
+                    try {
+                        worldId = singleplayerServer.getWorldPath(LevelResource.ROOT)
+                            .toAbsolutePath().normalize().getFileName().toString();
+                    } catch (Exception ignored) {}
+                }
+                serverAddress = worldId;
+                serverName = worldId;
+                isSingleplayer = true;
             } else {
                 serverAddress = "Multiplayer";
                 serverName = "Multiplayer";
@@ -185,6 +196,7 @@ public class ServerOutbound extends BaseOutbound {
             .setServerType(Connection.ServerConnectionStatus.ServerType.OTHER)
             .setEnforcesSecureChat(enforcesSecureChat)
             .setDisconnectReason("null")
+            .setIsSingleplayer(isSingleplayer)
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

@@ -58,4 +58,5 @@ message ServerConnectionStatus {
   ServerType server_type = 10;
   bool enforces_secure_chat = 11; // ServerStatus.enforcesSecureChat
   string disconnect_reason = 12;  // Reason if disconnected/failed
+  bool is_singleplayer = 13;      // true when connected to an integrated (singleplayer) server
 }
