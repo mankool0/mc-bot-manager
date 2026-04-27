@@ -40,8 +40,9 @@ jobs:
 
       - name: Bump version and commit to PR branch
         if: steps.check.outputs.skip == 'false'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
           if echo "$PR_TITLE" | grep -iE '^(feat|add|feature)' > /dev/null; then
             BUMP_ARG="--minor"
           elif echo "$PR_TITLE" | grep -iE '^fix' > /dev/null; then
