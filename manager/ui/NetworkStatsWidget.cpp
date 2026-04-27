@@ -3,6 +3,7 @@
 #include "bot/BotManager.h"
 #include <QHeaderView>
 #include <QTime>
+#include <QPoint>
 
 NetworkStatsWidget::NetworkStatsWidget(QWidget *parent)
     : QWidget(parent)
@@ -15,6 +16,8 @@ NetworkStatsWidget::NetworkStatsWidget(QWidget *parent)
     QVBoxLayout *layout = new QVBoxLayout(this);
 
     totalStatsLabel = new QLabel(this);
+    totalStatsLabel->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(totalStatsLabel, &QLabel::customContextMenuRequested, this, &NetworkStatsWidget::showContextMenu);
     layout->addWidget(totalStatsLabel);
 
     // Stats table
@@ -39,6 +42,7 @@ NetworkStatsWidget::NetworkStatsWidget(QWidget *parent)
     connect(updateTimer, &QTimer::timeout, this, &NetworkStatsWidget::updateStats);
     updateTimer->start(1000);
 
+    loadVisibility();
     updateStats();
 }
 
@@ -57,6 +61,8 @@ void NetworkStatsWidget::updateStats()
 
     totalBytesReceived = 0;
     totalBytesSent = 0;
+    totalRateIn = 0.0;
+    totalRateOut = 0.0;
 
     for (int i = 0; i < bots.size(); ++i) {
         BotInstance &bot = *bots[i];
@@ -72,6 +78,8 @@ void NetworkStatsWidget::updateStats()
 
         bot.dataRateIn = rateIn;
         bot.dataRateOut = rateOut;
+        totalRateIn += rateIn;
+        totalRateOut += rateOut;
 
         rateData.lastBytesReceived = bot.bytesReceived;
         rateData.lastBytesSent = bot.bytesSent;
@@ -125,6 +133,11 @@ void NetworkStatsWidget::updateStats()
         totalBytesSent += bot.bytesSent;
     }
 
+    rebuildLabel();
+}
+
+void NetworkStatsWidget::rebuildLabel()
+{
     qint64 uptime = startTime.secsTo(QDateTime::currentDateTime());
     qint64 days = uptime / 86400;
     qint64 hours = (uptime % 86400) / 3600;
@@ -132,12 +145,67 @@ void NetworkStatsWidget::updateStats()
     qint64 seconds = uptime % 60;
     QString uptimeStr = QString("%1d %2h %3m %4s").arg(days).arg(hours).arg(minutes).arg(seconds);
 
-    totalStatsLabel->setText(
-        QString("Uptime: %1 | Total Received: %2 | Total Sent: %3 | Combined: %4")
-            .arg(uptimeStr,
-                 formatBytes(totalBytesReceived),
-                 formatBytes(totalBytesSent),
-                 formatBytes(totalBytesReceived + totalBytesSent)));
+    QStringList parts;
+    if (visibleStats.value("uptime", true))
+        parts << "Uptime: " + uptimeStr;
+    if (visibleStats.value("totalReceived", true))
+        parts << "Total Received: " + formatBytes(totalBytesReceived);
+    if (visibleStats.value("totalSent", true))
+        parts << "Total Sent: " + formatBytes(totalBytesSent);
+    if (visibleStats.value("combined", true))
+        parts << "Combined: " + formatBytes(totalBytesReceived + totalBytesSent);
+    if (visibleStats.value("rateIn", true))
+        parts << "Rate In: " + formatRate(totalRateIn);
+    if (visibleStats.value("rateOut", true))
+        parts << "Rate Out: " + formatRate(totalRateOut);
+    totalStatsLabel->setText(parts.join(" | "));
+}
+
+void NetworkStatsWidget::loadVisibility()
+{
+    QSettings settings("MCBotManager", "MCBotManager");
+    settings.beginGroup("networkStatsVisible");
+    const QStringList keys = {"uptime", "totalReceived", "totalSent", "combined", "rateIn", "rateOut"};
+    for (const QString &key : keys)
+        visibleStats[key] = settings.value(key, true).toBool();
+    settings.endGroup();
+}
+
+void NetworkStatsWidget::saveVisibility()
+{
+    QSettings settings("MCBotManager", "MCBotManager");
+    settings.beginGroup("networkStatsVisible");
+    for (auto it = visibleStats.constBegin(); it != visibleStats.constEnd(); ++it)
+        settings.setValue(it.key(), it.value());
+    settings.endGroup();
+}
+
+void NetworkStatsWidget::showContextMenu(const QPoint &pos)
+{
+    QMenu menu(this);
+
+    struct StatEntry { QString key; QString label; };
+    static const QList<StatEntry> entries = {
+        {"uptime",        "Uptime"},
+        {"totalReceived", "Total Received"},
+        {"totalSent",     "Total Sent"},
+        {"combined",      "Combined"},
+        {"rateIn",        "Rate In"},
+        {"rateOut",       "Rate Out"},
+    };
+
+    for (const StatEntry &entry : entries) {
+        QAction *action = menu.addAction(entry.label);
+        action->setCheckable(true);
+        action->setChecked(visibleStats.value(entry.key, true));
+        connect(action, &QAction::triggered, this, [this, key = entry.key](bool checked) {
+            visibleStats[key] = checked;
+            saveVisibility();
+            rebuildLabel();
+        });
+    }
+
+    menu.exec(totalStatsLabel->mapToGlobal(pos));
 }
 
 QString NetworkStatsWidget::formatBytes(qint64 bytes)
