@@ -411,6 +411,50 @@ py::object PythonAPI::getWeather(const std::string &bot)
     return result;
 }
 
+py::object PythonAPI::getServerInfo(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+    QMutexLocker locker(bot->dataMutex.get());
+    PyServerInfo info;
+    info.address = bot->server.toStdString();
+    info.motd = bot->serverMotd.toStdString();
+    info.ping = bot->serverPing;
+    info.version = bot->serverVersionName.toStdString();
+    info.players_online = bot->serverPlayersOnline;
+    info.players_max = bot->serverPlayersMax;
+    locker.unlock();
+    return py::cast(info);
+}
+
+py::list PythonAPI::getPlayerList(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::list();
+    }
+    QMap<QString, TabListPlayerData> snapshot;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        snapshot = bot->tabList;
+    }
+    py::list result;
+    for (const auto &p : std::as_const(snapshot)) {
+        PyTabListPlayer e;
+        e.name = p.name.toStdString();
+        e.uuid = p.uuid.toStdString();
+        e.ping = p.ping;
+        e.gamemode = static_cast<Gamemode>(p.gamemode);
+        e.display_name = p.displayName.toStdString();
+        result.append(py::cast(e));
+    }
+    return result;
+}
+
 py::object PythonAPI::getHealth(const std::string &botName)
 {
     QString name = resolveBotName(botName);

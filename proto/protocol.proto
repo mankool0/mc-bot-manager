@@ -84,6 +84,10 @@ message ClientToManagerMessage {
 
     // Light updates
     LightUpdateMessage light_update = 32;
+
+    // Tab list deltas
+    TabListPlayerUpdate tab_list_update = 35;
+    TabListPlayerRemove tab_list_remove = 36;
   }
 }
 
