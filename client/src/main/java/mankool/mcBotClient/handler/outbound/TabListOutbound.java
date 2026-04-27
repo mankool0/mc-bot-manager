@@ -3,6 +3,7 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Connection;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 
@@ -48,13 +49,13 @@ public class TabListOutbound extends BaseOutbound {
         var seenUuids = new HashSet<UUID>();
 
         for (PlayerInfo info : current) {
-            UUID uuid = info.getProfile().id();
+            UUID uuid = VersionCompat.profileId(info.getProfile());
             seenUuids.add(uuid);
             int ping = info.getLatency();
             int gamemode = info.getGameMode().getId();
             String dn = info.getTabListDisplayName() != null
                         ? info.getTabListDisplayName().getString() : "";
-            String name = info.getProfile().name();
+            String name = VersionCompat.profileName(info.getProfile());
 
             PlayerSnapshot prev = knownPlayers.get(uuid);
             if (prev == null || prev.ping() != ping || prev.gamemode() != gamemode

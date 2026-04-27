@@ -1,6 +1,7 @@
 package mankool.mcBotClient.util;
 
 import com.mojang.authlib.GameProfile;
+import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -74,6 +75,10 @@ public class VersionCompat {
 
     public static void disconnectLevel(ClientLevel level) {
         level.disconnect(Component.empty());
+    }
+
+    public static UUID profileId(GameProfile profile) {
+        return profile.id();
     }
 
     public static String profileName(GameProfile profile) {
