@@ -552,3 +552,35 @@ PYBIND11_EMBEDDED_MODULE(utils, m) {
           "Log error to console",
           py::arg("message"));
 }
+
+PYBIND11_EMBEDDED_MODULE(server, m) {
+    m.doc() = "Server info and tab list";
+
+    py::class_<PyServerInfo>(m, "ServerInfo")
+        .def_readonly("address", &PyServerInfo::address)
+        .def_readonly("motd", &PyServerInfo::motd)
+        .def_readonly("ping", &PyServerInfo::ping)
+        .def_readonly("version", &PyServerInfo::version)
+        .def_readonly("players_online", &PyServerInfo::players_online)
+        .def_readonly("players_max", &PyServerInfo::players_max);
+
+    py::enum_<Gamemode>(m, "Gamemode")
+        .value("SURVIVAL", Gamemode::SURVIVAL)
+        .value("CREATIVE", Gamemode::CREATIVE)
+        .value("ADVENTURE", Gamemode::ADVENTURE)
+        .value("SPECTATOR", Gamemode::SPECTATOR);
+
+    py::class_<PyTabListPlayer>(m, "TabListPlayer")
+        .def_readonly("name", &PyTabListPlayer::name)
+        .def_readonly("uuid", &PyTabListPlayer::uuid)
+        .def_readonly("ping", &PyTabListPlayer::ping)
+        .def_readonly("gamemode", &PyTabListPlayer::gamemode)
+        .def_readonly("display_name", &PyTabListPlayer::display_name);
+
+    m.def("get_info", &PythonAPI::getServerInfo,
+          "Get server metadata. Returns ServerInfo or None if bot is offline.",
+          py::arg("bot_name") = "");
+    m.def("get_player_list", &PythonAPI::getPlayerList,
+          "Get full tab list. Returns list[TabListPlayer], empty if offline or not yet received.",
+          py::arg("bot_name") = "");
+}

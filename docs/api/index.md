@@ -9,6 +9,7 @@
 | [`meteor`](meteor.md) | Client module control |
 | [`world`](world.md) | World data queries and block interaction |
 | [`utils`](utils.md) | Logging utilities |
+| [`server`](server.md) | Server info and tab list |
 
 ## Multi-Bot
 

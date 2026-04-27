@@ -191,6 +191,14 @@ struct BaritoneProcessStatus {
     bool hasTicksRemaining = false;
 };
 
+struct TabListPlayerData {
+    QString name;
+    QString uuid;
+    int ping = 0;
+    int gamemode = 0;
+    QString displayName;
+};
+
 struct BotConfig {
     QString name;
     QString instance;
@@ -326,6 +334,13 @@ struct BotInstance : public BotConfig {
     bool versionIsSnapshot = false;
     QString modVersion;
     bool isSingleplayer = false;
+    QString serverMotd;
+    qint64 serverPing = 0;
+    QString serverVersionName;
+    int serverPlayersOnline = 0;
+    int serverPlayersMax = 0;
+    QMap<QString, TabListPlayerData> tabList;  // keyed by UUID
+
     std::shared_ptr<WorldAutoSaver> worldAutoSaver;
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;
@@ -387,6 +402,10 @@ public:
 
     // Entity tracking handler
     static void handleEntityUpdate(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
+
+    // Tab list handlers
+    static void handleTabListUpdate(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update);
+    static void handleTabListRemove(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove);
 
     // Weather handler
     static void handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
@@ -491,6 +510,8 @@ private:
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
+    void handleTabListUpdateImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update);
+    void handleTabListRemoveImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove);
     bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
                                bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0, int face = 0);
     void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);

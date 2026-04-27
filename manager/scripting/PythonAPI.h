@@ -51,6 +51,30 @@ struct PyScreenState {
     std::vector<PyGuiSlot> guiSlots;
 };
 
+struct PyServerInfo {
+    std::string address;
+    std::string motd;
+    int64_t ping = 0;
+    std::string version;
+    int players_online = 0;
+    int players_max = 0;
+};
+
+enum class Gamemode {
+    SURVIVAL = 0,
+    CREATIVE = 1,
+    ADVENTURE = 2,
+    SPECTATOR = 3,
+};
+
+struct PyTabListPlayer {
+    std::string name;
+    std::string uuid;
+    int ping = 0;
+    Gamemode gamemode = Gamemode::SURVIVAL;
+    std::string display_name;
+};
+
 class PythonAPI
 {
 public:
@@ -233,6 +257,10 @@ public:
     static py::object getItemInfo(const std::string &itemId, const std::string &bot = "");
     static py::list getAllRecipes(const std::string &bot = "");
     static py::dict planRecursiveCraft(const std::string &itemId, int count, const std::string &bot = "");
+
+    // Server info and tab list
+    static py::object getServerInfo(const std::string &botName = "");
+    static py::list getPlayerList(const std::string &botName = "");
 
     static void log(const std::string &message);
     static void error(const std::string &message);

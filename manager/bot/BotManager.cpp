@@ -920,6 +920,17 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
         }
         bot->serverConnectionStatus = status.status();
 
+        // Persist server metadata fields
+        if (!status.motd().isEmpty()) {
+            bot->serverMotd = status.motd();
+        }
+        bot->serverPing = status.ping();
+        if (!status.versionName().isEmpty()) {
+            bot->serverVersionName = status.versionName();
+        }
+        bot->serverPlayersOnline = status.playersOnline();
+        bot->serverPlayersMax = status.playersMax();
+
         // Detect abrupt connection drop (no disconnect packet) - may indicate proxy failure
         if (bot->proxySettings.enabled && status.disconnectReason() == "NETWORK_DROP") {
             emit proxyDisconnectDetected(bot->name);
@@ -934,7 +945,7 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
             }
         }
 
-        // Clear world state when bot disconnects from server
+        // Clear world state and tab list when bot disconnects from server
         using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
         if (status.status() != Status::SUCCESSFUL) {
             // Flush all dirty chunks and player data before clearing world data
@@ -942,8 +953,13 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
                 bot->worldAutoSaver->flushAll();
             }
 
-            QWriteLocker locker(bot->worldDataLock.get());
-            bot->worldData.clearWorldState();
+            {
+                QWriteLocker locker(bot->worldDataLock.get());
+                bot->worldData.clearWorldState();
+            }
+
+            QMutexLocker tabLocker(bot->dataMutex.get());
+            bot->tabList.clear();
         }
 
         // Try to initialize WorldAutoSaver now that we have server address
@@ -2402,7 +2418,7 @@ void BotManager::sendProxyConfig(const QString &botName)
 
     mankool::mcbot::protocol::ManagerToClientMessage proxyMsg;
     proxyMsg.setSetProxyConfig(proxyCmd);
-    instance().sendOutboundMessage(bot->connectionId, proxyMsg);
+    instance().sendOutboundMessage(bot->connectionId, proxyMsg, true);
 }
 
 
@@ -3605,6 +3621,42 @@ void BotManager::handleWeatherUpdateImpl(int connectionId, const mankool::mcbot:
 void BotManager::handleLightUpdate(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate)
 {
     instance().handleLightUpdateImpl(connectionId, lightUpdate);
+}
+
+void BotManager::handleTabListUpdate(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update)
+{
+    instance().handleTabListUpdateImpl(connectionId, update);
+}
+
+void BotManager::handleTabListUpdateImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+    QMutexLocker locker(bot->dataMutex.get());
+    for (const auto &p : update.players()) {
+        TabListPlayerData entry;
+        entry.name = p.name();
+        entry.uuid = p.uuid();
+        entry.ping = p.ping();
+        entry.gamemode = static_cast<int>(p.gamemode());
+        entry.displayName = p.displayName();
+        bot->tabList.insert(p.uuid(), entry);
+    }
+}
+
+void BotManager::handleTabListRemove(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove)
+{
+    instance().handleTabListRemoveImpl(connectionId, remove);
+}
+
+void BotManager::handleTabListRemoveImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+    QMutexLocker locker(bot->dataMutex.get());
+    for (const auto &uuid : remove.uuids()) {
+        bot->tabList.remove(uuid);
+    }
 }
 
 void BotManager::handleLightUpdateImpl(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate)

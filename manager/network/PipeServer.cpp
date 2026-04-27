@@ -243,6 +243,10 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleWeatherUpdate(connectionId, clientMsg.weatherUpdate());
         } else if (clientMsg.hasLightUpdate()) {
             BotManager::handleLightUpdate(connectionId, clientMsg.lightUpdate());
+        } else if (clientMsg.hasTabListUpdate()) {
+            BotManager::handleTabListUpdate(connectionId, clientMsg.tabListUpdate());
+        } else if (clientMsg.hasTabListRemove()) {
+            BotManager::handleTabListRemove(connectionId, clientMsg.tabListRemove());
         }
         return;
     }
