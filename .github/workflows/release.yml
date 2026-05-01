@@ -73,7 +73,7 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtgrpc qtwebengine
+          modules: qtgrpc qtwebengine qtwebchannel
 
       - name: Install protobuf compiler
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
@@ -125,7 +125,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          modules: qtgrpc qtwebengine
+          modules: qtgrpc qtwebengine qtwebchannel
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
 
       - name: Install protobuf compiler and ninja
