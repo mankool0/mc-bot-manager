@@ -8,11 +8,8 @@
 #include <QHBoxLayout>
 #include <QSplitter>
 #include <QLabel>
-#include <QSet>
 
-namespace Qutepart {
-    class Qutepart;
-}
+#include "ui/MonacoWidget.h"
 
 class ScriptEngine;
 
@@ -51,13 +48,11 @@ private:
     void setupUI();
     void updateButtons();
     void setupEditor();
-    QSet<QString> getCompletions();
-    QString getEditorThemePath();
 
     ScriptEngine *scriptEngine;
 
     QListWidget *scriptList;
-    Qutepart::Qutepart *codeEditor;
+    MonacoWidget *codeEditor;
     QPushButton *newButton;
     QPushButton *renameButton;
     QPushButton *deleteButton;

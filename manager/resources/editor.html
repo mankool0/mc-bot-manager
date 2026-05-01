@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html, body, #container {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: #1e1e1e;
+    }
+  </style>
+  <link rel="stylesheet" href="qrc:///monaco-bundle.css">
+</head>
+<body>
+  <div id="container"></div>
+  <script src="qrc:///monaco-bundle.js"></script>
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+  <script>
+    window.MonacoEnvironment = {
+      getWorkerUrl: function() {
+        return 'data:text/javascript;charset=utf-8,' + encodeURIComponent('self.onmessage=function(){}');
+      }
+    };
+
+    const editor = monaco.editor.create(document.getElementById('container'), {
+      value: '',
+      language: 'python',
+      theme: 'vs-dark',
+      fontSize: 13,
+      fontFamily: 'monospace',
+      minimap: { enabled: false },
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      fixedOverflowWidgets: true,
+      wordBasedSuggestions: 'off',
+    });
+
+    var suppressChange = false;
+    var nextRequestId = 0;
+    var pendingCompletions = {};
+    var pendingSignatures = {};
+    var pendingHovers = {};
+
+    new QWebChannel(qt.webChannelTransport, function(channel) {
+      window.bridge = channel.objects.bridge;
+
+      window.bridge.eventDataChanged.connect(function(json) {
+        window.mcbotEventData = JSON.parse(json);
+      });
+      window.bridge.hoverResult.connect(function(requestId, json) {
+        var resolve = pendingHovers[requestId];
+        delete pendingHovers[requestId];
+        if (!resolve) return;
+        if (!json || json === 'null') { resolve(null); return; }
+        var h = JSON.parse(json);
+        if (!h.docstring) { resolve(null); return; }
+        var blankLine = h.docstring.indexOf('\n\n');
+        var sig, desc;
+        if (blankLine !== -1) {
+          sig = h.docstring.substring(0, blankLine).trim();
+          desc = h.docstring.substring(blankLine + 2).trim();
+        } else {
+          sig = h.docstring.trim();
+          desc = '';
+        }
+        // strip pybind11 positional-only marker ", /" and deduplicate
+        var seen = {};
+        sig = sig.split('\n').map(function(l) {
+          return l.replace(/,\s*\/\s*(?=\))/g, '').trim();
+        }).filter(function(l) {
+          if (!l || seen[l]) return false;
+          seen[l] = true;
+          return true;
+        }).join('\n');
+        // Strip leading lines from desc that duplicate sig content
+        if (desc) {
+          var sigSet = {};
+          sig.split('\n').forEach(function(l) { sigSet[l] = true; });
+          var descLines = desc.split('\n');
+          while (descLines.length > 0 && (descLines[0].trim() === '' || sigSet[descLines[0].trim()])) {
+            descLines.shift();
+          }
+          desc = descLines.join('\n').trim();
+        }
+        var parts = [];
+        if (sig) parts.push('```python\n' + sig + '\n```');
+        if (desc) parts.push(desc);
+        resolve({ contents: [{ value: parts.join('\n\n'), isTrusted: true }] });
+      });
+      window.bridge.completionResult.connect(function(requestId, json) {
+        var resolve = pendingCompletions[requestId];
+        delete pendingCompletions[requestId];
+        if (resolve) resolve({ suggestions: JSON.parse(json) });
+      });
+      window.bridge.signatureResult.connect(function(requestId, json) {
+        var resolve = pendingSignatures[requestId];
+        delete pendingSignatures[requestId];
+        if (!resolve) return;
+        if (!json || json === 'null') {
+          resolve(null);
+          return;
+        }
+        var sig = JSON.parse(json);
+        resolve({
+          value: {
+            signatures: [{
+              label: sig.label,
+              parameters: sig.params.map(function(p) { return { label: p }; })
+            }],
+            activeSignature: 0,
+            activeParameter: sig.activeParam
+          },
+          dispose: function() {}
+        });
+      });
+      window.bridge.setTextRequested.connect(function(text) {
+        suppressChange = true;
+        editor.setValue(text);
+        suppressChange = false;
+      });
+      window.bridge.setReadOnlyRequested.connect(function(ro) {
+        editor.updateOptions({ readOnly: ro });
+      });
+      window.bridge.setThemeRequested.connect(function(dark) {
+        monaco.editor.setTheme(dark ? 'vs-dark' : 'vs');
+        var bg = dark ? '#1e1e1e' : '#ffffff';
+        document.documentElement.style.background = bg;
+        document.body.style.background = bg;
+      });
+
+      window.bridge.editorReady();
+    });
+
+    editor.onDidChangeModelContent(function() {
+      if (!suppressChange && window.bridge) {
+        window.bridge.onTextChanged(editor.getValue());
+      }
+    });
+
+    window.editorAPI = {
+      getText: function() { return editor.getValue(); },
+      focus:   function() { editor.focus(); },
+    };
+
+    // Jedi-backed async completion provider
+    monaco.languages.registerCompletionItemProvider('python', {
+      triggerCharacters: ['.', '"', "'"],
+      provideCompletionItems: function(model, position) {
+        // @on("event_name") - complete from static event list
+        var line = model.getLineContent(position.lineNumber);
+        var before = line.substring(0, position.column - 1);
+        var onMatch = before.match(/@on\(\s*["'][^"']*$/);
+        if (onMatch) {
+          var data = window.mcbotEventData;
+          if (!data) return { suggestions: [] };
+          var quoteMatch = before.match(/(["'])([^"']*)$/);
+          var quoteChar = quoteMatch ? quoteMatch[1] : '"';
+          var evPrefix = quoteMatch ? quoteMatch[2] : '';
+          var indent = (line.match(/^(\s*)/) || ['', ''])[1];
+          var evItems = data['events'] || [];
+          var evParams = data['event_params'] || {};
+          // consume any closing chars already present after the cursor
+          var afterCursor = line.substring(position.column - 1);
+          var charsToConsume = 0;
+          if (afterCursor.startsWith(quoteChar + ')')) charsToConsume = 2;
+          else if (afterCursor.startsWith(quoteChar)) charsToConsume = 1;
+          else if (afterCursor.startsWith(')')) charsToConsume = 1;
+          return {
+            suggestions: evItems
+              .filter(function(i) { return i.insertText.startsWith(evPrefix); })
+              .map(function(i) {
+                var eventName = i.insertText;
+                var params = evParams[eventName] || '';
+                return Object.assign({}, i, {
+                  insertText: eventName + quoteChar + ')\n' + indent + 'def ${1:handler}(' + params + '):\n' + indent + '\t$0',
+                  insertTextRules: 4,
+                  range: {
+                    startLineNumber: position.lineNumber,
+                    startColumn: position.column - evPrefix.length,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column + charsToConsume
+                  }
+                });
+              })
+          };
+        }
+
+        // def after @on("event_name") - suggest function signature snippet
+        var defMatch = before.match(/^(\s*)(async\s+)?def\s+\w*$/);
+        if (defMatch) {
+          var prevLineNum = position.lineNumber - 1;
+          while (prevLineNum >= 1 && model.getLineContent(prevLineNum).trim() === '') prevLineNum--;
+          if (prevLineNum >= 1) {
+            var prevLine = model.getLineContent(prevLineNum).trim();
+            var atOnMatch = prevLine.match(/@on\(\s*["']([^"']+)["']/);
+            if (atOnMatch) {
+              var eventName = atOnMatch[1];
+              var eventHandlerParams = (window.mcbotEventData || {})['event_params'] || {};
+              var params = eventHandlerParams[eventName];
+              if (params !== undefined) {
+                var indent = defMatch[1];
+                var asyncPrefix = defMatch[2] ? 'async ' : '';
+                return {
+                  suggestions: [{
+                    label: asyncPrefix + 'def handler(' + params + '):',
+                    kind: 1,
+                    insertText: asyncPrefix + 'def ${1:handler}(' + params + '):\n' + indent + '\t$0',
+                    insertTextRules: 4,
+                    detail: 'handler for @on("' + eventName + '")',
+                    sortText: '0',
+                    range: {
+                      startLineNumber: position.lineNumber,
+                      startColumn: 1,
+                      endLineNumber: position.lineNumber,
+                      endColumn: position.column
+                    }
+                  }]
+                };
+              }
+            }
+          }
+        }
+
+        if (!window.bridge) return { suggestions: [] };
+        return new Promise(function(resolve) {
+          var requestId = nextRequestId++;
+          pendingCompletions[requestId] = resolve;
+          window.bridge.requestCompletion(
+            model.getValue(),
+            position.lineNumber,
+            position.column - 1,
+            requestId
+          );
+        });
+      }
+    });
+
+    // Jedi-backed async hover provider
+    monaco.languages.registerHoverProvider('python', {
+      provideHover: function(model, position) {
+        if (!window.bridge) return null;
+        return new Promise(function(resolve) {
+          var requestId = nextRequestId++;
+          pendingHovers[requestId] = resolve;
+          window.bridge.requestHover(
+            model.getValue(),
+            position.lineNumber,
+            position.column - 1,
+            requestId
+          );
+        });
+      }
+    });
+
+    // Jedi-backed async signature help provider
+    monaco.languages.registerSignatureHelpProvider('python', {
+      signatureHelpTriggerCharacters: ['('],
+      signatureHelpRetriggerCharacters: [','],
+      provideSignatureHelp: function(model, position) {
+        if (!window.bridge) return null;
+        return new Promise(function(resolve) {
+          var requestId = nextRequestId++;
+          pendingSignatures[requestId] = resolve;
+          window.bridge.requestSignature(
+            model.getValue(),
+            position.lineNumber,
+            position.column - 1,
+            requestId
+          );
+        });
+      }
+    });
+  </script>
+</body>
+</html>

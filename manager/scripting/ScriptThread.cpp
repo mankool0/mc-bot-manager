@@ -13,6 +13,7 @@ import sys
 import utils
 import ast as _ast
 import ctypes as _ctypes
+from _events import *
 
 # Redirect stdout/stderr to capture print() statements
 class ConsoleOutput:
@@ -160,7 +161,7 @@ void ScriptThread::run()
 
         // Evict bundled libs from sys.modules so disk changes are picked up on each run
         py::dict sysModules = py::module_::import("sys").attr("modules").cast<py::dict>();
-        const auto bundledModules = EmbeddedPythonLibs::getBundledModules();
+        const auto bundledModules = EmbeddedPythonLibs::getAllModuleNames();
         for (const QString &modName : bundledModules) {
             py::str key(modName.toStdString());
             if (sysModules.contains(key)) {

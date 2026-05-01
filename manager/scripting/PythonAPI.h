@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <optional>
 #include "world/BlockRegistry.h"
 
 #undef slots
@@ -128,17 +129,17 @@ public:
 
     static py::object getPosition(const std::string &botName = "");
     static py::object getDimension(const std::string &botName = "");
-    static py::object getHealth(const std::string &botName = "");
-    static py::object getHunger(const std::string &botName = "");
-    static py::object getSaturation(const std::string &botName = "");
-    static py::object getAir(const std::string &botName = "");
-    static py::object getExperienceLevel(const std::string &botName = "");
-    static py::object getExperienceProgress(const std::string &botName = "");
-    static py::object getSelectedSlot(const std::string &botName = "");
+    static std::optional<float> getHealth(const std::string &botName = "");
+    static std::optional<int> getHunger(const std::string &botName = "");
+    static std::optional<float> getSaturation(const std::string &botName = "");
+    static std::optional<int> getAir(const std::string &botName = "");
+    static std::optional<int> getExperienceLevel(const std::string &botName = "");
+    static std::optional<float> getExperienceProgress(const std::string &botName = "");
+    static std::optional<int> getSelectedSlot(const std::string &botName = "");
     static void selectSlot(int slot, const std::string &botName = "");
-    static py::object getServer(const std::string &botName = "");
-    static py::object getAccount(const std::string &botName = "");
-    static py::object getUptime(const std::string &botName = "");
+    static std::optional<std::string> getServer(const std::string &botName = "");
+    static std::optional<std::string> getAccount(const std::string &botName = "");
+    static std::optional<int64_t> getUptime(const std::string &botName = "");
     static py::object getProxy(const std::string &botName = "");
     static bool isOnline(const std::string &botName = "");
     static std::string getStatus(const std::string &botName = "");

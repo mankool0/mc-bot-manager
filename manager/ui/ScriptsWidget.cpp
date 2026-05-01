@@ -10,12 +10,8 @@
 #include <QSettings>
 #include <QGuiApplication>
 #include <QStyleHints>
-#include <QDirIterator>
-#include <QFileInfo>
 #include <QPainter>
 #include <QStyledItemDelegate>
-#include <qutepart/qutepart.h>
-#include <qutepart/theme.h>
 
 enum ScriptItemState { StateNormal = 0, StateRunning = 1, StateError = 2 };
 static const int ScriptStateRole = Qt::UserRole + 1;
@@ -33,7 +29,6 @@ public:
         if (state == StateNormal)
             return;
 
-        // Semi-transparent tint over the whole item - blends with both normal and selected backgrounds
         QColor tint = (state == StateRunning) ? QColor(76, 175, 80, 70) : QColor(244, 67, 54, 70);
         painter->save();
         painter->setPen(Qt::NoPen);
@@ -105,7 +100,7 @@ void ScriptsWidget::setupUI()
     rightLayout->addWidget(editorLabel);
 
     setupEditor();
-    rightLayout->addWidget(codeEditor);
+    rightLayout->addWidget(codeEditor, 1);
 
     QHBoxLayout *editorButtonLayout = new QHBoxLayout();
     saveButton = new QPushButton("Save");
@@ -145,7 +140,7 @@ void ScriptsWidget::setupUI()
             this, &ScriptsWidget::onRunScript);
     connect(stopButton, &QPushButton::clicked,
             this, &ScriptsWidget::onStopScript);
-    connect(codeEditor, &Qutepart::Qutepart::textChanged,
+    connect(codeEditor, &MonacoWidget::textChanged,
             this, [this]() { isModified = true; updateButtons(); });
 
     updateButtons();
@@ -185,7 +180,7 @@ void ScriptsWidget::loadScript(const QString &filename)
     ScriptContext *ctx = scriptEngine->getScript(filename);
     if (ctx) {
         currentScript = filename;
-        codeEditor->setPlainText(ctx->code);
+        codeEditor->setText(ctx->code);
         isModified = false;
         statusLabel->setText(QString("Loaded: %1").arg(filename));
         updateButtons();
@@ -323,7 +318,7 @@ void ScriptsWidget::onSaveScript()
         return;
     }
 
-    QString code = codeEditor->toPlainText();
+    QString code = codeEditor->getText();
     QString botName = scriptEngine->getBotName();
 
     if (scriptEngine->loadScript(currentScript, code) &&
@@ -416,7 +411,6 @@ void ScriptsWidget::onScriptStopped(const QString &filename)
     for (int i = 0; i < scriptList->count(); ++i) {
         QListWidgetItem *item = scriptList->item(i);
         if (item->text() == filename) {
-            // Don't clear error state - only clear if it was running normally
             if (item->data(ScriptStateRole).toInt() == StateRunning)
                 item->setData(ScriptStateRole, StateNormal);
             break;
@@ -426,7 +420,7 @@ void ScriptsWidget::onScriptStopped(const QString &filename)
 
 void ScriptsWidget::onScriptError(const QString &filename, const QString &error)
 {
-    (void)error;  // Mark as intentionally unused
+    (void)error;
 
     for (int i = 0; i < scriptList->count(); ++i) {
         QListWidgetItem *item = scriptList->item(i);
@@ -456,124 +450,46 @@ void ScriptsWidget::reloadTheme()
         return;
     }
 
-    Qutepart::Theme *theme = new Qutepart::Theme();
-    theme->loadTheme(getEditorThemePath());
-    codeEditor->setTheme(theme);
-}
-
-void ScriptsWidget::setupEditor()
-{
-    codeEditor = new Qutepart::Qutepart(this);
-
-    Qutepart::Theme *theme = new Qutepart::Theme();
-    theme->loadTheme(getEditorThemePath());
-    codeEditor->setTheme(theme);
-
-    codeEditor->setIndentWidth(4);
-    codeEditor->setIndentUseTabs(false);
-    codeEditor->setDrawIndentations(true);
-    codeEditor->setLineLengthEdge(88);
-    codeEditor->setDrawAnyWhitespace(false);
-    codeEditor->setDrawIncorrectIndentation(true);
-    codeEditor->setDrawSolidEdge(true);
-
-    Qutepart::LangInfo langInfo = Qutepart::chooseLanguage(
-        QString(),
-        QString(),
-        "script.py"
-    );
-
-    if (langInfo.isValid()) {
-        codeEditor->setHighlighter(langInfo.id);
-        codeEditor->setIndentAlgorithm(langInfo.indentAlg);
+    QSettings settings;
+    QString theme = settings.value("editor/theme", "Follow System").toString();
+    bool dark;
+    if (theme == "Follow System") {
+        dark = QGuiApplication::styleHints()->colorScheme() != Qt::ColorScheme::Light;
+    } else {
+        dark = (theme == "Dark");
     }
-
-    codeEditor->setCompletionEnabled(true);
-    codeEditor->setCompletionThreshold(2);
-    codeEditor->setCompletionCallback([this](const QString &, const QString &, const QString &) {
-        QSet<Qutepart::CompletionItem> items;
-        const auto completions = getCompletions();
-        for (const QString &s : completions)
-            items.insert(Qutepart::CompletionItem(s));
-        return QtFuture::makeReadyValueFuture(items);
-    });
+    codeEditor->setDarkMode(dark);
 }
 
 QStringList ScriptsWidget::getAvailableThemes()
 {
-    QStringList themes;
-    QDirIterator it(":/qutepart/themes", QStringList() << "*.theme", QDir::Files);
-
-    while (it.hasNext()) {
-        QString filePath = it.next();
-        QFileInfo fileInfo(filePath);
-        // Extract just the theme name without path and extension
-        themes.append(fileInfo.baseName());
-    }
-
-    themes.sort(Qt::CaseInsensitive);
-    return themes;
+    return {"Dark", "Light"};
 }
 
-QString ScriptsWidget::getEditorThemePath()
+void ScriptsWidget::setupEditor()
 {
     QSettings settings;
-    QString themePref = settings.value("editor/theme", "Follow System").toString();
-
-    if (themePref == "Follow System") {
-        auto colorScheme = QGuiApplication::styleHints()->colorScheme();
-
-        if (colorScheme == Qt::ColorScheme::Dark) {
-            return ":/qutepart/themes/breeze-dark.theme";
-        } else {
-            return ":/qutepart/themes/breeze-light.theme";
-        }
+    QString theme = settings.value("editor/theme", "Follow System").toString();
+    bool dark;
+    if (theme == "Follow System") {
+        dark = QGuiApplication::styleHints()->colorScheme() != Qt::ColorScheme::Light;
+    } else {
+        dark = (theme == "Dark");
     }
 
-    // User selected a specific theme
-    return QString(":/qutepart/themes/%1.theme").arg(themePref);
-}
+    codeEditor = new MonacoWidget(this);
+    codeEditor->setDarkMode(dark);
 
-QSet<QString> ScriptsWidget::getCompletions()
-{
-    QSet<QString> completions;
-
-    // Module imports
-    completions << "import bot" << "import baritone" << "import meteor" << "import utils";
-
-    // Module names
-    completions << "bot" << "baritone" << "meteor" << "utils";
-
-    // bot module - state queries
-    completions << "bot.position()" << "bot.health()" << "bot.hunger()";
-    completions << "bot.saturation()" << "bot.air()";
-    completions << "bot.experience_level()" << "bot.experience_progress()";
-    completions << "bot.selected_slot()";
-    completions << "bot.server()" << "bot.account()" << "bot.uptime()";
-    completions << "bot.dimension()" << "bot.is_online()" << "bot.status()";
-    completions << "bot.inventory()" << "bot.network_stats()" << "bot.list_all()";
-
-    // bot module - control
-    completions << "bot.start(" << "bot.stop(" << "bot.restart(";
-    completions << "bot.chat(" << "bot.manager_command(";
-
-    // baritone module
-    completions << "baritone.goto(" << "baritone.follow(" << "baritone.cancel()";
-    completions << "baritone.mine(" << "baritone.farm()" << "baritone.command(";
-    completions << "baritone.set_setting(" << "baritone.get_setting(";
-
-    // meteor module
-    completions << "meteor.toggle(" << "meteor.enable(" << "meteor.disable(";
-    completions << "meteor.set_setting(" << "meteor.get_setting(";
-    completions << "meteor.get_module(" << "meteor.list_modules()";
-
-    // utils module
-    completions << "utils.log(" << "utils.error(";
-
-    // Event decorator and event names
-    completions << "@on(";
-    completions << "chat_message" << "health_change" << "hunger_change";
-    completions << "player_state" << "inventory_update";
-
-    return completions;
+    if (scriptEngine) {
+        codeEditor->loadEventData(scriptEngine->loadEventData());
+        codeEditor->setCompletionProvider([engine = scriptEngine](const QString &code, int line, int col) -> QString {
+            return engine->jediComplete(code, line, col);
+        });
+        codeEditor->setSignatureProvider([engine = scriptEngine](const QString &code, int line, int col) -> QString {
+            return engine->jediSignature(code, line, col);
+        });
+        codeEditor->setHoverProvider([engine = scriptEngine](const QString &code, int line, int col) -> QString {
+            return engine->jediHelp(code, line, col);
+        });
+    }
 }

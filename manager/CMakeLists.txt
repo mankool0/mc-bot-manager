@@ -17,9 +17,46 @@ else()
     set(PROJECT_WARNING_FLAGS -Wall -Wextra -Werror)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent WebEngineWidgets)
 
 include(FetchContent)
+
+set(PYTHON_STANDALONE_VERSION "3.12.13")
+set(PYTHON_STANDALONE_DATE "20260414")
+
+if(NOT Python3_EXECUTABLE)
+    if(UNIX AND NOT APPLE)
+        set(PYTHON_STANDALONE_URL
+            "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_DATE}-x86_64-unknown-linux-gnu-install_only.tar.gz")
+        set(PYTHON_STANDALONE_HASH "SHA256=cdcf8724d46e4857f8db5ee9f4252dc2f5da34f7940294ec6b312389dd3f41e0")
+    elseif(WIN32)
+        set(PYTHON_STANDALONE_URL
+            "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_DATE}-x86_64-pc-windows-msvc-install_only.tar.gz")
+        set(PYTHON_STANDALONE_HASH "SHA256=c5a9e011e284c49c48106ca177342f3e3f64e95b4c6652d4a382cc7c9bb1cc46")
+    endif()
+
+    if(DEFINED PYTHON_STANDALONE_URL)
+        FetchContent_Declare(
+            python_standalone
+            URL "${PYTHON_STANDALONE_URL}"
+            URL_HASH "${PYTHON_STANDALONE_HASH}"
+        )
+        FetchContent_GetProperties(python_standalone)
+        if(NOT python_standalone_POPULATED)
+            FetchContent_Populate(python_standalone)
+        endif()
+        set(_py_root "${python_standalone_SOURCE_DIR}")
+        find_program(_py_exe
+            NAMES python3.12 python3 python
+            PATHS "${_py_root}/bin"
+            NO_DEFAULT_PATH
+        )
+        set(Python3_EXECUTABLE "${_py_exe}" CACHE FILEPATH "" FORCE)
+        set(Python3_ROOT_DIR "${_py_root}" CACHE PATH "" FORCE)
+    endif()
+endif()
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 FetchContent_Declare(
     pybind11
@@ -28,15 +65,6 @@ FetchContent_Declare(
 )
 set(PYBIND11_TEST OFF CACHE BOOL "Disable pybind11 tests" FORCE)
 FetchContent_MakeAvailable(pybind11)
-set(PYBIND11_FINDPYTHON ON)
-
-FetchContent_Declare(
-    qutepart
-    GIT_REPOSITORY https://github.com/diegoiast/qutepart-cpp.git
-    GIT_TAG        main
-)
-set(QUTEPART_TESTS OFF CACHE BOOL "Disable qutepart tests" FORCE)
-FetchContent_MakeAvailable(qutepart)
 
 # For NBT file handling
 set(NBT_BUILD_TESTS OFF CACHE BOOL "Disable libnbtplusplus tests" FORCE)
@@ -47,7 +75,72 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libnbtplusplus)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+FetchContent_Declare(
+    monaco_editor
+    URL      https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.55.1.tgz
+    URL_HASH SHA256=eec3721fb6b1dc5a0bd1a73e38a5eb5d0c3791af684f7d2571efb90ad8634871
+)
+FetchContent_MakeAvailable(monaco_editor)
+
+find_program(ESBUILD_EXECUTABLE esbuild REQUIRED)
+
+if(EXISTS "${monaco_editor_SOURCE_DIR}/esm/vs/editor/editor.main.js")
+    set(MONACO_ESM_ENTRY "${monaco_editor_SOURCE_DIR}/esm/vs/editor/editor.main.js")
+else()
+    set(MONACO_ESM_ENTRY "${monaco_editor_SOURCE_DIR}/package/esm/vs/editor/editor.main.js")
+endif()
+
+set(MONACO_BUNDLE_JS  "${CMAKE_CURRENT_BINARY_DIR}/monaco-bundle.js")
+set(MONACO_BUNDLE_CSS "${CMAKE_CURRENT_BINARY_DIR}/monaco-bundle.css")
+if(NOT EXISTS "${MONACO_BUNDLE_JS}")
+    message(STATUS "Bundling Monaco Editor with esbuild...")
+    execute_process(
+        COMMAND ${ESBUILD_EXECUTABLE}
+            "${MONACO_ESM_ENTRY}"
+            --bundle
+            --format=iife
+            --global-name=monaco
+            --minify
+            --loader:.ttf=dataurl
+            --outfile=${MONACO_BUNDLE_JS}
+        RESULT_VARIABLE ESBUILD_RESULT
+    )
+    if(NOT ESBUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "esbuild failed to bundle Monaco Editor")
+    endif()
+endif()
+
+set(MONACO_QRC "${CMAKE_CURRENT_BINARY_DIR}/monaco_resources.qrc")
+file(WRITE  "${MONACO_QRC}" "<RCC>\n  <qresource prefix=\"/\">\n")
+file(APPEND "${MONACO_QRC}" "    <file alias=\"monaco-bundle.js\">${MONACO_BUNDLE_JS}</file>\n")
+file(APPEND "${MONACO_QRC}" "    <file alias=\"monaco-bundle.css\">${MONACO_BUNDLE_CSS}</file>\n")
+file(APPEND "${MONACO_QRC}" "  </qresource>\n</RCC>\n")
+
+set(EDITOR_QRC "${CMAKE_CURRENT_BINARY_DIR}/editor_resources.qrc")
+file(WRITE  "${EDITOR_QRC}" "<RCC>\n  <qresource prefix=\"/\">\n")
+file(APPEND "${EDITOR_QRC}"
+    "    <file alias=\"editor.html\">${CMAKE_CURRENT_SOURCE_DIR}/resources/editor.html</file>\n")
+file(APPEND "${EDITOR_QRC}" "  </qresource>\n</RCC>\n")
+
+# Download Jedi and Parso wheels for Python autocompletion
+file(DOWNLOAD
+    "https://files.pythonhosted.org/packages/c0/5a/9cac0c82afec3d09ccd97c8b6502d48f165f9124db81b4bcb90b4af974ee/jedi-0.19.2-py2.py3-none-any.whl"
+    "${CMAKE_BINARY_DIR}/jedi.whl"
+    EXPECTED_HASH SHA256=a8ef22bde8490f57fe5c7681a3c83cb58874daf72b4784de3cce5b6ef6edb5b9
+    SHOW_PROGRESS
+)
+file(DOWNLOAD
+    "https://files.pythonhosted.org/packages/c6/ac/dac4a63f978e4dcb3c6d3a78c4d8e0192a113d288502a1216950c41b1027/parso-0.8.4-py2.py3-none-any.whl"
+    "${CMAKE_BINARY_DIR}/parso.whl"
+    EXPECTED_HASH SHA256=a418670a20291dacd2dddc80c377c5c3791378ee1e8d12bffc35420643d43f18
+    SHOW_PROGRESS
+)
+
+set(JEDI_QRC "${CMAKE_CURRENT_BINARY_DIR}/jedi_resources.qrc")
+file(WRITE  "${JEDI_QRC}" "<RCC>\n  <qresource prefix=\"/pythonlibs\">\n")
+file(APPEND "${JEDI_QRC}" "    <file alias=\"jedi.whl\">${CMAKE_BINARY_DIR}/jedi.whl</file>\n")
+file(APPEND "${JEDI_QRC}" "    <file alias=\"parso.whl\">${CMAKE_BINARY_DIR}/parso.whl</file>\n")
+file(APPEND "${JEDI_QRC}" "  </qresource>\n</RCC>\n")
 
 # Generate QtProtobuf files from proto directory
 file(GLOB PROTO_FILES
@@ -101,6 +194,9 @@ qt_add_executable(mc-bot-manager
     ${app_icon_resource_windows}
     pythonlibs.qrc
     icons.qrc
+    "${MONACO_QRC}"
+    "${EDITOR_QRC}"
+    "${JEDI_QRC}"
 )
 
 target_link_libraries(mc-bot-manager PRIVATE
@@ -108,10 +204,10 @@ target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Network
     Qt6::Protobuf
     Qt6::Concurrent
+    Qt6::WebEngineWidgets
     mc-bot-manager-proto
     pybind11::embed
     Python3::Python
-    qutepart
     nbt++
 )
 target_compile_options(mc-bot-manager PRIVATE ${PROJECT_WARNING_FLAGS})
@@ -120,7 +216,6 @@ target_compile_options(mc-bot-manager PRIVATE ${PROJECT_WARNING_FLAGS})
 target_include_directories(mc-bot-manager PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/generated
-    ${CMAKE_CURRENT_BINARY_DIR}/_deps/qutepart-src/include
     ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
 )
 
