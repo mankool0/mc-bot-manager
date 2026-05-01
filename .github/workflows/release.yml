@@ -73,7 +73,7 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtgrpc qtwebengine qtwebchannel qtpositioning
+          modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
 
       - name: Install protobuf compiler and esbuild
         run: |
@@ -127,7 +127,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          modules: qtgrpc qtwebengine qtwebchannel qtpositioning
+          modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
 
       - name: Install ninja and esbuild
