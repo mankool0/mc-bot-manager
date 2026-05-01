@@ -75,8 +75,10 @@ jobs:
           arch: linux_gcc_64
           modules: qtgrpc qtwebengine qtwebchannel qtpositioning
 
-      - name: Install protobuf compiler
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Install protobuf compiler and esbuild
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          npm install -g esbuild
 
       - name: Download Python standalone
         run: |
@@ -128,9 +130,11 @@ jobs:
           modules: qtgrpc qtwebengine qtwebchannel qtpositioning
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
 
-      - name: Install ninja
+      - name: Install ninja and esbuild
         shell: cmd
-        run: choco install ninja -y
+        run: |
+          choco install ninja -y
+          npm install -g esbuild
 
       - name: Setup vcpkg and install dependencies
         shell: pwsh
