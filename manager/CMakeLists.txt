@@ -83,6 +83,14 @@ FetchContent_MakeAvailable(monaco_editor)
 
 find_program(ESBUILD_EXECUTABLE esbuild REQUIRED)
 
+# On Windows, npm installs esbuild as a .cmd batch wrapper which cannot be
+# executed directly by cmake's execute_process - it needs cmd /c.
+if(WIN32)
+    set(ESBUILD_CMD cmd /c "${ESBUILD_EXECUTABLE}")
+else()
+    set(ESBUILD_CMD "${ESBUILD_EXECUTABLE}")
+endif()
+
 if(EXISTS "${monaco_editor_SOURCE_DIR}/esm/vs/editor/editor.main.js")
     set(MONACO_ESM_ENTRY "${monaco_editor_SOURCE_DIR}/esm/vs/editor/editor.main.js")
 else()
@@ -94,7 +102,7 @@ set(MONACO_BUNDLE_CSS "${CMAKE_CURRENT_BINARY_DIR}/monaco-bundle.css")
 if(NOT EXISTS "${MONACO_BUNDLE_JS}")
     message(STATUS "Bundling Monaco Editor with esbuild...")
     execute_process(
-        COMMAND ${ESBUILD_EXECUTABLE}
+        COMMAND ${ESBUILD_CMD}
             "${MONACO_ESM_ENTRY}"
             --bundle
             --format=iife
@@ -103,9 +111,10 @@ if(NOT EXISTS "${MONACO_BUNDLE_JS}")
             --loader:.ttf=dataurl
             --outfile=${MONACO_BUNDLE_JS}
         RESULT_VARIABLE ESBUILD_RESULT
+        ERROR_VARIABLE ESBUILD_ERROR
     )
     if(NOT ESBUILD_RESULT EQUAL 0)
-        message(FATAL_ERROR "esbuild failed to bundle Monaco Editor")
+        message(FATAL_ERROR "esbuild failed to bundle Monaco Editor:\n${ESBUILD_ERROR}")
     endif()
 endif()
 
