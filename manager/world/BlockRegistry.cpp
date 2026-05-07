@@ -1,4 +1,5 @@
 #include "BlockRegistry.h"
+#include "AppPaths.h"
 #include "logging/LogManager.h"
 #include <QFile>
 #include <QDir>
@@ -7,15 +8,12 @@
 
 QString BlockRegistry::getCachePath(int dataVersion)
 {
-    return QString("cache/block_registry_%1.dat").arg(dataVersion);
+    return QDir(AppPaths::cacheDir()).filePath(QString("block_registry_%1.dat").arg(dataVersion));
 }
 
 void BlockRegistry::ensureCacheDirectory()
 {
-    QDir dir;
-    if (!dir.exists("cache")) {
-        dir.mkpath("cache");
-    }
+    QDir().mkpath(AppPaths::cacheDir());
 }
 
 bool BlockRegistry::cacheExists(int dataVersion)

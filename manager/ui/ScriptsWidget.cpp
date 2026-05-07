@@ -3,13 +3,13 @@
 #include "scripting/ScriptEngine.h"
 #include "scripting/ScriptContext.h"
 #include "scripting/ScriptFileManager.h"
+#include "AppPaths.h"
 #include "bot/BotManager.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QGroupBox>
 #include <QSettings>
-#include <QStandardPaths>
 #include <QGuiApplication>
 #include <QStyleHints>
 #include <QPainter>
@@ -489,9 +489,9 @@ void ScriptsWidget::setupEditor()
         connect(zubanClient, &ZubanClient::diagnosticsReceived,
                 codeEditor, &MonacoWidget::setDiagnostics);
 
-        QString scriptsDir = ScriptFileManager::getBaseScriptDir();
-        QString stubsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/stubs";
-        QString pylibsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/pylibs";
+        QString scriptsDir = AppPaths::scriptsDir();
+        QString stubsDir = AppPaths::stubsDir();
+        QString pylibsDir = AppPaths::pylibsDir();
         zubanClient->start(scriptsDir, stubsDir, pylibsDir);
 
         codeEditor->setCompletionProvider([zuban = zubanClient](const QString &code, int line, int col) -> QString {

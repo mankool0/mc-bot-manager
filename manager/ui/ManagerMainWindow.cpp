@@ -27,11 +27,10 @@
 #include "network/PipeServer.h"
 #include "prism/PrismLauncherManager.h"
 #include "scripting/ScriptEngine.h"
-#include "scripting/ScriptFileManager.h"
+#include "AppPaths.h"
 #include <memory>
 
-// Initialize static member
-QString ManagerMainWindow::worldSaveBasePath = "worldSaves";
+QString ManagerMainWindow::worldSaveBasePath;
 
 ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -48,7 +47,7 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
         QSettings settings("MCBotManager", "MCBotManager");
         if (settings.value("Logging/enabled", true).toBool()) {
             QString logDir = settings.value("Logging/logDir",
-                ScriptFileManager::getDefaultLogDir()).toString();
+                AppPaths::logsDir()).toString();
             int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
             int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
             LogManager::initFileSink(logDir, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
@@ -175,7 +174,7 @@ QString ManagerMainWindow::getWorldSaveBasePath()
 
 void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
 {
-    worldSaveBasePath = QDir(path.isEmpty() ? "worldSaves" : path).absolutePath();
+    worldSaveBasePath = path.isEmpty() ? AppPaths::worldSavesDir() : QDir(path).absolutePath();
 }
 
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
@@ -443,7 +442,7 @@ void ManagerMainWindow::addNewBot()
                     QSettings settings("MCBotManager", "MCBotManager");
                     if (settings.value("Logging/enabled", true).toBool()) {
                         QString logDir = settings.value("Logging/logDir",
-                            ScriptFileManager::getDefaultLogDir()).toString();
+                            AppPaths::logsDir()).toString();
                         int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
                         int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
                         bot->consoleWidget->attachLogFile(logDir, bot->name, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
@@ -1344,9 +1343,6 @@ void ManagerMainWindow::configurePrismLauncher()
 void ManagerMainWindow::configureWorldSavePath()
 {
     QString currentPath = worldSaveBasePath;
-    if (currentPath == "worldSaves") {
-        currentPath = QDir::currentPath() + "/worldSaves";
-    }
 
     QString newPath = QFileDialog::getExistingDirectory(
         this,
@@ -1428,7 +1424,7 @@ void ManagerMainWindow::loadSettings()
 
     // Load world save path
     settings.beginGroup("World");
-    worldSaveBasePath = QDir(settings.value("savePath", ScriptFileManager::getDefaultWorldSaveDir()).toString()).absolutePath();
+    worldSaveBasePath = QDir(settings.value("savePath", AppPaths::worldSavesDir()).toString()).absolutePath();
     settings.endGroup();
 
     // Load bot instances
@@ -1971,7 +1967,7 @@ void ManagerMainWindow::setupConsoleTab()
     QSettings settings("MCBotManager", "MCBotManager");
     bool loggingEnabled = settings.value("Logging/enabled", true).toBool();
     QString logDir = settings.value("Logging/logDir",
-        ScriptFileManager::getDefaultLogDir()).toString();
+        AppPaths::logsDir()).toString();
     int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
     int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
 

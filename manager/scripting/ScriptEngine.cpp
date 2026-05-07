@@ -2,6 +2,7 @@
 #include "ScriptContext.h"
 #include "ScriptThread.h"
 #include "ScriptFileManager.h"
+#include "AppPaths.h"
 #include "PythonAPI.h"
 #include "EmbeddedPythonLibs.h"
 #include "bot/BotManager.h"
@@ -11,7 +12,6 @@
 #include <QDebug>
 #include <QDateTime>
 #include <QDir>
-#include <QStandardPaths>
 #include <QStringList>
 #include <QWriteLocker>
 #include <QJsonObject>
@@ -144,17 +144,17 @@ void ScriptEngine::setupPythonPath()
     sys.attr("dont_write_bytecode") = true;
     py::list path = sys.attr("path");
 
-    QString scriptsBaseDir = ScriptFileManager::getBaseScriptDir();
+    QString scriptsBaseDir = AppPaths::scriptsDir();
     path.append(scriptsBaseDir.toStdString());
 
-    QString internalLibsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/pylibs";
+    QString internalLibsDir = AppPaths::pylibsDir();
     QDir().mkpath(internalLibsDir);
     path.append(internalLibsDir.toStdString());
 
     EmbeddedPythonLibs::copyPublicModules(scriptsBaseDir);
     EmbeddedPythonLibs::copyInternalModules(internalLibsDir);
 
-    QString stubsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/stubs";
+    QString stubsDir = AppPaths::stubsDir();
     EmbeddedPythonLibs::copyStubs(stubsDir);
 }
 
