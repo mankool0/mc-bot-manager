@@ -1,4 +1,5 @@
 #include "ScriptsWidget.h"
+#include "ZubanClient.h"
 #include "scripting/ScriptEngine.h"
 #include "scripting/ScriptContext.h"
 #include "scripting/ScriptFileManager.h"
@@ -8,6 +9,7 @@
 #include <QLineEdit>
 #include <QGroupBox>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QGuiApplication>
 #include <QStyleHints>
 #include <QPainter>
@@ -482,14 +484,24 @@ void ScriptsWidget::setupEditor()
 
     if (scriptEngine) {
         codeEditor->loadEventData(scriptEngine->loadEventData());
-        codeEditor->setCompletionProvider([engine = scriptEngine](const QString &code, int line, int col) -> QString {
-            return engine->jediComplete(code, line, col);
+
+        zubanClient = new ZubanClient(this);
+        connect(zubanClient, &ZubanClient::diagnosticsReceived,
+                codeEditor, &MonacoWidget::setDiagnostics);
+
+        QString scriptsDir = ScriptFileManager::getBaseScriptDir();
+        QString stubsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/stubs";
+        QString pylibsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/pylibs";
+        zubanClient->start(scriptsDir, stubsDir, pylibsDir);
+
+        codeEditor->setCompletionProvider([zuban = zubanClient](const QString &code, int line, int col) -> QString {
+            return zuban->complete(code, line, col);
         });
-        codeEditor->setSignatureProvider([engine = scriptEngine](const QString &code, int line, int col) -> QString {
-            return engine->jediSignature(code, line, col);
+        codeEditor->setSignatureProvider([zuban = zubanClient](const QString &code, int line, int col) -> QString {
+            return zuban->signatureHelp(code, line, col);
         });
-        codeEditor->setHoverProvider([engine = scriptEngine](const QString &code, int line, int col) -> QString {
-            return engine->jediHelp(code, line, col);
+        codeEditor->setHoverProvider([zuban = zubanClient](const QString &code, int line, int col) -> QString {
+            return zuban->hover(code, line, col);
         });
     }
 }

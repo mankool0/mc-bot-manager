@@ -6,9 +6,6 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
-#include <pybind11/embed.h>
-
-namespace py = pybind11;
 
 class EmbeddedPythonLibs {
 public:
@@ -57,47 +54,30 @@ public:
         ensureModuleExists(internalDir, "_events");
     }
 
-    static void ensureJediAvailable(const QString &internalDir) {
-        QString jediLibsDir = QDir(internalDir).filePath("jedi_libs");
-        QDir dir(jediLibsDir);
-        if (!dir.exists()) {
+    static QStringList getStubModuleNames() {
+        return {"bot", "baritone", "meteor", "world", "utils", "server"};
+    }
+
+    static void copyStubs(const QString &stubsDir) {
+        QDir dir(stubsDir);
+        if (!dir.exists())
             dir.mkpath(".");
-        }
-
-        // Only extract if jedi package is missing (first run or after clean)
-        if (!QFile::exists(QDir(jediLibsDir).filePath("jedi/__init__.py"))) {
-            py::module_ zipfile = py::module_::import("zipfile");
-            py::module_ io = py::module_::import("io");
-
-            for (const char* whl : {"parso", "jedi"}) {
-                QFile res(QString(":/pythonlibs/%1.whl").arg(whl));
-                if (!res.open(QIODevice::ReadOnly)) {
-                    qWarning() << "Failed to open wheel resource:" << whl;
-                    continue;
-                }
-                QByteArray data = res.readAll();
-                try {
-                    py::bytes whlBytes(data.constData(), data.size());
-                    py::object bytesIO = io.attr("BytesIO")(whlBytes);
-                    py::object zf = zipfile.attr("ZipFile")(bytesIO);
-                    zf.attr("extractall")(jediLibsDir.toStdString());
-                    zf.attr("close")();
-                    qDebug() << "Extracted" << whl << "to" << jediLibsDir;
-                } catch (py::error_already_set &e) {
-                    qWarning() << "Failed to extract wheel" << whl << ":" << e.what();
-                }
+        for (const QString &name : getStubModuleNames()) {
+            QString dest = QDir(stubsDir).filePath(name + ".pyi");
+            QFile src(QString(":/stubs/%1.pyi").arg(name));
+            if (!src.open(QIODevice::ReadOnly)) {
+                qWarning() << "Failed to open stub resource:" << name;
+                continue;
             }
-        }
-
-        std::string jediLibsStd = jediLibsDir.toStdString();
-        py::module_ sys = py::module_::import("sys");
-        py::list path = sys.attr("path");
-        bool found = false;
-        for (auto p : path) {
-            if (p.cast<std::string>() == jediLibsStd) { found = true; break; }
-        }
-        if (!found) {
-            path.append(jediLibsStd);
+            QByteArray srcData = src.readAll();
+            QFile existing(dest);
+            if (existing.open(QIODevice::ReadOnly) && existing.readAll() == srcData) {
+                continue;
+            }
+            existing.close();
+            QFile out(dest);
+            if (out.open(QIODevice::WriteOnly))
+                out.write(srcData);
         }
     }
 };

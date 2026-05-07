@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QEventLoop>
 #include <QFutureWatcher>
+#include <QJsonDocument>
 #include <QtConcurrent/QtConcurrent>
 
 class MonacoWidget::Bridge : public QObject
@@ -68,6 +69,7 @@ signals:
     void completionResult(int requestId, const QString &json);
     void signatureResult(int requestId, const QString &json);
     void hoverResult(int requestId, const QString &json);
+    void diagnosticsChanged(const QString &json);
     void setTextRequested(const QString &text);
     void setReadOnlyRequested(bool readOnly);
     void setThemeRequested(bool dark);
@@ -136,6 +138,14 @@ void MonacoWidget::setSignatureProvider(std::function<QString(const QString&, in
 void MonacoWidget::setHoverProvider(std::function<QString(const QString&, int, int)> provider)
 {
     m_hoverProvider = std::move(provider);
+}
+
+void MonacoWidget::setDiagnostics(const QJsonArray &diagnostics)
+{
+    QString json = QJsonDocument(diagnostics).toJson(QJsonDocument::Compact);
+    if (m_pageReady) {
+        emit m_bridge->diagnosticsChanged(json);
+    }
 }
 
 void MonacoWidget::setText(const QString &text)

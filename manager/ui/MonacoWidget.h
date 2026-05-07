@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QString>
+#include <QJsonArray>
 #include <functional>
 
 class QWebEngineView;
@@ -19,6 +20,7 @@ public:
     void setCompletionProvider(std::function<QString(const QString&, int, int)> provider);
     void setSignatureProvider(std::function<QString(const QString&, int, int)> provider);
     void setHoverProvider(std::function<QString(const QString&, int, int)> provider);
+    void setDiagnostics(const QJsonArray &diagnostics);
     void setText(const QString &text);
     QString getText() const;
     void clear();

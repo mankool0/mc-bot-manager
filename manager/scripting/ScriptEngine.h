@@ -47,9 +47,6 @@ public:
     QString getBotName() const;
 
     QString loadEventData();
-    QString jediComplete(const QString &code, int line, int col);
-    QString jediSignature(const QString &code, int line, int col);
-    QString jediHelp(const QString &code, int line, int col);
 
 signals:
     void scriptLoaded(const QString &filename);

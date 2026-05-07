@@ -81,7 +81,7 @@
           desc = descLines.join('\n').trim();
         }
         var parts = [];
-        if (sig) parts.push('```python\n' + sig + '\n```');
+        if (sig) parts.push(sig);
         if (desc) parts.push(desc);
         resolve({ contents: [{ value: parts.join('\n\n'), isTrusted: true }] });
       });
@@ -125,6 +125,21 @@
         document.documentElement.style.background = bg;
         document.body.style.background = bg;
       });
+      window.bridge.diagnosticsChanged.connect(function(json) {
+        var diags = JSON.parse(json);
+        monaco.editor.setModelMarkers(editor.getModel(), 'zuban', diags.map(function(d) {
+          var sev = d.severity === 1 ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning;
+          return {
+            severity: sev,
+            startLineNumber: d.range.start.line + 1,
+            startColumn: d.range.start.character + 1,
+            endLineNumber: d.range.end.line + 1,
+            endColumn: d.range.end.character + 1,
+            message: d.message,
+            source: 'zuban'
+          };
+        }));
+      });
 
       window.bridge.editorReady();
     });
@@ -132,6 +147,18 @@
     editor.onDidChangeModelContent(function() {
       if (!suppressChange && window.bridge) {
         window.bridge.onTextChanged(editor.getValue());
+      }
+    });
+
+    editor.onDidType(function(text) {
+      if (text === ' ') {
+        var pos = editor.getPosition();
+        if (pos) {
+          var before = editor.getModel().getLineContent(pos.lineNumber).substring(0, pos.column - 1);
+          if (/^\s*(?:import|from)\s$/.test(before)) {
+            editor.trigger('keyboard', 'editor.action.triggerSuggest', {});
+          }
+        }
       }
     });
 
@@ -144,9 +171,44 @@
     monaco.languages.registerCompletionItemProvider('python', {
       triggerCharacters: ['.', '"', "'"],
       provideCompletionItems: function(model, position) {
-        // @on("event_name") - complete from static event list
         var line = model.getLineContent(position.lineNumber);
         var before = line.substring(0, position.column - 1);
+
+        // "import X" or "from X" - surface our API modules first
+        var importMatch = before.match(/^\s*(?:import|from)\s+(\w*)$/);
+        if (importMatch) {
+          var prefix = importMatch[1];
+          var apiMods = ((window.mcbotEventData || {})['api_modules'] || []);
+          var suggestions = apiMods
+            .filter(function(m) { return m.startsWith(prefix); })
+            .map(function(m, i) {
+              return {
+                label: m,
+                kind: monaco.languages.CompletionItemKind.Module,
+                insertText: m,
+                sortText: '!' + String(i),
+                range: {
+                  startLineNumber: position.lineNumber,
+                  startColumn: position.column - prefix.length,
+                  endLineNumber: position.lineNumber,
+                  endColumn: position.column
+                }
+              };
+            });
+          if (!window.bridge) return { suggestions: suggestions };
+          return new Promise(function(resolve) {
+            var requestId = nextRequestId++;
+            pendingCompletions[requestId] = function(jediResult) {
+              var jedi = (jediResult && jediResult.suggestions) ? jediResult.suggestions : [];
+              var apiNames = {};
+              apiMods.forEach(function(m) { apiNames[m] = true; });
+              resolve({ suggestions: suggestions.concat(jedi.filter(function(s) { return !apiNames[s.label]; })) });
+            };
+            window.bridge.requestCompletion(model.getValue(), position.lineNumber, position.column - 1, requestId);
+          });
+        }
+
+        // @on("event_name") - complete from static event list
         var onMatch = before.match(/@on\(\s*["'][^"']*$/);
         if (onMatch) {
           var data = window.mcbotEventData;

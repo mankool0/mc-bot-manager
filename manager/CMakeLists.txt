@@ -40,11 +40,9 @@ if(NOT Python3_EXECUTABLE)
             python_standalone
             URL "${PYTHON_STANDALONE_URL}"
             URL_HASH "${PYTHON_STANDALONE_HASH}"
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         )
-        FetchContent_GetProperties(python_standalone)
-        if(NOT python_standalone_POPULATED)
-            FetchContent_Populate(python_standalone)
-        endif()
+        FetchContent_MakeAvailable(python_standalone)
         set(_py_root "${python_standalone_SOURCE_DIR}")
         find_program(_py_exe
             NAMES python3.12 python3 python
@@ -79,6 +77,7 @@ FetchContent_Declare(
     monaco_editor
     URL      https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.55.1.tgz
     URL_HASH SHA256=eec3721fb6b1dc5a0bd1a73e38a5eb5d0c3791af684f7d2571efb90ad8634871
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(monaco_editor)
 
@@ -122,25 +121,38 @@ file(APPEND "${EDITOR_QRC}"
     "    <file alias=\"editor.html\">${CMAKE_CURRENT_SOURCE_DIR}/resources/editor.html</file>\n")
 file(APPEND "${EDITOR_QRC}" "  </qresource>\n</RCC>\n")
 
-# Download Jedi and Parso wheels for Python autocompletion
-file(DOWNLOAD
-    "https://files.pythonhosted.org/packages/c0/5a/9cac0c82afec3d09ccd97c8b6502d48f165f9124db81b4bcb90b4af974ee/jedi-0.19.2-py2.py3-none-any.whl"
-    "${CMAKE_BINARY_DIR}/jedi.whl"
-    EXPECTED_HASH SHA256=a8ef22bde8490f57fe5c7681a3c83cb58874daf72b4784de3cce5b6ef6edb5b9
-    SHOW_PROGRESS
-)
-file(DOWNLOAD
-    "https://files.pythonhosted.org/packages/c6/ac/dac4a63f978e4dcb3c6d3a78c4d8e0192a113d288502a1216950c41b1027/parso-0.8.4-py2.py3-none-any.whl"
-    "${CMAKE_BINARY_DIR}/parso.whl"
-    EXPECTED_HASH SHA256=a418670a20291dacd2dddc80c377c5c3791378ee1e8d12bffc35420643d43f18
-    SHOW_PROGRESS
+# Auto-generate Python stub files from PythonModules.cpp and PythonAPI.h
+set(STUBS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/stubs")
+set(STUB_MODULES bot baritone meteor world utils server)
+set(STUB_OUTPUT_FILES)
+foreach(stub ${STUB_MODULES})
+    list(APPEND STUB_OUTPUT_FILES "${STUBS_BUILD_DIR}/${stub}.pyi")
+endforeach()
+
+add_custom_command(
+    OUTPUT ${STUB_OUTPUT_FILES}
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${STUBS_BUILD_DIR}"
+    COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_stubs.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonModules.cpp"
+            --header "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonAPI.h"
+            --output "${STUBS_BUILD_DIR}"
+    DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonModules.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonAPI.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_stubs.py"
+    COMMENT "Generating Python API stubs"
 )
 
-set(JEDI_QRC "${CMAKE_CURRENT_BINARY_DIR}/jedi_resources.qrc")
-file(WRITE  "${JEDI_QRC}" "<RCC>\n  <qresource prefix=\"/pythonlibs\">\n")
-file(APPEND "${JEDI_QRC}" "    <file alias=\"jedi.whl\">${CMAKE_BINARY_DIR}/jedi.whl</file>\n")
-file(APPEND "${JEDI_QRC}" "    <file alias=\"parso.whl\">${CMAKE_BINARY_DIR}/parso.whl</file>\n")
-file(APPEND "${JEDI_QRC}" "  </qresource>\n</RCC>\n")
+add_custom_target(generate_stubs DEPENDS ${STUB_OUTPUT_FILES})
+
+set(STUBS_QRC "${CMAKE_CURRENT_BINARY_DIR}/stubs_resources.qrc")
+file(WRITE  "${STUBS_QRC}" "<RCC>\n  <qresource prefix=\"/stubs\">\n")
+foreach(stub ${STUB_MODULES})
+    file(APPEND "${STUBS_QRC}"
+        "    <file alias=\"${stub}.pyi\">${STUBS_BUILD_DIR}/${stub}.pyi</file>\n")
+endforeach()
+file(APPEND "${STUBS_QRC}" "  </qresource>\n</RCC>\n")
 
 # Generate QtProtobuf files from proto directory
 file(GLOB PROTO_FILES
@@ -196,8 +208,10 @@ qt_add_executable(mc-bot-manager
     icons.qrc
     "${MONACO_QRC}"
     "${EDITOR_QRC}"
-    "${JEDI_QRC}"
+    "${STUBS_QRC}"
 )
+
+add_dependencies(mc-bot-manager generate_stubs)
 
 target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Widgets
@@ -246,11 +260,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/PrismLauncher/PrismLauncher.git
     GIT_TAG        develop
     GIT_SHALLOW    TRUE
+    SOURCE_SUBDIR  _no_build
 )
-FetchContent_GetProperties(prismlauncher)
-if(NOT prismlauncher_POPULATED)
-    FetchContent_Populate(prismlauncher)
-endif()
+FetchContent_MakeAvailable(prismlauncher)
 
 find_package(Threads REQUIRED)
 
@@ -300,6 +312,8 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E make_directory "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${Python3_STDLIB}" "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
         COMMAND find "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/lib-dynload" -name "_tkinter*" -delete
+        # Bundle zuban from the standalone Python install
+        COMMAND ${CMAKE_COMMAND} -E copy "${Python3_ROOT_DIR}/bin/zuban" "AppDir/usr/bin/zuban"
         COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file AppDir/usr/share/applications/mc-bot-manager.desktop --plugin qt --output appimage
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Building AppImage in build directory..."

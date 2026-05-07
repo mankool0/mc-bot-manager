@@ -12,6 +12,7 @@
 #include "ui/MonacoWidget.h"
 
 class ScriptEngine;
+class ZubanClient;
 
 class ScriptsWidget : public QWidget
 {
@@ -50,6 +51,7 @@ private:
     void setupEditor();
 
     ScriptEngine *scriptEngine;
+    ZubanClient *zubanClient = nullptr;
 
     QListWidget *scriptList;
     MonacoWidget *codeEditor;

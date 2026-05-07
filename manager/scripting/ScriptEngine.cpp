@@ -153,7 +153,9 @@ void ScriptEngine::setupPythonPath()
 
     EmbeddedPythonLibs::copyPublicModules(scriptsBaseDir);
     EmbeddedPythonLibs::copyInternalModules(internalLibsDir);
-    EmbeddedPythonLibs::ensureJediAvailable(internalLibsDir);
+
+    QString stubsDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/stubs";
+    EmbeddedPythonLibs::copyStubs(stubsDir);
 }
 
 bool ScriptEngine::loadScript(const QString &filename, const QString &code)
@@ -421,23 +423,6 @@ QString ScriptEngine::getBotName() const
     return botInstance ? botInstance->name : QString();
 }
 
-static const char* JEDI_TYPE_PREAMBLE =
-"from _events import *\n"
-"def on(event_name: str): ...\n"
-"\n";
-
-static py::object makeJediScript(const QString &code)
-{
-    using namespace py::literals;
-    py::module_ jedi = py::module_::import("jedi");
-    py::object environment = jedi.attr("InterpreterEnvironment")();
-    std::string projectPath = ScriptFileManager::getBaseScriptDir().toStdString();
-    py::object project = jedi.attr("Project")(projectPath);
-    QString augmented = QString::fromLatin1(JEDI_TYPE_PREAMBLE) + code;
-    return jedi.attr("Script")(augmented.toStdString(),
-        "project"_a = project, "environment"_a = environment);
-}
-
 QString ScriptEngine::loadEventData()
 {
     QJsonArray events;
@@ -464,124 +449,15 @@ QString ScriptEngine::loadEventData()
         }
     }
 
+    QJsonArray apiModules;
+    for (const QString &name : EmbeddedPythonLibs::getStubModuleNames())
+        apiModules.append(name);
+
     QJsonObject root;
     root["events"] = events;
     root["event_params"] = eventParams;
+    root["api_modules"] = apiModules;
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-QString ScriptEngine::jediComplete(const QString &code, int line, int col)
-{
-    if (!pythonInitialized) return "[]";
-    py::gil_scoped_acquire acquire;
-    try {
-        static const int PREAMBLE_LINES = QByteArray(JEDI_TYPE_PREAMBLE).count('\n');
-        py::object script = makeJediScript(code);
-        py::list completions = script.attr("complete")(line + PREAMBLE_LINES, col);
-
-        auto toMonacoKind = [](const std::string &type) -> int {
-            if (type == "function") return 1;
-            if (type == "class")    return 5;
-            if (type == "module")   return 8;
-            if (type == "keyword")  return 17;
-            if (type == "param")    return 9;
-            if (type == "property") return 9;
-            if (type == "path")     return 20;
-            return 4;
-        };
-
-        QJsonArray result;
-        int index = 0;
-        for (auto compHandle : completions) {
-            py::object comp = compHandle.cast<py::object>();
-            QString name = QString::fromStdString(comp.attr("name").cast<std::string>());
-            std::string type = comp.attr("type").cast<std::string>();
-            QString description = QString::fromStdString(comp.attr("description").cast<std::string>());
-            QJsonObject item;
-            item["label"] = name;
-            item["insertText"] = name;
-            item["kind"] = toMonacoKind(type);
-            item["sortText"] = QString("%1").arg(index++, 5, 10, QChar('0'));
-            if (!description.isEmpty())
-                item["detail"] = description.length() > 80 ? description.left(77) + "..." : description;
-            result.append(item);
-        }
-        return QJsonDocument(result).toJson(QJsonDocument::Compact);
-    } catch (py::error_already_set &e) {
-        qWarning() << "Jedi completion error:" << e.what();
-        return "[]";
-    } catch (...) {
-        return "[]";
-    }
-}
-
-QString ScriptEngine::jediSignature(const QString &code, int line, int col)
-{
-    if (!pythonInitialized) return "null";
-    py::gil_scoped_acquire acquire;
-    try {
-        static const int PREAMBLE_LINES = QByteArray(JEDI_TYPE_PREAMBLE).count('\n');
-        py::object script = makeJediScript(code);
-        py::list sigs = script.attr("get_signatures")(line + PREAMBLE_LINES, col);
-
-        if (sigs.empty()) return "null";
-        py::object sig = sigs[0];
-
-        QString name = QString::fromStdString(sig.attr("name").cast<std::string>());
-        int activeParam = sig.attr("index").is_none() ? 0 : sig.attr("index").cast<int>();
-
-        py::list params = sig.attr("params");
-        QJsonArray paramsArr;
-        QStringList paramLabels;
-        for (auto p : params) {
-            py::object param = p.cast<py::object>();
-            QString desc = QString::fromStdString(param.attr("description").cast<std::string>());
-            if (desc.startsWith("param ")) desc = desc.mid(6);
-            paramsArr.append(desc);
-            paramLabels << desc;
-        }
-
-        QJsonObject result;
-        result["label"] = name + "(" + paramLabels.join(", ") + ")";
-        result["params"] = paramsArr;
-        result["activeParam"] = qMax(0, qMin(activeParam, (int)paramsArr.size() - 1));
-        return QJsonDocument(result).toJson(QJsonDocument::Compact);
-    } catch (py::error_already_set &e) {
-        qWarning() << "Jedi signature error:" << e.what();
-        return "null";
-    } catch (...) {
-        return "null";
-    }
-}
-
-QString ScriptEngine::jediHelp(const QString &code, int line, int col)
-{
-    if (!pythonInitialized) return "null";
-    py::gil_scoped_acquire acquire;
-    try {
-        static const int PREAMBLE_LINES = QByteArray(JEDI_TYPE_PREAMBLE).count('\n');
-        py::object script = makeJediScript(code);
-        py::list names = script.attr("help")(line + PREAMBLE_LINES, col);
-
-        if (names.empty()) return "null";
-        py::object name = names[0];
-
-        QString fullName = QString::fromStdString(name.attr("full_name").is_none()
-            ? name.attr("name").cast<std::string>()
-            : name.attr("full_name").cast<std::string>());
-        QString type = QString::fromStdString(name.attr("type").cast<std::string>());
-        QString docstring = QString::fromStdString(name.attr("docstring")().cast<std::string>());
-
-        QJsonObject result;
-        result["fullName"] = fullName;
-        result["type"] = type;
-        result["docstring"] = docstring;
-        return QJsonDocument(result).toJson(QJsonDocument::Compact);
-    } catch (py::error_already_set &e) {
-        qWarning() << "Jedi help error:" << e.what();
-        return "null";
-    } catch (...) {
-        return "null";
-    }
-}
 

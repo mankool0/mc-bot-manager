@@ -94,6 +94,9 @@ jobs:
           chmod +x linuxdeploy*.AppImage
           mv linuxdeploy*.AppImage manager/
 
+      - name: Install zuban into bundled Python
+        run: ${{ env.PYTHON_STANDALONE }}/bin/pip3 install zuban --quiet
+
       - name: Build AppImage
         run: |
           cd manager
@@ -162,14 +165,23 @@ jobs:
           cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
           cmake --build . --config Release --parallel
 
+      - name: Install zuban into bundled Python
+        working-directory: manager/build
+        shell: pwsh
+        run: |
+          $pyExe = (Get-ChildItem -Path "_deps/python_standalone-src" -Recurse -Filter "python.exe" | Select-Object -First 1).FullName
+          & $pyExe -m pip install zuban --quiet
+
       - name: Deploy Qt dependencies
         working-directory: manager/build
-        shell: cmd
+        shell: pwsh
         run: |
-          mkdir mc-bot-manager
-          copy mc-bot-manager.exe mc-bot-manager\
-          copy mc-bot-manager-proto.dll mc-bot-manager\
-          copy prismhook.dll mc-bot-manager\
+          New-Item -ItemType Directory -Force mc-bot-manager
+          Copy-Item mc-bot-manager.exe mc-bot-manager\
+          Copy-Item mc-bot-manager-proto.dll mc-bot-manager\
+          Copy-Item prismhook.dll mc-bot-manager\
+          $zuban = Get-ChildItem -Path "_deps/python_standalone-src" -Recurse -Filter "zuban.exe" | Select-Object -First 1
+          if ($zuban) { Copy-Item $zuban.FullName mc-bot-manager\ }
           windeployqt mc-bot-manager\mc-bot-manager.exe --release
 
       - name: Package Windows build
