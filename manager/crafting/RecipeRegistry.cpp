@@ -1,4 +1,5 @@
 #include "RecipeRegistry.h"
+#include "AppPaths.h"
 #include <QJsonArray>
 #include <QDebug>
 #include <QFile>
@@ -490,14 +491,14 @@ QString RecipeRegistry::getRecipeCachePath(const QString &version)
 {
     QString versionFormatted = version;
     versionFormatted.replace('.', '_');
-    return QString("cache/recipes_%1.json").arg(versionFormatted);
+    return QDir(AppPaths::cacheDir()).filePath(QString("recipes_%1.json").arg(versionFormatted));
 }
 
 QString RecipeRegistry::getTagCachePath(const QString &version)
 {
     QString versionFormatted = version;
     versionFormatted.replace('.', '_');
-    return QString("cache/tags_%1.json").arg(versionFormatted);
+    return QDir(AppPaths::cacheDir()).filePath(QString("tags_%1.json").arg(versionFormatted));
 }
 
 bool RecipeRegistry::downloadRecipes(const QString &version, const QString &cachePath)
@@ -529,10 +530,7 @@ bool RecipeRegistry::downloadRecipes(const QString &version, const QString &cach
     reply->deleteLater();
 
     // Save to cache
-    QDir dir;
-    if (!dir.exists("cache")) {
-        dir.mkpath("cache");
-    }
+    QDir().mkpath(AppPaths::cacheDir());
 
     QFile cacheFile(cachePath);
     if (!cacheFile.open(QIODevice::WriteOnly)) {
@@ -576,10 +574,7 @@ bool RecipeRegistry::downloadTags(const QString &version, const QString &cachePa
     reply->deleteLater();
 
     // Save to cache
-    QDir dir;
-    if (!dir.exists("cache")) {
-        dir.mkpath("cache");
-    }
+    QDir().mkpath(AppPaths::cacheDir());
 
     QFile cacheFile(cachePath);
     if (!cacheFile.open(QIODevice::WriteOnly)) {

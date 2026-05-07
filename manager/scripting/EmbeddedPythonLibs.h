@@ -6,14 +6,11 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
-#include <pybind11/embed.h>
-
-namespace py = pybind11;
 
 class EmbeddedPythonLibs {
 public:
-    static QStringList getBundledModules() {
-        return {"crafting", "enchanting"};
+    static QStringList getAllModuleNames() {
+        return {"_events", "crafting", "enchanting"};
     }
 
     static bool ensureModuleExists(const QString &scriptsDir, const QString &moduleName) {
@@ -42,15 +39,45 @@ public:
         return true;
     }
 
-    static void copyBundledModules(const QString &scriptsDir) {
+    static void copyPublicModules(const QString &scriptsDir) {
         QDir dir(scriptsDir);
-        if (!dir.exists()) {
+        if (!dir.exists())
             dir.mkpath(".");
-        }
+        for (const QString &m : QStringList{"crafting", "enchanting"})
+            ensureModuleExists(scriptsDir, m);
+    }
 
-        const auto modules = getBundledModules();
-        for (const QString &moduleName : modules) {
-            ensureModuleExists(scriptsDir, moduleName);
+    static void copyInternalModules(const QString &internalDir) {
+        QDir dir(internalDir);
+        if (!dir.exists())
+            dir.mkpath(".");
+        ensureModuleExists(internalDir, "_events");
+    }
+
+    static QStringList getStubModuleNames() {
+        return {"bot", "baritone", "meteor", "world", "utils", "server"};
+    }
+
+    static void copyStubs(const QString &stubsDir) {
+        QDir dir(stubsDir);
+        if (!dir.exists())
+            dir.mkpath(".");
+        for (const QString &name : getStubModuleNames()) {
+            QString dest = QDir(stubsDir).filePath(name + ".pyi");
+            QFile src(QString(":/stubs/%1.pyi").arg(name));
+            if (!src.open(QIODevice::ReadOnly)) {
+                qWarning() << "Failed to open stub resource:" << name;
+                continue;
+            }
+            QByteArray srcData = src.readAll();
+            QFile existing(dest);
+            if (existing.open(QIODevice::ReadOnly) && existing.readAll() == srcData) {
+                continue;
+            }
+            existing.close();
+            QFile out(dest);
+            if (out.open(QIODevice::WriteOnly))
+                out.write(srcData);
         }
     }
 };

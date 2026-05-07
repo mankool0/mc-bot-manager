@@ -455,96 +455,84 @@ py::list PythonAPI::getPlayerList(const std::string &botName)
     return result;
 }
 
-py::object PythonAPI::getHealth(const std::string &botName)
+std::optional<float> PythonAPI::getHealth(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     py::gil_scoped_release release;
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        py::gil_scoped_acquire acquire;
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
     QMutexLocker locker(bot->dataMutex.get());
-    float health = bot->health;
-    locker.unlock();
-
-    py::gil_scoped_acquire acquire;
-    return py::cast(health);
+    return bot->health;
 }
 
-py::object PythonAPI::getHunger(const std::string &botName)
+std::optional<int> PythonAPI::getHunger(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
-    return py::cast(bot->foodLevel);
+    return bot->foodLevel;
 }
 
-py::object PythonAPI::getSaturation(const std::string &botName)
+std::optional<float> PythonAPI::getSaturation(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
-    return py::cast(bot->saturation);
+    return bot->saturation;
 }
 
-py::object PythonAPI::getAir(const std::string &botName)
+std::optional<int> PythonAPI::getAir(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
-    return py::cast(bot->air);
+    return bot->air;
 }
 
-py::object PythonAPI::getExperienceLevel(const std::string &botName)
+std::optional<int> PythonAPI::getExperienceLevel(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
-    return py::cast(bot->experienceLevel);
+    return bot->experienceLevel;
 }
 
-py::object PythonAPI::getExperienceProgress(const std::string &botName)
+std::optional<float> PythonAPI::getExperienceProgress(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
-    return py::cast(bot->experienceProgress);
+    return bot->experienceProgress;
 }
 
-py::object PythonAPI::getSelectedSlot(const std::string &botName)
+std::optional<int> PythonAPI::getSelectedSlot(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
-        return py::none();
-    }
+    if (!bot || bot->status != BotStatus::Online)
+        return std::nullopt;
 
-    return py::cast(bot->selectedSlot);
+    return bot->selectedSlot;
 }
 
 void PythonAPI::selectSlot(int slot, const std::string &botName)
@@ -557,28 +545,26 @@ void PythonAPI::selectSlot(int slot, const std::string &botName)
     BotManager::sendSwitchHotbarSlot(name, slot);
 }
 
-py::object PythonAPI::getServer(const std::string &botName)
+std::optional<std::string> PythonAPI::getServer(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->server.isEmpty()) {
-        return py::none();
-    }
+    if (!bot || bot->server.isEmpty())
+        return std::nullopt;
 
-    return py::cast(bot->server.toStdString());
+    return bot->server.toStdString();
 }
 
-py::object PythonAPI::getAccount(const std::string &botName)
+std::optional<std::string> PythonAPI::getAccount(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->account.isEmpty()) {
-        return py::none();
-    }
+    if (!bot || bot->account.isEmpty())
+        return std::nullopt;
 
-    return py::cast(bot->account.toStdString());
+    return bot->account.toStdString();
 }
 
 py::object PythonAPI::getProxy(const std::string &botName)
@@ -608,17 +594,15 @@ py::object PythonAPI::getProxy(const std::string &botName)
     return d;
 }
 
-py::object PythonAPI::getUptime(const std::string &botName)
+std::optional<int64_t> PythonAPI::getUptime(const std::string &botName)
 {
     QString name = resolveBotName(botName);
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || !bot->startTime.isValid()) {
-        return py::none();
-    }
+    if (!bot || !bot->startTime.isValid())
+        return std::nullopt;
 
-    qint64 seconds = bot->startTime.secsTo(QDateTime::currentDateTime());
-    return py::cast(seconds);
+    return bot->startTime.secsTo(QDateTime::currentDateTime());
 }
 
 bool PythonAPI::isOnline(const std::string &botName)

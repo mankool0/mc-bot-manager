@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.6.0 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.7.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -17,9 +17,44 @@ else()
     set(PROJECT_WARNING_FLAGS -Wall -Wextra -Werror)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent WebEngineWidgets)
 
 include(FetchContent)
+
+set(PYTHON_STANDALONE_VERSION "3.12.13")
+set(PYTHON_STANDALONE_DATE "20260414")
+
+if(NOT Python3_EXECUTABLE)
+    if(UNIX AND NOT APPLE)
+        set(PYTHON_STANDALONE_URL
+            "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_DATE}-x86_64-unknown-linux-gnu-install_only.tar.gz")
+        set(PYTHON_STANDALONE_HASH "SHA256=cdcf8724d46e4857f8db5ee9f4252dc2f5da34f7940294ec6b312389dd3f41e0")
+    elseif(WIN32)
+        set(PYTHON_STANDALONE_URL
+            "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_DATE}-x86_64-pc-windows-msvc-install_only.tar.gz")
+        set(PYTHON_STANDALONE_HASH "SHA256=c5a9e011e284c49c48106ca177342f3e3f64e95b4c6652d4a382cc7c9bb1cc46")
+    endif()
+
+    if(DEFINED PYTHON_STANDALONE_URL)
+        FetchContent_Declare(
+            python_standalone
+            URL "${PYTHON_STANDALONE_URL}"
+            URL_HASH "${PYTHON_STANDALONE_HASH}"
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        FetchContent_MakeAvailable(python_standalone)
+        set(_py_root "${python_standalone_SOURCE_DIR}")
+        find_program(_py_exe
+            NAMES python3.12 python3 python
+            PATHS "${_py_root}/bin"
+            NO_DEFAULT_PATH
+        )
+        set(Python3_EXECUTABLE "${_py_exe}" CACHE FILEPATH "" FORCE)
+        set(Python3_ROOT_DIR "${_py_root}" CACHE PATH "" FORCE)
+    endif()
+endif()
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 FetchContent_Declare(
     pybind11
@@ -28,15 +63,6 @@ FetchContent_Declare(
 )
 set(PYBIND11_TEST OFF CACHE BOOL "Disable pybind11 tests" FORCE)
 FetchContent_MakeAvailable(pybind11)
-set(PYBIND11_FINDPYTHON ON)
-
-FetchContent_Declare(
-    qutepart
-    GIT_REPOSITORY https://github.com/diegoiast/qutepart-cpp.git
-    GIT_TAG        main
-)
-set(QUTEPART_TESTS OFF CACHE BOOL "Disable qutepart tests" FORCE)
-FetchContent_MakeAvailable(qutepart)
 
 # For NBT file handling
 set(NBT_BUILD_TESTS OFF CACHE BOOL "Disable libnbtplusplus tests" FORCE)
@@ -47,7 +73,95 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libnbtplusplus)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+FetchContent_Declare(
+    monaco_editor
+    URL      https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.55.1.tgz
+    URL_HASH SHA256=eec3721fb6b1dc5a0bd1a73e38a5eb5d0c3791af684f7d2571efb90ad8634871
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(monaco_editor)
+
+find_program(ESBUILD_EXECUTABLE esbuild REQUIRED)
+
+# On Windows, npm installs esbuild as a .cmd batch wrapper which cannot be
+# executed directly by cmake's execute_process - it needs cmd /c.
+if(WIN32)
+    set(ESBUILD_CMD cmd /c "${ESBUILD_EXECUTABLE}")
+else()
+    set(ESBUILD_CMD "${ESBUILD_EXECUTABLE}")
+endif()
+
+if(EXISTS "${monaco_editor_SOURCE_DIR}/esm/vs/editor/editor.main.js")
+    set(MONACO_ESM_ENTRY "${monaco_editor_SOURCE_DIR}/esm/vs/editor/editor.main.js")
+else()
+    set(MONACO_ESM_ENTRY "${monaco_editor_SOURCE_DIR}/package/esm/vs/editor/editor.main.js")
+endif()
+
+set(MONACO_BUNDLE_JS  "${CMAKE_CURRENT_BINARY_DIR}/monaco-bundle.js")
+set(MONACO_BUNDLE_CSS "${CMAKE_CURRENT_BINARY_DIR}/monaco-bundle.css")
+if(NOT EXISTS "${MONACO_BUNDLE_JS}")
+    message(STATUS "Bundling Monaco Editor with esbuild...")
+    execute_process(
+        COMMAND ${ESBUILD_CMD}
+            "${MONACO_ESM_ENTRY}"
+            --bundle
+            --format=iife
+            --global-name=monaco
+            --minify
+            --loader:.ttf=dataurl
+            --outfile=${MONACO_BUNDLE_JS}
+        RESULT_VARIABLE ESBUILD_RESULT
+        ERROR_VARIABLE ESBUILD_ERROR
+    )
+    if(NOT ESBUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "esbuild failed to bundle Monaco Editor:\n${ESBUILD_ERROR}")
+    endif()
+endif()
+
+set(MONACO_QRC "${CMAKE_CURRENT_BINARY_DIR}/monaco_resources.qrc")
+file(WRITE  "${MONACO_QRC}" "<RCC>\n  <qresource prefix=\"/\">\n")
+file(APPEND "${MONACO_QRC}" "    <file alias=\"monaco-bundle.js\">${MONACO_BUNDLE_JS}</file>\n")
+file(APPEND "${MONACO_QRC}" "    <file alias=\"monaco-bundle.css\">${MONACO_BUNDLE_CSS}</file>\n")
+file(APPEND "${MONACO_QRC}" "  </qresource>\n</RCC>\n")
+
+set(EDITOR_QRC "${CMAKE_CURRENT_BINARY_DIR}/editor_resources.qrc")
+file(WRITE  "${EDITOR_QRC}" "<RCC>\n  <qresource prefix=\"/\">\n")
+file(APPEND "${EDITOR_QRC}"
+    "    <file alias=\"editor.html\">${CMAKE_CURRENT_SOURCE_DIR}/resources/editor.html</file>\n")
+file(APPEND "${EDITOR_QRC}" "  </qresource>\n</RCC>\n")
+
+# Auto-generate Python stub files from PythonModules.cpp and PythonAPI.h
+set(STUBS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/stubs")
+set(STUB_MODULES bot baritone meteor world utils server)
+set(STUB_OUTPUT_FILES)
+foreach(stub ${STUB_MODULES})
+    list(APPEND STUB_OUTPUT_FILES "${STUBS_BUILD_DIR}/${stub}.pyi")
+endforeach()
+
+add_custom_command(
+    OUTPUT ${STUB_OUTPUT_FILES}
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${STUBS_BUILD_DIR}"
+    COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_stubs.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonModules.cpp"
+            --header "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonAPI.h"
+            --output "${STUBS_BUILD_DIR}"
+    DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonModules.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripting/PythonAPI.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_stubs.py"
+    COMMENT "Generating Python API stubs"
+)
+
+add_custom_target(generate_stubs DEPENDS ${STUB_OUTPUT_FILES})
+
+set(STUBS_QRC "${CMAKE_CURRENT_BINARY_DIR}/stubs_resources.qrc")
+file(WRITE  "${STUBS_QRC}" "<RCC>\n  <qresource prefix=\"/stubs\">\n")
+foreach(stub ${STUB_MODULES})
+    file(APPEND "${STUBS_QRC}"
+        "    <file alias=\"${stub}.pyi\">${STUBS_BUILD_DIR}/${stub}.pyi</file>\n")
+endforeach()
+file(APPEND "${STUBS_QRC}" "  </qresource>\n</RCC>\n")
 
 # Generate QtProtobuf files from proto directory
 file(GLOB PROTO_FILES
@@ -101,17 +215,22 @@ qt_add_executable(mc-bot-manager
     ${app_icon_resource_windows}
     pythonlibs.qrc
     icons.qrc
+    "${MONACO_QRC}"
+    "${EDITOR_QRC}"
+    "${STUBS_QRC}"
 )
+
+add_dependencies(mc-bot-manager generate_stubs)
 
 target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::Protobuf
     Qt6::Concurrent
+    Qt6::WebEngineWidgets
     mc-bot-manager-proto
     pybind11::embed
     Python3::Python
-    qutepart
     nbt++
 )
 target_compile_options(mc-bot-manager PRIVATE ${PROJECT_WARNING_FLAGS})
@@ -120,7 +239,6 @@ target_compile_options(mc-bot-manager PRIVATE ${PROJECT_WARNING_FLAGS})
 target_include_directories(mc-bot-manager PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/generated
-    ${CMAKE_CURRENT_BINARY_DIR}/_deps/qutepart-src/include
     ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
 )
 
@@ -151,11 +269,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/PrismLauncher/PrismLauncher.git
     GIT_TAG        develop
     GIT_SHALLOW    TRUE
+    SOURCE_SUBDIR  _no_build
 )
-FetchContent_GetProperties(prismlauncher)
-if(NOT prismlauncher_POPULATED)
-    FetchContent_Populate(prismlauncher)
-endif()
+FetchContent_MakeAvailable(prismlauncher)
 
 find_package(Threads REQUIRED)
 
@@ -205,6 +321,8 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E make_directory "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${Python3_STDLIB}" "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
         COMMAND find "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/lib-dynload" -name "_tkinter*" -delete
+        # Bundle zuban from the standalone Python install
+        COMMAND ${CMAKE_COMMAND} -E copy "${Python3_ROOT_DIR}/bin/zuban" "AppDir/usr/bin/zuban"
         COMMAND linuxdeploy-x86_64.AppImage --appdir AppDir --desktop-file AppDir/usr/share/applications/mc-bot-manager.desktop --plugin qt --output appimage
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Building AppImage in build directory..."

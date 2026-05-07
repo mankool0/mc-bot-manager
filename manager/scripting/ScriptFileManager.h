@@ -13,7 +13,6 @@ struct ScriptState {
 class ScriptFileManager
 {
 public:
-    static QString getBaseScriptDir();
     static QString getScriptDirectory(const QString &botName);
     static bool ensureScriptDirectoryExists(const QString &botName);
 

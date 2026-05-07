@@ -1,5 +1,5 @@
 #include "ScriptFileManager.h"
-#include <QCoreApplication>
+#include "AppPaths.h"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -8,15 +8,9 @@
 #include <QJsonArray>
 #include <QFileInfo>
 
-QString ScriptFileManager::getBaseScriptDir()
-{
-    QString appDir = QCoreApplication::applicationDirPath();
-    return QDir(appDir).filePath("scripts");
-}
-
 QString ScriptFileManager::getScriptDirectory(const QString &botName)
 {
-    return QDir(getBaseScriptDir()).filePath(botName);
+    return QDir(AppPaths::scriptsDir()).filePath(botName);
 }
 
 bool ScriptFileManager::ensureScriptDirectoryExists(const QString &botName)

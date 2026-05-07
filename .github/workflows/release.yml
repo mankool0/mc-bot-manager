@@ -18,8 +18,6 @@ env:
   QT_VERSION: 6.11.0
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
   WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
-  PYTHON_VERSION: '3.12.13'
-  PYTHON_STANDALONE_DATE: '20260414'
 
 jobs:
   build-client:
@@ -73,17 +71,12 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtgrpc
+          modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
 
-      - name: Install protobuf compiler
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
-      - name: Download Python standalone
+      - name: Install protobuf compiler and esbuild
         run: |
-          wget -q -O python-standalone.tar.gz \
-            "https://github.com/indygreg/python-build-standalone/releases/download/${{ env.PYTHON_STANDALONE_DATE }}/cpython-${{ env.PYTHON_VERSION }}+${{ env.PYTHON_STANDALONE_DATE }}-x86_64-unknown-linux-gnu-install_only.tar.gz"
-          tar -xf python-standalone.tar.gz -C ${{ github.workspace }}
-          echo "PYTHON_STANDALONE=${{ github.workspace }}/python" >> $GITHUB_ENV
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          npm install -g esbuild
 
       - name: Download linuxdeploy tools
         run: |
@@ -92,12 +85,19 @@ jobs:
           chmod +x linuxdeploy*.AppImage
           mv linuxdeploy*.AppImage manager/
 
-      - name: Build AppImage
+      - name: Configure CMake for AppImage
         run: |
           cd manager
           mkdir -p build-appimage
           cd build-appimage
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr -DPython3_ROOT_DIR=${{ env.PYTHON_STANDALONE }}
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Install zuban into bundled Python
+        run: manager/build-appimage/_deps/python_standalone-src/bin/python3 -m pip install zuban --quiet
+
+      - name: Build AppImage
+        run: |
+          cd manager/build-appimage
           cmake --build . -j$(nproc)
           strip mc-bot-manager
           mv ../linuxdeploy*.AppImage .
@@ -125,14 +125,16 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          modules: qtgrpc
+          modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
 
-      - name: Install protobuf compiler and ninja
+      - name: Install ninja and esbuild
         shell: cmd
-        run: choco install protoc ninja -y
+        run: |
+          choco install ninja -y
+          npm install -g esbuild
 
-      - name: Setup vcpkg and install zlib
+      - name: Setup vcpkg and install dependencies
         shell: pwsh
         run: |
           if (-Not (Test-Path C:\vcpkg)) {
@@ -141,7 +143,8 @@ jobs:
           if (-Not (Test-Path C:\vcpkg\vcpkg.exe)) {
             C:\vcpkg\bootstrap-vcpkg.bat
           }
-          C:\vcpkg\vcpkg install zlib:x64-windows
+          C:\vcpkg\vcpkg install zlib:x64-windows protobuf:x64-windows
+          echo "C:\vcpkg\installed\x64-windows\tools\protobuf" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
@@ -157,14 +160,23 @@ jobs:
           cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
           cmake --build . --config Release --parallel
 
+      - name: Install zuban into bundled Python
+        working-directory: manager/build
+        shell: pwsh
+        run: |
+          $pyExe = (Get-ChildItem -Path "_deps/python_standalone-src" -Recurse -Filter "python.exe" | Select-Object -First 1).FullName
+          & $pyExe -m pip install zuban --quiet
+
       - name: Deploy Qt dependencies
         working-directory: manager/build
-        shell: cmd
+        shell: pwsh
         run: |
-          mkdir mc-bot-manager
-          copy mc-bot-manager.exe mc-bot-manager\
-          copy mc-bot-manager-proto.dll mc-bot-manager\
-          copy prismhook.dll mc-bot-manager\
+          New-Item -ItemType Directory -Force mc-bot-manager
+          Copy-Item mc-bot-manager.exe mc-bot-manager\
+          Copy-Item mc-bot-manager-proto.dll mc-bot-manager\
+          Copy-Item prismhook.dll mc-bot-manager\
+          $zuban = Get-ChildItem -Path "_deps/python_standalone-src" -Recurse -Filter "zuban.exe" | Select-Object -First 1
+          if ($zuban) { Copy-Item $zuban.FullName mc-bot-manager\ }
           windeployqt mc-bot-manager\mc-bot-manager.exe --release
 
       - name: Package Windows build

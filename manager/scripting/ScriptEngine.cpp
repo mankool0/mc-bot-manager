@@ -2,6 +2,7 @@
 #include "ScriptContext.h"
 #include "ScriptThread.h"
 #include "ScriptFileManager.h"
+#include "AppPaths.h"
 #include "PythonAPI.h"
 #include "EmbeddedPythonLibs.h"
 #include "bot/BotManager.h"
@@ -10,7 +11,12 @@
 #include "logging/LogManager.h"
 #include <QDebug>
 #include <QDateTime>
+#include <QDir>
+#include <QStringList>
 #include <QWriteLocker>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <cstdlib>
 
 namespace py = pybind11;
@@ -135,13 +141,21 @@ void ScriptEngine::cleanupPython()
 void ScriptEngine::setupPythonPath()
 {
     py::module_ sys = py::module_::import("sys");
+    sys.attr("dont_write_bytecode") = true;
     py::list path = sys.attr("path");
 
-    // Add base scripts directory for shared modules between bots
-    QString scriptsBaseDir = ScriptFileManager::getBaseScriptDir();
+    QString scriptsBaseDir = AppPaths::scriptsDir();
     path.append(scriptsBaseDir.toStdString());
 
-    EmbeddedPythonLibs::copyBundledModules(scriptsBaseDir);
+    QString internalLibsDir = AppPaths::pylibsDir();
+    QDir().mkpath(internalLibsDir);
+    path.append(internalLibsDir.toStdString());
+
+    EmbeddedPythonLibs::copyPublicModules(scriptsBaseDir);
+    EmbeddedPythonLibs::copyInternalModules(internalLibsDir);
+
+    QString stubsDir = AppPaths::stubsDir();
+    EmbeddedPythonLibs::copyStubs(stubsDir);
 }
 
 bool ScriptEngine::loadScript(const QString &filename, const QString &code)
@@ -408,4 +422,42 @@ QString ScriptEngine::getBotName() const
 {
     return botInstance ? botInstance->name : QString();
 }
+
+QString ScriptEngine::loadEventData()
+{
+    QJsonArray events;
+    QJsonObject eventParams;
+
+    if (pythonInitialized) {
+        try {
+            py::gil_scoped_acquire acquire;
+            py::module_ evMod = py::module_::import("_events");
+            py::dict paramsDict = evMod.attr("EVENT_HANDLER_PARAMS");
+            for (auto pair : paramsDict) {
+                QString evName = QString::fromStdString(pair.first.cast<std::string>());
+                QString evParamStr = QString::fromStdString(pair.second.cast<std::string>());
+                QJsonObject item;
+                item["label"] = evName;
+                item["insertText"] = evName;
+                item["detail"] = "event";
+                item["kind"] = 13;
+                events.append(item);
+                eventParams[evName] = evParamStr;
+            }
+        } catch (py::error_already_set &e) {
+            qWarning() << "loadEventData: failed to load _events:" << e.what();
+        }
+    }
+
+    QJsonArray apiModules;
+    for (const QString &name : EmbeddedPythonLibs::getStubModuleNames())
+        apiModules.append(name);
+
+    QJsonObject root;
+    root["events"] = events;
+    root["event_params"] = eventParams;
+    root["api_modules"] = apiModules;
+    return QJsonDocument(root).toJson(QJsonDocument::Compact);
+}
+
 

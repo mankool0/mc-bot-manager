@@ -46,6 +46,8 @@ public:
     QString getScriptError(const QString &filename) const;
     QString getBotName() const;
 
+    QString loadEventData();
+
 signals:
     void scriptLoaded(const QString &filename);
     void scriptUnloaded(const QString &filename);
