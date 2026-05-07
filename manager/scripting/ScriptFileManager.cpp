@@ -1,5 +1,4 @@
 #include "ScriptFileManager.h"
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -7,11 +6,26 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QFileInfo>
+#include <QStandardPaths>
+
+static QString appDataDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+}
 
 QString ScriptFileManager::getBaseScriptDir()
 {
-    QString appDir = QCoreApplication::applicationDirPath();
-    return QDir(appDir).filePath("scripts");
+    return QDir(appDataDir()).filePath("scripts");
+}
+
+QString ScriptFileManager::getDefaultLogDir()
+{
+    return QDir(appDataDir()).filePath("logs");
+}
+
+QString ScriptFileManager::getDefaultWorldSaveDir()
+{
+    return QDir(appDataDir()).filePath("worldSaves");
 }
 
 QString ScriptFileManager::getScriptDirectory(const QString &botName)

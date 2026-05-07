@@ -3,12 +3,12 @@
 #include "AppColors.h"
 #include "bot/BotManager.h"
 #include "logging/LogManager.h"
+#include "scripting/ScriptFileManager.h"
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QSettings>
 #include <QGuiApplication>
 #include <QStyleHints>
-#include <QCoreApplication>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QScrollArea>
@@ -294,7 +294,7 @@ void GlobalSettingsDialog::loadSettings()
 
     bool loggingEnabled = settings.value("Logging/enabled", true).toBool();
     loggingEnabledCheckBox->setChecked(loggingEnabled);
-    QString defaultLogDir = QCoreApplication::applicationDirPath() + "/logs";
+    QString defaultLogDir = ScriptFileManager::getDefaultLogDir();
     logDirEdit->setText(settings.value("Logging/logDir", defaultLogDir).toString());
     logMaxSizeMiBSpinBox->setValue(settings.value("Logging/maxSizeMiB", 10).toInt());
     logMaxFilesSpinBox->setValue(settings.value("Logging/maxFiles", 0).toInt());
