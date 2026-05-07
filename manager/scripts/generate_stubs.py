@@ -72,6 +72,10 @@ def to_py_default(raw):
     if re.match(r'^-?\d+$', raw): return raw
     if re.match(r'^-?\d+\.\d+$', raw): return raw
     if raw == '""': return '""'
+    if '::' in raw:
+        parts = [p.strip() for p in raw.split('::') if p.strip()]
+        if len(parts) >= 2:
+            return f'{parts[-2]}.{parts[-1]}'
     return '...'
 
 

@@ -1,5 +1,5 @@
 #include "ScriptsWidget.h"
-#include "ZubanClient.h"
+#include "scripting/ZubanClient.h"
 #include "scripting/ScriptEngine.h"
 #include "scripting/ScriptContext.h"
 #include "scripting/ScriptFileManager.h"

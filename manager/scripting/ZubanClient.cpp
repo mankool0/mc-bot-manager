@@ -1,10 +1,13 @@
 #include "ZubanClient.h"
 #include "logging/LogManager.h"
+#include "EmbeddedPythonLibs.h"
 #include <QProcess>
 #include <QJsonDocument>
 #include <QMetaObject>
 #include <QStandardPaths>
 #include <QDir>
+#include <QFile>
+#include <QRegularExpression>
 #include <QProcessEnvironment>
 #include <QCoreApplication>
 #include <QUrl>
@@ -373,22 +376,66 @@ QString ZubanClient::signatureHelp(const QString &code, int line, int col)
     QString sigLabel = sig["label"].toString();
     int activeParam = resultObj["activeParameter"].toInt(0);
 
-    QJsonArray paramsArr;
-    QStringList paramLabels;
-    for (const QJsonValue &pv : sig["parameters"].toArray()) {
-        QJsonObject p = pv.toObject();
-        QString label;
-        QJsonValue lv = p["label"];
-        if (lv.isString()) {
-            label = lv.toString();
-        } else {
-            QJsonArray offsets = lv.toArray();
-            if (offsets.size() == 2) {
-                label = sigLabel.mid(offsets[0].toInt(), offsets[1].toInt() - offsets[0].toInt());
+    // Zuban omits the function name and replaces all defaults with '...' in sigLabel.
+    // Extract the function name from the code and look up the full signature from stubs.
+    QString funcName;
+    const QStringList codeLines = code.split('\n');
+    if (line - 1 >= 0 && line - 1 < codeLines.size()) {
+        const QString &lineStr = codeLines[line - 1];
+        int depth = 0;
+        for (int i = col - 1; i >= 0; i--) {
+            QChar c = lineStr[i];
+            if (c == ')') { depth++; }
+            else if (c == '(') {
+                if (depth == 0) {
+                    int end = i;
+                    int start = end - 1;
+                    while (start >= 0 && (lineStr[start].isLetterOrNumber() || lineStr[start] == '_'))
+                        start--;
+                    funcName = lineStr.mid(start + 1, end - start - 1);
+                    break;
+                }
+                depth--;
             }
         }
-        paramsArr.append(label);
-        paramLabels << label;
+    }
+
+    if (!funcName.isEmpty()) {
+        const QStringList modules = EmbeddedPythonLibs::getStubModuleNames();
+        QRegularExpression re(
+            QString(R"(def %1\(([^)]*)\)\s*->\s*([^:\n]+):)")
+                .arg(QRegularExpression::escape(funcName)));
+        for (const QString &mod : modules) {
+            QFile f(QString(":/stubs/%1.pyi").arg(mod));
+            if (!f.open(QIODevice::ReadOnly))
+                continue;
+            auto m = re.match(QString::fromUtf8(f.readAll()));
+            if (m.hasMatch()) {
+                sigLabel = QString("%1(%2) -> %3").arg(funcName, m.captured(1), m.captured(2).trimmed());
+                break;
+            }
+        }
+    }
+
+    // Split params from sigLabel at depth-0 commas so defaults are included.
+    QJsonArray paramsArr;
+    QStringList paramLabels;
+    int open = sigLabel.indexOf('(');
+    int close = sigLabel.lastIndexOf(')');
+    if (open >= 0 && close > open) {
+        QString paramsStr = sigLabel.mid(open + 1, close - open - 1);
+        int depth = 0, start = 0;
+        for (int i = 0; i <= paramsStr.length(); i++) {
+            if (i == paramsStr.length() || (paramsStr[i] == ',' && depth == 0)) {
+                QString p = paramsStr.mid(start, i - start).trimmed();
+                if (!p.isEmpty()) { paramsArr.append(p); paramLabels << p; }
+                start = i + 1;
+            } else if (paramsStr[i] == '(' || paramsStr[i] == '[') {
+                depth++;
+            } else if (paramsStr[i] == ')' || paramsStr[i] == ']') {
+                depth--;
+            }
+        }
     }
 
     QJsonObject out;
