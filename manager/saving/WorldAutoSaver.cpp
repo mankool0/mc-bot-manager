@@ -176,7 +176,7 @@ void WorldAutoSaver::flushPeriodic() {
 }
 
 void WorldAutoSaver::initializeWorld() {
-    if (WorldExporter::createWorldDirectories(m_worldPath)) {
+    if (WorldExporter::createWorldDirectories(m_worldPath, m_version.dataVersion)) {
         if (WorldExporter::createLevelDat(m_worldPath, 0, 80, 0, m_serverIp, m_version)) {
             m_isInitialized = true;
             LogManager::log(QString("Successfully created new world structure for %1 with version %2 (data version %3)")

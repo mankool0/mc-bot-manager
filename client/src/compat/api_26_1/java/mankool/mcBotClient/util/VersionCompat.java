@@ -2,6 +2,7 @@ package mankool.mcBotClient.util;
 
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
+import mankool.mcbot.protocol.Commands.ClickContainerSlotCommand;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -10,6 +11,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,6 +20,9 @@ import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelSummary;
 
 public class VersionCompat {
@@ -62,7 +67,7 @@ public class VersionCompat {
     }
 
     public static void screenCharTyped(Screen screen, int codePoint) {
-        screen.charTyped(new CharacterEvent(codePoint, 0));
+        screen.charTyped(new CharacterEvent(codePoint));
     }
 
     public static void screenKeyPressed(Screen screen, int key, int modifiers) {
@@ -103,5 +108,28 @@ public class VersionCompat {
 
     public static LevelSummary getLevelSummary(WorldSelectionList.WorldListEntry entry) {
         return entry.getLevelSummary();
+    }
+
+    public static int chunkPosX(ChunkPos pos) {
+        return pos.x();
+    }
+
+    public static int chunkPosZ(ChunkPos pos) {
+        return pos.z();
+    }
+
+    public static void clickContainerSlot(MultiPlayerGameMode gameMode, int containerId, int slotIndex, int button, ClickContainerSlotCommand.ClickType protoClickType, Player player) {
+        ContainerInput containerInput;
+        switch (protoClickType) {
+            case PICKUP: containerInput = ContainerInput.PICKUP; break;
+            case QUICK_MOVE: containerInput = ContainerInput.QUICK_MOVE; break;
+            case SWAP: containerInput = ContainerInput.SWAP; break;
+            case CLONE: containerInput = ContainerInput.CLONE; break;
+            case THROW: containerInput = ContainerInput.THROW; break;
+            case QUICK_CRAFT: containerInput = ContainerInput.QUICK_CRAFT; break;
+            case PICKUP_ALL: containerInput = ContainerInput.PICKUP_ALL; break;
+            default: throw new IllegalArgumentException("Unknown click type: " + protoClickType);
+        }
+        gameMode.handleContainerInput(containerId, slotIndex, button, containerInput, player);
     }
 }

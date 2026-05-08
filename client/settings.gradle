@@ -7,3 +7,18 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+// Loom reads 'fabric.loom.disableObfuscation' during plugin application (inside the
+// plugins {} block), before any top-level build script code can run. Set it here via
+// beforeProject so it is available in time.
+def props = new Properties()
+file('gradle.properties').withInputStream { props.load(it) }
+// Command-line -P overrides take precedence over gradle.properties.
+def mcVersion = settings.startParameter.projectProperties.getOrDefault(
+    'minecraft_version', props.getProperty('minecraft_version', ''))
+// Versions not following the "1.X.Y" scheme (e.g. 26.x) are unobfuscated Mojang-native builds.
+if (!mcVersion.startsWith('1.')) {
+    gradle.beforeProject { project ->
+        project.ext['fabric.loom.disableObfuscation'] = 'true'
+    }
+}

@@ -57,17 +57,14 @@ ChunkSavingWorker::~ChunkSavingWorker() = default;
 
 void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,
                                       const QString& worldPath, int dataVersion) {
-    // Determine dimension path
-    QString dimensionPath;
+    // Determine dimension path (version-aware: 26.1+ uses dimensions/ subdirectory)
+    QString dimensionPath = WorldExporter::getDimensionPath(worldPath, chunk.dimension, dataVersion);
     QString dimensionName;
     if (chunk.dimension == "minecraft:the_nether") {
-        dimensionPath = worldPath + "/DIM-1";
         dimensionName = "Nether";
     } else if (chunk.dimension == "minecraft:overworld") {
-        dimensionPath = worldPath;
         dimensionName = "Overworld";
     } else if (chunk.dimension == "minecraft:the_end") {
-        dimensionPath = worldPath + "/DIM1";
         dimensionName = "End";
     } else {
         LogManager::log(QString("Cannot save chunk with unknown dimension: %1").arg(chunk.dimension), LogManager::Warning);
@@ -151,18 +148,12 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
 void ChunkSavingWorker::processEntityChunk(int chunkX, int chunkZ, const QString& dimension,
                                             const QVector<EntityData>& entities,
                                             const QString& worldPath, int dataVersion) {
-    // Determine entities directory
-    QString entitiesDir;
-    if (dimension == "minecraft:the_nether") {
-        entitiesDir = worldPath + "/DIM-1/entities";
-    } else if (dimension == "minecraft:overworld") {
-        entitiesDir = worldPath + "/entities";
-    } else if (dimension == "minecraft:the_end") {
-        entitiesDir = worldPath + "/DIM1/entities";
-    } else {
+    // Determine entities directory (version-aware: 26.1+ uses dimensions/ subdirectory)
+    if (dimension != "minecraft:the_nether" && dimension != "minecraft:overworld" && dimension != "minecraft:the_end") {
         LogManager::log(QString("Cannot save entities with unknown dimension: %1").arg(dimension), LogManager::Warning);
         return;
     }
+    QString entitiesDir = WorldExporter::getDimensionPath(worldPath, dimension, dataVersion) + "/entities";
 
     QDir dir;
     if (!dir.exists(entitiesDir)) {
@@ -183,8 +174,9 @@ void ChunkSavingWorker::processPlayerData(const PlayerSaveData& data, const QStr
 
     // If ender chest wasn't opened this session, preserve EnderItems from the existing file
     // rather than overwriting with an empty list.
+    QString playerdataDir = WorldExporter::getPlayerDataPath(worldPath, dataVersion);
     if (data.enderItems.isEmpty()) {
-        QString filePath = worldPath + "/playerdata/" + data.uuid + ".dat";
+        QString filePath = playerdataDir + "/" + data.uuid + ".dat";
         auto existing = readEnderItemsFromPlayerDat(filePath);
         if (existing.has_value() && existing->size() > 0) {
             playerNBT.insert("EnderItems", std::move(*existing));
@@ -227,8 +219,6 @@ void ChunkSavingWorker::processPlayerData(const PlayerSaveData& data, const QStr
         return;
     }
 
-    // Write to playerdata/{uuid}.dat
-    QString playerdataDir = worldPath + "/playerdata";
     QDir dir;
     if (!dir.exists(playerdataDir)) {
         dir.mkpath(playerdataDir);

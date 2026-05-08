@@ -43,6 +43,7 @@ public:
 
     // Data version thresholds
     static constexpr int DATA_VERSION_1_21_5 = 4325;  // equipment field added for players
+    static constexpr int DATA_VERSION_26_1 = 4786;    // 26.1 release; new world layout (dimensions/ subdir, players/data/, split level.dat)
 
 private:
     // Builds {id, count, components} without a Slot field. Used for equipment compound and as base for itemStackToNBT.
