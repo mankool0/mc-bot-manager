@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        mc_version: ['1.21.4', '1.21.11']
+        mc_version: ['1.21.4', '1.21.11', '26.1.2']
 
     steps:
       - name: Checkout repo
