@@ -110,8 +110,13 @@ private:
 
     QMap<QString, QDateTime> m_lastAccountRefreshTime;
     QMap<QString, QDateTime> m_lastBotLaunchTime;
-    QMap<QString, int>       m_tokenRefreshAttempts;
-    QSet<QString>            m_refreshingAccounts;
+    QMap<QString, int> m_tokenRefreshAttempts;
+    QSet<QString> m_refreshingAccounts;
+    QMap<QString, QList<QDateTime>> m_recentCrashTimes;
+
+    bool m_crashLoopProtectionEnabled = true;
+    int m_crashMaxCrashes = 3;
+    int m_crashWindowSecs = 300;
 
     void setupUI();
     void updateInstancesTable();

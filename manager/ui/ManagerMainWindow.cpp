@@ -1288,7 +1288,12 @@ void ManagerMainWindow::updateAccountComboBox()
 void ManagerMainWindow::openGlobalSettings()
 {
     GlobalSettingsDialog dialog(this);
-    dialog.exec();
+    if (dialog.exec() == QDialog::Accepted) {
+        QSettings settings("MCBotManager", "MCBotManager");
+        m_crashLoopProtectionEnabled = settings.value("CrashRecovery/enabled", true).toBool();
+        m_crashMaxCrashes = settings.value("CrashRecovery/maxCrashes", 3).toInt();
+        m_crashWindowSecs = settings.value("CrashRecovery/windowMinutes", 5).toInt() * 60;
+    }
 }
 
 void ManagerMainWindow::launchPrismLauncher()
@@ -1489,6 +1494,10 @@ void ManagerMainWindow::loadSettings()
     ui->actionNetworkStats->setChecked(networkStatsVisible);
 
     loadColumnVisibility();
+
+    m_crashLoopProtectionEnabled = settings.value("CrashRecovery/enabled", true).toBool();
+    m_crashMaxCrashes = settings.value("CrashRecovery/maxCrashes", 3).toInt();
+    m_crashWindowSecs = settings.value("CrashRecovery/windowMinutes", 5).toInt() * 60;
 }
 
 void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotConfig &bot, int index)
@@ -1888,6 +1897,29 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
             }
         } else if (shouldAutoRestart) {
             m_tokenRefreshAttempts.remove(botName);
+
+            if (m_crashLoopProtectionEnabled) {
+                QDateTime now = QDateTime::currentDateTime();
+                QList<QDateTime> &crashes = m_recentCrashTimes[botName];
+                crashes.append(now);
+                crashes.removeIf([&now, this](const QDateTime &t) {
+                    return t.secsTo(now) > m_crashWindowSecs;
+                });
+
+                if (crashes.size() > m_crashMaxCrashes) {
+                    LogManager::log(
+                        QString("[%1] Crashed %2 times in the last %3 minutes - leaving bot offline to avoid crash loop")
+                            .arg(botName)
+                            .arg(crashes.size())
+                            .arg(m_crashWindowSecs / 60),
+                        LogManager::Error);
+                    crashes.clear();
+                    return;
+                }
+            } else {
+                m_recentCrashTimes.remove(botName);
+            }
+
             LogManager::log(QString("[%1] Crashed, auto-restarting...").arg(botName), LogManager::Warning);
             QTimer::singleShot(2000, this, [this, botName]() {
                 launchBotByName(botName);
