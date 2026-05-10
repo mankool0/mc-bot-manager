@@ -70,6 +70,9 @@ public:
                               const QString& worldName,
                               const MinecraftVersion& version);
 
+    // Returns the DataVersion from an existing level.dat, or 0 if unreadable.
+    static int readLevelDatDataVersion(const QString& worldPath);
+
     // Pre-26.1: overworld=worldPath, nether=DIM-1, end=DIM1. 26.1+: dimensions/minecraft/{dim_name}/
     static QString getDimensionPath(const QString& worldPath, const QString& dimension, int dataVersion);
     // Pre-26.1: playerdata/. 26.1+: players/data/

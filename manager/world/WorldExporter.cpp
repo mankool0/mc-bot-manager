@@ -4,8 +4,10 @@
 #include "logging/LogManager.h"
 #include <QDir>
 #include <QFile>
+#include <io/stream_reader.h>
 #include <io/stream_writer.h>
 #include <io/ozlibstream.h>
+#include <nbt_tags.h>
 #include <fstream>
 #include <sstream>
 #include <zlib.h>
@@ -204,6 +206,46 @@ std::tuple<int, int, int, int> WorldExporter::getChunkBounds(const BotWorldData&
     return {minX, maxX, minZ, maxZ};
 }
 
+static void migrateToNewWorldLayout(const QString& worldPath) {
+    QDir dir(worldPath);
+
+    bool hasOldLayout = dir.exists("region") || dir.exists("playerdata") || dir.exists("DIM-1") || dir.exists("DIM1");
+    bool hasNewLayout = dir.exists("dimensions");
+
+    if (!hasOldLayout || hasNewLayout)
+        return;
+
+    LogManager::log(QString("Migrating world save at %1 from pre-26.1 to 26.1+ layout").arg(worldPath), LogManager::Info);
+
+    dir.mkpath("dimensions/minecraft/overworld");
+    dir.mkpath("dimensions/minecraft/the_nether");
+    dir.mkpath("dimensions/minecraft/the_end");
+
+    if (dir.exists("region"))
+        dir.rename("region", "dimensions/minecraft/overworld/region");
+    if (dir.exists("entities"))
+        dir.rename("entities", "dimensions/minecraft/overworld/entities");
+
+    if (dir.exists("DIM-1/region"))
+        dir.rename("DIM-1/region", "dimensions/minecraft/the_nether/region");
+    if (dir.exists("DIM-1/entities"))
+        dir.rename("DIM-1/entities", "dimensions/minecraft/the_nether/entities");
+    dir.rmdir("DIM-1");
+
+    if (dir.exists("DIM1/region"))
+        dir.rename("DIM1/region", "dimensions/minecraft/the_end/region");
+    if (dir.exists("DIM1/entities"))
+        dir.rename("DIM1/entities", "dimensions/minecraft/the_end/entities");
+    dir.rmdir("DIM1");
+
+    if (dir.exists("playerdata")) {
+        dir.mkpath("players");
+        dir.rename("playerdata", "players/data");
+    }
+
+    LogManager::log(QString("World layout migration complete for %1").arg(worldPath), LogManager::Success);
+}
+
 bool WorldExporter::createWorldDirectories(const QString& outputPath, int dataVersion) {
     QDir dir;
 
@@ -212,6 +254,8 @@ bool WorldExporter::createWorldDirectories(const QString& outputPath, int dataVe
     }
 
     if (usesNewWorldLayout(dataVersion)) {
+        migrateToNewWorldLayout(outputPath);
+
         dir.mkpath(outputPath + "/dimensions/minecraft/overworld/region");
         dir.mkpath(outputPath + "/dimensions/minecraft/overworld/entities");
         dir.mkpath(outputPath + "/dimensions/minecraft/the_nether/entities");
@@ -230,6 +274,47 @@ bool WorldExporter::createWorldDirectories(const QString& outputPath, int dataVe
     }
 
     return true;
+}
+
+int WorldExporter::readLevelDatDataVersion(const QString& worldPath) {
+    QFile f(worldPath + "/level.dat");
+    if (!f.open(QIODevice::ReadOnly)) return 0;
+    QByteArray compressed = f.readAll();
+    f.close();
+
+    z_stream zs;
+    memset(&zs, 0, sizeof(zs));
+    if (inflateInit2(&zs, 15 + 16) != Z_OK) return 0;
+
+    zs.next_in = reinterpret_cast<Bytef*>(compressed.data());
+    zs.avail_in = static_cast<uInt>(compressed.size());
+
+    std::string decompressed;
+    char buf[32768];
+    int ret;
+    do {
+        zs.next_out = reinterpret_cast<Bytef*>(buf);
+        zs.avail_out = sizeof(buf);
+        ret = inflate(&zs, Z_NO_FLUSH);
+        if (ret != Z_OK && ret != Z_STREAM_END) { inflateEnd(&zs); return 0; }
+        decompressed.append(buf, sizeof(buf) - zs.avail_out);
+    } while (ret == Z_OK);
+    inflateEnd(&zs);
+
+    try {
+        std::istringstream ss(decompressed, std::ios::binary);
+        auto [name, rootPtr] = nbt::io::read_compound(ss);
+        if (!rootPtr) return 0;
+        auto& root = *rootPtr;
+        if (root.has_key("Data", nbt::tag_type::Compound)) {
+            auto& data = root.at("Data").as<nbt::tag_compound>();
+            if (data.has_key("DataVersion", nbt::tag_type::Int)) {
+                return static_cast<int>(data.at("DataVersion").as<nbt::tag_int>());
+            }
+        }
+    } catch (...) {}
+
+    return 0;
 }
 
 bool WorldExporter::createLevelDat(const QString& outputPath,
