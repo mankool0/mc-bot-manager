@@ -364,22 +364,30 @@ bool WorldExporter::createLevelDat(const QString& outputPath,
 
     if (usesNewWorldLayout(version.dataVersion)) {
         // 26.1+: WorldGenSettings moves to data/minecraft/world_gen_settings.dat
+        // MC SavedData format: root has "DataVersion" + "data" compound with actual fields
         // generate_features renamed to generate_structures
-        nbt::tag_compound worldGen;
-        worldGen.insert("bonus_chest", nbt::tag_byte(0));
-        worldGen.insert("generate_structures", nbt::tag_byte(0));
-        worldGen.insert("seed", nbt::tag_long(0));
-        worldGen.insert("dimensions", std::move(dimensions));
-        writeNBTFile(outputPath + "/data/minecraft/world_gen_settings.dat", std::move(worldGen));
+        nbt::tag_compound worldGenData;
+        worldGenData.insert("bonus_chest", nbt::tag_byte(0));
+        worldGenData.insert("generate_structures", nbt::tag_byte(0));
+        worldGenData.insert("seed", nbt::tag_long(0));
+        worldGenData.insert("dimensions", std::move(dimensions));
+        nbt::tag_compound worldGenRoot;
+        worldGenRoot.insert("DataVersion", nbt::tag_int(version.dataVersion));
+        worldGenRoot.insert("data", std::move(worldGenData));
+        writeNBTFile(outputPath + "/data/minecraft/world_gen_settings.dat", std::move(worldGenRoot));
 
         // 26.1+: weather moves to data/minecraft/weather.dat with renamed keys
-        nbt::tag_compound weather;
-        weather.insert("raining", nbt::tag_byte(0));
-        weather.insert("rain_time", nbt::tag_int(2147483647));
-        weather.insert("thundering", nbt::tag_byte(0));
-        weather.insert("thunder_time", nbt::tag_int(2147483647));
-        weather.insert("clear_weather_time", nbt::tag_int(2147483647));
-        writeNBTFile(outputPath + "/data/minecraft/weather.dat", std::move(weather));
+        // MC SavedData format: root has "DataVersion" + "data" compound with actual fields
+        nbt::tag_compound weatherData;
+        weatherData.insert("raining", nbt::tag_byte(0));
+        weatherData.insert("rain_time", nbt::tag_int(2147483647));
+        weatherData.insert("thundering", nbt::tag_byte(0));
+        weatherData.insert("thunder_time", nbt::tag_int(2147483647));
+        weatherData.insert("clear_weather_time", nbt::tag_int(2147483647));
+        nbt::tag_compound weatherRoot;
+        weatherRoot.insert("DataVersion", nbt::tag_int(version.dataVersion));
+        weatherRoot.insert("data", std::move(weatherData));
+        writeNBTFile(outputPath + "/data/minecraft/weather.dat", std::move(weatherRoot));
     } else {
         nbt::tag_compound worldGen;
         worldGen.insert("bonus_chest", nbt::tag_byte(0));
