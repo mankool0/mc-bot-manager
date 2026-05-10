@@ -326,8 +326,8 @@ public class WorldOutbound extends BaseOutbound {
         }
 
         World.ChunkDataMessage.Builder chunkBuilder = World.ChunkDataMessage.newBuilder()
-            .setChunkX(chunk.getPos().x)
-            .setChunkZ(chunk.getPos().z)
+            .setChunkX(VersionCompat.chunkPosX(chunk.getPos()))
+            .setChunkZ(VersionCompat.chunkPosZ(chunk.getPos()))
             .setDimension(VersionCompat.keyId(client.level.dimension()))
             .setMinY(chunk.getMinY())
             .setMaxY(chunk.getMaxY());

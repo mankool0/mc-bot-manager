@@ -2,10 +2,12 @@ package mankool.mcBotClient.util;
 
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
+import mankool.mcbot.protocol.Commands.ClickContainerSlotCommand;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
@@ -13,6 +15,9 @@ import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelSummary;
 
 public class VersionCompat {
@@ -105,5 +110,28 @@ public class VersionCompat {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public static int chunkPosX(ChunkPos pos) {
+        return pos.x;
+    }
+
+    public static int chunkPosZ(ChunkPos pos) {
+        return pos.z;
+    }
+
+    public static void clickContainerSlot(MultiPlayerGameMode gameMode, int containerId, int slotIndex, int button, ClickContainerSlotCommand.ClickType protoClickType, Player player) {
+        ClickType clickType;
+        switch (protoClickType) {
+            case PICKUP: clickType = ClickType.PICKUP; break;
+            case QUICK_MOVE: clickType = ClickType.QUICK_MOVE; break;
+            case SWAP: clickType = ClickType.SWAP; break;
+            case CLONE: clickType = ClickType.CLONE; break;
+            case THROW: clickType = ClickType.THROW; break;
+            case QUICK_CRAFT: clickType = ClickType.QUICK_CRAFT; break;
+            case PICKUP_ALL: clickType = ClickType.PICKUP_ALL; break;
+            default: throw new IllegalArgumentException("Unknown click type: " + protoClickType);
+        }
+        gameMode.handleInventoryMouseClick(containerId, slotIndex, button, clickType, player);
     }
 }

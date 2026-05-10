@@ -1,6 +1,7 @@
 package mankool.mcBotClient.mixin.client;
 
 import mankool.mcBotClient.handler.outbound.WorldOutbound;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -72,7 +73,7 @@ public class ClientPacketListenerMixin {
     private void onChunkUnload(ClientboundForgetLevelChunkPacket packet, CallbackInfo ci) {
         WorldOutbound handler = WorldOutbound.getInstance();
         if (handler != null) {
-            handler.onChunkUnloaded(packet.pos().x, packet.pos().z);
+            handler.onChunkUnloaded(VersionCompat.chunkPosX(packet.pos()), VersionCompat.chunkPosZ(packet.pos()));
         }
     }
 

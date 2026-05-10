@@ -63,12 +63,21 @@ public:
                                    const QVector<EntityData>& entities,
                                    const QString& worldPath, int dataVersion);
     static std::tuple<int, int, int, int> getChunkBounds(const BotWorldData& worldData);  // Returns (minX, maxX, minZ, maxZ)
-    static bool createWorldDirectories(const QString& outputPath);
+    static bool createWorldDirectories(const QString& outputPath, int dataVersion);
 
     static bool createLevelDat(const QString& outputPath,
                               int spawnX, int spawnY, int spawnZ,
                               const QString& worldName,
                               const MinecraftVersion& version);
+
+    // Returns the DataVersion from an existing level.dat, or 0 if unreadable.
+    static int readLevelDatDataVersion(const QString& worldPath);
+
+    // Pre-26.1: overworld=worldPath, nether=DIM-1, end=DIM1. 26.1+: dimensions/minecraft/{dim_name}/
+    static QString getDimensionPath(const QString& worldPath, const QString& dimension, int dataVersion);
+    // Pre-26.1: playerdata/. 26.1+: players/data/
+    static QString getPlayerDataPath(const QString& worldPath, int dataVersion);
+    static bool usesNewWorldLayout(int dataVersion);
 
 private:
     static bool createSessionLock(const QString& outputPath);

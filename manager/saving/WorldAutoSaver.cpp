@@ -38,13 +38,22 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
     connect(m_periodicFlushTimer, &QTimer::timeout, this, &WorldAutoSaver::flushPeriodic);
     m_periodicFlushTimer->start();
 
-    // Create world directories if they don't exist
+    // Create world directories if they don't exist, or migrate/update if they do
     QDir dir(m_worldPath);
     if (!dir.exists()) {
         LogManager::log(QString("World directory doesn't exist for %1, creating new world...").arg(serverIp), LogManager::Info);
         initializeWorld();
     } else {
         LogManager::log(QString("World directory exists for %1, appending to existing world.").arg(serverIp), LogManager::Info);
+        // Migrate directory layout if needed (e.g. pre-26.1 -> 26.1+ layout). Idempotent.
+        WorldExporter::createWorldDirectories(m_worldPath, m_version.dataVersion);
+        // Update level.dat only when version changed to avoid unnecessary writes.
+        int existingDataVersion = WorldExporter::readLevelDatDataVersion(m_worldPath);
+        if (existingDataVersion != m_version.dataVersion) {
+            LogManager::log(QString("MC version changed for %1 (was %2, now %3) - updating level.dat")
+                           .arg(serverIp).arg(existingDataVersion).arg(m_version.dataVersion), LogManager::Info);
+            WorldExporter::createLevelDat(m_worldPath, 0, 80, 0, m_serverIp, m_version);
+        }
         m_isInitialized = true;
     }
 }
@@ -176,7 +185,7 @@ void WorldAutoSaver::flushPeriodic() {
 }
 
 void WorldAutoSaver::initializeWorld() {
-    if (WorldExporter::createWorldDirectories(m_worldPath)) {
+    if (WorldExporter::createWorldDirectories(m_worldPath, m_version.dataVersion)) {
         if (WorldExporter::createLevelDat(m_worldPath, 0, 80, 0, m_serverIp, m_version)) {
             m_isInitialized = true;
             LogManager::log(QString("Successfully created new world structure for %1 with version %2 (data version %3)")
