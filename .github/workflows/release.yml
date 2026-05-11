@@ -72,6 +72,15 @@ jobs:
           target: desktop
           arch: linux_gcc_64
           modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
+          cache: true
+
+      - name: Cache CMake FetchContent deps
+        uses: actions/cache@v5
+        with:
+          path: manager/build-appimage/_deps
+          key: fetchcontent-linux-${{ hashFiles('manager/CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-linux-
 
       - name: Install protobuf compiler and esbuild
         run: |
@@ -127,6 +136,7 @@ jobs:
           arch: win64_msvc2022_64
           modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
+          cache: true
 
       - name: Install ninja and esbuild
         shell: cmd
@@ -141,6 +151,14 @@ jobs:
           key: vcpkg-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
+
+      - name: Cache CMake FetchContent deps
+        uses: actions/cache@v5
+        with:
+          path: manager\build\_deps
+          key: fetchcontent-windows-${{ hashFiles('manager/CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-windows-
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
