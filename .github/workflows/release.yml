@@ -18,6 +18,7 @@ env:
   QT_VERSION: 6.11.0
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
   WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   build-client:
@@ -28,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -51,7 +52,7 @@ jobs:
             -Pmod_version="$(git describe --always --tags --first-parent | sed 's/^v//')"
 
       - name: Upload JAR artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: client-mod-${{ matrix.mc_version }}
           path: client/build/libs/*.jar
@@ -62,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -72,6 +73,18 @@ jobs:
           target: desktop
           arch: linux_gcc_64
           modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
+          cache: true
+
+      - name: Cache CMake FetchContent deps
+        uses: actions/cache@v5
+        with:
+          path: manager/build-appimage/_deps
+          key: fetchcontent-linux-${{ hashFiles('manager/CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-linux-
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install protobuf compiler and esbuild
         run: |
@@ -90,7 +103,7 @@ jobs:
           cd manager
           mkdir -p build-appimage
           cd build-appimage
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
 
       - name: Install zuban into bundled Python
         run: manager/build-appimage/_deps/python_standalone-src/bin/python3 -m pip install zuban --quiet
@@ -106,17 +119,17 @@ jobs:
           mv MC_Bot_Manager*.AppImage ../../${{ env.APPIMAGE_ARTIFACT }}
 
       - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: linux-appimage
           path: ${{ env.APPIMAGE_ARTIFACT }}
 
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -127,6 +140,7 @@ jobs:
           arch: win64_msvc2022_64
           modules: qtgrpc qtwebengine qtwebchannel qtpositioning qtserialport
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
+          cache: true
 
       - name: Install ninja and esbuild
         shell: cmd
@@ -134,17 +148,32 @@ jobs:
           choco install ninja -y
           npm install -g esbuild
 
-      - name: Setup vcpkg and install dependencies
-        shell: pwsh
-        run: |
-          if (-Not (Test-Path C:\vcpkg)) {
-            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-          }
-          if (-Not (Test-Path C:\vcpkg\vcpkg.exe)) {
-            C:\vcpkg\bootstrap-vcpkg.bat
-          }
-          C:\vcpkg\vcpkg install zlib:x64-windows protobuf:x64-windows
-          echo "C:\vcpkg\installed\x64-windows\tools\protobuf" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v5
+        with:
+          path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-archives-${{ runner.os }}-
+
+      - name: Cache vcpkg installed
+        uses: actions/cache@v5
+        with:
+          path: manager\build\vcpkg_installed
+          key: vcpkg-installed-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-installed-${{ runner.os }}-
+
+      - name: Cache CMake FetchContent deps
+        uses: actions/cache@v5
+        with:
+          path: manager\build\_deps
+          key: fetchcontent-windows-${{ hashFiles('manager/CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-windows-
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
@@ -157,7 +186,7 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_POLICY_CMP0141=NEW
           cmake --build . --config Release --parallel
 
       - name: Install zuban into bundled Python
@@ -185,7 +214,7 @@ jobs:
         run: 7z a ..\..\${{ env.WINDOWS_ARTIFACT }} mc-bot-manager\
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: windows-zip
           path: ${{ env.WINDOWS_ARTIFACT }}
@@ -198,22 +227,22 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download client artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: client-mod-*
           path: ./client-mod
           merge-multiple: true
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: linux-appimage
 
       - name: Download Windows artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: windows-zip
 
@@ -223,7 +252,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create snapshot release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: snapshot
           name: Snapshot Build
@@ -248,7 +277,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -281,24 +310,24 @@ jobs:
           fi
 
       - name: Download client artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: client-mod-*
           path: ./client-mod
           merge-multiple: true
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: linux-appimage
 
       - name: Download Windows artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: windows-zip
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             client-mod/*.jar
@@ -330,27 +359,27 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download client artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: client-mod-*
           path: ./client-mod
           merge-multiple: true
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: linux-appimage
 
       - name: Download Windows artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: windows-zip
 
       - name: Create manual release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: manual-release
           name: Manual Release

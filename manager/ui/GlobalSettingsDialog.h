@@ -47,6 +47,10 @@ private:
     QSpinBox *logMaxSizeMiBSpinBox;
     QSpinBox *logMaxFilesSpinBox;
 
+    QCheckBox *crashLoopProtectionCheckBox;
+    QSpinBox *crashMaxCrashesSpinBox;
+    QSpinBox *crashWindowMinutesSpinBox;
+
     QDialogButtonBox *buttonBox;
 
     struct ColorEntry {

@@ -54,7 +54,7 @@ void GlobalSettingsDialog::addColorRow(QFormLayout *layout, const QString &label
     resetBtn->setText("↺");
     resetBtn->setFixedSize(22, 22);
     resetBtn->setToolTip("Reset to default");
-    connect(resetBtn, &QToolButton::clicked, this, [this, colorBtn, defaultColor]() {
+    connect(resetBtn, &QToolButton::clicked, this, [colorBtn, defaultColor]() {
         setButtonColor(colorBtn, defaultColor);
     });
 
@@ -218,6 +218,44 @@ void GlobalSettingsDialog::setupUI()
         tabWidget->addTab(sa, "Colors");
     }
 
+    // ---- Bots tab ----
+    {
+        QScrollArea *sa = makeScrollArea(this);
+        QWidget *contents = new QWidget();
+        QVBoxLayout *layout = new QVBoxLayout(contents);
+
+        QGroupBox *crashGroup = new QGroupBox("Crash Recovery");
+        QFormLayout *crashLayout = new QFormLayout(crashGroup);
+
+        crashLoopProtectionCheckBox = new QCheckBox("Enable crash loop protection", this);
+        crashLoopProtectionCheckBox->setToolTip(
+            "Stop auto-restarting a bot if it crashes too many times in a short period");
+        crashLayout->addRow(crashLoopProtectionCheckBox);
+
+        crashMaxCrashesSpinBox = new QSpinBox(this);
+        crashMaxCrashesSpinBox->setRange(1, 100);
+        crashMaxCrashesSpinBox->setValue(3);
+        crashMaxCrashesSpinBox->setToolTip("Number of crashes within the time window before the bot is left offline");
+        crashLayout->addRow("Max crashes:", crashMaxCrashesSpinBox);
+
+        crashWindowMinutesSpinBox = new QSpinBox(this);
+        crashWindowMinutesSpinBox->setRange(1, 60);
+        crashWindowMinutesSpinBox->setValue(5);
+        crashWindowMinutesSpinBox->setSuffix(" min");
+        crashWindowMinutesSpinBox->setToolTip("Time window in which crashes are counted");
+        crashLayout->addRow("Time window:", crashWindowMinutesSpinBox);
+
+        layout->addWidget(crashGroup);
+        layout->addStretch();
+        sa->setWidget(contents);
+        tabWidget->addTab(sa, "Bots");
+
+        connect(crashLoopProtectionCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+            crashMaxCrashesSpinBox->setEnabled(checked);
+            crashWindowMinutesSpinBox->setEnabled(checked);
+        });
+    }
+
     // ---- Appearance tab ----
     {
         QScrollArea *sa = makeScrollArea(this);
@@ -303,6 +341,13 @@ void GlobalSettingsDialog::loadSettings()
     logMaxSizeMiBSpinBox->setEnabled(loggingEnabled);
     logMaxFilesSpinBox->setEnabled(loggingEnabled);
 
+    bool crashProtection = settings.value("CrashRecovery/enabled", true).toBool();
+    crashLoopProtectionCheckBox->setChecked(crashProtection);
+    crashMaxCrashesSpinBox->setValue(settings.value("CrashRecovery/maxCrashes", 3).toInt());
+    crashWindowMinutesSpinBox->setValue(settings.value("CrashRecovery/windowMinutes", 5).toInt());
+    crashMaxCrashesSpinBox->setEnabled(crashProtection);
+    crashWindowMinutesSpinBox->setEnabled(crashProtection);
+
     int scheme = settings.value("Appearance/colorScheme", static_cast<int>(Qt::ColorScheme::Unknown)).toInt();
     for (int i = 0; i < colorSchemeComboBox->count(); ++i) {
         if (colorSchemeComboBox->itemData(i).toInt() == scheme) {
@@ -352,6 +397,10 @@ void GlobalSettingsDialog::saveSettings()
     } else {
         LogManager::closeFileSink();
     }
+
+    settings.setValue("CrashRecovery/enabled", crashLoopProtectionCheckBox->isChecked());
+    settings.setValue("CrashRecovery/maxCrashes", crashMaxCrashesSpinBox->value());
+    settings.setValue("CrashRecovery/windowMinutes", crashWindowMinutesSpinBox->value());
 
     int scheme = colorSchemeComboBox->currentData().toInt();
     settings.setValue("Appearance/colorScheme", scheme);

@@ -7,6 +7,7 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -40,10 +41,35 @@ public class MeteorModuleHandler extends BaseInboundHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MeteorModuleHandler.class);
     private boolean hooksInstalled = false;
+    private boolean sentPartialModules = false;
 
     public MeteorModuleHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
         LOGGER.info("Initialized (hooks will be installed on first use)");
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> onWorldJoin());
+    }
+
+    private void onWorldJoin() {
+        if (!sentPartialModules) return;
+        LOGGER.info("World joined, re-sending module data with item components now available");
+        if (sendAllModules()) {
+            sentPartialModules = false;
+        }
+    }
+
+    private boolean sendAllModules() {
+        try {
+            GetModulesResponse.Builder response = GetModulesResponse.newBuilder()
+                    .setRequestId(java.util.UUID.randomUUID().toString());
+            for (Module module : Modules.get().getAll()) {
+                response.addModules(toProtoModuleInfo(module));
+            }
+            sendModulesResponse(response.build());
+            return true;
+        } catch (Exception e) {
+            LOGGER.error("Failed to send module update after world join", e);
+            return false;
+        }
     }
 
     private void ensureHooksInstalled() {
@@ -162,6 +188,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
     }
 
     public void handleGetModules(String messageId, GetModulesRequest request) {
+        sentPartialModules = false;
         ensureHooksInstalled();
 
         try {
@@ -227,7 +254,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
 
         for (SettingGroup group : module.settings.groups) {
             for (Setting<?> setting : group) {
-                SettingInfo settingInfo = toProtoSettingInfo(setting, group.name);
+                SettingInfo settingInfo = toProtoSettingInfo(setting, group.name, module.name);
                 if (settingInfo != null) {
                     info.addSettings(settingInfo);
                 }
@@ -237,7 +264,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
         return info.build();
     }
 
-    private SettingInfo toProtoSettingInfo(Setting<?> setting, String groupName) {
+    private SettingInfo toProtoSettingInfo(Setting<?> setting, String groupName, String moduleName) {
         try {
             SettingInfo.Builder builder = SettingInfo.newBuilder()
                     .setName(setting.name);
@@ -286,6 +313,10 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case ItemListSetting itemListSetting -> {
                     for (Item item : BuiltInRegistries.ITEM) {
+                        if (!VersionCompat.isItemComponentsBound(item)) {
+                            sentPartialModules = true;
+                            continue;
+                        }
                         if (itemListSetting.filter == null || itemListSetting.filter.test(item)) {
                             builder.addPossibleValues(BuiltInRegistries.ITEM.getKey(item).toString());
                         }
@@ -359,7 +390,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
 
             return builder.build();
         } catch (Exception e) {
-            LOGGER.warn("Failed to extract setting info for: {}", setting.name, e);
+            LOGGER.warn("Failed to extract setting info for: {}.{}", moduleName, setting.name, e);
+            sentPartialModules = true;
             return null;
         }
     }

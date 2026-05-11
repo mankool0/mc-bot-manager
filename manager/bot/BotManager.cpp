@@ -1353,12 +1353,12 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
 
     bool isSilent = silentMessageIds.remove(response.requestId());
 
+    LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
+
     if (!isSilent) {
         if (bot->consoleWidget) {
             bot->consoleWidget->appendResponse(true, output);
         }
-
-        LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
     }
 
     emit meteorModulesReceived(bot->name);
