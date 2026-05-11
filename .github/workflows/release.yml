@@ -82,13 +82,8 @@ jobs:
           restore-keys: |
             fetchcontent-linux-
 
-      - name: Cache sccache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/sccache
-          key: sccache-linux-${{ github.sha }}
-          restore-keys: |
-            sccache-linux-
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install protobuf compiler and esbuild
         run: |
@@ -168,13 +163,8 @@ jobs:
           restore-keys: |
             fetchcontent-windows-
 
-      - name: Cache sccache
-        uses: actions/cache@v5
-        with:
-          path: C:\sccache
-          key: sccache-windows-${{ github.sha }}
-          restore-keys: |
-            sccache-windows-
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
@@ -183,8 +173,6 @@ jobs:
 
       - name: Build
         shell: cmd
-        env:
-          SCCACHE_DIR: C:\sccache
         run: |
           cd manager
           mkdir build
