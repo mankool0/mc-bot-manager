@@ -453,7 +453,7 @@ void RecipeRegistry::parseStonecutting(Recipe &recipe, const QJsonObject &data)
         recipe.ingredients.append(ing);
     }
 
-    // Stonecutting can have a count field for result
+    // Pre-26.1: count was a top-level field; 26.1+ moved it inside the result object (already parsed above)
     if (data.contains("count")) {
         recipe.resultCount = data["count"].toInt();
     }
