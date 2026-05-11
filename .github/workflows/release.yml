@@ -134,6 +134,14 @@ jobs:
           choco install ninja -y
           npm install -g esbuild
 
+      - name: Cache vcpkg packages
+        uses: actions/cache@v5
+        with:
+          path: manager\vcpkg_installed
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
       - name: Setup vcpkg and install dependencies
         shell: pwsh
         run: |
@@ -143,7 +151,8 @@ jobs:
           if (-Not (Test-Path C:\vcpkg\vcpkg.exe)) {
             C:\vcpkg\bootstrap-vcpkg.bat
           }
-          C:\vcpkg\vcpkg install zlib:x64-windows protobuf:x64-windows
+          cd manager
+          C:\vcpkg\vcpkg install --triplet x64-windows
           echo "C:\vcpkg\installed\x64-windows\tools\protobuf" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Set up Visual Studio shell
