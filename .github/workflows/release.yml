@@ -148,13 +148,21 @@ jobs:
           choco install ninja -y
           npm install -g esbuild
 
-      - name: Cache vcpkg packages
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v5
+        with:
+          path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-archives-${{ runner.os }}-
+
+      - name: Cache vcpkg installed
         uses: actions/cache@v5
         with:
           path: manager\build\vcpkg_installed
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
+          key: vcpkg-installed-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-
+            vcpkg-installed-${{ runner.os }}-
 
       - name: Cache CMake FetchContent deps
         uses: actions/cache@v5
