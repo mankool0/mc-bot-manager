@@ -82,13 +82,13 @@ jobs:
           restore-keys: |
             fetchcontent-linux-
 
-      - name: Cache ccache
+      - name: Cache sccache
         uses: actions/cache@v5
         with:
-          path: ~/.cache/ccache
-          key: ccache-linux-${{ github.sha }}
+          path: ~/.cache/sccache
+          key: sccache-linux-${{ github.sha }}
           restore-keys: |
-            ccache-linux-
+            sccache-linux-
 
       - name: Install protobuf compiler and esbuild
         run: |
@@ -107,7 +107,7 @@ jobs:
           cd manager
           mkdir -p build-appimage
           cd build-appimage
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
 
       - name: Install zuban into bundled Python
         run: manager/build-appimage/_deps/python_standalone-src/bin/python3 -m pip install zuban --quiet
@@ -189,7 +189,7 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_POLICY_CMP0141=NEW
           cmake --build . --config Release --parallel
 
       - name: Install zuban into bundled Python
