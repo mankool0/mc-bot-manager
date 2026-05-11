@@ -125,7 +125,7 @@ jobs:
           path: ${{ env.APPIMAGE_ARTIFACT }}
 
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
 
     steps:
       - name: Checkout repo
