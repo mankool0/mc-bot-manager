@@ -313,7 +313,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case ItemListSetting itemListSetting -> {
                     for (Item item : BuiltInRegistries.ITEM) {
-                        if (!item.builtInRegistryHolder().areComponentsBound()) {
+                        if (!VersionCompat.isItemComponentsBound(item)) {
                             sentPartialModules = true;
                             continue;
                         }

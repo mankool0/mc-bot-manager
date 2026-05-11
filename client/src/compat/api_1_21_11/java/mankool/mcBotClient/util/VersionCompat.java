@@ -22,6 +22,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelSummary;
 
@@ -116,6 +117,10 @@ public class VersionCompat {
 
     public static int chunkPosZ(ChunkPos pos) {
         return pos.z;
+    }
+
+    public static boolean isItemComponentsBound(Item item) {
+        return true;
     }
 
     public static void clickContainerSlot(MultiPlayerGameMode gameMode, int containerId, int slotIndex, int button, ClickContainerSlotCommand.ClickType protoClickType, Player player) {
