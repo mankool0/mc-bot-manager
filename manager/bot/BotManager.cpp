@@ -643,8 +643,9 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         return;
     }
 
-    // Check if we have both requirements: server address and data version
-    if (bot->server.isEmpty() || bot->dataVersion == 0) {
+    // Check if we have both requirements: server address/world and data version
+    const bool hasTarget = bot->isSingleplayer ? !bot->singleplayerWorld.isEmpty() : !bot->server.isEmpty();
+    if (!hasTarget || bot->dataVersion == 0) {
         return;
     }
 
@@ -653,10 +654,9 @@ void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
         return;
     }
 
-    const QString serverKey = bot->server;
     const QString saveKey = bot->isSingleplayer
-        ? (bot->instance.isEmpty() ? "singleplayer" : bot->instance) + "/" + serverKey
-        : serverKey;
+        ? (bot->instance.isEmpty() ? "singleplayer" : bot->instance) + "/" + bot->singleplayerWorld
+        : bot->server;
 
     // Check if already using the correct saver
     if (bot->worldAutoSaver && bot->worldAutoSaverServerIp == saveKey) {
@@ -915,7 +915,12 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (bot) {
         if (!serverAddr.isEmpty() && serverAddr != "Disconnected") {
-            bot->server = serverAddr;
+            if (status.isSingleplayer()) {
+                bot->singleplayerWorld = serverAddr;
+            } else {
+                bot->server = serverAddr;
+                bot->singleplayerWorld.clear();
+            }
             bot->isSingleplayer = status.isSingleplayer();
         }
         bot->serverConnectionStatus = status.status();
