@@ -334,6 +334,7 @@ struct BotInstance : public BotConfig {
     bool versionIsSnapshot = false;
     QString modVersion;
     bool isSingleplayer = false;
+    QString singleplayerWorld;
     QString serverMotd;
     qint64 serverPing = 0;
     QString serverVersionName;
