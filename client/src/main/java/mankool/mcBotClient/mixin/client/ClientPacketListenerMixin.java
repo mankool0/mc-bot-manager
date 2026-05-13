@@ -105,6 +105,14 @@ public class ClientPacketListenerMixin {
         }
     }
 
+    @Inject(method = "handleMapItemData", at = @At("TAIL"))
+    private void onMapItemData(ClientboundMapItemDataPacket packet, CallbackInfo ci) {
+        WorldOutbound handler = WorldOutbound.getInstance();
+        if (handler != null) {
+            handler.onMapItemData(packet);
+        }
+    }
+
     @Inject(method = "handleRespawn", at = @At("TAIL"))
     private void onRespawn(ClientboundRespawnPacket packet, CallbackInfo ci) {
         WorldOutbound handler = WorldOutbound.getInstance();

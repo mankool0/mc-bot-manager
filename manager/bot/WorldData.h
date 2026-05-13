@@ -19,6 +19,13 @@ struct BlockEntityData {
     QByteArray rawNbt;  // Full binary compound payload from chunk load; patched with items if container was opened
 };
 
+struct MapData {
+    int32_t scale = 0;
+    bool locked = false;
+    QString dimension;
+    QByteArray colors; // 16384 bytes (128x128), accumulated from patches
+};
+
 struct PlayerSaveData {
     QString uuid;
     double x = 0, y = 0, z = 0;
@@ -121,6 +128,7 @@ struct ChunkData {
 Q_DECLARE_METATYPE(ChunkData);
 Q_DECLARE_METATYPE(BlockEntityData);
 Q_DECLARE_METATYPE(PlayerSaveData);
+Q_DECLARE_METATYPE(MapData);
 Q_DECLARE_METATYPE(QVector<EntityData>);
 Q_DECLARE_METATYPE(QVector<BlockEntityData>);
 

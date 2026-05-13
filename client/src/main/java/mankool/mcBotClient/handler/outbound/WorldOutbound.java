@@ -9,6 +9,8 @@ import mankool.mcbot.protocol.Registry;
 import mankool.mcbot.protocol.World;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.network.protocol.game.ClientboundMapItemDataPacket;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -590,6 +592,44 @@ public class WorldOutbound extends BaseOutbound {
      * Simple chunk position holder for tracking sent chunks.
      */
     private record ChunkPos(int x, int z) {}
+
+    public void onMapItemData(ClientboundMapItemDataPacket packet) {
+        if (client.level == null) return;
+
+        World.MapDataMessage.Builder builder = World.MapDataMessage.newBuilder()
+            .setMapId(packet.mapId().id())
+            .setScale(packet.scale())
+            .setLocked(packet.locked())
+            .setDimension(VersionCompat.keyId(client.level.dimension()));
+
+        if (packet.colorPatch().isPresent()) {
+            MapItemSavedData.MapPatch patch = packet.colorPatch().get();
+            builder.setHasPatch(true)
+                   .setPatchX(patch.startX())
+                   .setPatchZ(patch.startY())
+                   .setPatchWidth(patch.width())
+                   .setPatchHeight(patch.height())
+                   .setPatchColors(ByteString.copyFrom(patch.mapColors()));
+        } else {
+            MapItemSavedData mapData = client.level.getMapData(packet.mapId());
+            if (mapData != null) {
+                builder.setHasPatch(true)
+                       .setPatchX(0)
+                       .setPatchZ(0)
+                       .setPatchWidth(128)
+                       .setPatchHeight(128)
+                       .setPatchColors(ByteString.copyFrom(mapData.colors));
+            }
+        }
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setMapData(builder.build())
+            .build();
+
+        connection.sendMessage(message);
+    }
 
     private record SectionKey(int chunkX, int chunkZ, int sectionY) {}
 }

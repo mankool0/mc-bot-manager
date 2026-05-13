@@ -3,10 +3,10 @@
 
 #include "bot/WorldData.h"
 #include "world/RegionFile.h"
+#include <QHash>
 #include <QString>
 #include <QVector>
 #include <QVector3D>
-#include <QHash>
 #include <memory>
 #include <unordered_map>
 
@@ -72,6 +72,13 @@ public:
 
     // Returns the DataVersion from an existing level.dat, or 0 if unreadable.
     static int readLevelDatDataVersion(const QString& worldPath);
+
+    // Writes a single map .dat file. Path chosen based on version (pre/post 26.1).
+    static bool exportMapData(int32_t mapId, const MapData& data, const QString& worldPath, int dataVersion);
+    // Writes idcounts.dat or last_id.dat with the given max map ID.
+    static bool exportIdCounts(int32_t maxMapId, const QString& worldPath, int dataVersion);
+    // Reads the highest map ID from idcounts.dat or last_id.dat; returns -1 if absent or unreadable.
+    static int32_t readMaxMapId(const QString& worldPath, int dataVersion);
 
     // Pre-26.1: overworld=worldPath, nether=DIM-1, end=DIM1. 26.1+: dimensions/minecraft/{dim_name}/
     static QString getDimensionPath(const QString& worldPath, const QString& dimension, int dataVersion);

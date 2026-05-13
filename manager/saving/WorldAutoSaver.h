@@ -28,6 +28,7 @@ struct WorldSaveSettings {
     bool saveEntities      = true;
     bool saveItemEntities  = true;
     bool savePlayerData    = true;
+    bool saveMapData       = true;
 };
 
 class ChunkSavingWorker;
@@ -50,6 +51,10 @@ public:
                            const QString& dimension);
     void setPlayerData(const PlayerSaveData& data);
     void flushPlayerData();
+    // Merges map packet data into the accumulated map state and marks it dirty for saving.
+    void updateMapData(int32_t mapId, int32_t scale, bool locked, const QString& dimension,
+                       bool hasPatch, int patchX, int patchZ, int patchW, int patchH,
+                       const QByteArray& patch);
     void flushAll();  // Flush all dirty chunks + entities + player data; call before clearing world data
 
     int getDataVersion() const { return m_version.dataVersion; }
@@ -63,6 +68,8 @@ signals:
                                    const QVector<EntityData>& entities,
                                    const QString& worldPath, int dataVersion);
     void playerDataReadyForSaving(const PlayerSaveData& data, const QString& worldPath, int dataVersion);
+    void mapDataReadyForSaving(int32_t mapId, MapData data, QString worldPath, int dataVersion);
+    void idCountsReadyForSaving(int32_t maxMapId, QString worldPath, int dataVersion);
 
 private slots:
     void flushPeriodic();
@@ -95,4 +102,9 @@ private:
     // Dirty block chunk tracking for periodic flush
     QSet<DimChunkPos> m_dirtyBlockChunks;
     ChunkProvider m_chunkProvider;
+
+    // Map data tracking
+    QHash<int32_t, MapData> m_mapData;
+    QSet<int32_t> m_dirtyMapIds;
+    int32_t m_maxMapId = -1;
 };

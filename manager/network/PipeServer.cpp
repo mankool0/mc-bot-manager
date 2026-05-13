@@ -247,6 +247,8 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleTabListUpdate(connectionId, clientMsg.tabListUpdate());
         } else if (clientMsg.hasTabListRemove()) {
             BotManager::handleTabListRemove(connectionId, clientMsg.tabListRemove());
+        } else if (clientMsg.hasMapData()) {
+            BotManager::handleMapData(connectionId, clientMsg.mapData());
         }
         return;
     }
