@@ -3686,3 +3686,25 @@ void BotManager::handleLightUpdateImpl(int connectionId, const mankool::mcbot::p
     }
 }
 
+void BotManager::handleMapData(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData)
+{
+    instance().handleMapDataImpl(connectionId, mapData);
+}
+
+void BotManager::handleMapDataImpl(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot || !bot->worldAutoSaver) return;
+
+    bot->worldAutoSaver->updateMapData(
+        mapData.mapId(),
+        mapData.scale(),
+        mapData.locked(),
+        mapData.dimension(),
+        mapData.hasPatch(),
+        mapData.patchX(), mapData.patchZ(),
+        mapData.patchWidth(), mapData.patchHeight(),
+        mapData.patchColors()
+    );
+}
+

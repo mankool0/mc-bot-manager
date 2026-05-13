@@ -133,3 +133,17 @@ message WeatherUpdate {
   float rain_level = 3;      // Rain intensity 0.0 to 1.0
   float thunder_level = 4;   // Thunder intensity 0.0 to 1.0
 }
+
+// Map item data (Client -> Manager), mirrors ClientboundMapItemDataPacket
+message MapDataMessage {
+  int32 map_id = 1;
+  int32 scale = 2;            // Zoom level 0-4
+  bool locked = 3;
+  string dimension = 4;       // Current level dimension at time of receipt
+  bool has_patch = 5;         // Whether color patch data is present
+  int32 patch_x = 6;          // Top-left X of the patch (0-127)
+  int32 patch_z = 7;          // Top-left Z of the patch (0-127)
+  int32 patch_width = 8;
+  int32 patch_height = 9;
+  bytes patch_colors = 10;    // patch_width * patch_height color bytes
+}

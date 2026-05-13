@@ -29,6 +29,14 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
     connect(this, &WorldAutoSaver::chunkReadyForSaving, m_worker, &ChunkSavingWorker::processChunk, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::entityChunkReadyForSaving, m_worker, &ChunkSavingWorker::processEntityChunk, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::playerDataReadyForSaving, m_worker, &ChunkSavingWorker::processPlayerData, Qt::QueuedConnection);
+    connect(this, &WorldAutoSaver::mapDataReadyForSaving, m_worker,
+        [](int32_t mapId, MapData data, QString worldPath, int dataVersion) {
+            WorldExporter::exportMapData(mapId, data, worldPath, dataVersion);
+        }, Qt::QueuedConnection);
+    connect(this, &WorldAutoSaver::idCountsReadyForSaving, m_worker,
+        [](int32_t maxMapId, QString worldPath, int dataVersion) {
+            WorldExporter::exportIdCounts(maxMapId, worldPath, dataVersion);
+        }, Qt::QueuedConnection);
 
     m_workerThread->start();
 
@@ -55,6 +63,8 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
             WorldExporter::createLevelDat(m_worldPath, 0, 80, 0, m_serverIp, m_version);
         }
         m_isInitialized = true;
+        if (m_saveSettings.saveMapData)
+            m_maxMapId = WorldExporter::readMaxMapId(m_worldPath, m_version.dataVersion);
     }
 }
 
@@ -69,6 +79,15 @@ WorldAutoSaver::~WorldAutoSaver() {
     m_workerThread->quit();
     m_workerThread->wait();
     delete m_workerThread;
+
+    // Flush map data directly after the worker thread exits so there is no race
+    // with queued-connection signals that may not be drained before quit().
+    if (m_isInitialized && m_saveSettings.saveMapData && !m_dirtyMapIds.isEmpty()) {
+        for (int32_t mapId : std::as_const(m_dirtyMapIds)) {
+            WorldExporter::exportMapData(mapId, m_mapData[mapId], m_worldPath, m_version.dataVersion);
+        }
+        WorldExporter::exportIdCounts(m_maxMapId, m_worldPath, m_version.dataVersion);
+    }
 }
 
 void WorldAutoSaver::saveChunkAsync(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities) {
@@ -126,6 +145,35 @@ void WorldAutoSaver::setPlayerData(const PlayerSaveData& data) {
     m_dirtyPlayerUuids.insert(data.uuid);
 }
 
+void WorldAutoSaver::updateMapData(int32_t mapId, int32_t scale, bool locked, const QString& dimension,
+                                    bool hasPatch, int patchX, int patchZ, int patchW, int patchH,
+                                    const QByteArray& patch) {
+    if (!m_saveSettings.saveMapData) return;
+
+    MapData& existing = m_mapData[mapId];
+    existing.scale = scale;
+    existing.locked = locked;
+    if (!dimension.isEmpty())
+        existing.dimension = dimension;
+
+    if (hasPatch && !patch.isEmpty()) {
+        if (existing.colors.size() != 16384)
+            existing.colors.resize(16384, 0);
+        for (int dz = 0; dz < patchH; ++dz) {
+            for (int dx = 0; dx < patchW; ++dx) {
+                int src = dz * patchW + dx;
+                int dst = (patchZ + dz) * 128 + (patchX + dx);
+                if (src < patch.size() && dst >= 0 && dst < 16384)
+                    existing.colors[dst] = patch[src];
+            }
+        }
+    }
+
+    m_dirtyMapIds.insert(mapId);
+    if (mapId > m_maxMapId)
+        m_maxMapId = mapId;
+}
+
 void WorldAutoSaver::flushPlayerData() {
     if (!m_isInitialized || !m_saveSettings.savePlayerData || m_dirtyPlayerUuids.isEmpty()) return;
     QSet<QString> dirty = m_dirtyPlayerUuids;
@@ -181,6 +229,16 @@ void WorldAutoSaver::flushPeriodic() {
         for (const QString& uuid : dirty) {
             emit playerDataReadyForSaving(m_playerDataByUuid[uuid], m_worldPath, m_version.dataVersion);
         }
+    }
+
+    // Flush map data
+    if (m_saveSettings.saveMapData && !m_dirtyMapIds.isEmpty()) {
+        QSet<int32_t> dirty = m_dirtyMapIds;
+        m_dirtyMapIds.clear();
+        for (int32_t mapId : dirty) {
+            emit mapDataReadyForSaving(mapId, m_mapData[mapId], m_worldPath, m_version.dataVersion);
+        }
+        emit idCountsReadyForSaving(m_maxMapId, m_worldPath, m_version.dataVersion);
     }
 }
 

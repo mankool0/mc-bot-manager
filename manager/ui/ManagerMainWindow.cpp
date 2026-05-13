@@ -233,6 +233,7 @@ void ManagerMainWindow::setupUI()
     connect(ui->saveEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->saveItemEntitiesCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->savePlayerDataCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
+    connect(ui->saveMapDataCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->proxyEnabledCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->proxyEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
         if (!checked || selectedBotName.isEmpty()) return;
@@ -307,6 +308,7 @@ void ManagerMainWindow::setupUI()
         ui->saveEntitiesCheckBox->setVisible(enabled);
         ui->saveItemEntitiesCheckBox->setVisible(enabled);
         ui->savePlayerDataCheckBox->setVisible(enabled);
+        ui->saveMapDataCheckBox->setVisible(enabled);
     };
     connect(ui->saveWorldToDiskCheckBox, &QCheckBox::toggled, this, updateSaveSubSettings);
     updateSaveSubSettings(ui->saveWorldToDiskCheckBox->isChecked());
@@ -812,6 +814,7 @@ void ManagerMainWindow::onConfigurationChanged()
             bot->worldSaveSettings.saveEntities = ui->saveEntitiesCheckBox->isChecked();
             bot->worldSaveSettings.saveItemEntities = ui->saveItemEntitiesCheckBox->isChecked();
             bot->worldSaveSettings.savePlayerData = ui->savePlayerDataCheckBox->isChecked();
+            bot->worldSaveSettings.saveMapData = ui->saveMapDataCheckBox->isChecked();
             bot->proxySettings.enabled = ui->proxyEnabledCheckBox->isChecked();
             bot->proxySettings.type = ui->proxyTypeComboBox->currentText();
             bot->proxySettings.host = ui->proxyHostLineEdit->text().trimmed();
@@ -868,6 +871,7 @@ void ManagerMainWindow::loadBotConfiguration(const BotInstance &bot)
     ui->saveEntitiesCheckBox->setChecked(bot.worldSaveSettings.saveEntities);
     ui->saveItemEntitiesCheckBox->setChecked(bot.worldSaveSettings.saveItemEntities);
     ui->savePlayerDataCheckBox->setChecked(bot.worldSaveSettings.savePlayerData);
+    ui->saveMapDataCheckBox->setChecked(bot.worldSaveSettings.saveMapData);
 
     ui->proxyTypeComboBox->setCurrentText(bot.proxySettings.type.isEmpty() ? "SOCKS5" : bot.proxySettings.type);
     ui->proxyHostLineEdit->setText(bot.proxySettings.host);
@@ -1520,6 +1524,7 @@ void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotConfig &bo
     settings.setValue("saveEntities", bot.worldSaveSettings.saveEntities);
     settings.setValue("saveItemEntities", bot.worldSaveSettings.saveItemEntities);
     settings.setValue("savePlayerData", bot.worldSaveSettings.savePlayerData);
+    settings.setValue("saveMapData", bot.worldSaveSettings.saveMapData);
 
     settings.setValue("proxyEnabled", bot.proxySettings.enabled);
     settings.setValue("proxyType", bot.proxySettings.type);
@@ -1552,6 +1557,7 @@ BotConfig ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
     bot.worldSaveSettings.saveEntities = settings.value("saveEntities", true).toBool();
     bot.worldSaveSettings.saveItemEntities = settings.value("saveItemEntities", true).toBool();
     bot.worldSaveSettings.savePlayerData = settings.value("savePlayerData", true).toBool();
+    bot.worldSaveSettings.saveMapData = settings.value("saveMapData", true).toBool();
 
     bot.proxySettings.enabled = settings.value("proxyEnabled", false).toBool();
     bot.proxySettings.type = settings.value("proxyType", "SOCKS5").toString();

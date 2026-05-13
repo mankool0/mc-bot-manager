@@ -88,6 +88,9 @@ message ClientToManagerMessage {
     // Tab list deltas
     TabListPlayerUpdate tab_list_update = 35;
     TabListPlayerRemove tab_list_remove = 36;
+
+    // Map item data
+    MapDataMessage map_data = 37;
   }
 }
 

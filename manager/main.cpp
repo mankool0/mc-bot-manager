@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<ChunkData>();
     qRegisterMetaType<BlockEntityData>();
     qRegisterMetaType<PlayerSaveData>();
+    qRegisterMetaType<MapData>();
     qRegisterMetaType<QVector<EntityData>>();
     qRegisterMetaType<QVector<BlockEntityData>>();
     QApplication a(argc, argv);

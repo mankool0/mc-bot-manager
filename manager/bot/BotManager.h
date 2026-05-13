@@ -411,6 +411,9 @@ public:
     // Weather handler
     static void handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
 
+    // Map data handler
+    static void handleMapData(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData);
+
     // World data handlers
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
@@ -511,6 +514,7 @@ private:
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
+    void handleMapDataImpl(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData);
     void handleTabListUpdateImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update);
     void handleTabListRemoveImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove);
     bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,

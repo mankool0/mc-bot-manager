@@ -206,6 +206,109 @@ std::tuple<int, int, int, int> WorldExporter::getChunkBounds(const BotWorldData&
     return {minX, maxX, minZ, maxZ};
 }
 
+bool WorldExporter::exportMapData(int32_t mapId, const MapData& data, const QString& worldPath, int dataVersion) {
+    QString filePath;
+    if (usesNewWorldLayout(dataVersion)) {
+        QDir dir;
+        dir.mkpath(worldPath + "/data/minecraft/maps");
+        filePath = QString("%1/data/minecraft/maps/%2.dat").arg(worldPath).arg(mapId);
+    } else {
+        QDir dir;
+        dir.mkpath(worldPath + "/data");
+        filePath = QString("%1/data/map_%2.dat").arg(worldPath).arg(mapId);
+    }
+
+    nbt::tag_compound mapNbt;
+    if (data.scale != 0)
+        mapNbt.insert("scale", nbt::tag_byte(static_cast<int8_t>(data.scale)));
+    mapNbt.insert("dimension", nbt::tag_string(data.dimension.isEmpty() ? "minecraft:overworld" : data.dimension.toStdString()));
+    if (data.locked)
+        mapNbt.insert("locked", nbt::tag_byte(1));
+    mapNbt.insert("xCenter", nbt::tag_int(0));
+    mapNbt.insert("zCenter", nbt::tag_int(0));
+
+    std::vector<int8_t> colors(16384, 0);
+    if (data.colors.size() == 16384) {
+        for (int i = 0; i < 16384; ++i)
+            colors[i] = static_cast<int8_t>(data.colors[i]);
+    }
+    mapNbt.insert("colors", nbt::tag_byte_array(std::move(colors)));
+
+    nbt::tag_compound root;
+    root.insert("DataVersion", nbt::tag_int(dataVersion));
+    root.insert("data", std::move(mapNbt));
+
+    return writeNBTFile(filePath, std::move(root));
+}
+
+bool WorldExporter::exportIdCounts(int32_t maxMapId, const QString& worldPath, int dataVersion) {
+    if (maxMapId < 0) return true;
+
+    QString filePath;
+    if (usesNewWorldLayout(dataVersion)) {
+        QDir dir;
+        dir.mkpath(worldPath + "/data/minecraft/maps");
+        filePath = worldPath + "/data/minecraft/maps/last_id.dat";
+    } else {
+        QDir dir;
+        dir.mkpath(worldPath + "/data");
+        filePath = worldPath + "/data/idcounts.dat";
+    }
+
+    nbt::tag_compound countsData;
+    countsData.insert("map", nbt::tag_int(maxMapId));
+
+    nbt::tag_compound root;
+    root.insert("DataVersion", nbt::tag_int(dataVersion));
+    root.insert("data", std::move(countsData));
+
+    return writeNBTFile(filePath, std::move(root));
+}
+
+int32_t WorldExporter::readMaxMapId(const QString& worldPath, int dataVersion) {
+    QString filePath = usesNewWorldLayout(dataVersion)
+        ? worldPath + "/data/minecraft/maps/last_id.dat"
+        : worldPath + "/data/idcounts.dat";
+
+    QFile f(filePath);
+    if (!f.open(QIODevice::ReadOnly)) return -1;
+    QByteArray compressed = f.readAll();
+    f.close();
+
+    z_stream zs;
+    memset(&zs, 0, sizeof(zs));
+    if (inflateInit2(&zs, 15 + 16) != Z_OK) return -1;
+
+    zs.next_in = reinterpret_cast<Bytef*>(compressed.data());
+    zs.avail_in = static_cast<uInt>(compressed.size());
+
+    std::string decompressed;
+    char buf[32768];
+    int ret;
+    do {
+        zs.next_out = reinterpret_cast<Bytef*>(buf);
+        zs.avail_out = sizeof(buf);
+        ret = inflate(&zs, Z_NO_FLUSH);
+        if (ret != Z_OK && ret != Z_STREAM_END) { inflateEnd(&zs); return -1; }
+        decompressed.append(buf, sizeof(buf) - zs.avail_out);
+    } while (ret == Z_OK);
+    inflateEnd(&zs);
+
+    try {
+        std::istringstream ss(decompressed, std::ios::binary);
+        auto [name, rootPtr] = nbt::io::read_compound(ss);
+        if (!rootPtr) return -1;
+        auto& root = *rootPtr;
+        if (root.has_key("data", nbt::tag_type::Compound)) {
+            auto& data = root.at("data").as<nbt::tag_compound>();
+            if (data.has_key("map", nbt::tag_type::Int))
+                return static_cast<int32_t>(data.at("map").as<nbt::tag_int>());
+        }
+    } catch (...) {}
+
+    return -1;
+}
+
 static void migrateToNewWorldLayout(const QString& worldPath) {
     QDir dir(worldPath);
 
@@ -243,6 +346,20 @@ static void migrateToNewWorldLayout(const QString& worldPath) {
         dir.rename("playerdata", "players/data");
     }
 
+    // Map data files
+    QDir dataDir(worldPath + "/data");
+    if (dataDir.exists()) {
+        dir.mkpath("data/minecraft/maps");
+        const QStringList mapFiles = dataDir.entryList(QStringList() << "map_*.dat", QDir::Files);
+        for (const QString& filename : mapFiles) {
+            // Strip "map_" prefix (4 chars) and ".dat" suffix (4 chars)
+            QString numStr = filename.mid(4, filename.length() - 8);
+            dir.rename("data/" + filename, "data/minecraft/maps/" + numStr + ".dat");
+        }
+        if (dataDir.exists("idcounts.dat"))
+            dir.rename("data/idcounts.dat", "data/minecraft/maps/last_id.dat");
+    }
+
     LogManager::log(QString("World layout migration complete for %1").arg(worldPath), LogManager::Success);
 }
 
@@ -261,7 +378,7 @@ bool WorldExporter::createWorldDirectories(const QString& outputPath, int dataVe
         dir.mkpath(outputPath + "/dimensions/minecraft/the_nether/entities");
         dir.mkpath(outputPath + "/dimensions/minecraft/the_end/entities");
         dir.mkpath(outputPath + "/players/data");
-        dir.mkpath(outputPath + "/data/minecraft");
+        dir.mkpath(outputPath + "/data/minecraft/maps");
     } else {
         if (!dir.mkpath(outputPath + "/region")) {
             return false;
