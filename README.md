@@ -25,8 +25,9 @@ Two components communicate over Protocol Buffers via Unix domain sockets:
 - pybind11, libnbtplusplus, Monaco Editor, and PrismLauncher headers are fetched automatically by CMake
 
 **Client:**
-- JDK 21+
-- Minecraft 1.21.11 with Fabric Loader
+- Minecraft 1.21.4 or 1.21.11: JDK 21
+- Minecraft 26.1.2: JDK 25
+- Fabric Loader
 - [Meteor Client](https://meteorclient.com/)
 - [Baritone](https://github.com/cabaletta/baritone) (for pathfinding)
 
@@ -44,7 +45,8 @@ This also builds `libprismhook.so` / `libprismhook_core.so` for Prism Launcher i
 **Client:**
 ```bash
 cd client
-./gradlew build
+./gradlew build                                        # defaults to 26.1.2
+./gradlew build -Pminecraft_version=1.21.11            # or specify a version
 ```
 
 Place the resulting `.jar` from `client/build/libs/` into your Minecraft mods folder alongside Meteor Client and Baritone.
@@ -53,7 +55,7 @@ Place the resulting `.jar` from `client/build/libs/` into your Minecraft mods fo
 
 The manager integrates with [Prism Launcher](https://prismlauncher.org/) to launch and manage Minecraft instances directly from the UI. It communicates with Prism via a hook library (`libprismhook.so`) that is preloaded into the Prism process.
 
-Configure the hook in the manager settings by pointing it at your Prism Launcher executable.
+To set it up, open the Prism Launcher settings in the manager, set the PrismLauncher data directory (auto-detected on most systems), and enable the hook via the checkbox. The manager will inject the hook library into Prism on launch.
 
 ### Flatpak users
 
