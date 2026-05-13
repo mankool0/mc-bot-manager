@@ -539,6 +539,7 @@ void ManagerMainWindow::removeBot()
 void ManagerMainWindow::updateInstancesTable()
 {
     QVector<BotInstance*> &bots = BotManager::getBots();
+    int prevRowCount = ui->instancesTableWidget->rowCount();
     ui->instancesTableWidget->setRowCount(bots.size());
 
     for (int i = 0; i < bots.size(); ++i) {
@@ -658,7 +659,9 @@ void ManagerMainWindow::updateInstancesTable()
         pidItem->setText(pidText);
     }
 
-    ui->instancesTableWidget->resizeColumnsToContents();
+    if (prevRowCount != bots.size()) {
+        ui->instancesTableWidget->resizeColumnsToContents();
+    }
 
     // Update status display if the selected bot's state changed
     if (!selectedBotName.isEmpty()) {
