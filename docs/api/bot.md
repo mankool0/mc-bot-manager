@@ -141,6 +141,23 @@ if items is not None:
         print(f"Slot {item['slot']}: {item['count']}x {item['item_id']} ({item['display_name']})")
 ```
 
+### `resync_inventory(bot="")`
+
+Force a full inventory resync from the server. Sends a stateId mismatch packet to trigger `sendAllDataToRemote` server-side, which sends back the authoritative inventory state.
+
+Only works when no container is currently open. Raises if a container is open.
+
+**Raises:** `RuntimeError` if bot not found, not online, or a container is open
+
+```python
+world.close_container()
+bot.resync_inventory()
+time.sleep(0.2)  # wait for server response
+items = bot.inventory()
+```
+
+---
+
 ### Item dict
 
 The item dict schema used by `bot.inventory()`, `world.get_container()`, and entity item fields:
