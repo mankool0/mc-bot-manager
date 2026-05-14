@@ -202,6 +202,8 @@ void ManagerMainWindow::setupUI()
     ui->instancesTableWidget->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->instancesTableWidget->horizontalHeader(), &QHeaderView::customContextMenuRequested,
             this, &ManagerMainWindow::onHeaderContextMenu);
+    connect(ui->instancesTableWidget->horizontalHeader(), &QHeaderView::sectionResized,
+            this, [this](int, int, int) { saveColumnVisibility(); });
 
     connect(ui->launchBotButton, &QPushButton::clicked, this, &ManagerMainWindow::launchBot);
     connect(ui->stopBotButton, &QPushButton::clicked, this, &ManagerMainWindow::stopBot);
@@ -539,7 +541,6 @@ void ManagerMainWindow::removeBot()
 void ManagerMainWindow::updateInstancesTable()
 {
     QVector<BotInstance*> &bots = BotManager::getBots();
-    int prevRowCount = ui->instancesTableWidget->rowCount();
     ui->instancesTableWidget->setRowCount(bots.size());
 
     for (int i = 0; i < bots.size(); ++i) {
@@ -659,9 +660,6 @@ void ManagerMainWindow::updateInstancesTable()
         pidItem->setText(pidText);
     }
 
-    if (prevRowCount != bots.size()) {
-        ui->instancesTableWidget->resizeColumnsToContents();
-    }
 
     // Update status display if the selected bot's state changed
     if (!selectedBotName.isEmpty()) {
@@ -702,30 +700,16 @@ void ManagerMainWindow::onHeaderContextMenu(const QPoint &pos)
 void ManagerMainWindow::saveColumnVisibility()
 {
     QSettings settings("MCBotManager", "MCBotManager");
-    settings.beginGroup("Window/ColumnVisibility");
-    QHeaderView *header = ui->instancesTableWidget->horizontalHeader();
-    settings.setValue("Instance", !header->isSectionHidden(2));
-    settings.setValue("Server", !header->isSectionHidden(3));
-    settings.setValue("Memory", !header->isSectionHidden(4));
-    settings.setValue("Position", !header->isSectionHidden(5));
-    settings.setValue("Dimension", !header->isSectionHidden(6));
-    settings.setValue("Screen", !header->isSectionHidden(7));
-    settings.setValue("PID", !header->isSectionHidden(8));
-    settings.endGroup();
+    settings.setValue("Window/InstancesHeader", ui->instancesTableWidget->horizontalHeader()->saveState());
 }
 
 void ManagerMainWindow::loadColumnVisibility()
 {
     QSettings settings("MCBotManager", "MCBotManager");
-    settings.beginGroup("Window/ColumnVisibility");
-    ui->instancesTableWidget->setColumnHidden(2, !settings.value("Instance", true).toBool());
-    ui->instancesTableWidget->setColumnHidden(3, !settings.value("Server", true).toBool());
-    ui->instancesTableWidget->setColumnHidden(4, !settings.value("Memory", true).toBool());
-    ui->instancesTableWidget->setColumnHidden(5, !settings.value("Position", true).toBool());
-    ui->instancesTableWidget->setColumnHidden(6, !settings.value("Dimension", true).toBool());
-    ui->instancesTableWidget->setColumnHidden(7, !settings.value("Screen", true).toBool());
-    ui->instancesTableWidget->setColumnHidden(8, !settings.value("PID", true).toBool());
-    settings.endGroup();
+    QByteArray headerState = settings.value("Window/InstancesHeader").toByteArray();
+    if (!headerState.isEmpty()) {
+        ui->instancesTableWidget->horizontalHeader()->restoreState(headerState);
+    }
 }
 
 void ManagerMainWindow::onInstanceSelectionChanged()
