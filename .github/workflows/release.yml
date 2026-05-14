@@ -18,7 +18,6 @@ env:
   QT_VERSION: 6.11.0
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
   WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
-  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   build-client:
@@ -83,9 +82,6 @@ jobs:
           restore-keys: |
             fetchcontent-linux-
 
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
       - name: Install protobuf compiler and esbuild
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
@@ -103,7 +99,7 @@ jobs:
           cd manager
           mkdir -p build-appimage
           cd build-appimage
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr
 
       - name: Install zuban into bundled Python
         run: manager/build-appimage/_deps/python_standalone-src/bin/python3 -m pip install zuban --quiet
@@ -172,9 +168,6 @@ jobs:
           restore-keys: |
             fetchcontent-windows-
 
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -186,7 +179,7 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_POLICY_CMP0141=NEW
+          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_POLICY_CMP0141=NEW
           cmake --build . --config Release --parallel
 
       - name: Install zuban into bundled Python
