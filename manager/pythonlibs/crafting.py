@@ -368,25 +368,28 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
                 if not item_id_to_place:
                     raise RuntimeError(f"Ran out of ingredients for slot {slot} (needed {needed_now} more)")
 
+                # Pick the smallest available stack of the ingredient first.
                 source_item = None
                 source_idx = -1
                 for idx, item in enumerate(container_items):
                     if (item['item_id'] == item_id_to_place and
                         item['slot'] not in slots['grid'] and
-                        item['slot'] != slots['result']):
+                        item['slot'] != slots['result'] and
+                        item['count'] > 0 and
+                        (source_item is None or item['count'] < source_item['count'])):
                         source_item = item
                         source_idx = idx
-                        break
 
                 if not source_item:
                     container_items = _refresh_container_items(container_type, bot_name)
                     for idx, item in enumerate(container_items):
                         if (item['item_id'] == item_id_to_place and
                             item['slot'] not in slots['grid'] and
-                            item['slot'] != slots['result']):
+                            item['slot'] != slots['result'] and
+                            item['count'] > 0 and
+                            (source_item is None or item['count'] < source_item['count'])):
                             source_item = item
                             source_idx = idx
-                            break
 
                     if not source_item:
                         raise RuntimeError(f"Could not find {item_id_to_place} in container slots!")
@@ -509,6 +512,18 @@ def auto_craft_recursive(item_id, count=1, bot_name="", max_distance=128):
 
     if not plan['success']:
         raise RuntimeError(f"Failed to plan crafting: {plan['error']}")
+
+    raw_materials = plan.get('raw_materials', {})
+    if raw_materials:
+        available = _count_available_items(bot_name)
+        missing = {}
+        for mat, needed in raw_materials.items():
+            short = needed - available.get(mat, 0)
+            if short > 0:
+                missing[mat] = short
+        if missing:
+            items_str = ", ".join(f"{cnt}x {itm}" for itm, cnt in missing.items())
+            raise RuntimeError(f"Missing raw materials: {items_str}")
 
     use_player_inventory = _plan_fits_in_2x2(plan, bot_name)
     container_type = _open_crafting_container(bot_name, max_distance, use_player_inventory)

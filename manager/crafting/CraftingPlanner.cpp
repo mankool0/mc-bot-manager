@@ -265,26 +265,55 @@ void CraftingPlanner::scheduleForSpace(
                     stall = 0;
                     continue;
                 }
+            } else if (bySpace > 0) {
+                // byMats==0 with space available. Two causes:
+                //   (a) A pending step needs to run first to produce a missing input.
+                //   (b) An external raw material isn't reflected in vStacks yet
+                //       (e.g. inventory update hasn't arrived at planning time).
+                // Only stall for (a). For (b), proceed using bySpace as the limit -
+                // the raw material will be physically present at execution time.
+                bool blockedByPendingOutput = false;
+                for (auto it = pe.step.inputs.constBegin(); it != pe.step.inputs.constEnd(); ++it) {
+                    if (it.value() <= 0) continue;
+                    int avail = 0;
+                    if (vStacks.contains(it.key()))
+                        for (int c : vStacks[it.key()]) avail += c;
+                    if (avail < it.value()) {
+                        // Input is short - check if any pending step produces it
+                        for (int pi = 1; pi < pending.size(); pi++) {
+                            if (pending[pi].step.outputItem == it.key()) {
+                                blockedByPendingOutput = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (blockedByPendingOutput) break;
+                }
+                if (!blockedByPendingOutput) {
+                    toDo = bySpace;
+                }
             }
 
-            // Can't make progress on this step - try later steps first
-            pending.append(pending.takeFirst());
-            stall++;
-            if (stall >= pending.size()) {
-                // No combination of reordering can help; append remaining as-is
-                // (will fail at runtime if truly impossible, giving a clear error)
-                for (const auto& pe2 : std::as_const(pending)) {
-                    CraftingStep outStep = pe2.step;
-                    outStep.times = pe2.remaining;
-                    outStep.outputCount = pe2.remaining * pe2.resultCount;
-                    for (auto it = outStep.inputs.begin(); it != outStep.inputs.end(); ++it) {
-                        it.value() *= pe2.remaining;
+            if (toDo == 0) {
+                // Can't make progress on this step - try later steps first
+                pending.append(pending.takeFirst());
+                stall++;
+                if (stall >= pending.size()) {
+                    // No combination of reordering can help; append remaining as-is
+                    // (will fail at runtime if truly impossible, giving a clear error)
+                    for (const auto& pe2 : std::as_const(pending)) {
+                        CraftingStep outStep = pe2.step;
+                        outStep.times = pe2.remaining;
+                        outStep.outputCount = pe2.remaining * pe2.resultCount;
+                        for (auto it = outStep.inputs.begin(); it != outStep.inputs.end(); ++it) {
+                            it.value() *= pe2.remaining;
+                        }
+                        result.append(outStep);
                     }
-                    result.append(outStep);
+                    break;
                 }
-                break;
+                continue;
             }
-            continue;
         }
 
         stall = 0;
