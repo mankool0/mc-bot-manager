@@ -4,6 +4,11 @@ import baritone
 import time
 
 
+def _inv_to_menu_slot(inv_slot):
+    """Convert bot.inventory() slot number to InventoryMenu slot number."""
+    return inv_slot + 36 if inv_slot <= 8 else inv_slot
+
+
 class RecipeType:
     CRAFTING_SHAPED = "minecraft:crafting_shaped"
     CRAFTING_SHAPELESS = "minecraft:crafting_shapeless"
@@ -47,6 +52,8 @@ def _can_craft_in_2x2(recipe):
 def _plan_fits_in_2x2(plan, bot_name=""):
     """Check if all steps in a crafting plan can be done in 2x2 grid."""
     for step in plan.get('steps', []):
+        if step.get('is_consolidate'):
+            continue
         recipe_id = step.get('recipe_id') or step['output_item']
         recipe = world.get_recipe(recipe_id, bot=bot_name)
         if not recipe or not _can_craft_in_2x2(recipe):
@@ -206,13 +213,9 @@ def _refresh_container_items(container_type, bot_name=""):
         items = []
         for inv_item in inventory:
             inv_slot = inv_item['slot']
-            if inv_slot <= 8:
-                menu_slot = inv_slot + 36
-            elif inv_slot <= 35:
-                menu_slot = inv_slot
-            else:
+            if inv_slot > 35:
                 continue
-            items.append({'slot': menu_slot, 'item_id': inv_item['item_id'], 'count': inv_item['count']})
+            items.append({'slot': _inv_to_menu_slot(inv_slot), 'item_id': inv_item['item_id'], 'count': inv_item['count']})
         return items
     else:
         container = world.get_container(bot=bot_name)
@@ -293,14 +296,10 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
             container_items = []
             for inv_item in inventory:
                 inv_slot = inv_item['slot']
-                if inv_slot <= 8:
-                    menu_slot = inv_slot + 36   # hotbar
-                elif inv_slot <= 35:
-                    menu_slot = inv_slot        # main inventory
-                else:
-                    continue                    # skip armor / offhand
+                if inv_slot > 35:
+                    continue
                 container_items.append({
-                    'slot': menu_slot,
+                    'slot': _inv_to_menu_slot(inv_slot),
                     'item_id': inv_item['item_id'],
                     'count': inv_item['count']
                 })
@@ -346,7 +345,7 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
     if items_in_grid:
         for item in items_in_grid:
             world.click_slot(item['slot'], button=world.MouseButton.LEFT,
-                           click_type=world.ClickType.QUICK_MOVE, bot=bot_name)
+                           click_type=world.ClickType.QUICK_MOVE, bot=bot_name, silent=True)
             item['item_id'] = 'minecraft:air'
             item['count'] = 0
             time.sleep(0.05)
@@ -369,25 +368,28 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
                 if not item_id_to_place:
                     raise RuntimeError(f"Ran out of ingredients for slot {slot} (needed {needed_now} more)")
 
+                # Pick the smallest available stack of the ingredient first.
                 source_item = None
                 source_idx = -1
                 for idx, item in enumerate(container_items):
                     if (item['item_id'] == item_id_to_place and
                         item['slot'] not in slots['grid'] and
-                        item['slot'] != slots['result']):
+                        item['slot'] != slots['result'] and
+                        item['count'] > 0 and
+                        (source_item is None or item['count'] < source_item['count'])):
                         source_item = item
                         source_idx = idx
-                        break
 
                 if not source_item:
                     container_items = _refresh_container_items(container_type, bot_name)
                     for idx, item in enumerate(container_items):
                         if (item['item_id'] == item_id_to_place and
                             item['slot'] not in slots['grid'] and
-                            item['slot'] != slots['result']):
+                            item['slot'] != slots['result'] and
+                            item['count'] > 0 and
+                            (source_item is None or item['count'] < source_item['count'])):
                             source_item = item
                             source_idx = idx
-                            break
 
                     if not source_item:
                         raise RuntimeError(f"Could not find {item_id_to_place} in container slots!")
@@ -396,23 +398,23 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
                 stack_count = source_item['count']
 
                 world.click_slot(item_slot, button=world.MouseButton.LEFT,
-                               click_type=world.ClickType.PICKUP, bot=bot_name)
+                               click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                 time.sleep(0.05)
 
                 to_place = min(needed_now, stack_count)
 
                 if to_place == stack_count and current_in_slot == 0:
                     world.click_slot(slot, button=world.MouseButton.LEFT,
-                                   click_type=world.ClickType.PICKUP, bot=bot_name)
+                                   click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                 else:
                     for _ in range(to_place):
                         world.click_slot(slot, button=world.MouseButton.RIGHT,
-                                       click_type=world.ClickType.PICKUP, bot=bot_name)
+                                       click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                 time.sleep(0.05)
 
                 if stack_count > to_place:
                     world.click_slot(item_slot, button=world.MouseButton.LEFT,
-                                   click_type=world.ClickType.PICKUP, bot=bot_name)
+                                   click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                     time.sleep(0.05)
                     container_items[source_idx]['count'] -= to_place
                 else:
@@ -424,7 +426,7 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
 
         # Shift-click to craft batch
         world.click_slot(slots['result'], button=world.MouseButton.LEFT,
-                        click_type=world.ClickType.QUICK_MOVE, bot=bot_name)
+                        click_type=world.ClickType.QUICK_MOVE, bot=bot_name, silent=True)
         time.sleep(0.15)
 
         remaining_crafts -= current_batch
@@ -473,6 +475,37 @@ def auto_craft(item_id, count=1, bot_name="", max_distance=128, keep_container_o
         raise
 
 
+def _consolidate_stacks(item_id, bot_name=""):
+    """Merge partial stacks of item_id in inventory to free slots."""
+    info = world.get_item_info(item_id, bot=bot_name)
+    max_stack = info['max_stack_size'] if info else 64
+
+    while True:
+        inventory = bot.inventory(bot_name)
+        partials = sorted(
+            [item for item in inventory
+             if item['item_id'] == item_id and item['slot'] <= 35 and item['count'] < max_stack],
+            key=lambda x: x['count']
+        )
+        if len(partials) <= 1:
+            break
+
+        # Pick the smallest partial and find a dst with enough remaining space so
+        # src.count + dst.count <= max_stack. Without this guard, an overflow leaves
+        # items stuck on the cursor when the second click can't absorb everything.
+        src = partials[0]
+        dst = next((p for p in partials[1:] if p['count'] + src['count'] <= max_stack), None)
+        if dst is None:
+            break
+
+        world.click_slot(_inv_to_menu_slot(src['slot']), button=world.MouseButton.LEFT,
+                         click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
+        time.sleep(0.05)
+        world.click_slot(_inv_to_menu_slot(dst['slot']), button=world.MouseButton.LEFT,
+                         click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
+        time.sleep(0.05)
+
+
 def auto_craft_recursive(item_id, count=1, bot_name="", max_distance=128):
     """Recursively craft item and its dependencies using C++ planner."""
     plan = world.plan_recursive_craft(item_id, count, bot=bot_name)
@@ -480,26 +513,28 @@ def auto_craft_recursive(item_id, count=1, bot_name="", max_distance=128):
     if not plan['success']:
         raise RuntimeError(f"Failed to plan crafting: {plan['error']}")
 
-    # The planner emits one step per ingredient slot, so multi-ingredient recipes
-    # (e.g. 8-nugget golden carrot) produce many small interleaved steps that each
-    # rely on exact leftover amounts from the virtual simulation.  Real execution
-    # drifts, causing shortfalls.  Consolidate by summing all steps for the same
-    # output item while preserving first-seen (topological) order.
-    merged = {}
-    ordered_steps = []
-    for step in plan['steps']:
-        key = step['output_item']
-        if key not in merged:
-            merged[key] = {'output_item': key, 'times': step['times'], 'recipe_id': step['recipe_id']}
-            ordered_steps.append(merged[key])
-        else:
-            merged[key]['times'] += step['times']
+    raw_materials = plan.get('raw_materials', {})
+    if raw_materials:
+        available = _count_available_items(bot_name)
+        missing = {}
+        for mat, needed in raw_materials.items():
+            short = needed - available.get(mat, 0)
+            if short > 0:
+                missing[mat] = short
+        if missing:
+            items_str = ", ".join(f"{cnt}x {itm}" for itm, cnt in missing.items())
+            raise RuntimeError(f"Missing raw materials: {items_str}")
 
     use_player_inventory = _plan_fits_in_2x2(plan, bot_name)
     container_type = _open_crafting_container(bot_name, max_distance, use_player_inventory)
 
     try:
-        for step in ordered_steps:
+        for step in plan['steps']:
+            if step.get('is_consolidate'):
+                _consolidate_stacks(step['output_item'], bot_name)
+                time.sleep(0.05)
+                continue
+
             craft_item_id = step['output_item']
             craft_count = step['times']
 

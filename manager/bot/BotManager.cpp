@@ -1319,52 +1319,9 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
         bot->meteorModules.insert(moduleData.name, moduleData);
     }
 
-    QString output = QString("=== Meteor Modules (%1) ===\n").arg(response.modules().size());
-
-    for (const auto &module : response.modules()) {
-        QString statusIcon = module.enabled() ? "[✓]" : "[ ]";
-        output += QString("%1 %2 (%3)\n").arg(statusIcon, module.name(), module.category());
-
-        if (!module.description().isEmpty()) {
-            output += QString("    %1\n").arg(module.description());
-        }
-
-        if (!module.settings().empty()) {
-            output += "    Settings:\n";
-
-            QMap<QString, QVector<const mankool::mcbot::protocol::SettingInfo*>> groupedSettings;
-            for (const auto &setting : module.settings()) {
-                QString group = setting.hasGroupName() ? setting.groupName() : QString();
-                groupedSettings[group].append(&setting);
-            }
-
-            for (auto it = groupedSettings.constBegin(); it != groupedSettings.constEnd(); ++it) {
-                const QString &groupName = it.key();
-                const auto &settings = it.value();
-
-                if (!groupName.isEmpty()) {
-                    output += QString("      [%1]\n").arg(groupName);
-                }
-
-                for (const auto *setting : settings) {
-                    QString settingPath = getSettingPath(*setting);
-                    QVariant value = meteorProtoToVariant(setting->currentValue(), setting->type());
-                    output += QString("        %1 = %2\n").arg(settingPath, variantToDisplayString(value));
-                }
-            }
-        }
-        output += "\n";
-    }
-
-    bool isSilent = silentMessageIds.remove(response.requestId());
+    silentMessageIds.remove(response.requestId());
 
     LogManager::log(QString("[%1] Received %2 Meteor modules").arg(bot->name).arg(response.modules().size()), LogManager::Info);
-
-    if (!isSilent) {
-        if (bot->consoleWidget) {
-            bot->consoleWidget->appendResponse(true, output);
-        }
-    }
 
     emit meteorModulesReceived(bot->name);
 }
@@ -3319,12 +3276,12 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
     sendOutboundMessage(bot->connectionId, msg);
 }
 
-void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType)
+void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType, bool silent)
 {
-    instance().sendClickContainerSlotImpl(botName, slotIndex, button, clickType);
+    instance().sendClickContainerSlotImpl(botName, slotIndex, button, clickType, silent);
 }
 
-void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType)
+void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType, bool silent)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -3347,7 +3304,7 @@ void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotInde
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setClickContainerSlot(command);
-    sendOutboundMessage(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, message, silent);
 }
 
 void BotManager::sendCloseContainer(const QString &botName)

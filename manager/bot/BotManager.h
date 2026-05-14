@@ -437,7 +437,7 @@ public:
                                       mankool::mcbot::protocol::BlockFaceGadget::BlockFace face = mankool::mcbot::protocol::BlockFaceGadget::BlockFace::FACE_AUTO);
 
     // Container interaction commands
-    static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType);
+    static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType, bool silent = false);
     static void sendCloseContainer(const QString &botName);
     static void sendOpenInventory(const QString &botName);
 
@@ -526,7 +526,7 @@ private:
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
                                    mankool::mcbot::protocol::BlockFaceGadget::BlockFace face);
-    void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType);
+    void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType, bool silent = false);
     void sendCloseContainerImpl(const QString &botName);
     void sendOpenInventoryImpl(const QString &botName);
     void sendClickScreenWidgetImpl(const QString &botName, const QString &screenId, int widgetIndex, int button);

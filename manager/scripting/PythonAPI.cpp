@@ -2042,12 +2042,12 @@ void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool loo
                                       mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, sneak, lookAtBlock, protoFace);
 }
 
-void PythonAPI::clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot)
+void PythonAPI::clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot, bool silent)
 {
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
-    BotManager::sendClickContainerSlot(botName, slotIndex, button, static_cast<int>(clickType));
+    BotManager::sendClickContainerSlot(botName, slotIndex, button, static_cast<int>(clickType), silent);
 }
 
 void PythonAPI::closeContainer(const std::string &bot)
@@ -2211,15 +2211,24 @@ py::dict PythonAPI::planRecursiveCraft(const std::string &itemId, int count, con
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    // Get bot's current inventory
+    // Get bot's current inventory - totals for the DFS planner and per-slot stacks
+    // for the space-aware scheduling post-pass.
     QMap<QString, int> available;
+    QMap<QString, QList<int>> initialStacks;
     for (const auto &item : std::as_const(botInstance->inventory)) {
-        available[item.itemId()] += item.count();
+        int slotIdx = item.slot();
+        if (slotIdx < 0 || slotIdx > 35) continue; // only hotbar (0-8) + main (9-35)
+        if (item.itemId().isEmpty() || item.itemId() == "minecraft:air" || item.count() <= 0) continue;
+        QString itemId2 = item.itemId();
+        available[itemId2] += item.count();
+        initialStacks[itemId2].append(item.count());
     }
 
     // Create planner and plan the craft
-    CraftingPlanner planner(&botInstance->recipeRegistry);
-    CraftingPlan plan = planner.planCrafting(QString::fromStdString(itemId), count, available);
+    CraftingPlanner planner(&botInstance->recipeRegistry, botInstance->itemRegistry.get());
+    CraftingPlan plan = planner.planCrafting(
+        QString::fromStdString(itemId), count, available,
+        QSet<QString>(), true, initialStacks);
 
     // Convert CraftingPlan to Python dict
     py::dict result;
@@ -2234,6 +2243,7 @@ py::dict PythonAPI::planRecursiveCraft(const std::string &itemId, int count, con
         stepDict["times"] = step.times;
         stepDict["output_item"] = step.outputItem.toStdString();
         stepDict["output_count"] = step.outputCount;
+        stepDict["is_consolidate"] = step.isConsolidate;
 
         // Convert inputs map
         py::dict inputs;

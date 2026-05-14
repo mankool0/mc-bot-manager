@@ -407,7 +407,8 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
           py::arg("slot_index"),
           py::arg("button") = 0,
           py::arg("click_type") = PythonAPI::ContainerClickType::PICKUP,
-          py::arg("bot") = "");
+          py::arg("bot") = "",
+          py::arg("silent") = false);
     m.def("close_container", &PythonAPI::closeContainer,
           "Close currently open container",
           py::arg("bot") = "");
