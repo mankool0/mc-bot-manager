@@ -345,7 +345,7 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
     if items_in_grid:
         for item in items_in_grid:
             world.click_slot(item['slot'], button=world.MouseButton.LEFT,
-                           click_type=world.ClickType.QUICK_MOVE, bot=bot_name)
+                           click_type=world.ClickType.QUICK_MOVE, bot=bot_name, silent=True)
             item['item_id'] = 'minecraft:air'
             item['count'] = 0
             time.sleep(0.05)
@@ -395,23 +395,23 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
                 stack_count = source_item['count']
 
                 world.click_slot(item_slot, button=world.MouseButton.LEFT,
-                               click_type=world.ClickType.PICKUP, bot=bot_name)
+                               click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                 time.sleep(0.05)
 
                 to_place = min(needed_now, stack_count)
 
                 if to_place == stack_count and current_in_slot == 0:
                     world.click_slot(slot, button=world.MouseButton.LEFT,
-                                   click_type=world.ClickType.PICKUP, bot=bot_name)
+                                   click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                 else:
                     for _ in range(to_place):
                         world.click_slot(slot, button=world.MouseButton.RIGHT,
-                                       click_type=world.ClickType.PICKUP, bot=bot_name)
+                                       click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                 time.sleep(0.05)
 
                 if stack_count > to_place:
                     world.click_slot(item_slot, button=world.MouseButton.LEFT,
-                                   click_type=world.ClickType.PICKUP, bot=bot_name)
+                                   click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
                     time.sleep(0.05)
                     container_items[source_idx]['count'] -= to_place
                 else:
@@ -423,7 +423,7 @@ def craft_item(item_id, count=1, bot_name="", container_type=None, recipe_id=Non
 
         # Shift-click to craft batch
         world.click_slot(slots['result'], button=world.MouseButton.LEFT,
-                        click_type=world.ClickType.QUICK_MOVE, bot=bot_name)
+                        click_type=world.ClickType.QUICK_MOVE, bot=bot_name, silent=True)
         time.sleep(0.15)
 
         remaining_crafts -= current_batch
@@ -496,10 +496,10 @@ def _consolidate_stacks(item_id, bot_name=""):
             break
 
         world.click_slot(_inv_to_menu_slot(src['slot']), button=world.MouseButton.LEFT,
-                         click_type=world.ClickType.PICKUP, bot=bot_name)
+                         click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
         time.sleep(0.05)
         world.click_slot(_inv_to_menu_slot(dst['slot']), button=world.MouseButton.LEFT,
-                         click_type=world.ClickType.PICKUP, bot=bot_name)
+                         click_type=world.ClickType.PICKUP, bot=bot_name, silent=True)
         time.sleep(0.05)
 
 

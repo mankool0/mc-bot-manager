@@ -454,7 +454,7 @@ if container:
 
 ---
 
-### `click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot="")`
+### `click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot="", silent=False)`
 
 Click a slot in the currently open container (or player inventory).
 
@@ -464,6 +464,7 @@ Click a slot in the currently open container (or player inventory).
 - `button` (`int` or `MouseButton`, optional) - Mouse button for normal clicks, or hotbar key number (1-9) for `SWAP` (default: `LEFT`)
 - `click_type` (`ClickType`, optional) - Click type (default: `PICKUP`)
 - `bot` (`str`, optional) - Bot name, defaults to current bot
+- `silent` (`bool`, optional) - Suppress the per-click confirmation message in the bot console (default: `False`). Useful in loops that call `click_slot` repeatedly.
 
 **Raises:** `RuntimeError` if bot not found or not online
 

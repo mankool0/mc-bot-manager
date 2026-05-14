@@ -3276,12 +3276,12 @@ void BotManager::sendInteractWithBlockImpl(const QString &botName, int x, int y,
     sendOutboundMessage(bot->connectionId, msg);
 }
 
-void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType)
+void BotManager::sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType, bool silent)
 {
-    instance().sendClickContainerSlotImpl(botName, slotIndex, button, clickType);
+    instance().sendClickContainerSlotImpl(botName, slotIndex, button, clickType, silent);
 }
 
-void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType)
+void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType, bool silent)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot) {
@@ -3304,7 +3304,7 @@ void BotManager::sendClickContainerSlotImpl(const QString &botName, int slotInde
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setClickContainerSlot(command);
-    sendOutboundMessage(bot->connectionId, message);
+    sendOutboundMessage(bot->connectionId, message, silent);
 }
 
 void BotManager::sendCloseContainer(const QString &botName)
