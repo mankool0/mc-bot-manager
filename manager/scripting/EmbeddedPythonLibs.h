@@ -15,27 +15,28 @@ public:
 
     static bool ensureModuleExists(const QString &scriptsDir, const QString &moduleName) {
         QString modulePath = QDir(scriptsDir).filePath(moduleName + ".py");
-
-        if (QFile::exists(modulePath)) {
-            return true;
-        }
-
         QString resourcePath = QString(":/pythonlibs/pythonlibs/%1.py").arg(moduleName);
-        QFile resourceFile(resourcePath);
 
+        QFile resourceFile(resourcePath);
         if (!resourceFile.open(QIODevice::ReadOnly)) {
             qWarning() << "Failed to open resource:" << resourcePath;
             return false;
         }
+        QByteArray resourceData = resourceFile.readAll();
+
+        QFile existing(modulePath);
+        if (existing.open(QIODevice::ReadOnly) && existing.readAll() == resourceData) {
+            return true;
+        }
+        existing.close();
 
         QFile targetFile(modulePath);
         if (!targetFile.open(QIODevice::WriteOnly)) {
-            qWarning() << "Failed to create module file:" << modulePath;
+            qWarning() << "Failed to write module file:" << modulePath;
             return false;
         }
-
-        targetFile.write(resourceFile.readAll());
-        qDebug() << "Copied bundled module to:" << modulePath;
+        targetFile.write(resourceData);
+        qDebug() << "Updated bundled module at:" << modulePath;
         return true;
     }
 
