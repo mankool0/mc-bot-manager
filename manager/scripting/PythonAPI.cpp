@@ -2066,6 +2066,14 @@ void PythonAPI::openInventory(const std::string &bot)
     BotManager::sendOpenInventory(botName);
 }
 
+void PythonAPI::resyncInventory(const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::sendRequestInventoryResync(botName);
+}
+
 py::object PythonAPI::getContainer(const std::string &bot)
 {
     QString botName = resolveBotName(bot);

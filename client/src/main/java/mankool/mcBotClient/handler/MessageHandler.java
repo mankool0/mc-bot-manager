@@ -138,6 +138,8 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleHoldAttack(msg.getHoldAttack()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_ATTACK_STATUS,
             msg -> worldInteractionHandler.handleGetHoldAttackStatus(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_INVENTORY_RESYNC,
+            msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
     }
 
     public void start() {

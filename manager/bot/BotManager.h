@@ -440,6 +440,7 @@ public:
     static void sendClickContainerSlot(const QString &botName, int slotIndex, int button, int clickType, bool silent = false);
     static void sendCloseContainer(const QString &botName);
     static void sendOpenInventory(const QString &botName);
+    static void sendRequestInventoryResync(const QString &botName);
 
     // Screen widget interaction commands
     static void sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button);
@@ -529,6 +530,7 @@ private:
     void sendClickContainerSlotImpl(const QString &botName, int slotIndex, int button, int clickType, bool silent = false);
     void sendCloseContainerImpl(const QString &botName);
     void sendOpenInventoryImpl(const QString &botName);
+    void sendRequestInventoryResyncImpl(const QString &botName);
     void sendClickScreenWidgetImpl(const QString &botName, const QString &screenId, int widgetIndex, int button);
     void sendClickScreenPositionImpl(const QString &botName, const QString &screenId, double x, double y, int button);
     void sendTypeTextImpl(const QString &botName, const QString &screenId, const QString &text);
