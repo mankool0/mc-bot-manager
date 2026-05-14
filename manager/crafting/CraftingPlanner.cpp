@@ -132,19 +132,30 @@ int CraftingPlanner::maxBySpace(const CraftingStep& step, int remaining, int res
         if (totalSlotsInMap(tempStacks) <= maxSlots) return remaining;
     }
 
-    // Binary search won't work cleanly due to stacking non-monotonicity at boundaries,
-    // but the function is roughly increasing so search from top is fast in practice.
-    // TODO: for very large `remaining` this is O(n) map copies; consider a smarter bound.
-    for (int k = remaining - 1; k >= 1; k--) {
+    // Binary search for the largest k that fits, then scan upward a few steps to handle
+    // the rare non-monotone bumps at stack-fill boundaries.
+    int lo = 1, hi = remaining - 1, best = 0;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
         auto tempStacks = stacks;
-        for (auto it = step.inputs.constBegin(); it != step.inputs.constEnd(); ++it) {
-            removeFromStacks(tempStacks, it.key(), it.value() * k);
+        for (auto it = step.inputs.constBegin(); it != step.inputs.constEnd(); ++it)
+            removeFromStacks(tempStacks, it.key(), it.value() * mid);
+        addToStacks(tempStacks, step.outputItem, mid * resultCount, outMaxStack);
+        if (totalSlotsInMap(tempStacks) <= maxSlots) {
+            best = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
         }
-        addToStacks(tempStacks, step.outputItem, k * resultCount, outMaxStack);
-        if (totalSlotsInMap(tempStacks) <= maxSlots) return k;
     }
-
-    return 0;
+    for (int k = best + 1; k < remaining; k++) {
+        auto tempStacks = stacks;
+        for (auto it = step.inputs.constBegin(); it != step.inputs.constEnd(); ++it)
+            removeFromStacks(tempStacks, it.key(), it.value() * k);
+        addToStacks(tempStacks, step.outputItem, k * resultCount, outMaxStack);
+        if (totalSlotsInMap(tempStacks) <= maxSlots) best = k; else break;
+    }
+    return best;
 }
 
 QString CraftingPlanner::findConsolidationCandidate(
@@ -202,17 +213,16 @@ void CraftingPlanner::scheduleForSpace(
     QList<CraftingStep> mergedSteps;
     for (const auto& s : plan.steps) {
         if (s.times <= 0) continue;
-        if (mergedIdx.contains(s.outputItem)) {
-            // TODO: merges under the first seen recipeId; would be wrong if the planner
-            // ever emits two steps for the same output using different recipes.
-            CraftingStep& existing = mergedSteps[mergedIdx[s.outputItem]];
+        QString mergeKey = s.outputItem + ':' + s.recipeId;
+        if (mergedIdx.contains(mergeKey)) {
+            CraftingStep& existing = mergedSteps[mergedIdx[mergeKey]];
             existing.times += s.times;
             existing.outputCount += s.outputCount;
             for (auto it = s.inputs.constBegin(); it != s.inputs.constEnd(); ++it) {
                 existing.inputs[it.key()] += it.value();
             }
         } else {
-            mergedIdx[s.outputItem] = mergedSteps.size();
+            mergedIdx[mergeKey] = mergedSteps.size();
             mergedSteps.append(s);
         }
     }
@@ -328,10 +338,6 @@ int CraftingPlanner::calculateRawMaterialCost(
     if (inProgress && inProgress->contains(recipe->recipeId)) return 999999;
 
     if (memo) {
-        // TODO: memo key doesn't encode the inProgress set, so a cost computed as 999999
-        // due to a cycle on one DFS path can be returned for another path where that cycle
-        // wouldn't apply. In practice Minecraft cycles are symmetric so the result is
-        // correct, but a proper fix would include inProgress in the key.
         QString memoKey = recipe->recipeId + ':' + QString::number(batches);
         auto it = memo->constFind(memoKey);
         if (it != memo->constEnd()) return it.value();
@@ -344,6 +350,7 @@ int CraftingPlanner::calculateRawMaterialCost(
     // Cost metric: number of crafting steps required
     // This naturally favors shorter recipe chains
     int totalCraftingSteps = batches; // This recipe itself costs 'batches' operations
+    bool cycleTainted = false;
 
     for (const auto& ing : recipe->ingredients) {
         int needed = ing.count * batches;
@@ -369,6 +376,7 @@ int CraftingPlanner::calculateRawMaterialCost(
                     // This item can be crafted - find cheapest sub-recipe
                     for (const Recipe* subRecipe : std::as_const(subRecipes)) {
                         int subBatches = (stillNeeded + subRecipe->resultCount - 1) / subRecipe->resultCount;
+                        if (inProgress && inProgress->contains(subRecipe->recipeId)) cycleTainted = true;
                         int subCost = calculateRawMaterialCost(subRecipe, subBatches, state, maxDepth - 1, inProgress, memo);
                         minSubCost = qMin(minSubCost, subCost);
                     }
@@ -387,7 +395,8 @@ int CraftingPlanner::calculateRawMaterialCost(
 
     qDebug() << QString(10 - maxDepth, ' ') << "[Cost] Result for" << recipe->recipeId << "=" << totalCraftingSteps;
     if (inProgress) inProgress->remove(recipe->recipeId);
-    if (memo) (*memo)[recipe->recipeId + ':' + QString::number(batches)] = totalCraftingSteps;
+    if (memo && !cycleTainted)
+        (*memo)[recipe->recipeId + ':' + QString::number(batches)] = totalCraftingSteps;
     return totalCraftingSteps;
 }
 
