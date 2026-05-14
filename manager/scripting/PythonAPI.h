@@ -246,6 +246,7 @@ public:
     static void clickContainerSlot(int slotIndex, int button, ContainerClickType clickType, const std::string &bot = "", bool silent = false);
     static void closeContainer(const std::string &bot = "");
     static void openInventory(const std::string &bot = "");
+    static void resyncInventory(const std::string &bot = "");
     static py::object getContainer(const std::string &bot = "");
 
     // Screen interaction

@@ -129,6 +129,10 @@ message PressKeyCommand {
 message OpenGameMenuCommand {
 }
 
+// Force a full server->client inventory resync by triggering a stateId mismatch
+message RequestInventoryResyncCommand {
+}
+
 // Tell client to shut down the process
 message ShutdownCommand {
   string reason = 1;           // Optional reason for shutdown

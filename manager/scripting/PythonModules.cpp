@@ -99,6 +99,9 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     m.def("inventory", &PythonAPI::getInventory,
           "Get inventory as list of items",
           py::arg("bot_name") = "");
+    m.def("resync_inventory", &PythonAPI::resyncInventory,
+          "Force a full inventory resync from the server. Sends a stateId mismatch to trigger sendAllDataToRemote on the server side.",
+          py::arg("bot") = "");
     m.def("get_cursor_item", &PythonAPI::getCursorItem,
           "Get item currently held on the cursor (slot=-1, item_id='minecraft:air' if empty)",
           py::arg("bot_name") = "");

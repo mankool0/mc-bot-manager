@@ -2,8 +2,12 @@ package mankool.mcBotClient.util;
 
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import mankool.mcbot.protocol.Commands.ClickContainerSlotCommand;
 import net.minecraft.SharedConstants;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -138,5 +142,17 @@ public class VersionCompat {
             default: throw new IllegalArgumentException("Unknown click type: " + protoClickType);
         }
         gameMode.handleInventoryMouseClick(containerId, slotIndex, button, clickType, player);
+    }
+
+    public static void requestInventoryResync(LocalPlayer player) {
+        player.connection.send(new ServerboundContainerClickPacket(
+            0,
+            player.containerMenu.getStateId() - 1,
+            -999,
+            0,
+            ClickType.PICKUP,
+            ItemStack.EMPTY,
+            new Int2ObjectArrayMap<>()
+        ));
     }
 }

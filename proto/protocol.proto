@@ -164,5 +164,8 @@ message ManagerToClientMessage {
     // In-game attack (left-click) hold toggle and status query
     HoldAttackCommand hold_attack = 33;
     GetHoldAttackStatusCommand get_hold_attack_status = 34;
+
+    // Force a full inventory resync from the server
+    RequestInventoryResyncCommand request_inventory_resync = 35;
   }
 }

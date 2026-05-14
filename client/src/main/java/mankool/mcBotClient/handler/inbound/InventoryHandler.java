@@ -2,6 +2,7 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Common;
+import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
@@ -139,6 +140,27 @@ public class InventoryHandler extends BaseInboundHandler {
             sendSuccess(messageId, "Opened inventory");
         } catch (Exception e) {
             sendFailure(messageId, "Failed to open inventory: " + e.getMessage());
+        }
+    }
+
+    public void handleRequestInventoryResync(String messageId) {
+        LocalPlayer player = client.player;
+        if (player == null) {
+            sendFailure(messageId, "Not in game");
+            return;
+        }
+
+        if (player.containerMenu.containerId != 0) {
+            sendFailure(messageId, "Cannot resync while a container is open");
+            return;
+        }
+
+        try {
+            VersionCompat.requestInventoryResync(player);
+            sendSuccess(messageId, "Inventory resync requested");
+        } catch (Exception e) {
+            LOGGER.error("Failed to request inventory resync: {}", e.getMessage());
+            sendFailure(messageId, "Failed to request resync: " + e.getMessage());
         }
     }
 }

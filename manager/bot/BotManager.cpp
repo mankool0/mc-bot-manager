@@ -3357,6 +3357,31 @@ void BotManager::sendOpenInventoryImpl(const QString &botName)
     sendOutboundMessage(bot->connectionId, message);
 }
 
+void BotManager::sendRequestInventoryResync(const QString &botName)
+{
+    instance().sendRequestInventoryResyncImpl(botName);
+}
+
+void BotManager::sendRequestInventoryResyncImpl(const QString &botName)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("[%1] Bot not found for inventory resync").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName),
+                       LogManager::Error);
+        return;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setRequestInventoryResync(mankool::mcbot::protocol::RequestInventoryResyncCommand{});
+    sendOutboundMessage(bot->connectionId, message);
+}
+
 void BotManager::sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button)
 {
     instance().sendClickScreenWidgetImpl(botName, screenId, widgetIndex, button);
