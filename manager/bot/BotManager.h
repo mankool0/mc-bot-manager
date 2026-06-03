@@ -41,6 +41,7 @@ class LogManager;
 class BotConsoleWidget;
 class MeteorModulesWidget;
 class BaritoneWidget;
+class BotDebugWidget;
 class ScriptEngine;
 class ScriptsWidget;
 
@@ -285,6 +286,7 @@ struct BotInstance : public BotConfig {
     QPointer<BotConsoleWidget> consoleWidget;
     QPointer<MeteorModulesWidget> meteorWidget;
     QPointer<BaritoneWidget> baritoneWidget;
+    QPointer<BotDebugWidget> debugWidget;
     ScriptEngine* scriptEngine = nullptr;
     QPointer<ScriptsWidget> scriptsWidget;
 

@@ -556,6 +556,22 @@ std::optional<std::string> PythonAPI::getServer(const std::string &botName)
     return bot->server.toStdString();
 }
 
+std::optional<std::string> PythonAPI::getSingleplayerWorld(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || !bot->isSingleplayer || bot->singleplayerWorld.isEmpty())
+        return std::nullopt;
+    return bot->singleplayerWorld.toStdString();
+}
+
+bool PythonAPI::getIsSingleplayer(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    return bot && bot->isSingleplayer;
+}
+
 std::optional<std::string> PythonAPI::getAccount(const std::string &botName)
 {
     QString name = resolveBotName(botName);

@@ -18,6 +18,7 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include "BaritoneWidget.h"
 #include "BotConsoleWidget.h"
+#include "BotDebugWidget.h"
 #include "GlobalSettingsDialog.h"
 #include "MeteorModulesWidget.h"
 #include "NetworkStatsWidget.h"
@@ -485,6 +486,16 @@ void ManagerMainWindow::addNewBot()
                 }
             }
 
+            if (!bot->debugWidget) {
+                bot->debugWidget = new BotDebugWidget(bot, this);
+                bot->debugWidget->hide();
+
+                QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->debugTab->layout());
+                if (layout) {
+                    layout->addWidget(bot->debugWidget);
+                }
+            }
+
             if (!bot->scriptEngine) {
                 bot->scriptEngine = new ScriptEngine(bot, this);
                 bot->scriptEngine->loadScriptsFromDisk();
@@ -740,6 +751,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         if (bot->baritoneWidget) {
             bot->baritoneWidget->hide();
         }
+        if (bot->debugWidget) {
+            bot->debugWidget->hide();
+        }
         if (bot->scriptsWidget) {
             bot->scriptsWidget->hide();
         }
@@ -771,6 +785,9 @@ void ManagerMainWindow::onInstanceSelectionChanged()
         }
         if (bot.baritoneWidget) {
             bot.baritoneWidget->show();
+        }
+        if (bot.debugWidget) {
+            bot.debugWidget->show();
         }
         if (bot.scriptsWidget) {
             bot.scriptsWidget->show();
@@ -1468,6 +1485,7 @@ void ManagerMainWindow::loadSettings()
     setupConsoleTab();
     setupMeteorTab();
     setupBaritoneTab();
+    setupDebugTab();
     setupScriptsTab();
 
     settings.beginGroup("Window");
@@ -2191,6 +2209,24 @@ void ManagerMainWindow::onBaritoneSettingChanged(const QString &settingName, con
     }
 
     BotManager::sendBaritoneSettingChange(selectedBotName, settingName, value);
+}
+
+void ManagerMainWindow::setupDebugTab()
+{
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->debugTab->layout());
+    if (!layout) {
+        layout = new QVBoxLayout(ui->debugTab);
+        layout->setContentsMargins(0, 0, 0, 0);
+    }
+
+    QVector<BotInstance*> &bots = BotManager::getBots();
+    for (BotInstance *bot : bots) {
+        if (!bot->debugWidget) {
+            bot->debugWidget = new BotDebugWidget(bot, this);
+            bot->debugWidget->hide();
+            layout->addWidget(bot->debugWidget);
+        }
+    }
 }
 
 void ManagerMainWindow::setupScriptsTab()
