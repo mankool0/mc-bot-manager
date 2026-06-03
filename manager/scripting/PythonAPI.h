@@ -138,6 +138,8 @@ public:
     static std::optional<int> getSelectedSlot(const std::string &botName = "");
     static void selectSlot(int slot, const std::string &botName = "");
     static std::optional<std::string> getServer(const std::string &botName = "");
+    static std::optional<std::string> getSingleplayerWorld(const std::string &botName = "");
+    static bool getIsSingleplayer(const std::string &botName = "");
     static std::optional<std::string> getAccount(const std::string &botName = "");
     static std::optional<int64_t> getUptime(const std::string &botName = "");
     static py::object getProxy(const std::string &botName = "");

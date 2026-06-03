@@ -170,6 +170,7 @@ private:
     void onBaritoneSettingChanged(const QString &settingName, const QVariant &value);
 
     void setupScriptsTab();
+    void setupDebugTab();
     void setupCodeEditorThemeMenu();
     void onEditorThemeChanged(const QString &themeName);
 

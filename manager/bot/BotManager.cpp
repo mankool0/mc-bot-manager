@@ -4,6 +4,7 @@
 #include "ui/BotConsoleWidget.h"
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
+#include "ui/BotDebugWidget.h"
 #include "scripting/ScriptEngine.h"
 #include "ui/ScriptsWidget.h"
 #include "scripting/PythonAPI.h"
@@ -789,6 +790,10 @@ void BotManager::removeBotImpl(const QString &name)
             if (botInstances[i]->baritoneWidget) {
                 delete botInstances[i]->baritoneWidget;
                 botInstances[i]->baritoneWidget = nullptr;
+            }
+            if (botInstances[i]->debugWidget) {
+                delete botInstances[i]->debugWidget;
+                botInstances[i]->debugWidget = nullptr;
             }
 
             QString serverKey = botInstances[i]->worldAutoSaverServerIp;

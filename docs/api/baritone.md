@@ -2,7 +2,7 @@
 
 ## Navigation
 
-### `goto(x, y, z, bot="")` or `goto(x, z, bot="")`
+### `goto(x, y, z, bot_name="")` or `goto(x, z, bot_name="")`
 
 Navigate to coordinates. You can specify either X/Y/Z coordinates or just X/Z coordinates (Y level will be determined by baritone).
 
@@ -11,7 +11,7 @@ Navigate to coordinates. You can specify either X/Y/Z coordinates or just X/Z co
 - `x` (`float`) - X coordinate
 - `y` (`float`, optional) - Y coordinate
 - `z` (`float`) - Z coordinate
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 **Examples:**
 
@@ -23,26 +23,26 @@ baritone.goto(100, 64, 200)
 baritone.goto(100, 200)
 ```
 
-### `follow(player, bot="")`
+### `follow(player, bot_name="")`
 
 Follow a player.
 
 **Parameters:**
 
 - `player` (`str`) - Player name to follow
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 ```python
 baritone.follow("PlayerName")
 ```
 
-### `cancel(bot="")`
+### `cancel(bot_name="")`
 
 Cancel current task.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 ```python
 baritone.cancel()
@@ -50,26 +50,26 @@ baritone.cancel()
 
 ## Automation
 
-### `mine(block_type, bot="")`
+### `mine(block_type, bot_name="")`
 
 Mine specific block type.
 
 **Parameters:**
 
 - `block_type` (`str`) - Block type to mine (e.g., `"diamond_ore"`)
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 ```python
 baritone.mine("diamond_ore")
 ```
 
-### `farm(bot="")`
+### `farm(bot_name="")`
 
 Start farming.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 ```python
 baritone.farm()
@@ -77,14 +77,14 @@ baritone.farm()
 
 ## Commands
 
-### `command(command, bot="")`
+### `command(command, bot_name="")`
 
 Send Baritone command directly.
 
 **Parameters:**
 
 - `command` (`str`) - Baritone command
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 ```python
 baritone.command("build structure.schematic")
@@ -92,7 +92,7 @@ baritone.command("build structure.schematic")
 
 ## Settings
 
-### `set_setting(setting, value, bot="")`
+### `set_setting(setting, value, bot_name="")`
 
 Set Baritone setting.
 
@@ -100,21 +100,21 @@ Set Baritone setting.
 
 - `setting` (`str`) - Setting name
 - `value` - Setting value
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 ```python
 baritone.set_setting("allowBreak", True)
 baritone.set_setting("primaryTimeoutMS", 5000)
 ```
 
-### `get_setting(setting, bot="")`
+### `get_setting(setting, bot_name="")`
 
 Get Baritone setting value.
 
 **Parameters:**
 
 - `setting` (`str`) - Setting name
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 **Returns:** Setting value
 
@@ -146,13 +146,13 @@ PathEventType.DISCARD_NEXT                      # 10
 PathEventType.CANCELED                          # 11
 ```
 
-### `get_process_status(bot="")`
+### `get_process_status(bot_name="")`
 
 Get current Baritone process status and pathfinding state.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name
+- `bot_name` (`str`, optional) - Bot name
 
 **Returns:** Dictionary with the following keys:
 

@@ -653,6 +653,11 @@
           <string>Baritone</string>
          </attribute>
         </widget>
+        <widget class="QWidget" name="debugTab">
+         <attribute name="title">
+          <string>Debug</string>
+         </attribute>
+        </widget>
         <widget class="QWidget" name="scriptsTab">
          <attribute name="title">
           <string>Scripts</string>
