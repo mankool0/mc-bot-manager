@@ -74,6 +74,18 @@ Get server address.
 
 **Returns:** `str` or `None`
 
+### `singleplayer_world(bot_name="")`
+
+Get the singleplayer world name. Returns `None` if connected to a multiplayer server.
+
+**Returns:** `str` or `None`
+
+### `is_singleplayer(bot_name="")`
+
+Check if the bot is connected to a local/singleplayer world.
+
+**Returns:** `bool`
+
 ### `account(bot_name="")`
 
 Get account username.
@@ -141,7 +153,7 @@ if items is not None:
         print(f"Slot {item['slot']}: {item['count']}x {item['item_id']} ({item['display_name']})")
 ```
 
-### `resync_inventory(bot="")`
+### `resync_inventory(bot_name="")`
 
 Force a full inventory resync from the server. Sends a stateId mismatch packet to trigger `sendAllDataToRemote` server-side, which sends back the authoritative inventory state.
 

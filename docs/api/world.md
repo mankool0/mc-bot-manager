@@ -6,7 +6,7 @@ The world module provides access to chunk data collected from the Minecraft clie
 
 ## Block Queries
 
-### `get_block(x, y, z, use_disk=False, dimension="", bot="")`
+### `get_block(x, y, z, use_disk=False, dimension="", bot_name="")`
 
 Get the block state at the specified coordinates.
 
@@ -17,7 +17,7 @@ Get the block state at the specified coordinates.
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read the block from the saved `.mca` region file on disk (default: `False`)
 - `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `str` - Block state string (e.g., `"minecraft:stone"`, `"minecraft:chest[facing=north]"`), or `None` if chunk is not loaded (and not on disk when `use_disk=True`) or bot is offline
 
@@ -44,7 +44,7 @@ if block:
 block = world.get_block(100, 64, 100, use_disk=True, dimension="minecraft:the_nether")
 ```
 
-### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot="")`
+### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")`
 
 Find all blocks of a specific type within a spherical radius, with optional light level filters.
 
@@ -61,7 +61,7 @@ This function only searches loaded chunks. Blocks in unloaded chunks will not be
 - `max_block_light` (`int`, optional) - Maximum block light level, inclusive (default: 15)
 - `min_sky_light` (`int`, optional) - Minimum sky light level, inclusive (default: 0)
 - `max_sky_light` (`int`, optional) - Maximum sky light level, inclusive (default: 15)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[tuple]` - List of block positions as `(x, y, z)` tuples of floats
 
@@ -92,7 +92,7 @@ dark_air = world.find_blocks("minecraft:air",
                              max_sky_light=0)
 ```
 
-### `find_nearest(block_types, max_distance=128, bot="")`
+### `find_nearest(block_types, max_distance=128, bot_name="")`
 
 Find the nearest block matching any of the specified types.
 
@@ -102,7 +102,7 @@ This function searches from the bot's current position and only searches loaded 
 
 - `block_types` (`list[str]`) - List of block types to search for
 - `max_distance` (`int`, optional) - Maximum search distance in blocks (default: 128)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `tuple` - Position as `(x, y, z)` tuple of floats, or `None` if no matching block found
 
@@ -178,7 +178,7 @@ else:
 
 Block entities are blocks with attached data: chests, furnaces, signs, shulker boxes, etc. The bot tracks block entities for chunks it has loaded this session. With `use_disk=True`, entities from saved but currently unloaded chunks can also be queried.
 
-### `get_block_entity(x, y, z, use_disk=False, dimension="", bot="")`
+### `get_block_entity(x, y, z, use_disk=False, dimension="", bot_name="")`
 
 Get the block entity at the specified position.
 
@@ -189,7 +189,7 @@ Get the block entity at the specified position.
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and no in-memory data exists, read from the saved `.mca` file (default: `False`)
 - `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it.
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `dict` or `None` if no block entity exists at that position
 
@@ -224,7 +224,7 @@ if be and be['type'] == 'minecraft:chest':
 
 ---
 
-### `get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot="")`
+### `get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")`
 
 Get all block entities in a chunk.
 
@@ -234,7 +234,7 @@ Get all block entities in a chunk.
 - `chunk_z` (`int`) - Chunk Z coordinate (block Z divided by 16, rounded down)
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded, read from the saved `.mca` file (default: `False`)
 - `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. If a different dimension is specified, **requires `use_disk=True`** - raises `ValueError` otherwise.
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[dict]` - List of block entity dicts (same schema as `get_block_entity`)
 
@@ -329,7 +329,7 @@ world.interact_block(bx, by, bz, sneak=True, look_at_block=False, face=world.Blo
 world.look_at(bx, by, bz)
 ```
 
-### `interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot="")`
+### `interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")`
 
 Interact with (right-click) a block at the specified position.
 
@@ -343,7 +343,7 @@ This is used to open containers, press buttons, use beds, place blocks against a
 - `sneak` (`bool`, optional) - Whether to sneak while interacting (default: False)
 - `look_at_block` (`bool`, optional) - Whether to rotate and look at the block before interacting (default: True)
 - `face` (`world.BlockFace`, optional) - Which face of the block to interact with. When set to anything other than `AUTO`, bypasses the automatic raytrace and clicks the specified face directly regardless of bot position (default: `world.BlockFace.AUTO`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online
 
@@ -364,7 +364,7 @@ if pos:
     world.interact_block(int(x), int(y), int(z))
 ```
 
-### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot="")`
+### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")`
 
 Check if a block is reachable (visible via raytrace) from the bot's current eye position.
 
@@ -372,7 +372,7 @@ Check if a block is reachable (visible via raytrace) from the bot's current eye 
 - `x, y, z` (`int`) - Block coordinates
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
-- `bot` (`str`, optional) - Bot name (default: active bot)
+- `bot_name` (`str`, optional) - Bot name (default: active bot)
 
 **Returns:** `bool` - True if the block (or specified face) is reachable
 
@@ -387,7 +387,7 @@ if world.can_reach_block(x, y, z, face=world.BlockFace.UP):
 
 ---
 
-### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot="")`
+### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")`
 
 Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.
 
@@ -396,7 +396,7 @@ Check if a block is reachable from a hypothetical standing position without movi
 - `x, y, z` (`int`) - Block coordinates to check
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
-- `bot` (`str`, optional) - Bot name (default: active bot)
+- `bot_name` (`str`, optional) - Bot name (default: active bot)
 
 **Returns:** `bool` - True if the block (or specified face) would be reachable from that position
 
@@ -424,7 +424,7 @@ Used with `look_at`, `interact_block`, `can_reach_block`, and `can_reach_block_f
 
 ## Container Interaction
 
-### `get_container(bot="")`
+### `get_container(bot_name="")`
 
 Get the currently open container. Returns `None` if no container is open or bot is offline.
 
@@ -454,7 +454,7 @@ if container:
 
 ---
 
-### `click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot="", silent=False)`
+### `click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot_name="", silent=False)`
 
 Click a slot in the currently open container (or player inventory).
 
@@ -463,7 +463,7 @@ Click a slot in the currently open container (or player inventory).
 - `slot_index` (`int`) - Slot index using **InventoryMenu numbering** (see note below)
 - `button` (`int` or `MouseButton`, optional) - Mouse button for normal clicks, or hotbar key number (1-9) for `SWAP` (default: `LEFT`)
 - `click_type` (`ClickType`, optional) - Click type (default: `PICKUP`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 - `silent` (`bool`, optional) - Suppress the per-click confirmation message in the bot console (default: `False`). Useful in loops that call `click_slot` repeatedly.
 
 **Raises:** `RuntimeError` if bot not found or not online
@@ -514,7 +514,7 @@ world.click_slot(5, button=world.MouseButton.RIGHT)
 
 ---
 
-### `click_widget(screen_id, widget_index, button=world.MouseButton.LEFT, bot="")`
+### `click_widget(screen_id, widget_index, button=world.MouseButton.LEFT, bot_name="")`
 
 Click a widget (button, etc.) on the currently open screen.
 
@@ -523,7 +523,7 @@ Click a widget (button, etc.) on the currently open screen.
 - `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
 - `widget_index` (`int`) - The `index` from a `GuiWidget` in `bot.get_screen().widgets`
 - `button` (`MouseButton`, optional) - Mouse button (default: `LEFT`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found, not online, or `screen_id` doesn't match the currently open screen
 
@@ -540,7 +540,7 @@ if screen is not None:
 
 ---
 
-### `click_screen(screen_id, x, y, button=world.MouseButton.LEFT, bot="")`
+### `click_screen(screen_id, x, y, button=world.MouseButton.LEFT, bot_name="")`
 
 Click at specific pixel coordinates on the currently open screen. Useful for sliders and other widgets where you need to control the exact click position.
 
@@ -550,7 +550,7 @@ Click at specific pixel coordinates on the currently open screen. Useful for sli
 - `x` (`float`) - Screen pixel X coordinate
 - `y` (`float`) - Screen pixel Y coordinate
 - `button` (`MouseButton`, optional) - Mouse button (default: `LEFT`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found, not online, or `screen_id` doesn't match the currently open screen
 
@@ -568,7 +568,7 @@ if screen is not None:
 
 ---
 
-### `type_text(screen_id, text, bot="")`
+### `type_text(screen_id, text, bot_name="")`
 
 Type text into the currently focused element on the open screen (sign lines, chat, edit boxes). Sends individual `charTyped` events for each character.
 
@@ -576,7 +576,7 @@ Type text into the currently focused element on the open screen (sign lines, cha
 
 - `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
 - `text` (`str`) - The text to type
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online
 
@@ -589,7 +589,7 @@ if screen and "SignEditScreen" in screen.screen_class:
 
 ---
 
-### `press_key(screen_id, key_code, modifiers=0, bot="")`
+### `press_key(screen_id, key_code, modifiers=0, bot_name="")`
 
 Press a key on the currently open screen (sends `keyPressed` + `keyReleased`).
 
@@ -598,7 +598,7 @@ Press a key on the currently open screen (sends `keyPressed` + `keyReleased`).
 - `screen_id` (`str`) - The `id` from `bot.get_screen()`. Ensures the screen hasn't changed since you read the dump.
 - `key_code` (`int`) - GLFW key code - use `world.Key.*` constants
 - `modifiers` (`int`, optional) - GLFW modifier flags - use `world.KeyMod.*` constants, default `0`
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online
 
@@ -627,7 +627,7 @@ if screen is not None:
 
 ---
 
-### `close_container(bot="")`
+### `close_container(bot_name="")`
 
 Close the currently open container.
 
@@ -639,7 +639,7 @@ world.close_container()
 
 ---
 
-### `open_inventory(bot="")`
+### `open_inventory(bot_name="")`
 
 Open the player's own inventory screen.
 
@@ -691,13 +691,13 @@ world.open_inventory()
 
 ## Chunk Information
 
-### `loaded_chunk_count(bot="")`
+### `loaded_chunk_count(bot_name="")`
 
 Get the number of chunks currently loaded in memory.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `int` - Number of loaded chunks
 
@@ -708,13 +708,13 @@ count = world.loaded_chunk_count()
 print(f"Loaded chunks: {count}")
 ```
 
-### `loaded_chunks(bot="")`
+### `loaded_chunks(bot_name="")`
 
 Get list of all loaded chunk positions.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[tuple]` - List of chunk positions as `(chunk_x, chunk_z)` tuples
 
@@ -727,13 +727,13 @@ for cx, cz in chunks:
     print(f"  Chunk ({cx}, {cz}) - blocks ({cx*16}, {cz*16}) to ({cx*16+15}, {cz*16+15})")
 ```
 
-### `memory_usage(bot="")`
+### `memory_usage(bot_name="")`
 
 Get the total memory used by world data storage.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `int` - Memory usage in bytes
 
@@ -879,14 +879,14 @@ print(f"Found {len(fluids)} fluid blocks")
 
 ## Recipe Registry
 
-### `get_recipe(recipe_id, bot="")`
+### `get_recipe(recipe_id, bot_name="")`
 
 Get recipe data by its exact recipe ID.
 
 **Parameters:**
 
 - `recipe_id` (`str`) - Exact recipe ID (e.g., `"minecraft:gold_ingot_from_gold_block"`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `dict` with recipe data, or `None` if not found
 
@@ -921,14 +921,14 @@ Each ingredient dict:
 
 ---
 
-### `get_recipes_for(item_id, bot="")`
+### `get_recipes_for(item_id, bot_name="")`
 
 Get all recipes that produce a given item.
 
 **Parameters:**
 
 - `item_id` (`str`) - Item ID to look up (e.g., `"minecraft:gold_ingot"`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[dict]` - List of recipe dicts (same format as `get_recipe()`). Empty list if no recipes found.
 
@@ -944,14 +944,14 @@ for r in recipes:
 
 ---
 
-### `get_item_info(item_id, bot="")`
+### `get_item_info(item_id, bot_name="")`
 
 Get item metadata from the item registry.
 
 **Parameters:**
 
 - `item_id` (`str`) - Item ID (e.g., `"minecraft:diamond_sword"`)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `dict` or `None` if item not found
 
@@ -972,13 +972,13 @@ if info:
 
 ---
 
-### `get_all_recipes(bot="")`
+### `get_all_recipes(bot_name="")`
 
 Get a list of all known recipe IDs.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[str]` - All recipe IDs
 
@@ -990,7 +990,7 @@ pickaxe_recipes = [r for r in recipes if "pickaxe" in r]
 
 ---
 
-### `plan_recursive_craft(item_id, count=1, bot="")`
+### `plan_recursive_craft(item_id, count=1, bot_name="")`
 
 Plan the full crafting tree for an item, including all intermediate steps, based on the bot's current inventory.
 
@@ -998,7 +998,7 @@ Plan the full crafting tree for an item, including all intermediate steps, based
 
 - `item_id` (`str`) - Item to craft (e.g., `"minecraft:piston"`)
 - `count` (`int`, optional) - How many to craft (default: 1)
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `dict`
 
@@ -1056,7 +1056,7 @@ The `item` sub-dict follows the standard [item dict schema](bot.md#item-dict).
 
 ---
 
-### `world.entities(bot="")`
+### `world.entities(bot_name="")`
 
 Returns a list of all currently tracked entity dicts.
 
@@ -1069,7 +1069,7 @@ for e in world.entities():
 
 ---
 
-### `world.find_entities_near(x, y, z, radius, type="", bot="")`
+### `world.find_entities_near(x, y, z, radius, type="", bot_name="")`
 
 Returns entities within `radius` blocks of `(x, y, z)`. Optional `type` is a prefix filter on the entity type string (e.g. `"minecraft:item"` or `"minecraft:"` for all vanilla entities).
 
@@ -1123,7 +1123,7 @@ On server disconnect, all entity data is cleared so stale entities never persist
 
 ## Light
 
-### `get_light(x, y, z, use_disk=False, dimension="", bot="")`
+### `get_light(x, y, z, use_disk=False, dimension="", bot_name="")`
 
 Get the light levels at the specified block position.
 
@@ -1134,7 +1134,7 @@ Get the light levels at the specified block position.
 - `z` (`float`) - Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read light data from the saved `.mca` region file on disk (default: `False`)
 - `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
 
@@ -1166,7 +1166,7 @@ light = world.get_light(5000, 64, 5000, use_disk=True)
 
 ## Block Solidity
 
-### `is_solid(block_state, face=Direction.UP, bot="")`
+### `is_solid(block_state, face=Direction.UP, bot_name="")`
 
 Check if a block state has a fully solid face in the given direction. Useful for finding mob spawn surfaces, attachment points, and pathfinding.
 
@@ -1174,7 +1174,7 @@ Check if a block state has a fully solid face in the given direction. Useful for
 
 - `block_state` (`str`) - Block state string (e.g. `"minecraft:stone"` or `"minecraft:oak_slab[type=top,waterlogged=false]"`)
 - `face` (`Direction`, optional) - Face direction to check, defaults to `Direction.UP`
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `bool`, or `None` if the block registry is not loaded
 
@@ -1219,13 +1219,13 @@ utils.log(f"Found {len(spawnable)} spawnable locations")
 
 ## Weather
 
-### `get_weather(bot="")`
+### `get_weather(bot_name="")`
 
 Get the current weather state.
 
 **Parameters:**
 
-- `bot` (`str`, optional) - Bot name, defaults to current bot
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `dict` or `None` if bot is offline
 

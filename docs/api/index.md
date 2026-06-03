@@ -23,5 +23,5 @@ bot.health()
 bot.health("bot1")
 
 # Control another bot
-baritone.goto(0, 64, 0, bot="bot2")
+baritone.goto(0, 64, 0, bot_name="bot2")
 ```
