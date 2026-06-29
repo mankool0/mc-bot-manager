@@ -25,7 +25,6 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.network.protocol.Packet;
 import com.mojang.blaze3d.platform.InputConstants;
 import org.joml.Vector3d;
 import org.slf4j.Logger;
@@ -330,15 +329,8 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     }
                 }
                 case PacketListSetting packetListSetting -> {
-                    for (Class<? extends Packet<?>> packet : meteordevelopment.meteorclient.utils.network.PacketUtils.getC2SPackets()) {
-                        if (packetListSetting.filter == null || packetListSetting.filter.test(packet)) {
-                            builder.addPossibleValues(meteordevelopment.meteorclient.utils.network.PacketUtils.getName(packet));
-                        }
-                    }
-                    for (Class<? extends Packet<?>> packet : meteordevelopment.meteorclient.utils.network.PacketUtils.getS2CPackets()) {
-                        if (packetListSetting.filter == null || packetListSetting.filter.test(packet)) {
-                            builder.addPossibleValues(meteordevelopment.meteorclient.utils.network.PacketUtils.getName(packet));
-                        }
+                    for (String packetName : VersionCompat.getPacketListPossibleValues(packetListSetting)) {
+                        builder.addPossibleValues(packetName);
                     }
                 }
                 case StatusEffectListSetting ignored -> {
@@ -650,11 +642,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case PacketListSetting packetListSetting -> {
                     if (protoValue.hasPacketListValue()) {
-                        java.util.Set<Class<? extends Packet<?>>> packets = protoValue.getPacketListValue().getPacketsList().stream()
-                                .map(meteordevelopment.meteorclient.utils.network.PacketUtils::getPacket)
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toSet());
-                        packetListSetting.set(packets);
+                        VersionCompat.setPacketListValue(packetListSetting, protoValue.getPacketListValue().getPacketsList());
                     } else {
                         LOGGER.error("Type mismatch for {}.{}: expected PACKET_LIST but got {}", moduleName, settingPath, protoValue.getValueCase());
                         return false;
@@ -822,10 +810,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     builder.setModuleListValue(ModuleList.newBuilder().addAllModules(moduleNames).build());
                 }
                 case PacketListSetting packetListSetting -> {
-                    List<String> packetNames = packetListSetting.get().stream()
-                            .map(meteordevelopment.meteorclient.utils.network.PacketUtils::getName)
-                            .collect(Collectors.toList());
-                    builder.setPacketListValue(PacketList.newBuilder().addAllPackets(packetNames).build());
+                    builder.setPacketListValue(PacketList.newBuilder().addAllPackets(VersionCompat.getPacketListValues(packetListSetting)).build());
                 }
                 case EnchantmentListSetting enchantmentListSetting -> {
                     List<String> enchantmentIds = enchantmentListSetting.get().stream()

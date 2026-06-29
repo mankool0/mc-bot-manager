@@ -1,12 +1,20 @@
 package mankool.mcBotClient.util;
 
 import com.mojang.authlib.GameProfile;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import mankool.mcbot.protocol.Commands.ClickContainerSlotCommand;
+import meteordevelopment.meteorclient.settings.PacketListSetting;
+import meteordevelopment.meteorclient.utils.network.PacketUtils;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.HashedStack;
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -152,5 +160,34 @@ public class VersionCompat {
             new Int2ObjectArrayMap<>(),
             HashedStack.EMPTY
         ));
+    }
+
+    public static List<String> getPacketListPossibleValues(PacketListSetting setting) {
+        List<String> names = new ArrayList<>();
+        for (Class<? extends Packet<?>> packet : PacketUtils.getC2SPackets()) {
+            if (setting.filter == null || setting.filter.test(packet)) {
+                names.add(PacketUtils.getName(packet));
+            }
+        }
+        for (Class<? extends Packet<?>> packet : PacketUtils.getS2CPackets()) {
+            if (setting.filter == null || setting.filter.test(packet)) {
+                names.add(PacketUtils.getName(packet));
+            }
+        }
+        return names;
+    }
+
+    public static void setPacketListValue(PacketListSetting setting, List<String> names) {
+        Set<Class<? extends Packet<?>>> packets = names.stream()
+                .map(PacketUtils::getPacket)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        setting.set(packets);
+    }
+
+    public static List<String> getPacketListValues(PacketListSetting setting) {
+        return setting.get().stream()
+                .map(PacketUtils::getName)
+                .collect(Collectors.toList());
     }
 }
