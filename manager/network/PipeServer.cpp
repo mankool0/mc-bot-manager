@@ -161,23 +161,33 @@ void PipeServer::handleClientData()
             continue;
         }
 
-        processMessage(connectionId, messageData);
+        const bool keepReading = processMessage(connectionId, messageData);
 
         // Track bytes received
         BotInstance *bot = BotManager::getBotByConnectionId(connectionId);
         if (bot) {
             bot->bytesReceived += messageLength + 4; // Include length prefix
         }
+
+        // processMessage() may have disconnected this client (e.g. version mismatch); stop reading.
+        if (!keepReading) {
+            break;
+        }
     }
 }
 
-void PipeServer::processMessage(int connectionId, const QByteArray &data)
+bool PipeServer::processMessage(int connectionId, const QByteArray &data)
 {
     QProtobufSerializer serializer;
 
     mankool::mcbot::protocol::ClientToManagerMessage clientMsg;
     if (serializer.deserialize(&clientMsg, data)) {
         if (clientMsg.hasConnectionInfo()) {
+            // Reject mods built at a different version before treating them as connected.
+            if (!BotManager::verifyModVersion(connectionId, clientMsg.connectionInfo())) {
+                disconnectClient(connectionId);
+                return false;
+            }
             BotManager::handleConnectionInfo(connectionId, clientMsg.connectionInfo());
             BotInstance *connectedBot = BotManager::getBotByConnectionId(connectionId);
             QString botName = connectedBot ? connectedBot->name : clientMsg.connectionInfo().playerName();
@@ -250,11 +260,12 @@ void PipeServer::processMessage(int connectionId, const QByteArray &data)
         } else if (clientMsg.hasMapData()) {
             BotManager::handleMapData(connectionId, clientMsg.mapData());
         }
-        return;
+        return true;
     }
 
     LogManager::log(QString("Failed to parse message (%1 bytes)").arg(data.size()),
                     LogManager::Error);
+    return true;
 }
 
 
@@ -315,6 +326,23 @@ void PipeServer::sendToClientImpl(int connectionId, const QByteArray &data)
     if (bot) {
         bot->bytesSent += data.size();
     }
+}
+
+void PipeServer::disconnectClient(int connectionId)
+{
+    if (!connections.contains(connectionId)) {
+        return;
+    }
+
+    QLocalSocket *socket = connections[connectionId];
+    socket->flush();
+
+    QMetaObject::invokeMethod(socket, [socket]() {
+        // Drain unread bytes first: closing with data still in the receive buffer forces an
+        // abortive reset that would discard the unread HandshakeReject on the client side.
+        socket->readAll();
+        socket->disconnectFromServer();
+    }, Qt::QueuedConnection);
 }
 
 void PipeServer::broadcastToAll(const QByteArray &data)

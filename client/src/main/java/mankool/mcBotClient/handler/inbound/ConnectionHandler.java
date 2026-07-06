@@ -1,6 +1,7 @@
 package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
+import mankool.mcbot.protocol.Connection;
 import mankool.mcBotClient.proxy.MeteorProxyManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
@@ -68,6 +69,14 @@ public class ConnectionHandler extends BaseInboundHandler {
             LOGGER.error("Failed to disconnect: {}", e.getMessage());
             sendFailure(messageId, "Failed to disconnect: " + e.getMessage());
         }
+    }
+
+    public void handleHandshakeReject(Connection.HandshakeReject reject) {
+        String reason = reject.getReason();
+        LOGGER.error("Handshake rejected by manager: {} (manager version {}, mod version {})",
+            reason, reject.getManagerVersion(), reject.getModVersion());
+
+        client.destroy();
     }
 
     public void handleSetProxyConfig(String messageId, Commands.SetProxyConfigCommand command) {

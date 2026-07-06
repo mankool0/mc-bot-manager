@@ -7,7 +7,7 @@ package mankool.mcbot.protocol;
 // Initial handshake when client starts (Client -> Manager)
 message ConnectionInfo {
   string client_version = 1;    // Minecraft version name (e.g., "1.21.8")
-  string mod_version = 2;       // Bot mod version
+  string mod_version = 2;       // Bot mod version - must match the manager's release version
   string player_name = 3;
   string player_uuid = 4;
   int64 startup_time = 5;       // Unix timestamp when client started
@@ -16,6 +16,14 @@ message ConnectionInfo {
   int32 data_version = 8;       // Minecraft data version (e.g., 3465 for 1.20.1)
   string version_series = 9;    // Version series (usually "main", or "ccpreview" for experimental)
   bool version_is_snapshot = 10; // Whether this is a snapshot version
+}
+
+// Manager -> Client: the handshake was refused. The manager closes the socket right
+// after sending this, so the client can show a reason instead of dying silently.
+message HandshakeReject {
+  string reason = 1;          // Human-readable explanation
+  string manager_version = 2; // Release version the manager was built at
+  string mod_version = 3;     // Release version the mod reported (empty if it sent none)
 }
 
 // Regular heartbeat (bidirectional)

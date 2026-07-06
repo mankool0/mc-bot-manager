@@ -104,6 +104,9 @@ message ManagerToClientMessage {
     // Connection & status messages
     HeartbeatMessage heartbeat = 3;
 
+    // Handshake rejection; manager disconnects right after
+    HandshakeReject handshake_reject = 36;
+
     // Server commands
     ConnectToServerCommand connect_server = 4;
     DisconnectCommand disconnect = 5;
