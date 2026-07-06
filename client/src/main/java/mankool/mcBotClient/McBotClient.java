@@ -60,8 +60,10 @@ public class McBotClient implements ClientModInitializer {
             initializeConnection(client);
         }
 
-        // Check if connection was lost and try to reconnect
-        if (initialized && pipeConnection != null && !pipeConnection.isConnected()) {
+        // Reconnect if the connection dropped, unless the manager rejected the handshake (a
+        // version mismatch), in which case the client is shutting down and must not reconnect.
+        if (initialized && pipeConnection != null && !pipeConnection.isConnected()
+                && !pipeConnection.isHandshakeRejected()) {
             LOGGER.warn("Connection lost, attempting to reconnect");
             initializeConnection(client);
         }

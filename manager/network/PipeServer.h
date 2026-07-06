@@ -54,7 +54,8 @@ private:
     int getConnectionIdImpl(const QString &botName) const;
     QList<int> getAllConnectionIdsImpl() const;
 
-    void processMessage(int connectionId, const QByteArray &data);
+    bool processMessage(int connectionId, const QByteArray &data);
+    void disconnectClient(int connectionId);
     QLocalServer *server;
     QMap<int, QLocalSocket*> connections;
     QMap<int, QString> connectionBotNames;

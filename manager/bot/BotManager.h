@@ -374,6 +374,7 @@ public:
     static void removeBot(const QString &name);
     static void clearAllBots();
     static void updateBot(const QString &name, const BotConfig &config);
+    static bool verifyModVersion(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
 
     // Message handlers
     static void handleConnectionInfo(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
@@ -485,9 +486,11 @@ private:
     QVector<BotInstance*>& getBotsImpl() { return botInstances; }
     BotInstance* getBotByConnectionIdImpl(int connectionId);
     BotInstance* getBotByNameImpl(const QString &name);
+    BotInstance* findStartingBotByUuid(const QString &playerUuid);
     void addBotImpl(const BotConfig &config);
     void removeBotImpl(const QString &name);
     void updateBotImpl(const QString &name, const BotConfig &config);
+    bool verifyModVersionImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleConnectionInfoImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     void handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);

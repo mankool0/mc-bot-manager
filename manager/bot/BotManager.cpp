@@ -842,6 +842,56 @@ void BotManager::updateBotImpl(const QString &name, const BotConfig &config)
     }
 }
 
+BotInstance* BotManager::findStartingBotByUuid(const QString &playerUuid)
+{
+    const QString normalizedUuid = QString(playerUuid).remove('-');
+    for (BotInstance *b : std::as_const(botInstances)) {
+        if (b->status == BotStatus::Starting && !b->accountId.isEmpty() &&
+            QString(b->accountId).remove('-') == normalizedUuid) {
+            return b;
+        }
+    }
+    return nullptr;
+}
+
+bool BotManager::verifyModVersion(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info)
+{
+    return instance().verifyModVersionImpl(connectionId, info);
+}
+
+bool BotManager::verifyModVersionImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info)
+{
+    const QString modVersion = info.modVersion();
+    const QString managerVersion = QCoreApplication::applicationVersion();
+    if (modVersion == managerVersion) {
+        return true;
+    }
+
+    BotInstance *bot = findStartingBotByUuid(info.playerUuid());
+    const QString name = bot ? bot->name : info.playerName();
+    const QString displayModVersion = modVersion.isEmpty() ? QStringLiteral("unknown") : modVersion;
+    LogManager::log(QString("[%1] Version mismatch: mod=%2 manager=%3 - update the mod/manager")
+                        .arg(name, displayModVersion, managerVersion),
+                    LogManager::Error);
+
+    if (bot) {
+        bot->status = BotStatus::Error;
+        emit botUpdated(bot->name);
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    mankool::mcbot::protocol::HandshakeReject reject;
+    reject.setReason(QString("Version mismatch: mod is %1, manager is %2. "
+                             "Update the mod and manager to matching versions.")
+                         .arg(displayModVersion, managerVersion));
+    reject.setManagerVersion(managerVersion);
+    reject.setModVersion(modVersion);
+    msg.setHandshakeReject(reject);
+    sendOutboundMessage(connectionId, msg, true);
+
+    return false;
+}
+
 void BotManager::handleConnectionInfo(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info)
 {
     instance().handleConnectionInfoImpl(connectionId, info);
@@ -853,14 +903,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     QString clientVersion = info.clientVersion();
     QString playerUuid = info.playerUuid();
 
-    BotInstance *bot = nullptr;
-    for (BotInstance *b : std::as_const(botInstances)) {
-        if (b->status == BotStatus::Starting && !b->accountId.isEmpty() &&
-            QString(b->accountId).remove('-') == QString(playerUuid).remove('-')) {
-            bot = b;
-            break;
-        }
-    }
+    BotInstance *bot = findStartingBotByUuid(playerUuid);
 
     if (bot) {
         bot->connectionId = connectionId;
@@ -879,12 +922,6 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         bot->versionSeries = info.versionSeries();
         bot->versionIsSnapshot = info.versionIsSnapshot();
         bot->modVersion = info.modVersion();
-
-        if (!bot->modVersion.isEmpty() && bot->modVersion != QCoreApplication::applicationVersion()) {
-            LogManager::log(QString("[%1] Mod version mismatch: mod=%2, manager=%3")
-                                .arg(bot->name, bot->modVersion, QCoreApplication::applicationVersion()),
-                            LogManager::Warning);
-        }
 
         // Load recipes and tags for this version
         if (!bot->recipeRegistry.loadFromCache(clientVersion)) {

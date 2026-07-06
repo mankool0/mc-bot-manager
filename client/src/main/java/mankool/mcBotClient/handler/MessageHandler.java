@@ -76,6 +76,8 @@ public class MessageHandler {
     }
 
     private void registerHandlers() {
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HANDSHAKE_REJECT,
+            msg -> connectionHandler.handleHandshakeReject(msg.getHandshakeReject()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CONNECT_SERVER,
             msg -> connectionHandler.handleConnectToServer(msg.getMessageId(), msg.getConnectServer()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.DISCONNECT,
