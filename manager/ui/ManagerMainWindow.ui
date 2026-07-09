@@ -31,639 +31,690 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="QSplitter" name="mainSplitter">
-      <property name="orientation">
-       <enum>Qt::Orientation::Vertical</enum>
+     <widget class="QTabWidget" name="topLevelTabs">
+      <property name="currentIndex">
+       <number>0</number>
       </property>
-      <widget class="QWidget" name="botInstancesPanel" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>1</verstretch>
-        </sizepolicy>
-       </property>
-       <layout class="QVBoxLayout" name="instancesPanelLayout">
+      <widget class="QWidget" name="botsTab">
+       <attribute name="title">
+        <string>Bots</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="botsTabLayout">
         <property name="spacing">
-         <number>6</number>
-        </property>
-        <property name="leftMargin">
-         <number>9</number>
-        </property>
-        <property name="topMargin">
-         <number>9</number>
-        </property>
-        <property name="rightMargin">
-         <number>9</number>
-        </property>
-        <property name="bottomMargin">
-         <number>9</number>
-        </property>
-        <item>
-         <widget class="QTableWidget" name="instancesTableWidget">
-          <property name="contextMenuPolicy">
-           <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
-          </property>
-          <property name="alternatingRowColors">
-           <bool>true</bool>
-          </property>
-          <property name="selectionBehavior">
-           <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-          </property>
-          <property name="showGrid">
-           <bool>false</bool>
-          </property>
-          <property name="columnCount">
-           <number>9</number>
-          </property>
-          <attribute name="horizontalHeaderStretchLastSection">
-           <bool>true</bool>
-          </attribute>
-          <column>
-           <property name="text">
-            <string>Name</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Status</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Instance</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Server</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Memory</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Position</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Dimension</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Screen</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>PID</string>
-           </property>
-          </column>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QStackedWidget" name="detailsStackedWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="currentIndex">
-        <number>1</number>
-       </property>
-       <widget class="QWidget" name="noBotSelectedPage"/>
-       <widget class="QTabWidget" name="mainTabWidget">
-        <property name="currentIndex">
          <number>0</number>
         </property>
-        <widget class="QWidget" name="configTab">
-         <attribute name="title">
-          <string>Configuration</string>
-         </attribute>
-         <layout class="QVBoxLayout" name="configTabLayout">
-          <item>
-           <widget class="QScrollArea" name="configScrollArea">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QSplitter" name="mainSplitter">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <widget class="QWidget" name="botInstancesPanel" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>1</verstretch>
+            </sizepolicy>
+           </property>
+           <layout class="QVBoxLayout" name="instancesPanelLayout">
+            <property name="spacing">
+             <number>6</number>
             </property>
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>0</height>
-             </size>
+            <property name="leftMargin">
+             <number>9</number>
             </property>
-            <property name="baseSize">
-             <size>
-              <width>0</width>
-              <height>460</height>
-             </size>
+            <property name="topMargin">
+             <number>9</number>
             </property>
-            <property name="widgetResizable">
-             <bool>true</bool>
+            <property name="rightMargin">
+             <number>9</number>
             </property>
-            <widget class="QWidget" name="configScrollContents">
-             <property name="geometry">
-              <rect>
-               <x>0</x>
-               <y>0</y>
-               <width>1687</width>
-               <height>425</height>
-              </rect>
-             </property>
-             <layout class="QVBoxLayout" name="configScrollLayout">
+            <property name="bottomMargin">
+             <number>9</number>
+            </property>
+            <item>
+             <widget class="QTableWidget" name="instancesTableWidget">
+              <property name="contextMenuPolicy">
+               <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+              </property>
+              <property name="alternatingRowColors">
+               <bool>true</bool>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+              </property>
+              <property name="showGrid">
+               <bool>false</bool>
+              </property>
+              <property name="columnCount">
+               <number>9</number>
+              </property>
+              <attribute name="horizontalHeaderStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>Name</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Status</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Instance</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Server</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Memory</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Position</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Dimension</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Screen</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>PID</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QStackedWidget" name="detailsStackedWidget">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="currentIndex">
+            <number>1</number>
+           </property>
+           <widget class="QWidget" name="noBotSelectedPage"/>
+           <widget class="QTabWidget" name="mainTabWidget">
+            <property name="currentIndex">
+             <number>2</number>
+            </property>
+            <widget class="QWidget" name="configTab">
+             <attribute name="title">
+              <string>Configuration</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="configTabLayout">
               <item>
-               <widget class="QGroupBox" name="connectionGroupBox">
-                <property name="title">
-                 <string>Connection Settings</string>
+               <widget class="QScrollArea" name="configScrollArea">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
                 </property>
-                <layout class="QFormLayout" name="connectionFormLayout">
-                 <property name="labelAlignment">
-                  <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="baseSize">
+                 <size>
+                  <width>0</width>
+                  <height>460</height>
+                 </size>
+                </property>
+                <property name="widgetResizable">
+                 <bool>true</bool>
+                </property>
+                <widget class="QWidget" name="configScrollContents">
+                 <property name="geometry">
+                  <rect>
+                   <x>0</x>
+                   <y>0</y>
+                   <width>1669</width>
+                   <height>871</height>
+                  </rect>
                  </property>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="instanceLabel">
-                   <property name="text">
-                    <string>Instance:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QComboBox" name="instanceComboBox">
-                   <property name="editable">
-                    <bool>false</bool>
-                   </property>
-                   <property name="currentText">
-                    <string/>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="accountLabel">
-                   <property name="text">
-                    <string>Account:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QComboBox" name="accountComboBox">
-                   <property name="editable">
-                    <bool>false</bool>
-                   </property>
-                   <property name="currentText">
-                    <string/>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="serverLabel">
-                   <property name="text">
-                    <string>Server Address:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QLineEdit" name="serverLineEdit">
-                   <property name="text">
-                    <string/>
-                   </property>
-                   <property name="placeholderText">
-                    <string>Enter server address...</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="connectionLabel">
-                   <property name="text">
-                    <string>Connection:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QLabel" name="pipeStatusLabel">
-                   <property name="text">
-                    <string>Connection -1 [Not Connected]</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="performanceGroupBox">
-                <property name="title">
-                 <string>Performance Settings</string>
-                </property>
-                <layout class="QFormLayout" name="performanceFormLayout">
-                 <property name="labelAlignment">
-                  <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-                 </property>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="memoryLabel">
-                   <property name="text">
-                    <string>Max Memory (MB):</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QSpinBox" name="memorySpinBox">
-                   <property name="toolTip">
-                    <string>Must be set before launching any bot. Locked while Prism Launcher is running.</string>
-                   </property>
-                   <property name="minimum">
-                    <number>512</number>
-                   </property>
-                   <property name="maximum">
-                    <number>131072</number>
-                   </property>
-                   <property name="singleStep">
-                    <number>256</number>
-                   </property>
-                   <property name="value">
-                    <number>4096</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="restartThresholdLabel">
-                   <property name="text">
-                    <string>Restart After (hours):</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="restartThresholdSpinBox">
-                   <property name="specialValueText">
-                    <string>Disabled</string>
-                   </property>
-                   <property name="decimals">
-                    <number>2</number>
-                   </property>
-                   <property name="minimum">
-                    <double>0.000000000000000</double>
-                   </property>
-                   <property name="maximum">
-                    <double>168.000000000000000</double>
-                   </property>
-                   <property name="singleStep">
-                    <double>0.500000000000000</double>
-                   </property>
-                   <property name="value">
-                    <double>48.000000000000000</double>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="featuresGroupBox">
-                <property name="title">
-                 <string>Bot Features</string>
-                </property>
-                <layout class="QVBoxLayout" name="featuresLayout">
-                 <item>
-                  <widget class="QCheckBox" name="autoConnectCheckBox">
-                   <property name="text">
-                    <string>Auto connect to server on launch</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="autoRestartCheckBox">
-                   <property name="text">
-                    <string>Enable automatic restart on crash</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="tokenRefreshCheckBox">
-                   <property name="text">
-                    <string>Automatic token refresh on expiry</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="debugModeCheckBox">
-                   <property name="text">
-                    <string>Enable debug logging</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="saveWorldToDiskCheckBox">
-                   <property name="text">
-                    <string>Save world data to disk</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="saveBlockEntitiesCheckBox">
-                   <property name="text">
-                    <string>Save block entities (chests, furnaces, etc.)</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="saveEntitiesCheckBox">
-                   <property name="text">
-                    <string>Save entities (mobs, players, etc.)</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="saveItemEntitiesCheckBox">
-                   <property name="text">
-                    <string>Save item entities (dropped items)</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="savePlayerDataCheckBox">
-                   <property name="text">
-                    <string>Save player data (inventory, position, etc.)</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="saveMapDataCheckBox">
-                   <property name="text">
-                    <string>Save map data</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="proxyGroupBox">
-                <property name="title">
-                 <string>Proxy</string>
-                </property>
-                <layout class="QVBoxLayout" name="proxyLayout">
-                 <item>
-                  <layout class="QHBoxLayout" name="proxyEnableLayout">
-                   <item>
-                    <widget class="QCheckBox" name="proxyEnabledCheckBox">
-                     <property name="text">
-                      <string>Enable proxy</string>
+                 <layout class="QVBoxLayout" name="configScrollLayout">
+                  <item>
+                   <widget class="QGroupBox" name="connectionGroupBox">
+                    <property name="title">
+                     <string>Connection Settings</string>
+                    </property>
+                    <layout class="QFormLayout" name="connectionFormLayout">
+                     <property name="labelAlignment">
+                      <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                      </property>
-                     <property name="enabled">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QComboBox" name="proxyTypeComboBox">
-                     <item>
-                      <property name="text">
-                       <string>SOCKS5</string>
-                      </property>
-                     </item>
-                     <item>
-                      <property name="text">
-                       <string>SOCKS4</string>
-                      </property>
-                     </item>
-                    </widget>
-                   </item>
-                   <item>
-                    <spacer name="proxyEnableSpacer">
-                     <property name="orientation">
-                      <enum>Qt::Orientation::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QFormLayout" name="proxyFormLayout">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="proxyHostLabel">
-                     <property name="text">
-                      <string>Host:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <layout class="QHBoxLayout" name="proxyHostPortLayout">
-                     <item>
-                      <widget class="QLineEdit" name="proxyHostLineEdit">
-                       <property name="placeholderText">
-                        <string>proxy.example.com</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="proxyPortLabel">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="instanceLabel">
                        <property name="text">
-                        <string>Port:</string>
+                        <string>Instance:</string>
                        </property>
                       </widget>
                      </item>
-                     <item>
-                      <widget class="QSpinBox" name="proxyPortSpinBox">
-                       <property name="minimum">
-                        <number>1</number>
+                     <item row="0" column="1">
+                      <widget class="QComboBox" name="instanceComboBox">
+                       <property name="editable">
+                        <bool>false</bool>
                        </property>
-                       <property name="maximum">
-                        <number>65535</number>
+                       <property name="currentText">
+                        <string/>
                        </property>
-                       <property name="value">
-                        <number>1080</number>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="accountLabel">
+                       <property name="text">
+                        <string>Account:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QComboBox" name="accountComboBox">
+                       <property name="editable">
+                        <bool>false</bool>
+                       </property>
+                       <property name="currentText">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="serverLabel">
+                       <property name="text">
+                        <string>Server Address:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QLineEdit" name="serverLineEdit">
+                       <property name="text">
+                        <string/>
+                       </property>
+                       <property name="placeholderText">
+                        <string>Enter server address...</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="QLabel" name="connectionLabel">
+                       <property name="text">
+                        <string>Connection:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="QLabel" name="pipeStatusLabel">
+                       <property name="text">
+                        <string>Connection -1 [Not Connected]</string>
                        </property>
                       </widget>
                      </item>
                     </layout>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="proxyUsernameLabel">
-                     <property name="text">
-                      <string>Username:</string>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="performanceGroupBox">
+                    <property name="title">
+                     <string>Performance Settings</string>
+                    </property>
+                    <layout class="QFormLayout" name="performanceFormLayout">
+                     <property name="labelAlignment">
+                      <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                      </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QLineEdit" name="proxyUsernameLineEdit">
-                     <property name="placeholderText">
-                      <string>optional</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="proxyPasswordLabel">
-                     <property name="text">
-                      <string>Password:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QLineEdit" name="proxyPasswordLineEdit">
-                     <property name="placeholderText">
-                      <string>optional</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="proxyTestLayout">
-                   <item>
-                    <widget class="QPushButton" name="proxyTestButton">
-                     <property name="text">
-                      <string>Test Proxy</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLabel" name="proxyStatusLabel">
-                     <property name="text">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <spacer name="proxyTestSpacer">
-                     <property name="orientation">
-                      <enum>Qt::Orientation::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="memoryLabel">
+                       <property name="text">
+                        <string>Max Memory (MB):</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QSpinBox" name="memorySpinBox">
+                       <property name="toolTip">
+                        <string>Must be set before launching any bot. Locked while Prism Launcher is running.</string>
+                       </property>
+                       <property name="minimum">
+                        <number>512</number>
+                       </property>
+                       <property name="maximum">
+                        <number>131072</number>
+                       </property>
+                       <property name="singleStep">
+                        <number>256</number>
+                       </property>
+                       <property name="value">
+                        <number>4096</number>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="restartThresholdLabel">
+                       <property name="text">
+                        <string>Restart After (hours):</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QDoubleSpinBox" name="restartThresholdSpinBox">
+                       <property name="specialValueText">
+                        <string>Disabled</string>
+                       </property>
+                       <property name="decimals">
+                        <number>2</number>
+                       </property>
+                       <property name="minimum">
+                        <double>0.000000000000000</double>
+                       </property>
+                       <property name="maximum">
+                        <double>168.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>0.500000000000000</double>
+                       </property>
+                       <property name="value">
+                        <double>48.000000000000000</double>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="featuresGroupBox">
+                    <property name="title">
+                     <string>Bot Features</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="featuresLayout">
+                     <item>
+                      <widget class="QCheckBox" name="autoConnectCheckBox">
+                       <property name="text">
+                        <string>Auto connect to server on launch</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="autoRestartCheckBox">
+                       <property name="text">
+                        <string>Enable automatic restart on crash</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="tokenRefreshCheckBox">
+                       <property name="text">
+                        <string>Automatic token refresh on expiry</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="debugModeCheckBox">
+                       <property name="text">
+                        <string>Enable debug logging</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="saveWorldToDiskCheckBox">
+                       <property name="text">
+                        <string>Save world data to disk</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="saveBlockEntitiesCheckBox">
+                       <property name="text">
+                        <string>Save block entities (chests, furnaces, etc.)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="saveEntitiesCheckBox">
+                       <property name="text">
+                        <string>Save entities (mobs, players, etc.)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="saveItemEntitiesCheckBox">
+                       <property name="text">
+                        <string>Save item entities (dropped items)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="savePlayerDataCheckBox">
+                       <property name="text">
+                        <string>Save player data (inventory, position, etc.)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="saveMapDataCheckBox">
+                       <property name="text">
+                        <string>Save map data</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="proxyGroupBox">
+                    <property name="title">
+                     <string>Proxy</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="proxyLayout">
+                     <item>
+                      <layout class="QHBoxLayout" name="proxyEnableLayout">
+                       <item>
+                        <widget class="QCheckBox" name="proxyEnabledCheckBox">
+                         <property name="enabled">
+                          <bool>false</bool>
+                         </property>
+                         <property name="text">
+                          <string>Enable proxy</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QComboBox" name="proxyTypeComboBox">
+                         <item>
+                          <property name="text">
+                           <string>SOCKS5</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>SOCKS4</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="proxyEnableSpacer">
+                         <property name="orientation">
+                          <enum>Qt::Orientation::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QFormLayout" name="proxyFormLayout">
+                       <item row="0" column="0">
+                        <widget class="QLabel" name="proxyHostLabel">
+                         <property name="text">
+                          <string>Host:</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <layout class="QHBoxLayout" name="proxyHostPortLayout">
+                         <item>
+                          <widget class="QLineEdit" name="proxyHostLineEdit">
+                           <property name="placeholderText">
+                            <string>proxy.example.com</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="proxyPortLabel">
+                           <property name="text">
+                            <string>Port:</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QSpinBox" name="proxyPortSpinBox">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>65535</number>
+                           </property>
+                           <property name="value">
+                            <number>1080</number>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QLabel" name="proxyUsernameLabel">
+                         <property name="text">
+                          <string>Username:</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLineEdit" name="proxyUsernameLineEdit">
+                         <property name="placeholderText">
+                          <string>optional</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QLabel" name="proxyPasswordLabel">
+                         <property name="text">
+                          <string>Password:</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLineEdit" name="proxyPasswordLineEdit">
+                         <property name="placeholderText">
+                          <string>optional</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="proxyTestLayout">
+                       <item>
+                        <widget class="QPushButton" name="proxyTestButton">
+                         <property name="text">
+                          <string>Test Proxy</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLabel" name="proxyStatusLabel">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="proxyTestSpacer">
+                         <property name="orientation">
+                          <enum>Qt::Orientation::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="actionButtonLayout">
+                    <item>
+                     <widget class="QPushButton" name="launchBotButton">
+                      <property name="text">
+                       <string>Launch Bot</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="stopBotButton">
+                      <property name="text">
+                       <string>Stop Bot</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="restartBotButton">
+                      <property name="text">
+                       <string>Restart Bot</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="refreshTokenButton">
+                      <property name="text">
+                       <string>Refresh Token</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="buttonSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Orientation::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
                </widget>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="actionButtonLayout">
-                <item>
-                 <widget class="QPushButton" name="launchBotButton">
-                  <property name="text">
-                   <string>Launch Bot</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="stopBotButton">
-                  <property name="text">
-                   <string>Stop Bot</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="restartBotButton">
-                  <property name="text">
-                   <string>Restart Bot</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="refreshTokenButton">
-                  <property name="text">
-                   <string>Refresh Token</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="buttonSpacer">
-                  <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
               </item>
              </layout>
             </widget>
+            <widget class="QWidget" name="consoleTab">
+             <attribute name="title">
+              <string>Console</string>
+             </attribute>
+            </widget>
+            <widget class="QWidget" name="meteorTab">
+             <attribute name="title">
+              <string>Meteor</string>
+             </attribute>
+            </widget>
+            <widget class="QWidget" name="baritoneTab">
+             <attribute name="title">
+              <string>Baritone</string>
+             </attribute>
+            </widget>
+            <widget class="QWidget" name="debugTab">
+             <attribute name="title">
+              <string>Debug</string>
+             </attribute>
+            </widget>
+            <widget class="QWidget" name="scriptsTab">
+             <attribute name="title">
+              <string>Scripts</string>
+             </attribute>
+            </widget>
            </widget>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="consoleTab">
-         <attribute name="title">
-          <string>Console</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="meteorTab">
-         <attribute name="title">
-          <string>Meteor</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="baritoneTab">
-         <attribute name="title">
-          <string>Baritone</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="debugTab">
-         <attribute name="title">
-          <string>Debug</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="scriptsTab">
-         <attribute name="title">
-          <string>Scripts</string>
-         </attribute>
-        </widget>
-       </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="globalScriptsTab">
+       <attribute name="title">
+        <string>Global Scripts</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="globalScriptsTabLayout">
+        <property name="spacing">
+         <number>4</number>
+        </property>
+        <property name="leftMargin">
+         <number>4</number>
+        </property>
+        <property name="topMargin">
+         <number>4</number>
+        </property>
+        <property name="rightMargin">
+         <number>4</number>
+        </property>
+        <property name="bottomMargin">
+         <number>4</number>
+        </property>
+       </layout>
       </widget>
      </widget>
     </item>
@@ -675,7 +726,7 @@
      <x>0</x>
      <y>0</y>
      <width>1711</width>
-     <height>25</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

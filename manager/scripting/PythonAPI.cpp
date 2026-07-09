@@ -2,6 +2,7 @@
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "ui/AppColors.h"
+#include "CustomColumnManager.h"
 #include "prism/PrismLauncherManager.h"
 #include "crafting/CraftingPlanner.h"
 #include "world/ItemRegistry.h"
@@ -15,9 +16,13 @@
 #include <QReadWriteLock>
 #include <QDateTime>
 #include <pybind11/stl.h>
+#include <cmath>
+#include <limits>
 
 thread_local QString PythonAPI::currentBot;
 thread_local QString PythonAPI::currentScript;
+thread_local bool PythonAPI::forceGlobalConsole = false;
+QPointer<BotConsoleWidget> PythonAPI::globalConsole;
 
 void PythonAPI::setCurrentBot(const QString &botName)
 {
@@ -1190,14 +1195,17 @@ void PythonAPI::log(const std::string &message)
     QString qMessage = QString::fromStdString(message);
     QString botName = currentBot;
     QString scriptName = currentScript.isEmpty() ? "Script" : currentScript;
+    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+    QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
 
-    if (!botName.isEmpty()) {
+    if (!forceGlobalConsole && !botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-            QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
             bot->consoleWidget->pushLogLine(formattedMsg, AppColors::scriptLog());
         }
+    } else if (globalConsole) {
+        // Global scripts (and the column compute worker) route to the global console.
+        globalConsole->pushLogLine(formattedMsg, AppColors::scriptLog());
     }
 }
 
@@ -1206,15 +1214,81 @@ void PythonAPI::error(const std::string &message)
     QString qMessage = QString::fromStdString(message);
     QString botName = currentBot;
     QString scriptName = currentScript.isEmpty() ? "Script" : currentScript;
+    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+    QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
 
-    if (!botName.isEmpty()) {
+    if (!forceGlobalConsole && !botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-            QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
             bot->consoleWidget->pushLogLine(formattedMsg, AppColors::scriptError());
         }
+    } else if (globalConsole) {
+        globalConsole->pushLogLine(formattedMsg, AppColors::scriptError());
     }
+}
+
+void PythonAPI::setGlobalConsole(BotConsoleWidget *console)
+{
+    globalConsole = console;
+}
+
+void PythonAPI::setForceGlobalConsole(bool enabled)
+{
+    forceGlobalConsole = enabled;
+}
+
+bool PythonAPI::isForceGlobalConsole()
+{
+    return forceGlobalConsole;
+}
+
+// Columns are cleaned up per script file in the global engine only, so a
+// bot-bound script must not register them. The compute worker also sets a
+// current bot but is allowed via its forced-global-console flag.
+static void ensureGlobalScriptContext(const char *what)
+{
+    if (!PythonAPI::getCurrentBot().isEmpty() && !PythonAPI::isForceGlobalConsole())
+        throw std::runtime_error(std::string(what)
+            + " is only available from global scripts (Global Scripts tab)");
+}
+
+// Seconds -> clamped milliseconds. Rejects NaN/inf/non-positive rather than
+// silently mangling them.
+static int columnIntervalToMs(double intervalSeconds)
+{
+    if (!std::isfinite(intervalSeconds) || intervalSeconds <= 0)
+        throw py::value_error("interval must be a positive number of seconds");
+    double ms = intervalSeconds * 1000.0;
+    if (ms >= std::numeric_limits<int>::max())
+        return std::numeric_limits<int>::max();
+    return qMax(static_cast<int>(ms), CustomColumnManager::kMinIntervalMs);
+}
+
+void PythonAPI::addColumn(const std::string &name, const py::function &provider, double interval)
+{
+    ensureGlobalScriptContext("manager.add_column");
+    CustomColumnManager::instance().registerColumn(
+        QString::fromStdString(name), provider, currentScript, columnIntervalToMs(interval));
+}
+
+void PythonAPI::removeColumn(const std::string &name)
+{
+    ensureGlobalScriptContext("manager.remove_column");
+    CustomColumnManager::instance().unregisterColumn(QString::fromStdString(name));
+}
+
+py::object PythonAPI::column(const std::string &name, double interval)
+{
+    ensureGlobalScriptContext("manager.column");
+    std::string colName = name;
+    int intervalMs = columnIntervalToMs(interval);
+    // Decorator: registers the wrapped function and returns it unchanged.
+    return py::cpp_function([colName, intervalMs](py::function fn) {
+        ensureGlobalScriptContext("manager.column");
+        CustomColumnManager::instance().registerColumn(
+            QString::fromStdString(colName), fn, currentScript, intervalMs);
+        return fn;
+    });
 }
 
 // ============================================================================

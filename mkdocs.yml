@@ -39,5 +39,7 @@ nav:
     - meteor: api/meteor.md
     - world: api/world.md
     - utils: api/utils.md
+    - server: api/server.md
+    - manager: api/manager.md
   - Examples: examples.md
   - Events: events.md

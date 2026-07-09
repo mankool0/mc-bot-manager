@@ -10,6 +10,7 @@
 | [`world`](world.md) | World data queries and block interaction |
 | [`utils`](utils.md) | Logging utilities |
 | [`server`](server.md) | Server info and tab list |
+| [`manager`](manager.md) | Global scripts and custom instance-table columns |
 
 ## Multi-Bot
 

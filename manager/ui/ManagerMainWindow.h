@@ -34,6 +34,8 @@ class PipeServer;
 class QProcess;
 class NetworkStatsWidget;
 class BotConsoleWidget;
+class ScriptEngine;
+class ScriptsWidget;
 
 struct PrismConfig {
     QString prismPath;
@@ -108,6 +110,11 @@ private:
     QDockWidget *networkStatsDock = nullptr;
     QTimer *proxyHealthTimer = nullptr;
 
+    ScriptEngine *m_globalScriptEngine = nullptr;
+    ScriptsWidget *m_globalScriptsWidget = nullptr;
+    BotConsoleWidget *m_globalConsole = nullptr;
+    QTimer *m_columnComputeTimer = nullptr;
+
     QMap<QString, QDateTime> m_lastAccountRefreshTime;
     QMap<QString, QDateTime> m_lastBotLaunchTime;
     QMap<QString, int> m_tokenRefreshAttempts;
@@ -144,6 +151,11 @@ private:
 
     void saveColumnVisibility();
     void loadColumnVisibility();
+    void applyColumnState(int fromColumn = 0);
+
+    void setupGlobalScriptsTab();
+    void rebuildCustomColumns();
+    void onCustomColumnValues(const QVariantMap &results);
 
     void onClearLog();
     void onAutoScrollToggled(bool checked);

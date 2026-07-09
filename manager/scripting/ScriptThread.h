@@ -20,7 +20,8 @@ class ScriptThread : public QThread
     Q_OBJECT
 
 public:
-    explicit ScriptThread(ScriptContext *context, BotInstance *bot, QObject *parent = nullptr);
+    explicit ScriptThread(ScriptContext *context, BotInstance *bot,
+                          const QString &scopeName, QObject *parent = nullptr);
     ~ScriptThread() override;
 
     void stop();
@@ -37,6 +38,7 @@ protected:
 private:
     ScriptContext *scriptContext;
     BotInstance *botInstance;
+    QString scopeName;
     std::atomic<bool> stopping;
 };
 

@@ -222,7 +222,7 @@ void ScriptsWidget::onNewScript()
 
     QString defaultCode = "# " + name + "\n";
     if (scriptEngine->loadScript(name, defaultCode)) {
-        QString botName = scriptEngine->getBotName();
+        QString botName = scriptEngine->getScopeName();
         if (ScriptFileManager::saveScript(botName, name, defaultCode)) {
             refreshScriptList();
 
@@ -268,7 +268,7 @@ void ScriptsWidget::onRenameScript()
 
     QString code = ctx->code;
     bool autorun = scriptEngine->isScriptEnabled(currentScript);
-    QString botName = scriptEngine->getBotName();
+    QString botName = scriptEngine->getScopeName();
 
     if (!ScriptFileManager::renameScript(botName, currentScript, newName)) {
         QMessageBox::warning(this, "Rename Failed", "Failed to rename script file on disk.");
@@ -305,7 +305,7 @@ void ScriptsWidget::onDeleteScript()
 
     if (reply == QMessageBox::Yes) {
         scriptEngine->unloadScript(currentScript);
-        QString botName = scriptEngine->getBotName();
+        QString botName = scriptEngine->getScopeName();
         ScriptFileManager::deleteScript(botName, currentScript);
         refreshScriptList();
         currentScript.clear();
@@ -321,7 +321,7 @@ void ScriptsWidget::onSaveScript()
     }
 
     QString code = codeEditor->getText();
-    QString botName = scriptEngine->getBotName();
+    QString botName = scriptEngine->getScopeName();
 
     if (scriptEngine->loadScript(currentScript, code) &&
         ScriptFileManager::saveScript(botName, currentScript, code)) {
@@ -383,7 +383,7 @@ void ScriptsWidget::onScriptItemChanged(QListWidgetItem *item)
         states[name] = state;
     }
 
-    QString botName = scriptEngine->getBotName();
+    QString botName = scriptEngine->getScopeName();
     ScriptFileManager::saveScriptStates(botName, states);
 }
 

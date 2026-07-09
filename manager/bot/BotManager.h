@@ -290,6 +290,10 @@ struct BotInstance : public BotConfig {
     ScriptEngine* scriptEngine = nullptr;
     QPointer<ScriptsWidget> scriptsWidget;
 
+    // Custom instance-table column values (columnName -> display string),
+    // computed by global scripts. Written and read on the main thread only.
+    QMap<QString, QString> customColumns;
+
     // Meteor modules data
     QMap<QString, MeteorModuleData> meteorModules;
 
