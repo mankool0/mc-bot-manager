@@ -28,10 +28,61 @@
 #include "network/PipeServer.h"
 #include "prism/PrismLauncherManager.h"
 #include "scripting/ScriptEngine.h"
+#include "scripting/CustomColumnManager.h"
+#include "scripting/PythonAPI.h"
 #include "AppPaths.h"
+#include <QTabWidget>
+#include <QSplitter>
+#include <QLabel>
+#include <QVBoxLayout>
 #include <memory>
 
 QString ManagerMainWindow::worldSaveBasePath;
+
+// Fixed instance-table columns (Name .. PID); custom script columns follow.
+static constexpr int kFixedColumnCount = 9;
+
+// Settings key for a column's visibility/width. Custom columns are namespaced
+// ("custom:") so one named like a fixed column cannot clobber its state.
+// Returns empty ("do not persist") for a custom column not yet named.
+static QString columnSettingsKey(const QTableWidget *table, int column)
+{
+    QTableWidgetItem *headerItem = table->horizontalHeaderItem(column);
+    QString name = headerItem ? headerItem->text() : QString();
+    if (column < kFixedColumnCount)
+        return name.isEmpty() ? QString::number(column) : name;
+    return name.isEmpty() ? QString() : QStringLiteral("custom:") + name;
+}
+
+// Drop entries older builds wrote: custom columns keyed without the "custom:"
+// prefix, and index fallbacks ("custom:9") saved before a column was named.
+static void pruneStaleColumnKeys(QSettings &settings, const QTableWidget *table)
+{
+    QStringList fixedKeys;
+    for (int i = 0; i < kFixedColumnCount && i < table->columnCount(); ++i)
+        fixedKeys.append(columnSettingsKey(table, i));
+
+    static const QRegularExpression indexFallback(QStringLiteral("^custom:\\d+$"));
+    const QStringList mapKeys = {QStringLiteral("Window/ColumnVisible"),
+                                 QStringLiteral("Window/ColumnWidth")};
+    for (const QString &mapKey : mapKeys) {
+        QVariantMap map = settings.value(mapKey).toMap();
+        bool changed = false;
+        for (auto it = map.begin(); it != map.end();) {
+            bool keep = fixedKeys.contains(it.key())
+                || (it.key().startsWith(QLatin1String("custom:"))
+                    && !indexFallback.match(it.key()).hasMatch());
+            if (keep) {
+                ++it;
+            } else {
+                it = map.erase(it);
+                changed = true;
+            }
+        }
+        if (changed)
+            settings.setValue(mapKey, map);
+    }
+}
 
 ManagerMainWindow::ManagerMainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -180,6 +231,18 @@ void ManagerMainWindow::setWorldSaveBasePath(const QString &path)
 
 void ManagerMainWindow::closeEvent(QCloseEvent *event)
 {
+    if (m_columnComputeTimer)
+        m_columnComputeTimer->stop();
+    saveColumnVisibility();
+
+    // Release providers and stop the compute worker while the interpreter is
+    // still alive (it is finalized when the last ScriptEngine is destroyed). If
+    // a blocked provider forced the worker to be abandoned, skip finalization.
+    if (m_globalScriptEngine)
+        m_globalScriptEngine->stopAllScripts();
+    if (!CustomColumnManager::instance().shutdown())
+        ScriptEngine::setSkipPythonFinalize();
+
     QVector<BotInstance*> &bots = BotManager::getBots();
     for (BotInstance *bot : bots) {
         if (bot->scriptEngine)
@@ -430,6 +493,12 @@ void ManagerMainWindow::addNewBot()
                                            QString("NewBot_%1").arg(BotManager::getBots().size() + 1), &ok);
 
     if (ok && !botName.isEmpty()) {
+        if (botName == QLatin1String("_global")) {
+            QMessageBox::warning(this, "Add New Bot",
+                                 "The name \"_global\" is reserved for global scripts.");
+            return;
+        }
+
         BotConfig newBot;
         newBot.name = botName;
 
@@ -554,6 +623,8 @@ void ManagerMainWindow::updateInstancesTable()
     QVector<BotInstance*> &bots = BotManager::getBots();
     ui->instancesTableWidget->setRowCount(bots.size());
 
+    const QStringList customCols = CustomColumnManager::instance().columnNames();
+
     for (int i = 0; i < bots.size(); ++i) {
         const BotInstance &bot = *bots[i];
 
@@ -669,6 +740,20 @@ void ManagerMainWindow::updateInstancesTable()
         }
         QString pidText = bot.minecraftPid > 0 ? QString::number(bot.minecraftPid) : "-";
         pidItem->setText(pidText);
+
+        // Custom columns after the fixed ones, values computed by global scripts.
+        for (int j = 0; j < customCols.size(); ++j) {
+            int col = kFixedColumnCount + j;
+            if (col >= ui->instancesTableWidget->columnCount())
+                break;
+            QTableWidgetItem *customItem = ui->instancesTableWidget->item(i, col);
+            if (!customItem) {
+                customItem = new QTableWidgetItem();
+                customItem->setFlags(customItem->flags() & ~Qt::ItemIsEditable);
+                ui->instancesTableWidget->setItem(i, col, customItem);
+            }
+            customItem->setText(bot.customColumns.value(customCols[j], "-"));
+        }
     }
 
 
@@ -705,22 +790,88 @@ void ManagerMainWindow::onHeaderContextMenu(const QPoint &pos)
         });
     }
 
+    // Custom columns (from global scripts) follow the fixed ones.
+    QStringList customCols = CustomColumnManager::instance().columnNames();
+    if (!customCols.isEmpty()) {
+        menu.addSeparator();
+        for (int j = 0; j < customCols.size(); ++j) {
+            int colIndex = kFixedColumnCount + j;
+            if (colIndex >= ui->instancesTableWidget->columnCount())
+                break;
+            QAction *action = menu.addAction(customCols[j]);
+            action->setCheckable(true);
+            action->setChecked(!header->isSectionHidden(colIndex));
+            connect(action, &QAction::toggled, this, [this, colIndex](bool checked) {
+                ui->instancesTableWidget->setColumnHidden(colIndex, !checked);
+                saveColumnVisibility();
+            });
+        }
+    }
+
     menu.exec(header->mapToGlobal(pos));
 }
 
+// Column visibility/width are persisted by header text rather than index, so
+// dynamic custom columns survive restarts without disturbing fixed columns.
 void ManagerMainWindow::saveColumnVisibility()
 {
     QSettings settings("MCBotManager", "MCBotManager");
-    settings.setValue("Window/InstancesHeader", ui->instancesTableWidget->horizontalHeader()->saveState());
+    QTableWidget *table = ui->instancesTableWidget;
+    QHeaderView *header = table->horizontalHeader();
+
+    // Merge into the stored maps: state for columns not currently in the table
+    // (a stopped script's) must survive saves.
+    QVariantMap visibleMap = settings.value("Window/ColumnVisible").toMap();
+    QVariantMap widthMap = settings.value("Window/ColumnWidth").toMap();
+    for (int i = 0; i < table->columnCount(); ++i) {
+        QString key = columnSettingsKey(table, i);
+        if (key.isEmpty())
+            continue;
+        visibleMap[key] = !header->isSectionHidden(i);
+        // A hidden section reports width 0; keep the stored width so unhiding
+        // restores the user's size.
+        if (!header->isSectionHidden(i))
+            widthMap[key] = table->columnWidth(i);
+    }
+    settings.setValue("Window/ColumnVisible", visibleMap);
+    settings.setValue("Window/ColumnWidth", widthMap);
+}
+
+void ManagerMainWindow::applyColumnState(int fromColumn)
+{
+    QSettings settings("MCBotManager", "MCBotManager");
+    QVariantMap visibleMap = settings.value("Window/ColumnVisible").toMap();
+    QVariantMap widthMap = settings.value("Window/ColumnWidth").toMap();
+
+    QTableWidget *table = ui->instancesTableWidget;
+    for (int i = fromColumn; i < table->columnCount(); ++i) {
+        QString key = columnSettingsKey(table, i);
+        if (key.isEmpty())
+            continue;
+        if (visibleMap.contains(key))
+            table->setColumnHidden(i, !visibleMap.value(key).toBool());
+        if (widthMap.contains(key)) {
+            int width = widthMap.value(key).toInt();
+            if (width > 0)
+                table->setColumnWidth(i, width);
+        }
+    }
 }
 
 void ManagerMainWindow::loadColumnVisibility()
 {
     QSettings settings("MCBotManager", "MCBotManager");
-    QByteArray headerState = settings.value("Window/InstancesHeader").toByteArray();
-    if (!headerState.isEmpty()) {
-        ui->instancesTableWidget->horizontalHeader()->restoreState(headerState);
+    if (!settings.contains("Window/ColumnVisible")) {
+        // One-time migration: seed from the legacy whole-header blob (only the
+        // fixed columns exist at this point), then persist in the new format.
+        QByteArray headerState = settings.value("Window/InstancesHeader").toByteArray();
+        if (!headerState.isEmpty())
+            ui->instancesTableWidget->horizontalHeader()->restoreState(headerState);
+        saveColumnVisibility();
+        return;
     }
+    pruneStaleColumnKeys(settings, ui->instancesTableWidget);
+    applyColumnState();
 }
 
 void ManagerMainWindow::onInstanceSelectionChanged()
@@ -1507,6 +1658,9 @@ void ManagerMainWindow::loadSettings()
     m_crashLoopProtectionEnabled = settings.value("CrashRecovery/enabled", true).toBool();
     m_crashMaxCrashes = settings.value("CrashRecovery/maxCrashes", 3).toInt();
     m_crashWindowSecs = settings.value("CrashRecovery/windowMinutes", 5).toInt() * 60;
+
+    // Runs once (self-guarded); loadSettings() may be called again on reconfigure.
+    setupGlobalScriptsTab();
 }
 
 void ManagerMainWindow::saveBotInstance(QSettings &settings, const BotConfig &bot, int index)
@@ -2248,6 +2402,125 @@ void ManagerMainWindow::setupScriptsTab()
             bot->scriptsWidget = new ScriptsWidget(bot->scriptEngine, this);
             bot->scriptsWidget->hide();
             layout->addWidget(bot->scriptsWidget);
+        }
+    }
+}
+
+void ManagerMainWindow::setupGlobalScriptsTab()
+{
+    if (m_globalScriptEngine)
+        return; // already set up; loadSettings() can run more than once
+
+    // Console for global-script output (utils.log / errors / lifecycle).
+    m_globalConsole = new BotConsoleWidget(this);
+    PythonAPI::setGlobalConsole(m_globalConsole);
+
+    // Bot-less script engine; its scripts live under scripts/_global.
+    m_globalScriptEngine = new ScriptEngine(nullptr, this);
+    m_globalScriptEngine->setConsole(m_globalConsole);
+    m_globalScriptsWidget = new ScriptsWidget(m_globalScriptEngine, this);
+
+    // Global Scripts page: script editor on top, console output below.
+    QSplitter *splitter = new QSplitter(Qt::Vertical, ui->globalScriptsTab);
+    splitter->addWidget(m_globalScriptsWidget);
+
+    QWidget *consolePanel = new QWidget();
+    QVBoxLayout *consoleLayout = new QVBoxLayout(consolePanel);
+    consoleLayout->setContentsMargins(0, 0, 0, 0);
+    QLabel *consoleLabel = new QLabel("Output");
+    consoleLabel->setStyleSheet("font-weight: bold; font-size: 11pt;");
+    consoleLayout->addWidget(consoleLabel);
+    consoleLayout->addWidget(m_globalConsole);
+    splitter->addWidget(consolePanel);
+
+    splitter->setStretchFactor(0, 3);
+    splitter->setStretchFactor(1, 1);
+    ui->globalScriptsTab->layout()->addWidget(splitter);
+
+    // Connect before running scripts so async autorun registrations are caught.
+    connect(&CustomColumnManager::instance(), &CustomColumnManager::columnsChanged,
+            this, &ManagerMainWindow::rebuildCustomColumns);
+    connect(&CustomColumnManager::instance(), &CustomColumnManager::valuesReady,
+            this, &ManagerMainWindow::onCustomColumnValues);
+
+    // Ticks at the fastest column interval (set in rebuildCustomColumns);
+    // requestCompute() skips ticks where nothing is due.
+    m_columnComputeTimer = new QTimer(this);
+    connect(m_columnComputeTimer, &QTimer::timeout, this, []() {
+        CustomColumnManager::instance().requestCompute();
+    });
+
+    m_globalScriptEngine->loadScriptsFromDisk();
+    // The widget was built before the scripts were loaded, so refresh its list.
+    m_globalScriptsWidget->refreshScriptList();
+
+    rebuildCustomColumns();
+}
+
+void ManagerMainWindow::rebuildCustomColumns()
+{
+    QStringList names = CustomColumnManager::instance().columnNames();
+
+    QTableWidget *table = ui->instancesTableWidget;
+    table->setColumnCount(kFixedColumnCount + names.size());
+    for (int j = 0; j < names.size(); ++j) {
+        int col = kFixedColumnCount + j;
+        QTableWidgetItem *headerItem = table->horizontalHeaderItem(col);
+        if (!headerItem) {
+            headerItem = new QTableWidgetItem();
+            table->setHorizontalHeaderItem(col, headerItem);
+        }
+        headerItem->setText(names[j]);
+    }
+
+    // Apply saved state to the custom columns only, so an in-progress resize of
+    // a fixed column is not reverted when the column set changes.
+    applyColumnState(kFixedColumnCount);
+
+    if (m_columnComputeTimer) {
+        if (names.isEmpty()) {
+            m_columnComputeTimer->stop();
+        } else {
+            // Tick at the fastest column's interval; slower columns skip ticks
+            // via their own due times. (Re)start also picks up interval changes.
+            m_columnComputeTimer->start(CustomColumnManager::instance().minIntervalMs());
+            // Fill a newly registered column now instead of waiting a full tick
+            // (a no-op when nothing is due).
+            CustomColumnManager::instance().requestCompute();
+        }
+    }
+
+    updateInstancesTable();
+}
+
+void ManagerMainWindow::onCustomColumnValues(const QVariantMap &results)
+{
+    const QStringList customCols = CustomColumnManager::instance().columnNames();
+    QTableWidget *table = ui->instancesTableWidget;
+    QVector<BotInstance *> &bots = BotManager::getBots();
+
+    // Rows mirror BotManager::getBots() order (see updateInstancesTable). Only
+    // the custom cells change here, so avoid a full table rebuild every tick.
+    for (int i = 0; i < bots.size() && i < table->rowCount(); ++i) {
+        BotInstance *bot = bots[i];
+        auto it = results.constFind(bot->name);
+        if (it == results.constEnd())
+            continue;
+        const QVariantMap row = it->toMap();
+        for (auto rit = row.constBegin(); rit != row.constEnd(); ++rit)
+            bot->customColumns[rit.key()] = rit.value().toString();
+
+        for (int j = 0; j < customCols.size(); ++j) {
+            int col = kFixedColumnCount + j;
+            if (col >= table->columnCount())
+                break;
+            QTableWidgetItem *item = table->item(i, col);
+            if (!item) {
+                item = new QTableWidgetItem();
+                item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+                table->setItem(i, col, item);
+            }
+            item->setText(bot->customColumns.value(customCols[j], "-"));
         }
     }
 }

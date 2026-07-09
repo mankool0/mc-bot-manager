@@ -670,3 +670,30 @@ PYBIND11_EMBEDDED_MODULE(server, m) {
 
     m.attr("__debug_state__") = debugState;
 }
+
+PYBIND11_EMBEDDED_MODULE(manager, m) {
+    m.doc() = "Manager-wide controls for global scripts";
+
+    auto def_action = [&](const char *name, auto&&... args) {
+        m.def(name, std::forward<decltype(args)>(args)...);
+    };
+
+    def_action("add_column", &PythonAPI::addColumn,
+               "Add a custom column to the bot instances table. provider(bot_name) "
+               "is called for each bot every `interval` seconds (default 1.0, "
+               "floored at 0.05); its return value (any value, shown via str()) is "
+               "displayed in that bot's cell. Only available from global scripts; "
+               "raises RuntimeError elsewhere.",
+               py::arg("name"), py::arg("provider"), py::arg("interval") = 1.0);
+    def_action("remove_column", &PythonAPI::removeColumn,
+               "Remove a previously added custom column by name. Only available "
+               "from global scripts; raises RuntimeError elsewhere.",
+               py::arg("name"));
+    def_action("column", &PythonAPI::column,
+               "Decorator form of add_column: @manager.column(\"Name\", interval=0.5) "
+               "over a function taking bot_name and returning the cell value. "
+               "interval is the recompute period in seconds (default 1.0, floored "
+               "at 0.05). Only available from global scripts; raises RuntimeError "
+               "elsewhere.",
+               py::arg("name"), py::arg("interval") = 1.0);
+}

@@ -6,6 +6,7 @@
 #include <QString>
 #include <QVariantList>
 #include <QThread>
+#include <QPointer>
 #include "ScriptEventWorker.h"
 
 #undef slots
@@ -16,6 +17,7 @@ namespace py = pybind11;
 
 struct BotInstance;
 struct ScriptContext;
+class BotConsoleWidget;
 
 class ScriptEngine : public QObject
 {
@@ -44,7 +46,19 @@ public:
     bool isScriptEnabled(const QString &filename) const;
     bool isScriptRunning(const QString &filename) const;
     QString getScriptError(const QString &filename) const;
-    QString getBotName() const;
+
+    // Once set, the interpreter is never finalized: used when a blocked script
+    // thread had to be abandoned at shutdown and may still be inside Python.
+    static void setSkipPythonFinalize();
+
+    // Storage/identity key for this engine's scripts. The bot name for a
+    // bot-bound engine, or "_global" for the manager-wide engine.
+    QString getScopeName() const;
+    bool isGlobal() const { return botInstance == nullptr; }
+
+    // Console this engine's output goes to. A bot-bound engine uses its bot's
+    // console; the global engine's is settable.
+    void setConsole(BotConsoleWidget *console);
 
     QString loadEventData();
 
@@ -59,12 +73,17 @@ signals:
 
 private:
     BotInstance *botInstance;
+    QString m_scopeName;
+    QPointer<BotConsoleWidget> m_globalConsole;
     QMap<QString, ScriptContext*> scripts;
 
     QThread *m_eventWorkerThread;
     ScriptEventWorker *m_eventWorker;
 
+    BotConsoleWidget* console() const;
+
     static bool pythonInitialized;
+    static bool skipPythonFinalize;
     static int engineCount;
     static PyThreadState *mainThreadState;
 

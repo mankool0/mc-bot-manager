@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QVariant>
+#include <QPointer>
 #include <string>
 #include <vector>
 #include <map>
@@ -18,6 +19,7 @@ namespace py = pybind11;
 
 struct RGBAColor;
 struct ESPBlockData;
+class BotConsoleWidget;
 
 struct PyGuiWidget {
     int index = 0;
@@ -269,6 +271,20 @@ public:
     static void log(const std::string &message);
     static void error(const std::string &message);
 
+    // Custom instance-table columns (global scripting). interval is the
+    // per-column recompute period in seconds (floored at 50ms).
+    static void addColumn(const std::string &name, const py::function &provider, double interval);
+    static void removeColumn(const std::string &name);
+    // Decorator form: @manager.column("Name", interval=0.5)
+    static py::object column(const std::string &name, double interval);
+
+    // Console that log()/error() route to when no bot is current (global scripts).
+    static void setGlobalConsole(BotConsoleWidget *console);
+    // When enabled on the calling thread, log()/error() always target the global
+    // console regardless of the current bot (used by the column compute worker).
+    static void setForceGlobalConsole(bool enabled);
+    static bool isForceGlobalConsole();
+
     static py::object qVariantToPyObject(const QVariant &value);
 
 private:
@@ -280,6 +296,8 @@ private:
 
     static thread_local QString currentBot;
     static thread_local QString currentScript;
+    static thread_local bool forceGlobalConsole;
+    static QPointer<BotConsoleWidget> globalConsole;
 };
 
 #endif // PYTHONAPI_H

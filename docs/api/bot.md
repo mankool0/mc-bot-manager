@@ -183,6 +183,12 @@ The item dict schema used by `bot.inventory()`, `world.get_container()`, and ent
 | `display_name` | `str` | Display name (may include formatting) |
 | `enchantments` | `dict[str, int]` | Map of enchantment ID to level (e.g. `{"minecraft:sharpness": 3}`) |
 
+!!! warning "Item dict fields are sparse"
+    A field is only present when it is meaningful: `damage`/`max_damage` are
+    absent for undamaged/undamageable items, `enchantments` is absent when there
+    are none, etc. Always read optional fields with `item.get("field", default)`
+    - `item["damage"]` raises `KeyError` on a full-durability tool. 
+
 ### `get_screen(bot_name="")`
 
 Get full screen dump as a `ScreenState` object.

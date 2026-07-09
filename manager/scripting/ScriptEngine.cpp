@@ -5,6 +5,7 @@
 #include "AppPaths.h"
 #include "PythonAPI.h"
 #include "EmbeddedPythonLibs.h"
+#include "CustomColumnManager.h"
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "ui/AppColors.h"
@@ -22,12 +23,20 @@
 namespace py = pybind11;
 
 bool ScriptEngine::pythonInitialized = false;
+bool ScriptEngine::skipPythonFinalize = false;
 int ScriptEngine::engineCount = 0;
 PyThreadState *ScriptEngine::mainThreadState = nullptr;
+
+void ScriptEngine::setSkipPythonFinalize()
+{
+    skipPythonFinalize = true;
+}
 
 ScriptEngine::ScriptEngine(BotInstance *bot, QObject *parent)
     : QObject(parent), botInstance(bot)
 {
+    m_scopeName = bot ? bot->name : QStringLiteral("_global");
+
     if (engineCount == 0) {
         initializePython();
     }
@@ -36,14 +45,20 @@ ScriptEngine::ScriptEngine(BotInstance *bot, QObject *parent)
     qRegisterMetaType<ScriptEvent>("ScriptEvent");
     qRegisterMetaType<ScriptContext*>("ScriptContext*");
 
-    m_eventWorkerThread = new QThread(this);
-    m_eventWorker = new ScriptEventWorker(bot);
-    m_eventWorker->moveToThread(m_eventWorkerThread);
-    connect(m_eventWorkerThread, &QThread::finished, m_eventWorker, &QObject::deleteLater);
-    connect(this, &ScriptEngine::eventReady,
-            m_eventWorker, &ScriptEventWorker::processEvent,
-            Qt::QueuedConnection);
-    m_eventWorkerThread->start();
+    // The global engine never has events fired at it (they route to a bot's
+    // engine by name), so it needs no event worker.
+    m_eventWorkerThread = nullptr;
+    m_eventWorker = nullptr;
+    if (botInstance) {
+        m_eventWorkerThread = new QThread(this);
+        m_eventWorker = new ScriptEventWorker(bot);
+        m_eventWorker->moveToThread(m_eventWorkerThread);
+        connect(m_eventWorkerThread, &QThread::finished, m_eventWorker, &QObject::deleteLater);
+        connect(this, &ScriptEngine::eventReady,
+                m_eventWorker, &ScriptEventWorker::processEvent,
+                Qt::QueuedConnection);
+        m_eventWorkerThread->start();
+    }
 }
 
 ScriptEngine::~ScriptEngine()
@@ -54,13 +69,15 @@ ScriptEngine::~ScriptEngine()
         state.autorun = it.value()->enabled;
         states[it.key()] = state;
     }
-    ScriptFileManager::saveScriptStates(botInstance->name, states);
+    ScriptFileManager::saveScriptStates(m_scopeName, states);
 
     stopAllScripts();
 
     // Drain the event worker queue before destroying Python objects.
-    m_eventWorkerThread->quit();
-    m_eventWorkerThread->wait();
+    if (m_eventWorkerThread) {
+        m_eventWorkerThread->quit();
+        m_eventWorkerThread->wait();
+    }
 
     {
         py::gil_scoped_acquire acquire;
@@ -76,11 +93,11 @@ ScriptEngine::~ScriptEngine()
 
 void ScriptEngine::loadScriptsFromDisk()
 {
-    QStringList scriptFiles = ScriptFileManager::listScripts(botInstance->name);
-    QMap<QString, ScriptState> states = ScriptFileManager::loadScriptStates(botInstance->name);
+    QStringList scriptFiles = ScriptFileManager::listScripts(m_scopeName);
+    QMap<QString, ScriptState> states = ScriptFileManager::loadScriptStates(m_scopeName);
 
     for (const QString &filename : std::as_const(scriptFiles)) {
-        QString code = ScriptFileManager::loadScript(botInstance->name, filename);
+        QString code = ScriptFileManager::loadScript(m_scopeName, filename);
         if (!code.isEmpty()) {
             loadScript(filename, code);
 
@@ -123,6 +140,14 @@ void ScriptEngine::initializePython()
 void ScriptEngine::cleanupPython()
 {
     if (!pythonInitialized) return;
+
+    if (skipPythonFinalize) {
+        // An abandoned thread (a stuck column provider) may still be inside the
+        // interpreter; finalizing would hang or crash. The process is exiting anyway.
+        LogManager::log("Skipping Python finalization (a blocked script thread "
+                        "was abandoned)", LogManager::Warning);
+        return;
+    }
 
     try {
         // Re-acquire the GIL before finalizing
@@ -186,6 +211,11 @@ void ScriptEngine::unloadScript(const QString &filename)
 
     stopScript(filename);
 
+    // stopScript is a no-op for a finished global script, so drop its columns
+    // here too (unload/reload/rename/delete).
+    if (isGlobal())
+        CustomColumnManager::instance().unregisterScript(filename);
+
     ScriptContext *ctx = scripts.take(filename);
 
     py::gil_scoped_acquire acquire;
@@ -216,14 +246,14 @@ bool ScriptEngine::runScript(const QString &filename)
     ScriptContext *ctx = scripts[filename];
     if (ctx->running || ctx->thread) return false;
 
-    if (botInstance->consoleWidget) {
+    if (console()) {
         QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-        botInstance->consoleWidget->appendOutput(
+        console()->appendOutput(
             QString("[%1] [%2] Starting...").arg(ts, filename), Qt::darkCyan);
     }
 
     ctx->running = true;
-    ctx->thread = new ScriptThread(ctx, botInstance, this);
+    ctx->thread = new ScriptThread(ctx, botInstance, m_scopeName, this);
 
     // Connect thread cleanup - delete when thread finishes naturally
     connect(ctx->thread, &QThread::finished, ctx->thread, &QObject::deleteLater, Qt::UniqueConnection);
@@ -236,23 +266,49 @@ bool ScriptEngine::runScript(const QString &filename)
         ctx->thread = nullptr; // Don't delete here, finished signal handles it
 
         if (success) {
-            if (ctx->eventHandlers.isEmpty()) {
+            // A global script that registered columns stays "running" (like an
+            // event-driven one) so its columns stay active until Stop.
+            bool hasColumns = isGlobal() &&
+                CustomColumnManager::instance().hasColumnsForScript(filename);
+
+            // Events route per bot, so handlers keep only a bot-bound script alive.
+            bool keepForEvents = !isGlobal() && !ctx->eventHandlers.isEmpty();
+
+            if (isGlobal() && !ctx->eventHandlers.isEmpty() && console()) {
+                QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+                console()->appendOutput(
+                    QString("[%1] [%2] Warning: event handlers are not delivered to "
+                            "global scripts; use a bot's Scripts tab for event-driven automation.")
+                        .arg(ts, filename), Qt::darkYellow);
+            }
+
+            if (!keepForEvents && !hasColumns) {
                 ctx->running = false;
-                if (botInstance->consoleWidget) {
+                if (console()) {
                     QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-                    botInstance->consoleWidget->appendOutput(
+                    console()->appendOutput(
                         QString("[%1] [%2] Completed successfully").arg(ts, filename), AppColors::scriptSuccess());
                 }
                 emit scriptStopped(filename);
+            } else if (hasColumns && console()) {
+                QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+                console()->appendOutput(
+                    QString("[%1] [%2] Active - providing custom column(s). Stop to remove.")
+                        .arg(ts, filename), AppColors::scriptSuccess());
             }
         } else {
             // Script stopped (error or user interruption)
             ctx->running = false;
 
+            // Drop any columns the script registered, including late ones that
+            // slipped in between a Stop click and the thread dying.
+            if (isGlobal())
+                CustomColumnManager::instance().unregisterScript(filename);
+
             // Show stopped message if no error was set (user stopped)
-            if (ctx->lastError.isEmpty() && botInstance->consoleWidget) {
+            if (ctx->lastError.isEmpty() && console()) {
                 QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-                botInstance->consoleWidget->appendOutput(
+                console()->appendOutput(
                     QString("[%1] [%2] Stopped").arg(ts, filename), AppColors::scriptStopped());
             }
 
@@ -265,15 +321,15 @@ bool ScriptEngine::runScript(const QString &filename)
 
         emit scriptError(filename, error);
 
-        if (botInstance->consoleWidget) {
+        if (console()) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-            botInstance->consoleWidget->appendOutput(
+            console()->appendOutput(
                 QString("[%1] [Script Error in %2]").arg(ts, filename),
                 AppColors::scriptError()
             );
             QStringList errorLines = error.split("\n");
             for (const QString &line : std::as_const(errorLines)) {
-                botInstance->consoleWidget->appendOutput(line, AppColors::scriptError());
+                console()->appendOutput(line, AppColors::scriptError());
             }
         }
     }, Qt::QueuedConnection);
@@ -281,8 +337,8 @@ bool ScriptEngine::runScript(const QString &filename)
     connect(ctx->thread, &ScriptThread::scriptMessage, this, [this, filename](const QString &message) {
         if (!scripts.contains(filename)) return;
 
-        if (botInstance->consoleWidget) {
-            botInstance->consoleWidget->appendOutput(message, AppColors::scriptLog());
+        if (console()) {
+            console()->appendOutput(message, AppColors::scriptLog());
         }
     }, Qt::QueuedConnection);
 
@@ -303,10 +359,10 @@ void ScriptEngine::stopScript(const QString &filename)
         // Imperative script still running in thread - signal it to stop
         ctx->thread->stop();
 
-        if (botInstance->consoleWidget) {
+        if (console()) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
             QString msg = QString("[%1] [%2] Sending stop signal...").arg(ts, filename);
-            QMetaObject::invokeMethod(botInstance->consoleWidget, [widget = botInstance->consoleWidget, msg]() {
+            QMetaObject::invokeMethod(console(), [widget = console(), msg]() {
                 widget->appendOutput(msg, Qt::darkYellow);
             }, Qt::QueuedConnection);
         }
@@ -321,14 +377,19 @@ void ScriptEngine::stopScript(const QString &filename)
             ctx->eventHandlers.clear();
         }
 
-        if (botInstance->consoleWidget) {
+        if (console()) {
             QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-            botInstance->consoleWidget->appendOutput(
+            console()->appendOutput(
                 QString("[%1] [%2] Stopped").arg(ts, filename), Qt::darkYellow);
         }
 
         emit scriptStopped(filename);
     }
+
+    // Drop any columns a global script registered. A thread still winding down
+    // gets a second cleanup pass in scriptFinished for late registrations.
+    if (isGlobal())
+        CustomColumnManager::instance().unregisterScript(filename);
 }
 
 void ScriptEngine::stopAllScripts()
@@ -350,6 +411,7 @@ void ScriptEngine::stopAllScripts()
 void ScriptEngine::fireEvent(const QString &eventName, const QVariantList &args)
 {
     // Called on the main thread. Must not block - post to worker thread instead.
+    if (!botInstance) return; // the global engine has no event worker
     for (auto it = scripts.begin(); it != scripts.end(); ++it) {
         ScriptContext *ctx = it.value();
 
@@ -371,6 +433,7 @@ void ScriptEngine::fireEvent(const QString &eventName, const QVariantList &args)
 
 void ScriptEngine::fireEvent(const QString &eventName, std::function<void(void*)> argBuilder)
 {
+    if (!botInstance) return; // the global engine has no event worker
     for (auto it = scripts.begin(); it != scripts.end(); ++it) {
         ScriptContext *ctx = it.value();
 
@@ -418,9 +481,21 @@ QString ScriptEngine::getScriptError(const QString &filename) const
     return scripts[filename]->lastError;
 }
 
-QString ScriptEngine::getBotName() const
+QString ScriptEngine::getScopeName() const
 {
-    return botInstance ? botInstance->name : QString();
+    return m_scopeName;
+}
+
+void ScriptEngine::setConsole(BotConsoleWidget *console)
+{
+    m_globalConsole = console;
+}
+
+BotConsoleWidget* ScriptEngine::console() const
+{
+    // A bot-bound engine follows its bot's console; the global engine uses its
+    // explicitly set one.
+    return botInstance ? botInstance->consoleWidget.data() : m_globalConsole.data();
 }
 
 QString ScriptEngine::loadEventData()
