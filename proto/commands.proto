@@ -147,7 +147,7 @@ message CommandResponse {
     CANCELLED = 3;
   }
 
-  string command_id = 1;        // ID of the command being responded to
+  string request_id = 1;        // Echoes the request's message_id for correlation
   Status status = 2;
   string message = 3;           // Error message or status description
 }

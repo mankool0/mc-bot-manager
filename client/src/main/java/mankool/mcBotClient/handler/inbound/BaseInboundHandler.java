@@ -17,7 +17,7 @@ public abstract class BaseInboundHandler {
 
     protected void sendResponse(String messageId, Commands.CommandResponse.Status status, String message) {
         Commands.CommandResponse response = Commands.CommandResponse.newBuilder()
-            .setCommandId(messageId)
+            .setRequestId(messageId)
             .setStatus(status)
             .setMessage(message)
             .build();

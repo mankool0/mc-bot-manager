@@ -1291,7 +1291,7 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    bool isSilent = silentMessageIds.remove(response.commandId());
+    bool isSilent = silentMessageIds.remove(response.requestId());
 
     QString statusText;
     bool success = false;
@@ -3204,7 +3204,7 @@ void BotManager::handleCanReachBlockResponseImpl(int connectionId, const mankool
 {
     Q_UNUSED(connectionId);
     QMutexLocker lock(&m_pendingCanReachBlockMutex);
-    auto it = m_pendingCanReachBlockRequests.find(response.commandId());
+    auto it = m_pendingCanReachBlockRequests.find(response.requestId());
     if (it != m_pendingCanReachBlockRequests.end()) {
         it.value()->reachable = response.reachable();
         it.value()->sem.release();
@@ -3277,7 +3277,7 @@ void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mank
 {
     Q_UNUSED(connectionId);
     QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-    auto it = m_pendingHoldAttackStatusRequests.find(response.commandId());
+    auto it = m_pendingHoldAttackStatusRequests.find(response.requestId());
     if (it != m_pendingHoldAttackStatusRequests.end()) {
         it.value()->enabled = response.enabled();
         it.value()->sem.release();
@@ -3350,7 +3350,7 @@ void BotManager::handlePlayerStatisticsResponseImpl(int connectionId, const mank
     }
 
     QMutexLocker lock(&m_pendingStatisticsMutex);
-    auto it = m_pendingStatisticsRequests.find(response.commandId());
+    auto it = m_pendingStatisticsRequests.find(response.requestId());
     if (it != m_pendingStatisticsRequests.end()) {
         it.value()->received = true;
         it.value()->sem.release();

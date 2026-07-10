@@ -16,7 +16,7 @@ message StatEntry {
 
 // Client -> Manager: statistics for the current world.
 message PlayerStatisticsResponse {
-  string command_id = 1;          // Echoes the request's message_id for correlation
+  string request_id = 1;          // Echoes the request's message_id for correlation
   repeated StatEntry entries = 2;
   bool full = 3;                  // true = snapshot (replace cache); false = delta (merge)
 }

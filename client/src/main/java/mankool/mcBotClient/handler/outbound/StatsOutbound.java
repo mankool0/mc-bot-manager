@@ -131,7 +131,7 @@ public class StatsOutbound extends BaseOutbound {
 
     private void sendResponse(String messageId, List<Stats.StatEntry> entries, boolean full) {
         Stats.PlayerStatisticsResponse response = Stats.PlayerStatisticsResponse.newBuilder()
-            .setCommandId(messageId)
+            .setRequestId(messageId)
             .addAllEntries(entries)
             .setFull(full)
             .build();
