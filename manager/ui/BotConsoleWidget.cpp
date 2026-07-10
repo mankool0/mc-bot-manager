@@ -327,6 +327,14 @@ void BotConsoleWidget::appendResponse(bool success, const QString &message)
     appendOutput(QString("[%1] %2").arg(timestamp, message), color);
 }
 
+void BotConsoleWidget::appendBaritoneLog(const QString &message, bool isError)
+{
+    QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
+    QColor color = isError ? AppColors::consoleError()
+                           : AppColors::consoleBaritone();
+    appendOutput(QString("[%1] %2").arg(timestamp, message), color);
+}
+
 void BotConsoleWidget::clearOutput()
 {
     outputEdit->clear();

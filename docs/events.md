@@ -163,3 +163,28 @@ def on_baritone_update(status):
         elif status['event_type'] == PathEventType.CALC_FAILED:
             utils.log("Pathfinding failed!")
 ```
+
+### `baritone_log`
+
+Fired when Baritone logs a message on the client (chat log lines, toasts, desktop
+notifications). Baritone writes this output directly to the local chat HUD without any
+network packet, so it does not appear in `chat_message` events.
+
+**Parameters:**
+
+- `log` (`dict`) - Log message details with keys:
+  - `content` (`str`) - Plain message text, with the `[Baritone]` prefix stripped
+  - `kind` (`str`) - Where Baritone sent the message: `"chat"`, `"toast"` or `"notification"`
+  - `is_error` (`bool`) - Whether Baritone flagged the message as an error (`"notification"` kind only)
+  - `title` (`str`, optional) - Toast title (`"toast"` kind, only when Baritone used a custom title)
+  - `timestamp` (`int`) - Unix timestamp in milliseconds
+
+```python
+@on("baritone_log")
+def on_baritone_log(log):
+    utils.log(f"Baritone: {log['content']}")
+
+    # React to output that has no structured event
+    if log['content'].startswith("Unable to find a path"):
+        utils.log("Pathfinding gave up, trying a different goal")
+```

@@ -28,6 +28,7 @@ public:
     // Called from main thread only (direct insert, no buffering)
     void appendOutput(const QString &text, const QColor &color = Qt::black);
     void appendResponse(bool success, const QString &message);
+    void appendBaritoneLog(const QString &message, bool isError);
     void clearOutput();
 
     // Called from any thread - writes into ring buffer, flushed every 50ms

@@ -42,6 +42,7 @@ public class MessageHandler {
     private final EntityOutbound entityOutbound;
     private final TabListOutbound tabListOutbound;
     private final StatsOutbound statsOutbound;
+    private final BaritoneLogOutbound baritoneLogOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -67,6 +68,7 @@ public class MessageHandler {
         this.entityOutbound = new EntityOutbound(this.client, connection);
         this.tabListOutbound = new TabListOutbound(this.client, connection);
         this.statsOutbound = new StatsOutbound(this.client, connection);
+        this.baritoneLogOutbound = new BaritoneLogOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
         // Register message handlers

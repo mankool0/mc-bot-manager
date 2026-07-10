@@ -11,6 +11,7 @@ struct Cache {
     QColor consoleSuccess {0,   102,   0};
     QColor consoleError   {204,   0,   0};
     QColor consoleDropped = Qt::darkYellow;
+    QColor consoleBaritone{170,   0, 170};
 
     // Script output
     QColor scriptSuccess  = Qt::darkGreen;
@@ -55,6 +56,7 @@ inline void reload()
     c.consoleSuccess = s.value("Colors/Console/success", defaults.consoleSuccess).value<QColor>();
     c.consoleError   = s.value("Colors/Console/error",   defaults.consoleError).value<QColor>();
     c.consoleDropped = s.value("Colors/Console/dropped", defaults.consoleDropped).value<QColor>();
+    c.consoleBaritone = s.value("Colors/Console/baritone", defaults.consoleBaritone).value<QColor>();
 
     c.scriptSuccess  = s.value("Colors/Script/success",  defaults.scriptSuccess).value<QColor>();
     c.scriptStopped  = s.value("Colors/Script/stopped",  defaults.scriptStopped).value<QColor>();
@@ -79,6 +81,7 @@ inline const QColor& consoleInput()   { return _cache().consoleInput; }
 inline const QColor& consoleSuccess() { return _cache().consoleSuccess; }
 inline const QColor& consoleError()   { return _cache().consoleError; }
 inline const QColor& consoleDropped() { return _cache().consoleDropped; }
+inline const QColor& consoleBaritone(){ return _cache().consoleBaritone; }
 
 inline const QColor& scriptSuccess()  { return _cache().scriptSuccess; }
 inline const QColor& scriptStopped()  { return _cache().scriptStopped; }
