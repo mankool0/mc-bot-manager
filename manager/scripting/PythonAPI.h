@@ -267,6 +267,7 @@ public:
     // Server info and tab list
     static py::object getServerInfo(const std::string &botName = "");
     static py::list getPlayerList(const std::string &botName = "");
+    static py::object getServerStats(const std::string &botName = "");
 
     static void log(const std::string &message);
     static void error(const std::string &message);

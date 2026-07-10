@@ -1005,6 +1005,11 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
                 bot->worldData.clearWorldState();
             }
 
+            {
+                QMutexLocker statsLocker(&m_statsCacheMutex);
+                m_statsCache.remove(bot->name);
+            }
+
             QMutexLocker tabLocker(bot->dataMutex.get());
             bot->tabList.clear();
         }
@@ -3275,6 +3280,79 @@ void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mank
     auto it = m_pendingHoldAttackStatusRequests.find(response.commandId());
     if (it != m_pendingHoldAttackStatusRequests.end()) {
         it.value()->enabled = response.enabled();
+        it.value()->sem.release();
+    }
+}
+
+std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatistics(const QString &botName, int timeoutMs)
+{
+    return instance().getStatisticsImpl(botName, timeoutMs);
+}
+
+std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatisticsImpl(const QString &botName, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString name = bot->name;
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+
+    PendingStatisticsEntry entry;
+    {
+        QMutexLocker lock(&m_pendingStatisticsMutex);
+        m_pendingStatisticsRequests[msgId] = &entry;
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setRequestStatistics(mankool::mcbot::protocol::RequestStatisticsCommand{});
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
+        QMutexLocker lock(&m_pendingStatisticsMutex);
+        m_pendingStatisticsRequests.remove(msgId);
+        return std::nullopt;
+    }
+
+    // The client replies with a delta that the response handler merges into m_statsCache
+    // before releasing this semaphore. On timeout, fall back to the last cached snapshot;
+    // either way we read m_statsCache below, so the acquire result is intentionally ignored.
+    (void)entry.sem.tryAcquire(1, timeoutMs);
+
+    {
+        QMutexLocker lock(&m_pendingStatisticsMutex);
+        m_pendingStatisticsRequests.remove(msgId);
+    }
+
+    QMutexLocker cacheLock(&m_statsCacheMutex);
+    auto it = m_statsCache.constFind(name);
+    if (it == m_statsCache.constEnd())
+        return std::nullopt;
+    return *it;
+}
+
+void BotManager::handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response)
+{
+    instance().handlePlayerStatisticsResponseImpl(connectionId, response);
+}
+
+void BotManager::handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response)
+{
+    // Merge the delta (or replace on a full snapshot) into the per-bot cache before waking
+    // any waiter, so getStatistics reads an up-to-date snapshot.
+    if (BotInstance *bot = getBotByConnectionIdImpl(connectionId)) {
+        QMutexLocker cacheLock(&m_statsCacheMutex);
+        QMap<QString, QMap<QString, qint64>> &cache = m_statsCache[bot->name];
+        if (response.full())
+            cache.clear();
+        const auto entries = response.entries();
+        for (const auto &e : entries) {
+            cache[e.category()][e.key()] = e.value();
+        }
+    }
+
+    QMutexLocker lock(&m_pendingStatisticsMutex);
+    auto it = m_pendingStatisticsRequests.find(response.commandId());
+    if (it != m_pendingStatisticsRequests.end()) {
+        it.value()->received = true;
         it.value()->sem.release();
     }
 }

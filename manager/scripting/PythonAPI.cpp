@@ -460,6 +460,37 @@ py::list PythonAPI::getPlayerList(const std::string &botName)
     return result;
 }
 
+py::object PythonAPI::getServerStats(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    // Blocks while the client asks the server and forwards the reply; release the GIL
+    // so other Python threads keep running during the round trip.
+    std::optional<QMap<QString, QMap<QString, qint64>>> stats;
+    {
+        py::gil_scoped_release release;
+        stats = BotManager::getStatistics(name);
+    }
+    if (!stats.has_value()) {
+        return py::none();
+    }
+
+    py::dict result;
+    for (auto catIt = stats->constBegin(); catIt != stats->constEnd(); ++catIt) {
+        py::dict inner;
+        const QMap<QString, qint64> &values = catIt.value();
+        for (auto valIt = values.constBegin(); valIt != values.constEnd(); ++valIt) {
+            inner[py::str(valIt.key().toStdString())] = static_cast<long long>(valIt.value());
+        }
+        result[py::str(catIt.key().toStdString())] = inner;
+    }
+    return result;
+}
+
 std::optional<float> PythonAPI::getHealth(const std::string &botName)
 {
     QString name = resolveBotName(botName);

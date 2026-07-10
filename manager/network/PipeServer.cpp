@@ -259,6 +259,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleTabListRemove(connectionId, clientMsg.tabListRemove());
         } else if (clientMsg.hasMapData()) {
             BotManager::handleMapData(connectionId, clientMsg.mapData());
+        } else if (clientMsg.hasPlayerStatisticsResponse()) {
+            BotManager::handlePlayerStatisticsResponse(connectionId, clientMsg.playerStatisticsResponse());
         }
         return true;
     }

@@ -1,5 +1,6 @@
 package mankool.mcBotClient.mixin.client;
 
+import mankool.mcBotClient.handler.outbound.StatsOutbound;
 import mankool.mcBotClient.handler.outbound.WorldOutbound;
 import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
@@ -110,6 +111,14 @@ public class ClientPacketListenerMixin {
         WorldOutbound handler = WorldOutbound.getInstance();
         if (handler != null) {
             handler.onMapItemData(packet);
+        }
+    }
+
+    @Inject(method = "handleAwardStats", at = @At("TAIL"))
+    private void onAwardStats(ClientboundAwardStatsPacket packet, CallbackInfo ci) {
+        StatsOutbound handler = StatsOutbound.getInstance();
+        if (handler != null) {
+            handler.onStatsReceived(packet);
         }
     }
 
