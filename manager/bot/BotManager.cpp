@@ -2073,6 +2073,65 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
     emit baritoneProcessStatusUpdated(bot->name);
 }
 
+void BotManager::handleBaritoneLog(int connectionId, const mankool::mcbot::protocol::BaritoneLogMessage &log)
+{
+    instance().handleBaritoneLogImpl(connectionId, log);
+}
+
+void BotManager::handleBaritoneLogImpl(int connectionId, const mankool::mcbot::protocol::BaritoneLogMessage &log)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    QString kindStr;
+    QString label;
+    switch (log.kind()) {
+        case mankool::mcbot::protocol::BaritoneLogMessage::Kind::CHAT:
+            kindStr = "chat";
+            label = "[Baritone]";
+            break;
+        case mankool::mcbot::protocol::BaritoneLogMessage::Kind::TOAST:
+            kindStr = "toast";
+            label = "[Baritone Toast]";
+            break;
+        case mankool::mcbot::protocol::BaritoneLogMessage::Kind::NOTIFICATION:
+            kindStr = "notification";
+            label = "[Baritone Notify]";
+            break;
+    }
+
+    QString content = log.content();
+    if (log.hasTitle() && !log.title().isEmpty()) {
+        content = QString("%1: %2").arg(log.title(), content);
+    }
+
+    QString output = QString("%1 %2").arg(label, content);
+
+    if (bot->consoleWidget) {
+        bot->consoleWidget->appendBaritoneLog(output, log.isError());
+    }
+
+    if (bot->scriptEngine) {
+        QVariantMap logData;
+        logData["content"] = log.content();
+        logData["kind"] = kindStr;
+        logData["is_error"] = log.isError();
+        logData["timestamp"] = static_cast<long long>(log.timestamp());
+
+        if (log.hasTitle()) {
+            logData["title"] = log.title();
+        }
+
+        QVariantList args;
+        args << logData;
+        bot->scriptEngine->fireEvent("baritone_log", args);
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] BaritoneLog received: %2").arg(bot->name, output), LogManager::Debug);
+    }
+}
+
 // Block Registry Handlers
 
 void BotManager::handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)

@@ -251,3 +251,20 @@ def on_status(status):
 # Start pathfinding - events will handle the rest
 baritone.goto(500, 70, -300)
 ```
+
+## Log Output
+
+Baritone's chat output (command responses like `Set goal to ...`, path status messages,
+errors) is forwarded to the manager and fired as the [`baritone_log`](../events.md#baritone_log)
+event. Use it to react to output that has no structured event:
+
+```python
+import baritone
+
+@on("baritone_log")
+def on_baritone_log(log):
+    if log['content'].startswith("Unable to find a path"):
+        utils.log("Pathfinding gave up")
+
+baritone.goto(500, 70, -300)
+```

@@ -95,6 +95,9 @@ message ClientToManagerMessage {
 
     // Player statistics response (reply to RequestStatisticsCommand)
     PlayerStatisticsResponse player_statistics_response = 38;
+
+    // Baritone log output (chat log lines, toasts, notifications)
+    BaritoneLogMessage baritone_log = 39;
   }
 }
 

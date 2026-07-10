@@ -175,6 +175,7 @@ void GlobalSettingsDialog::setupUI()
         addColorRow(consoleColorsLayout, "Success Response",  "Colors/Console/success", d.consoleSuccess);
         addColorRow(consoleColorsLayout, "Error Response",    "Colors/Console/error",   d.consoleError);
         addColorRow(consoleColorsLayout, "Dropped Messages",  "Colors/Console/dropped", d.consoleDropped);
+        addColorRow(consoleColorsLayout, "Baritone Output",   "Colors/Console/baritone", d.consoleBaritone);
         layout->addWidget(consoleColorsGroup);
 
         QGroupBox *scriptColorsGroup = new QGroupBox("Script Colors");
