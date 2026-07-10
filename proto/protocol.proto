@@ -14,6 +14,7 @@ import "world.proto";
 import "screen.proto";
 import "registry.proto";
 import "entities.proto";
+import "stats.proto";
 
 // Main protocol definition that ties everything together
 
@@ -91,6 +92,9 @@ message ClientToManagerMessage {
 
     // Map item data
     MapDataMessage map_data = 37;
+
+    // Player statistics response (reply to RequestStatisticsCommand)
+    PlayerStatisticsResponse player_statistics_response = 38;
   }
 }
 
@@ -170,5 +174,8 @@ message ManagerToClientMessage {
 
     // Force a full inventory resync from the server
     RequestInventoryResyncCommand request_inventory_resync = 35;
+
+    // Request the player's statistics for the current server/world
+    RequestStatisticsCommand request_statistics = 37;
   }
 }

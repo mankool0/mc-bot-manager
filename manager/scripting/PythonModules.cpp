@@ -667,6 +667,11 @@ PYBIND11_EMBEDDED_MODULE(server, m) {
     def_state("get_player_list", &PythonAPI::getPlayerList,
               "Get full tab list. Returns list[TabListPlayer], empty if offline or not yet received.",
               py::arg("bot_name") = "");
+    def_state("get_stats", &PythonAPI::getServerStats,
+              "Get the bot's Minecraft statistics for the current server/world. Returns a nested "
+              "dict {category: {key: value}}, or None if the bot is offline. Blocks up to 5s "
+              "while the client fetches the stats from the server.",
+              py::arg("bot_name") = "");
 
     m.attr("__debug_state__") = debugState;
 }

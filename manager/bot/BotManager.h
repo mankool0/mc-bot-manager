@@ -15,6 +15,7 @@
 #include <QReadWriteLock>
 #include <QPointer>
 #include <memory>
+#include <optional>
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -28,6 +29,7 @@
 #include "screen.qpb.h"
 #include "registry.qpb.h"
 #include "entities.qpb.h"
+#include "stats.qpb.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
@@ -437,6 +439,8 @@ public:
     static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
+    static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
@@ -533,6 +537,8 @@ private:
     void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
+    void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
                                    mankool::mcbot::protocol::BlockFaceGadget::BlockFace face);
@@ -571,6 +577,11 @@ private:
         bool enabled = false;
     };
 
+    struct PendingStatisticsEntry {
+        QSemaphore sem{0};
+        bool received = false;
+    };
+
     QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
@@ -578,6 +589,10 @@ private:
     QHash<QString, PendingCanReachBlockEntry*> m_pendingCanReachBlockRequests;
     QMutex m_pendingHoldAttackStatusMutex;
     QHash<QString, PendingHoldAttackStatusEntry*> m_pendingHoldAttackStatusRequests;
+    QMutex m_pendingStatisticsMutex;
+    QHash<QString, PendingStatisticsEntry*> m_pendingStatisticsRequests;
+    QMutex m_statsCacheMutex;
+    QHash<QString, QMap<QString, QMap<QString, qint64>>> m_statsCache;
 
     // Block state registry cache: data_version -> (state_id -> block_state_string)
     QMap<int, QMap<quint32, QString>> blockRegistryCache;

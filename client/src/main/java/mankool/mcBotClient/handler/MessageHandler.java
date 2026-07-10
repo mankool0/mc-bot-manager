@@ -41,6 +41,7 @@ public class MessageHandler {
     private final ScreenOutbound screenOutbound;
     private final EntityOutbound entityOutbound;
     private final TabListOutbound tabListOutbound;
+    private final StatsOutbound statsOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -65,6 +66,7 @@ public class MessageHandler {
         this.screenOutbound = new ScreenOutbound(this.client, connection);
         this.entityOutbound = new EntityOutbound(this.client, connection);
         this.tabListOutbound = new TabListOutbound(this.client, connection);
+        this.statsOutbound = new StatsOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
         // Register message handlers
@@ -142,6 +144,8 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleGetHoldAttackStatus(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_INVENTORY_RESYNC,
             msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_STATISTICS,
+            msg -> statsOutbound.handleRequestStatistics(msg.getMessageId()));
     }
 
     public void start() {

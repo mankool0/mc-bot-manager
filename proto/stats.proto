@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Player statistics (request/response, not pushed)
+
+// Manager -> Client: request the player's statistics.
+message RequestStatisticsCommand {}
+
+// A single stat entry: (category, key) -> value, both opaque Minecraft ids.
+message StatEntry {
+  string category = 1;    // stat-type, e.g. "minecraft:mined"
+  string key = 2;         // value within the type, e.g. "minecraft:stone"
+  int64 value = 3;        // Minecraft stores stats as 32-bit ints, so 64-bit is fine
+}
+
+// Client -> Manager: statistics for the current world.
+message PlayerStatisticsResponse {
+  string command_id = 1;          // Echoes the request's message_id for correlation
+  repeated StatEntry entries = 2;
+  bool full = 3;                  // true = snapshot (replace cache); false = delta (merge)
+}
