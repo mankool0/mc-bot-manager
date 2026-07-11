@@ -20,6 +20,10 @@ theme:
   features:
     - content.code.copy
 
+extra:
+  version:
+    provider: mike
+
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
