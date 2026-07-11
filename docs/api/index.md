@@ -10,7 +10,8 @@
 | [`world`](world.md) | World data queries and block interaction |
 | [`utils`](utils.md) | Logging utilities |
 | [`server`](server.md) | Server info and tab list |
-| [`manager`](manager.md) | Global scripts and custom instance-table columns |
+| [`manager`](manager.md) | Custom instance-table columns and script lifecycle |
+| [`comms`](comms.md) | Messaging between scripts (pub/sub and addressed) |
 
 ## Multi-Bot
 

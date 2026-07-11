@@ -41,5 +41,6 @@ nav:
     - utils: api/utils.md
     - server: api/server.md
     - manager: api/manager.md
+    - comms: api/comms.md
   - Examples: examples.md
   - Events: events.md

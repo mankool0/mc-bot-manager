@@ -4,6 +4,7 @@
 #include <QString>
 #include <QVariant>
 #include <QPointer>
+#include <atomic>
 #include <string>
 #include <vector>
 #include <map>
@@ -193,6 +194,7 @@ public:
     static void startBot(const std::string &botName = "");
     static void stopBot(const std::string &reason = "", const std::string &botName = "");
     static void restartBot(const std::string &reason = "", const std::string &botName = "");
+    static bool waitForOnline(double timeout = 60.0, const std::string &botName = "");
 
     static void baritoneGoto(double x, double y, double z, const std::string &bot = "");
     static void baritoneGoto(double x, double z, const std::string &bot = "");
@@ -272,6 +274,24 @@ public:
     static void log(const std::string &message);
     static void error(const std::string &message);
 
+    // Inter-script messaging (comms module)
+    static int commsEmit(const std::string &topic, const py::object &data);
+    static int commsSend(const std::string &botName, const py::object &data,
+                         const std::string &topic = "");
+    static void commsSubscribe(const std::string &topic = "");
+    static void commsUnsubscribe(const std::string &topic);
+    static py::object commsReceive(double timeout = -1.0);
+    static int commsPending();
+
+    // Set by ScriptThread so blocking API calls on this thread can notice a
+    // stop request without returning to Python first.
+    static void setCurrentStopFlag(std::atomic<bool> *flag);
+
+    // Script lifecycle (manager module)
+    static bool runScriptApi(const std::string &script, const std::string &botName = "");
+    static void stopScriptApi(const std::string &script, const std::string &botName = "");
+    static py::list listScriptsApi(const std::string &botName = "");
+
     // Custom instance-table columns (global scripting). interval is the
     // per-column recompute period in seconds (floored at 50ms).
     static void addColumn(const std::string &name, const py::function &provider, double interval);
@@ -281,6 +301,7 @@ public:
 
     // Console that log()/error() route to when no bot is current (global scripts).
     static void setGlobalConsole(BotConsoleWidget *console);
+    static BotConsoleWidget* getGlobalConsole();
     // When enabled on the calling thread, log()/error() always target the global
     // console regardless of the current bot (used by the column compute worker).
     static void setForceGlobalConsole(bool enabled);
@@ -292,12 +313,16 @@ private:
     static QString resolveBotName(const std::string &botName);
     static struct BotInstance* ensureBotOnline(const QString &botName);
     static QVariant pyObjectToQVariant(const py::object &value);
+    static QVariant pyObjectToPlainVariant(const py::object &value);
+    // The calling script's bus scope: its bot name, or "_global".
+    static QString currentScope();
     static py::dict rgbaColorToDict(const RGBAColor &color);
     static py::dict espBlockDataToDict(const ESPBlockData &data);
 
     static thread_local QString currentBot;
     static thread_local QString currentScript;
     static thread_local bool forceGlobalConsole;
+    static thread_local std::atomic<bool> *currentStopFlag;
     static QPointer<BotConsoleWidget> globalConsole;
 };
 

@@ -188,3 +188,65 @@ def on_baritone_log(log):
     if log['content'].startswith("Unable to find a path"):
         utils.log("Pathfinding gave up, trying a different goal")
 ```
+
+### `script_message`
+
+Fired when another script sends this script a message via
+[`comms.emit`](api/comms.md#emittopic-datanone) or
+[`comms.send`](api/comms.md#sendbot_name-datanone-topic). This event is also
+delivered to **global scripts**. Registering the handler makes the script
+reachable by `comms.send`; broadcasts additionally require a
+`comms.subscribe(topic)` call. While this handler is registered,
+`comms.receive()` gets nothing - messages go to the handler.
+
+**Parameters:**
+
+- `msg` (`dict`) - The message, with keys:
+  - `topic` (`str`) - Topic passed to `emit`/`send` (`""` for a plain `send`)
+  - `data` - The payload (plain data, deep-copied)
+  - `sender_scope` (`str`) - Sender's bot name, or `"_global"`
+  - `sender_script` (`str`) - Sender's script filename
+  - `timestamp` (`float`) - Send time, epoch seconds
+
+```python
+comms.subscribe("tasks")
+
+@on("script_message")
+def on_message(msg):
+    utils.log(f"{msg['sender_scope']}/{msg['sender_script']}: {msg['data']}")
+    if msg["topic"] == "tasks":
+        comms.send(msg["sender_scope"], {"status": "accepted"})
+```
+
+### `bot_connected`
+
+Fired when a bot finishes connecting to the manager (status becomes Online).
+Delivered to the bot's own scripts and to **global scripts**.
+
+**Parameters:**
+
+- `bot_name` (`str`) - Name of the bot that connected
+
+```python
+@on("bot_connected")
+def on_connect(bot_name):
+    utils.log(f"{bot_name} is online")
+    comms.send(bot_name, {"cmd": "resume"})
+```
+
+### `bot_disconnected`
+
+Fired when a bot disconnects from the manager (status becomes Offline).
+Delivered to the bot's own scripts and to **global scripts**. The bot's
+scripts keep running in the manager after a disconnect.
+
+**Parameters:**
+
+- `bot_name` (`str`) - Name of the bot that disconnected
+- `uptime_seconds` (`float`) - How long the bot was connected (0.0 if unknown)
+
+```python
+@on("bot_disconnected")
+def on_disconnect(bot_name, uptime_seconds):
+    utils.log(f"{bot_name} went offline after {uptime_seconds:.0f}s")
+```

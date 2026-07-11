@@ -342,6 +342,30 @@ bot.restart()  # Restart with default reason
 bot.restart("Updating configuration")  # Restart with custom reason
 ```
 
+### `wait_for_online(timeout=60.0, bot_name="")`
+
+Block until the bot is Online. `bot.start()` returns as soon as the launch is
+triggered; use this to wait for the game client to actually connect. A launch
+that never connects is marked Error after 2 minutes.
+
+**Parameters:**
+
+- `timeout` (`float`, optional) - Seconds to wait, default 60
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `bool` - `True` when online; `False` on timeout, on a startup
+Error, or if the script is stopped while waiting
+
+**Raises:** `RuntimeError` if bot not found
+
+```python
+bot.start("Repairer")
+if bot.wait_for_online(timeout=120, bot_name="Repairer"):
+    comms.send("Repairer", {"cmd": "collect_pickaxes"})
+else:
+    utils.error("Repairer failed to come online")
+```
+
 ## Commands
 
 ### `chat(message, bot_name="")`

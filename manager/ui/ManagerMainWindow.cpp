@@ -30,6 +30,7 @@
 #include "scripting/ScriptEngine.h"
 #include "scripting/CustomColumnManager.h"
 #include "scripting/PythonAPI.h"
+#include "scripting/ScriptMessageBus.h"
 #include "AppPaths.h"
 #include <QTabWidget>
 #include <QSplitter>
@@ -2020,12 +2021,23 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
     if (bot) {
         QString botName = bot->name;
         bool shouldAutoRestart = bot->autoRestart && !bot->manualStop;
+        double uptimeSeconds = bot->startTime.isValid()
+            ? static_cast<double>(bot->startTime.secsTo(QDateTime::currentDateTime()))
+            : 0.0;
 
         bot->connectionId = -1;
         bot->status = BotStatus::Offline;
         bot->manualStop = false;
         updateInstancesTable();
         updateStatusDisplay();
+
+        // Notify scripts: the bot's own engine and the global engine.
+        if (bot->scriptEngine)
+            bot->scriptEngine->fireEvent(QStringLiteral("bot_disconnected"),
+                                         {botName, uptimeSeconds});
+        ScriptMessageBus::instance().fireEventForScope(
+            QStringLiteral("_global"), QStringLiteral("bot_disconnected"),
+            {botName, uptimeSeconds});
 
         bool tokenRefreshPending = bot->tokenRefreshPending;
         bot->tokenRefreshPending = false;
@@ -2414,6 +2426,17 @@ void ManagerMainWindow::setupGlobalScriptsTab()
     // Console for global-script output (utils.log / errors / lifecycle).
     m_globalConsole = new BotConsoleWidget(this);
     PythonAPI::setGlobalConsole(m_globalConsole);
+
+    {
+        QSettings settings("MCBotManager", "MCBotManager");
+        if (settings.value("Logging/enabled", true).toBool()) {
+            QString logDir = settings.value("Logging/logDir", AppPaths::logsDir()).toString();
+            int maxSizeMiB = settings.value("Logging/maxSizeMiB", 10).toInt();
+            int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
+            m_globalConsole->attachLogFile(logDir, QStringLiteral("_global"),
+                                           (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
+        }
+    }
 
     // Bot-less script engine; its scripts live under scripts/_global.
     m_globalScriptEngine = new ScriptEngine(nullptr, this);

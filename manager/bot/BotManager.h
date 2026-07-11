@@ -380,6 +380,7 @@ public:
     static void removeBot(const QString &name);
     static void clearAllBots();
     static void updateBot(const QString &name, const BotConfig &config);
+    static void armStartupTimeout(const QString &botName);
     static bool verifyModVersion(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
 
     // Message handlers
@@ -496,6 +497,7 @@ private:
     BotInstance* getBotByConnectionIdImpl(int connectionId);
     BotInstance* getBotByNameImpl(const QString &name);
     BotInstance* findStartingBotByUuid(const QString &playerUuid);
+    void armStartupTimeoutImpl(const QString &botName);
     void addBotImpl(const BotConfig &config);
     void removeBotImpl(const QString &name);
     void updateBotImpl(const QString &name, const BotConfig &config);

@@ -219,6 +219,11 @@ QString BotConsoleWidget::findCommandHelp(const QString &commandName)
 
 void BotConsoleWidget::appendOutput(const QString &text, const QColor &color)
 {
+    // Script lifecycle/error lines arrive here (not via pushLogLine); they
+    // belong in the log file too.
+    if (m_fileSink)
+        m_fileSink->write(text);
+
     QTextCursor cursor = outputEdit->textCursor();
     cursor.movePosition(QTextCursor::End);
     QTextCharFormat format;

@@ -56,7 +56,7 @@ public:
     }
 
     static QStringList getStubModuleNames() {
-        return {"bot", "baritone", "meteor", "world", "utils", "server", "manager"};
+        return {"bot", "baritone", "meteor", "world", "utils", "server", "manager", "comms"};
     }
 
     static void copyStubs(const QString &stubsDir) {

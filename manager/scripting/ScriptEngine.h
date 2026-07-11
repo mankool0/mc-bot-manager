@@ -41,6 +41,15 @@ public:
     void fireEvent(const QString &eventName, const QVariantList &args);
     void fireEvent(const QString &eventName, std::function<void(void*)> argBuilder);
 
+    // Queue one already-built event for one script. Safe to call from any
+    // thread (the eventReady connection is queued); used by ScriptMessageBus.
+    void postEvent(const ScriptEvent &event, ScriptContext *ctx);
+
+    // Report an event-handler failure. Safe to call from the event worker
+    // thread: emits scriptError and prints to this engine's console via a
+    // queued invocation on the main thread.
+    void reportHandlerError(const QString &filename, const QString &error);
+
     QStringList getScriptNames() const;
     ScriptContext* getScript(const QString &filename);
     bool isScriptEnabled(const QString &filename) const;

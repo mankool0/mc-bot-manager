@@ -156,6 +156,7 @@ void ScriptThread::run()
 
         PythonAPI::setCurrentBot(botInstance ? botInstance->name : QString());
         PythonAPI::setCurrentScript(scriptContext->filename);
+        PythonAPI::setCurrentStopFlag(&stopping);
 
         // Add this scope's directory to sys.path for scope-local imports
         QString scriptDir = ScriptFileManager::getScriptDirectory(scopeName);

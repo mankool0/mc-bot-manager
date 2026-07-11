@@ -67,6 +67,8 @@ def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None)
 
 def to_py_default(raw):
     raw = raw.strip().rstrip(',').strip()
+    # The py::arg regex may truncate at the '(' of "py::none()", so match by prefix.
+    if raw.startswith('py::none'): return 'None'
     if raw in ('false', 'False'): return 'False'
     if raw in ('true', 'True'): return 'True'
     if re.match(r'^-?\d+$', raw): return raw
