@@ -6,6 +6,7 @@
 #include "ui/BaritoneWidget.h"
 #include "ui/BotDebugWidget.h"
 #include "scripting/ScriptEngine.h"
+#include "scripting/ScriptMessageBus.h"
 #include "ui/ScriptsWidget.h"
 #include "scripting/PythonAPI.h"
 #include <io/stream_reader.h>
@@ -15,6 +16,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDataStream>
+#include <QTimer>
 #include <QUuid>
 #include <QtProtobuf/QProtobufSerializer>
 #include <QNetworkReply>
@@ -854,6 +856,24 @@ BotInstance* BotManager::findStartingBotByUuid(const QString &playerUuid)
     return nullptr;
 }
 
+void BotManager::armStartupTimeout(const QString &botName)
+{
+    instance().armStartupTimeoutImpl(botName);
+}
+
+void BotManager::armStartupTimeoutImpl(const QString &botName)
+{
+    QTimer::singleShot(120000, this, [this, botName]() {
+        BotInstance *bot = getBotByNameImpl(botName);
+        if (bot && bot->status == BotStatus::Starting) {
+            LogManager::log(QString("[%1] Startup timed out (no connection after 2 minutes)")
+                                .arg(botName), LogManager::Error);
+            bot->status = BotStatus::Error;
+            emit botUpdated(botName);
+        }
+    });
+}
+
 bool BotManager::verifyModVersion(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info)
 {
     return instance().verifyModVersionImpl(connectionId, info);
@@ -932,6 +952,12 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
 
         // Send proxy config immediately so it's applied before any server connection
         sendProxyConfig(bot->name);
+
+        // Notify scripts: the bot's own engine and the global engine.
+        if (bot->scriptEngine)
+            bot->scriptEngine->fireEvent(QStringLiteral("bot_connected"), {bot->name});
+        ScriptMessageBus::instance().fireEventForScope(
+            QStringLiteral("_global"), QStringLiteral("bot_connected"), {bot->name});
 
         LogManager::log(QString("[%1] Connected as '%2' (Connection ID: %3)")
                        .arg(bot->name, playerName).arg(connectionId), LogManager::Success);

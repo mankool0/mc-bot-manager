@@ -1,13 +1,13 @@
 # manager module
 
-The `manager` module is for **global scripts** - scripts that are not tied to a
-single bot. They live in the top-level **Global Scripts** tab (not a bot's own
-Scripts tab) and are the right place for cross-bot logic and manager-wide
-features.
+The `manager` module provides manager-wide features: **custom columns** in the
+bot instances table (global scripts only) and **script lifecycle control**
+(any script).
 
-Its main use today is **custom columns** in the bot instances table. You give a
-column a name and a function; the manager calls that function once per bot on a
-per-column interval you choose and shows the returned value in that bot's row.
+Global scripts are scripts not tied to a single bot. They live in the top-level
+**Global Scripts** tab (not a bot's own Scripts tab) and are the right place
+for cross-bot logic - e.g. an orchestrator that commands worker bots via the
+[`comms`](comms.md) module.
 
 !!! note "Global scripts run without a current bot"
     In a global script, unqualified calls like `bot.health()` have no bot to
@@ -15,10 +15,69 @@ per-column interval you choose and shows the returned value in that bot's row.
     provider the current bot is set to the bot being computed, so both
     `bot.inventory()` and `bot.inventory(bot_name)` work there.
 
-!!! warning "Global scripts only"
+!!! warning "Columns: global scripts only"
     The column functions are only available from global scripts. Calling
     `add_column`, `remove_column`, or `@manager.column` from a bot's own
-    script raises `RuntimeError`.
+    script raises `RuntimeError`. The script lifecycle functions below are
+    available from any script.
+
+## Script Lifecycle
+
+Any script can start, stop, and list scripts - its own siblings, another bot's
+scripts, or global scripts. The scope is selected with `bot_name`: a bot's
+name, `"_global"` for the Global Scripts tab, or empty for the calling
+script's own scope.
+
+### `run_script(script, bot_name="")`
+
+Start a script that exists in the target scope's Scripts tab.
+
+**Parameters:**
+
+- `script` (`str`) - Script filename, e.g. `"miner.py"`
+- `bot_name` (`str`, optional) - Bot name or `"_global"`; defaults to the calling script's scope
+
+**Returns:** `bool` - `True` if started, `False` if it was already running
+
+**Raises:** `RuntimeError` for an unknown bot or script
+
+```python
+manager.run_script("miner.py", "Miner1")
+```
+
+### `stop_script(script, bot_name="")`
+
+Stop a running script. No-op if it is not running. A script may stop itself -
+it exits on the next executed line.
+
+**Parameters:**
+
+- `script` (`str`) - Script filename
+- `bot_name` (`str`, optional) - Bot name or `"_global"`; defaults to the calling script's scope
+
+**Raises:** `RuntimeError` for an unknown bot or script
+
+```python
+manager.stop_script("miner.py", "Miner1")
+manager.run_script("treecutter.py", "Miner1")
+```
+
+### `list_scripts(bot_name="")`
+
+List the scripts of one scope.
+
+**Returns:** `list[dict]` with keys:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `name` | `str` | Script filename |
+| `running` | `bool` | Whether it is currently running (or kept alive by handlers/columns) |
+| `enabled` | `bool` | Autorun checkbox state |
+
+```python
+for s in manager.list_scripts("Miner1"):
+    utils.log(f"{s['name']}: running={s['running']}")
+```
 
 ## Custom Columns
 
@@ -120,5 +179,8 @@ manager.remove_column("Ping")
   columns come back automatically on the next launch.
 - `utils.log()` and `utils.error()` from a global script go to the Global
   Scripts output console.
-- Event handlers (`@on(...)`) are not delivered to global scripts; events are
-  routed per bot. Use a bot's own Scripts tab for event-driven automation.
+- Global scripts receive the cross-script events - `script_message`,
+  `bot_connected`, and `bot_disconnected` (see [Events](../events.md)) - and a
+  script that registers handlers for them stays running after its body
+  finishes, like a column script. Per-bot game events (`chat_message`,
+  `player_state`, ...) are still routed only to that bot's own scripts.

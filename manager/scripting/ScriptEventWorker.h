@@ -6,14 +6,14 @@
 #include <QVariantList>
 #include <functional>
 
-struct BotInstance;
 struct ScriptContext;
+class ScriptEngine;
 
 struct ScriptEvent {
     QString scriptFilename;
     QString eventName;
     QVariantList args;
-    QString botName;
+    QString botName; // empty for the global engine
     std::function<void(void*)> argBuilder;
 };
 
@@ -25,13 +25,13 @@ class ScriptEventWorker : public QObject
     Q_OBJECT
 
 public:
-    explicit ScriptEventWorker(BotInstance *bot, QObject *parent = nullptr);
+    explicit ScriptEventWorker(ScriptEngine *engine, QObject *parent = nullptr);
 
 public slots:
     void processEvent(const ScriptEvent &event, ScriptContext *ctx);
 
 private:
-    BotInstance *botInstance;
+    ScriptEngine *engine;
 };
 
 #endif // SCRIPTEVENTWORKER_H

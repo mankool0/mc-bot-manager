@@ -3,6 +3,7 @@
 #include "AppColors.h"
 #include "bot/BotManager.h"
 #include "logging/LogManager.h"
+#include "scripting/PythonAPI.h"
 #include "AppPaths.h"
 #include <QVBoxLayout>
 #include <QGroupBox>
@@ -395,6 +396,8 @@ void GlobalSettingsDialog::saveSettings()
             if (bot->consoleWidget)
                 bot->consoleWidget->attachLogFile(logDir, bot->name, maxSizeBytes, logMaxFiles);
         }
+        if (BotConsoleWidget *globalConsole = PythonAPI::getGlobalConsole())
+            globalConsole->attachLogFile(logDir, QStringLiteral("_global"), maxSizeBytes, logMaxFiles);
     } else {
         LogManager::closeFileSink();
     }

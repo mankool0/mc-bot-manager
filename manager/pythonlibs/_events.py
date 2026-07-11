@@ -48,6 +48,13 @@ class ContainerUpdate:
     z: int
     properties: dict
 
+class ScriptMessage:
+    topic: str
+    data: object
+    sender_scope: str
+    sender_script: str
+    timestamp: float
+
 EVENT_HANDLER_PARAMS = {
     'chat_message': 'msg: ChatMessage',
     'player_state': 'state: PlayerState',
@@ -62,4 +69,7 @@ EVENT_HANDLER_PARAMS = {
     'multi_block_update': 'count: int',
     'container_update': 'container: ContainerUpdate',
     'screen_updated': 'screen: ScreenState',
+    'script_message': 'msg: ScriptMessage',
+    'bot_connected': 'bot_name: str',
+    'bot_disconnected': 'bot_name: str, uptime_seconds: float',
 }
