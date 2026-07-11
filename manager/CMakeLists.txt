@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.11.1 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.12.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -132,7 +132,7 @@ file(APPEND "${EDITOR_QRC}" "  </qresource>\n</RCC>\n")
 
 # Auto-generate Python stub files from PythonModules.cpp and PythonAPI.h
 set(STUBS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/stubs")
-set(STUB_MODULES bot baritone meteor world utils server)
+set(STUB_MODULES bot baritone meteor world utils server manager comms)
 set(STUB_OUTPUT_FILES)
 foreach(stub ${STUB_MODULES})
     list(APPEND STUB_OUTPUT_FILES "${STUBS_BUILD_DIR}/${stub}.pyi")

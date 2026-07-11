@@ -43,6 +43,7 @@ public class PipeConnection {
     private final BlockingQueue<Protocol.ManagerToClientMessage> receiveQueue = new LinkedBlockingQueue<>();
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean handshakeRejected = new AtomicBoolean(false);
 
     private Thread sendThread;
     private Thread receiveThread;
@@ -129,6 +130,9 @@ public class PipeConnection {
             try {
                 Protocol.ManagerToClientMessage message = receiveMessage(buffer);
                 if (message != null) {
+                    if (message.getPayloadCase() == Protocol.ManagerToClientMessage.PayloadCase.HANDSHAKE_REJECT) {
+                        handshakeRejected.set(true);
+                    }
                     receiveQueue.offer(message);
                 }
             } catch (Exception e) {
@@ -196,9 +200,14 @@ public class PipeConnection {
         return connected.get();
     }
 
+    // True once this connection received a HandshakeReject from the manager.
+    public boolean isHandshakeRejected() {
+        return handshakeRejected.get();
+    }
+
     public void sendMessage(Protocol.ClientToManagerMessage message) {
         if (!connected.get()) {
-            throw new IllegalStateException("Not connected to pipe");
+            return;
         }
         sendQueue.offer(message);
     }
@@ -217,7 +226,7 @@ public class PipeConnection {
 
     public void sendHeartbeat() {
         if (!connected.get()) {
-            throw new IllegalStateException("Not connected to pipe");
+            return;
         }
 
         Runtime runtime = Runtime.getRuntime();

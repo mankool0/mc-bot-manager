@@ -45,7 +45,7 @@ public class WorldInteractionHandler extends BaseInboundHandler {
 
     public void handleGetHoldAttackStatus(String messageId) {
         World.HoldAttackStatusResponse response = World.HoldAttackStatusResponse.newBuilder()
-            .setCommandId(messageId)
+            .setRequestId(messageId)
             .setEnabled(holdingAttack)
             .build();
         Protocol.ClientToManagerMessage msg = Protocol.ClientToManagerMessage.newBuilder()
@@ -236,7 +236,7 @@ public class WorldInteractionHandler extends BaseInboundHandler {
 
     private void sendCanReachBlockResponse(String messageId, boolean reachable) {
         World.CanReachBlockResponse response = World.CanReachBlockResponse.newBuilder()
-            .setCommandId(messageId)
+            .setRequestId(messageId)
             .setReachable(reachable)
             .build();
         Protocol.ClientToManagerMessage msg = Protocol.ClientToManagerMessage.newBuilder()

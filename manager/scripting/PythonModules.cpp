@@ -152,6 +152,12 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                "Restart bot",
                py::arg("reason") = "",
                py::arg("bot_name") = "");
+    def_action("wait_for_online", &PythonAPI::waitForOnline,
+               "Block until the bot is Online (use after bot.start()). Returns "
+               "True when online; False on timeout, on a startup Error, or if "
+               "the script is stopped while waiting.",
+               py::arg("timeout") = 60.0,
+               py::arg("bot_name") = "");
 
     m.attr("__debug_state__") = debugState;
 }
@@ -667,6 +673,100 @@ PYBIND11_EMBEDDED_MODULE(server, m) {
     def_state("get_player_list", &PythonAPI::getPlayerList,
               "Get full tab list. Returns list[TabListPlayer], empty if offline or not yet received.",
               py::arg("bot_name") = "");
+    def_state("get_stats", &PythonAPI::getServerStats,
+              "Get the bot's Minecraft statistics for the current server/world. Returns a nested "
+              "dict {category: {key: value}}, or None if the bot is offline. Blocks up to 5s "
+              "while the client fetches the stats from the server.",
+              py::arg("bot_name") = "");
 
     m.attr("__debug_state__") = debugState;
+}
+
+PYBIND11_EMBEDDED_MODULE(comms, m) {
+    m.doc() = "Inter-script messaging";
+
+    auto def_action = [&](const char *name, auto&&... args) {
+        m.def(name, std::forward<decltype(args)>(args)...);
+    };
+
+    def_action("emit", &PythonAPI::commsEmit,
+               "Broadcast a message to every running script subscribed to `topic` "
+               "(comms.subscribe). data must be plain data (None/bool/int/float/str/"
+               "list/dict) and is deep-copied. Returns the number of scripts the "
+               "message was delivered to (0 = nobody listening). The sending script "
+               "never receives its own messages.",
+               py::arg("topic"),
+               py::arg("data") = py::none());
+    def_action("send", &PythonAPI::commsSend,
+               "Send a message to every listening script of one bot (or \"_global\" "
+               "for global scripts), regardless of topics. A script is listening if "
+               "it has an @on(\"script_message\") handler, called comms.subscribe(), "
+               "or called comms.receive(). Returns the number of recipient scripts "
+               "(0 = nobody listening - e.g. start the script and resend).",
+               py::arg("bot_name"),
+               py::arg("data") = py::none(),
+               py::arg("topic") = "");
+    def_action("subscribe", &PythonAPI::commsSubscribe,
+               "Subscribe this script to a topic for comms.emit broadcasts. With no "
+               "topic, just opens the mailbox so addressed comms.send messages are "
+               "received. Subscriptions last until the script stops.",
+               py::arg("topic") = "");
+    def_action("unsubscribe", &PythonAPI::commsUnsubscribe,
+               "Unsubscribe this script from a topic. With no topic, closes the "
+               "mailbox opened by subscribe()/receive().",
+               py::arg("topic") = "");
+    def_action("receive", &PythonAPI::commsReceive,
+               "Wait for the next queued message and return it as a dict {topic, "
+               "data, sender_scope, sender_script, timestamp}, or None on timeout. "
+               "Negative timeout waits forever. Only for scripts WITHOUT an "
+               "@on(\"script_message\") handler - messages go to the handler when "
+               "one is registered.",
+               py::arg("timeout") = -1.0);
+    def_action("pending", &PythonAPI::commsPending,
+               "Number of messages waiting in this script's receive() queue.");
+}
+
+PYBIND11_EMBEDDED_MODULE(manager, m) {
+    m.doc() = "Manager-wide controls: custom columns (global scripts) and script lifecycle";
+
+    auto def_action = [&](const char *name, auto&&... args) {
+        m.def(name, std::forward<decltype(args)>(args)...);
+    };
+
+    def_action("run_script", &PythonAPI::runScriptApi,
+               "Start a script from a bot's Scripts tab (or the Global Scripts tab "
+               "for bot_name=\"_global\"). bot_name defaults to the calling script's "
+               "own scope. Returns False if the script is already running; raises "
+               "RuntimeError for an unknown bot or script.",
+               py::arg("script"),
+               py::arg("bot_name") = "");
+    def_action("stop_script", &PythonAPI::stopScriptApi,
+               "Stop a running script. No-op if it is not running; raises "
+               "RuntimeError for an unknown bot or script. A script may stop "
+               "itself - it exits on the next executed line.",
+               py::arg("script"),
+               py::arg("bot_name") = "");
+    def_action("list_scripts", &PythonAPI::listScriptsApi,
+               "List the scripts of a bot (or \"_global\") as dicts "
+               "{name, running, enabled}.",
+               py::arg("bot_name") = "");
+
+    def_action("add_column", &PythonAPI::addColumn,
+               "Add a custom column to the bot instances table. provider(bot_name) "
+               "is called for each bot every `interval` seconds (default 1.0, "
+               "floored at 0.05); its return value (any value, shown via str()) is "
+               "displayed in that bot's cell. Only available from global scripts; "
+               "raises RuntimeError elsewhere.",
+               py::arg("name"), py::arg("provider"), py::arg("interval") = 1.0);
+    def_action("remove_column", &PythonAPI::removeColumn,
+               "Remove a previously added custom column by name. Only available "
+               "from global scripts; raises RuntimeError elsewhere.",
+               py::arg("name"));
+    def_action("column", &PythonAPI::column,
+               "Decorator form of add_column: @manager.column(\"Name\", interval=0.5) "
+               "over a function taking bot_name and returning the cell value. "
+               "interval is the recompute period in seconds (default 1.0, floored "
+               "at 0.05). Only available from global scripts; raises RuntimeError "
+               "elsewhere.",
+               py::arg("name"), py::arg("interval") = 1.0);
 }

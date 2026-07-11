@@ -5,7 +5,11 @@
 #include <QDateTime>
 #include <QMap>
 #include <QList>
+#include <QMutex>
+#include <QQueue>
 #include <QReadWriteLock>
+#include <QVariantMap>
+#include <QWaitCondition>
 
 #undef slots
 #include <pybind11/pybind11.h>
@@ -33,6 +37,15 @@ struct ScriptContext {
 
     QMap<QString, QList<py::function>> eventHandlers;
     mutable QReadWriteLock handlersLock;
+
+    // Message inbox for comms.receive(). Guarded by inboxMutex; inboxCond wakes
+    // a blocked receive. inboxMutex is a leaf lock: never take another lock or
+    // the GIL while holding it.
+    static constexpr int kMaxInbox = 1000;
+    QQueue<QVariantMap> inbox;
+    QMutex inboxMutex;
+    QWaitCondition inboxCond;
+    int droppedMessages = 0;
 
     ScriptThread *thread = nullptr;
 

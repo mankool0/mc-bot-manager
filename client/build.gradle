@@ -8,7 +8,7 @@ plugins {
 def mcVersions = [
     '1.21.4':  [loader: '0.18.6', fabric: '0.119.4+1.21.4',  meteor: '1.21.4-SNAPSHOT',  baritone: '1.21.4-SNAPSHOT',  compat: 'src/compat/api_1_21_4/java',  compatResources: 'src/compat/api_1_21_4/resources',  javaVersion: 21],
     '1.21.11': [loader: '0.18.6', fabric: '0.141.3+1.21.11', meteor: '1.21.11-SNAPSHOT', baritone: '1.21.11-SNAPSHOT', compat: 'src/compat/api_1_21_11/java', compatResources: 'src/compat/api_1_21_11/resources', javaVersion: 21],
-    '26.1.2':  [loader: '0.19.2', fabric: '0.142.1+26.1',    meteor: '26.1.2-SNAPSHOT',  baritone: '26.1-SNAPSHOT',    compat: 'src/compat/api_26_1/java',    compatResources: 'src/compat/api_26_1/resources',    javaVersion: 25],
+    '26.1.2':  [loader: '0.19.2', fabric: '0.153.0+26.1.2',  meteor: '26.1.2-SNAPSHOT',  baritone: '26.1-SNAPSHOT',    compat: 'src/compat/api_26_1/java',    compatResources: 'src/compat/api_26_1/resources',    javaVersion: 25],
 ]
 
 def mcVer = project.findProperty('minecraft_version') ?: project.minecraft_version

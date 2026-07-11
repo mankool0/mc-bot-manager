@@ -2,12 +2,17 @@
 #include "bot/BotManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "ui/AppColors.h"
+#include "CustomColumnManager.h"
+#include "ScriptContext.h"
+#include "ScriptEngine.h"
+#include "ScriptMessageBus.h"
 #include "prism/PrismLauncherManager.h"
 #include "crafting/CraftingPlanner.h"
 #include "world/ItemRegistry.h"
 #include "world/NBTSerializer.h"
 #include "world/RegionFile.h"
 #include <QDebug>
+#include <QDeadlineTimer>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QCoreApplication>
@@ -15,9 +20,14 @@
 #include <QReadWriteLock>
 #include <QDateTime>
 #include <pybind11/stl.h>
+#include <cmath>
+#include <limits>
 
 thread_local QString PythonAPI::currentBot;
 thread_local QString PythonAPI::currentScript;
+thread_local bool PythonAPI::forceGlobalConsole = false;
+thread_local std::atomic<bool> *PythonAPI::currentStopFlag = nullptr;
+QPointer<BotConsoleWidget> PythonAPI::globalConsole;
 
 void PythonAPI::setCurrentBot(const QString &botName)
 {
@@ -451,6 +461,37 @@ py::list PythonAPI::getPlayerList(const std::string &botName)
         e.gamemode = static_cast<Gamemode>(p.gamemode);
         e.display_name = p.displayName.toStdString();
         result.append(py::cast(e));
+    }
+    return result;
+}
+
+py::object PythonAPI::getServerStats(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    // Blocks while the client asks the server and forwards the reply; release the GIL
+    // so other Python threads keep running during the round trip.
+    std::optional<QMap<QString, QMap<QString, qint64>>> stats;
+    {
+        py::gil_scoped_release release;
+        stats = BotManager::getStatistics(name);
+    }
+    if (!stats.has_value()) {
+        return py::none();
+    }
+
+    py::dict result;
+    for (auto catIt = stats->constBegin(); catIt != stats->constEnd(); ++catIt) {
+        py::dict inner;
+        const QMap<QString, qint64> &values = catIt.value();
+        for (auto valIt = values.constBegin(); valIt != values.constEnd(); ++valIt) {
+            inner[py::str(valIt.key().toStdString())] = static_cast<long long>(valIt.value());
+        }
+        result[py::str(catIt.key().toStdString())] = inner;
     }
     return result;
 }
@@ -908,6 +949,41 @@ void PythonAPI::startBot(const std::string &botName)
     bot->manualStop = false;
 
     PrismLauncherManager::launchBot(bot);
+
+    // The UI launch path arms this itself; without it a failed launch would
+    // leave the bot Starting forever. Queued: timers must start on the main thread.
+    QMetaObject::invokeMethod(&BotManager::instance(), [name]() {
+        BotManager::armStartupTimeout(name);
+    }, Qt::QueuedConnection);
+}
+
+bool PythonAPI::waitForOnline(double timeout, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    py::gil_scoped_release release;
+
+    QDeadlineTimer deadline(static_cast<qint64>(timeout * 1000.0));
+    for (;;) {
+        BotInstance *bot = BotManager::getBotByName(name);
+        if (!bot) {
+            throw std::runtime_error("Bot not found");
+        }
+        BotStatus status = bot->status;
+        if (status == BotStatus::Online) {
+            return true;
+        }
+        if (status == BotStatus::Error) {
+            return false;
+        }
+        if (currentStopFlag && currentStopFlag->load()) {
+            return false;
+        }
+        if (deadline.hasExpired()) {
+            return false;
+        }
+        QThread::msleep(100);
+    }
 }
 
 void PythonAPI::stopBot(const std::string &reason, const std::string &botName)
@@ -1185,19 +1261,263 @@ py::list PythonAPI::meteorListModules(const std::string &bot)
     return result;
 }
 
+void PythonAPI::setCurrentStopFlag(std::atomic<bool> *flag)
+{
+    currentStopFlag = flag;
+}
+
+QString PythonAPI::currentScope()
+{
+    return currentBot.isEmpty() ? QStringLiteral("_global") : currentBot;
+}
+
+QVariant PythonAPI::pyObjectToPlainVariant(const py::object &value)
+{
+    if (value.is_none()) {
+        return QVariant();
+    } else if (py::isinstance<py::bool_>(value)) {
+        return value.cast<bool>();
+    } else if (py::isinstance<py::int_>(value)) {
+        return QVariant(static_cast<qlonglong>(value.cast<int64_t>()));
+    } else if (py::isinstance<py::float_>(value)) {
+        return value.cast<double>();
+    } else if (py::isinstance<py::str>(value)) {
+        return QString::fromStdString(value.cast<std::string>());
+    } else if (py::isinstance<py::list>(value) || py::isinstance<py::tuple>(value)) {
+        QVariantList list;
+        for (const auto &item : value.cast<py::sequence>()) {
+            list.append(pyObjectToPlainVariant(py::cast<py::object>(item)));
+        }
+        return list;
+    } else if (py::isinstance<py::dict>(value)) {
+        QVariantMap map;
+        for (const auto &item : value.cast<py::dict>()) {
+            if (!py::isinstance<py::str>(item.first)) {
+                throw py::type_error("comms payload dict keys must be strings");
+            }
+            map[QString::fromStdString(item.first.cast<std::string>())] =
+                pyObjectToPlainVariant(py::cast<py::object>(item.second));
+        }
+        return map;
+    }
+    throw py::type_error("comms payloads must be plain data: None/bool/int/float/str/list/dict");
+}
+
+int PythonAPI::commsEmit(const std::string &topic, const py::object &data)
+{
+    if (topic.empty()) {
+        throw py::value_error("emit() requires a non-empty topic");
+    }
+
+    QVariant payload = pyObjectToPlainVariant(data);
+    QString senderScope = currentScope();
+    QString senderScript = currentScript;
+    QString qTopic = QString::fromStdString(topic);
+
+    py::gil_scoped_release release;
+    return ScriptMessageBus::instance().publish(qTopic, payload, senderScope, senderScript);
+}
+
+int PythonAPI::commsSend(const std::string &botName, const py::object &data, const std::string &topic)
+{
+    if (botName.empty()) {
+        throw py::value_error("send() requires a bot name (or \"_global\")");
+    }
+
+    QVariant payload = pyObjectToPlainVariant(data);
+    QString senderScope = currentScope();
+    QString senderScript = currentScript;
+    QString target = QString::fromStdString(botName);
+    QString qTopic = QString::fromStdString(topic);
+
+    py::gil_scoped_release release;
+    return ScriptMessageBus::instance().sendTo(target, qTopic, payload, senderScope, senderScript);
+}
+
+void PythonAPI::commsSubscribe(const std::string &topic)
+{
+    QString scope = currentScope();
+    QString script = currentScript;
+    QString qTopic = QString::fromStdString(topic);
+
+    py::gil_scoped_release release;
+    if (!ScriptMessageBus::instance().subscribe(scope, script, qTopic)) {
+        throw std::runtime_error("this script is not registered with the message bus");
+    }
+}
+
+void PythonAPI::commsUnsubscribe(const std::string &topic)
+{
+    QString scope = currentScope();
+    QString script = currentScript;
+    QString qTopic = QString::fromStdString(topic);
+
+    py::gil_scoped_release release;
+    ScriptMessageBus::instance().unsubscribe(scope, script, qTopic);
+}
+
+py::object PythonAPI::commsReceive(double timeout)
+{
+    QString scope = currentScope();
+    QString script = currentScript;
+
+    QVariantMap message;
+    bool got = false;
+    {
+        py::gil_scoped_release release;
+
+        ScriptContext *ctx = ScriptMessageBus::instance().openMailbox(scope, script);
+        if (ctx) {
+            QDeadlineTimer deadline = timeout < 0
+                ? QDeadlineTimer(QDeadlineTimer::Forever)
+                : QDeadlineTimer(static_cast<qint64>(timeout * 1000.0));
+
+            QMutexLocker locker(&ctx->inboxMutex);
+            for (;;) {
+                if (!ctx->inbox.isEmpty()) {
+                    message = ctx->inbox.dequeue();
+                    ctx->droppedMessages = 0;
+                    got = true;
+                    break;
+                }
+                if (currentStopFlag && currentStopFlag->load())
+                    break;
+                if (!ctx->running)
+                    break;
+                if (deadline.hasExpired())
+                    break;
+                // Wake at least every 100ms so a stop request is noticed even
+                // if the wakeAll from stopScript races the wait.
+                qint64 remaining = deadline.remainingTime();
+                unsigned long slice = remaining < 0 ? 100
+                    : static_cast<unsigned long>(qMin<qint64>(100, remaining));
+                ctx->inboxCond.wait(&ctx->inboxMutex, slice);
+            }
+        }
+    }
+
+    if (!got) {
+        return py::none();
+    }
+    return qVariantToPyObject(message);
+}
+
+int PythonAPI::commsPending()
+{
+    QString scope = currentScope();
+    QString script = currentScript;
+
+    py::gil_scoped_release release;
+    return ScriptMessageBus::instance().pendingCount(scope, script);
+}
+
+// Run one operation against a scope's ScriptEngine on the main thread and wait
+// (bounded) for the result. Engines are main-thread objects; script threads
+// must not touch them directly. Deliberately a queued call plus semaphore, not
+// BlockingQueuedConnection: if the main thread is busy joining script threads
+// at shutdown this times out instead of deadlocking, and the shared_ptr keeps
+// the result slot alive if the lambda runs after the timeout.
+static QVariant runEngineOp(const QString &scope, const char *what,
+                            const std::function<QVariant(ScriptEngine*, QString*)> &op)
+{
+    auto pending = std::make_shared<PendingScriptOp>();
+    ScriptMessageBus *bus = &ScriptMessageBus::instance();
+
+    QMetaObject::invokeMethod(bus, [bus, pending, scope, op]() {
+        ScriptEngine *engine = bus->engineForScope(scope);
+        if (!engine) {
+            pending->error = QString("no script engine for '%1' (unknown bot?)").arg(scope);
+        } else {
+            pending->result = op(engine, &pending->error);
+        }
+        pending->ok = pending->error.isEmpty();
+        pending->sem.release();
+    }, Qt::QueuedConnection);
+
+    {
+        py::gil_scoped_release release;
+        if (!pending->sem.tryAcquire(1, 5000)) {
+            throw std::runtime_error(std::string(what)
+                + ": manager did not respond (busy or shutting down)");
+        }
+    }
+    if (!pending->ok) {
+        throw std::runtime_error(pending->error.toStdString());
+    }
+    return pending->result;
+}
+
+bool PythonAPI::runScriptApi(const std::string &script, const std::string &botName)
+{
+    QString scope = botName.empty() ? currentScope() : QString::fromStdString(botName);
+    QString filename = QString::fromStdString(script);
+
+    QVariant result = runEngineOp(scope, "run_script",
+        [filename](ScriptEngine *engine, QString *error) -> QVariant {
+            if (!engine->getScriptNames().contains(filename)) {
+                *error = QString("unknown script '%1' in '%2'")
+                             .arg(filename, engine->getScopeName());
+                return {};
+            }
+            // False here means the script is already running.
+            return engine->runScript(filename);
+        });
+    return result.toBool();
+}
+
+void PythonAPI::stopScriptApi(const std::string &script, const std::string &botName)
+{
+    QString scope = botName.empty() ? currentScope() : QString::fromStdString(botName);
+    QString filename = QString::fromStdString(script);
+
+    runEngineOp(scope, "stop_script",
+        [filename](ScriptEngine *engine, QString *error) -> QVariant {
+            if (!engine->getScriptNames().contains(filename)) {
+                *error = QString("unknown script '%1' in '%2'")
+                             .arg(filename, engine->getScopeName());
+                return {};
+            }
+            engine->stopScript(filename);
+            return {};
+        });
+}
+
+py::list PythonAPI::listScriptsApi(const std::string &botName)
+{
+    QString scope = botName.empty() ? currentScope() : QString::fromStdString(botName);
+
+    QVariant result = runEngineOp(scope, "list_scripts",
+        [](ScriptEngine *engine, QString *) -> QVariant {
+            QVariantList list;
+            const QStringList names = engine->getScriptNames();
+            for (const QString &name : names) {
+                QVariantMap entry;
+                entry[QStringLiteral("name")] = name;
+                entry[QStringLiteral("running")] = engine->isScriptRunning(name);
+                entry[QStringLiteral("enabled")] = engine->isScriptEnabled(name);
+                list.append(entry);
+            }
+            return list;
+        });
+    return qVariantToPyObject(result).cast<py::list>();
+}
+
 void PythonAPI::log(const std::string &message)
 {
     QString qMessage = QString::fromStdString(message);
     QString botName = currentBot;
     QString scriptName = currentScript.isEmpty() ? "Script" : currentScript;
+    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+    QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
 
-    if (!botName.isEmpty()) {
+    if (!forceGlobalConsole && !botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-            QString formattedMsg = QString("[%1] [%2] %3").arg(ts, scriptName, qMessage);
             bot->consoleWidget->pushLogLine(formattedMsg, AppColors::scriptLog());
         }
+    } else if (globalConsole) {
+        // Global scripts (and the column compute worker) route to the global console.
+        globalConsole->pushLogLine(formattedMsg, AppColors::scriptLog());
     }
 }
 
@@ -1206,15 +1526,86 @@ void PythonAPI::error(const std::string &message)
     QString qMessage = QString::fromStdString(message);
     QString botName = currentBot;
     QString scriptName = currentScript.isEmpty() ? "Script" : currentScript;
+    QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
+    QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
 
-    if (!botName.isEmpty()) {
+    if (!forceGlobalConsole && !botName.isEmpty()) {
         BotInstance *bot = BotManager::getBotByName(botName);
         if (bot && bot->consoleWidget) {
-            QString ts = QDateTime::currentDateTime().toString("HH:mm:ss");
-            QString formattedMsg = QString("[%1] [%2 Error] %3").arg(ts, scriptName, qMessage);
             bot->consoleWidget->pushLogLine(formattedMsg, AppColors::scriptError());
         }
+    } else if (globalConsole) {
+        globalConsole->pushLogLine(formattedMsg, AppColors::scriptError());
     }
+}
+
+void PythonAPI::setGlobalConsole(BotConsoleWidget *console)
+{
+    globalConsole = console;
+}
+
+BotConsoleWidget* PythonAPI::getGlobalConsole()
+{
+    return globalConsole.data();
+}
+
+void PythonAPI::setForceGlobalConsole(bool enabled)
+{
+    forceGlobalConsole = enabled;
+}
+
+bool PythonAPI::isForceGlobalConsole()
+{
+    return forceGlobalConsole;
+}
+
+// Columns are cleaned up per script file in the global engine only, so a
+// bot-bound script must not register them. The compute worker also sets a
+// current bot but is allowed via its forced-global-console flag.
+static void ensureGlobalScriptContext(const char *what)
+{
+    if (!PythonAPI::getCurrentBot().isEmpty() && !PythonAPI::isForceGlobalConsole())
+        throw std::runtime_error(std::string(what)
+            + " is only available from global scripts (Global Scripts tab)");
+}
+
+// Seconds -> clamped milliseconds. Rejects NaN/inf/non-positive rather than
+// silently mangling them.
+static int columnIntervalToMs(double intervalSeconds)
+{
+    if (!std::isfinite(intervalSeconds) || intervalSeconds <= 0)
+        throw py::value_error("interval must be a positive number of seconds");
+    double ms = intervalSeconds * 1000.0;
+    if (ms >= std::numeric_limits<int>::max())
+        return std::numeric_limits<int>::max();
+    return qMax(static_cast<int>(ms), CustomColumnManager::kMinIntervalMs);
+}
+
+void PythonAPI::addColumn(const std::string &name, const py::function &provider, double interval)
+{
+    ensureGlobalScriptContext("manager.add_column");
+    CustomColumnManager::instance().registerColumn(
+        QString::fromStdString(name), provider, currentScript, columnIntervalToMs(interval));
+}
+
+void PythonAPI::removeColumn(const std::string &name)
+{
+    ensureGlobalScriptContext("manager.remove_column");
+    CustomColumnManager::instance().unregisterColumn(QString::fromStdString(name));
+}
+
+py::object PythonAPI::column(const std::string &name, double interval)
+{
+    ensureGlobalScriptContext("manager.column");
+    std::string colName = name;
+    int intervalMs = columnIntervalToMs(interval);
+    // Decorator: registers the wrapped function and returns it unchanged.
+    return py::cpp_function([colName, intervalMs](py::function fn) {
+        ensureGlobalScriptContext("manager.column");
+        CustomColumnManager::instance().registerColumn(
+            QString::fromStdString(colName), fn, currentScript, intervalMs);
+        return fn;
+    });
 }
 
 // ============================================================================

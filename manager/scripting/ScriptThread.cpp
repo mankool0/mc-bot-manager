@@ -120,8 +120,10 @@ def _is_definition_try_block(node):
             all(all_definitions(h.body) for h in node.handlers))
 )PY";
 
-ScriptThread::ScriptThread(ScriptContext *context, BotInstance *bot, QObject *parent)
-    : QThread(parent), scriptContext(context), botInstance(bot), stopping(false)
+ScriptThread::ScriptThread(ScriptContext *context, BotInstance *bot,
+                           const QString &scopeName, QObject *parent)
+    : QThread(parent), scriptContext(context), botInstance(bot),
+      scopeName(scopeName), stopping(false)
 {
 }
 
@@ -152,11 +154,12 @@ void ScriptThread::run()
     try {
         py::gil_scoped_acquire acquire;
 
-        PythonAPI::setCurrentBot(botInstance->name);
+        PythonAPI::setCurrentBot(botInstance ? botInstance->name : QString());
         PythonAPI::setCurrentScript(scriptContext->filename);
+        PythonAPI::setCurrentStopFlag(&stopping);
 
-        // Add bot-specific directory to sys.path for bot-local imports
-        QString scriptDir = ScriptFileManager::getScriptDirectory(botInstance->name);
+        // Add this scope's directory to sys.path for scope-local imports
+        QString scriptDir = ScriptFileManager::getScriptDirectory(scopeName);
         py::module_::import("sys").attr("path").attr("insert")(0, scriptDir.toStdString());
 
         // Evict bundled libs from sys.modules so disk changes are picked up on each run

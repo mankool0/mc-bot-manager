@@ -15,6 +15,7 @@
 #include <QReadWriteLock>
 #include <QPointer>
 #include <memory>
+#include <optional>
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -28,6 +29,7 @@
 #include "screen.qpb.h"
 #include "registry.qpb.h"
 #include "entities.qpb.h"
+#include "stats.qpb.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
@@ -290,6 +292,10 @@ struct BotInstance : public BotConfig {
     ScriptEngine* scriptEngine = nullptr;
     QPointer<ScriptsWidget> scriptsWidget;
 
+    // Custom instance-table column values (columnName -> display string),
+    // computed by global scripts. Written and read on the main thread only.
+    QMap<QString, QString> customColumns;
+
     // Meteor modules data
     QMap<QString, MeteorModuleData> meteorModules;
 
@@ -374,6 +380,8 @@ public:
     static void removeBot(const QString &name);
     static void clearAllBots();
     static void updateBot(const QString &name, const BotConfig &config);
+    static void armStartupTimeout(const QString &botName);
+    static bool verifyModVersion(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
 
     // Message handlers
     static void handleConnectionInfo(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
@@ -394,6 +402,7 @@ public:
     static void handleBaritoneCommandResponse(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     static void handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
     static void handleBaritoneProcessStatus(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
+    static void handleBaritoneLog(int connectionId, const mankool::mcbot::protocol::BaritoneLogMessage &log);
 
     // Block registry handlers
     static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
@@ -432,6 +441,8 @@ public:
     static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
+    static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
@@ -485,9 +496,12 @@ private:
     QVector<BotInstance*>& getBotsImpl() { return botInstances; }
     BotInstance* getBotByConnectionIdImpl(int connectionId);
     BotInstance* getBotByNameImpl(const QString &name);
+    BotInstance* findStartingBotByUuid(const QString &playerUuid);
+    void armStartupTimeoutImpl(const QString &botName);
     void addBotImpl(const BotConfig &config);
     void removeBotImpl(const QString &name);
     void updateBotImpl(const QString &name, const BotConfig &config);
+    bool verifyModVersionImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleConnectionInfoImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     void handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);
@@ -504,6 +518,7 @@ private:
     void handleBaritoneCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::ExecuteBaritoneCommandResponse &response);
     void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
     void handleBaritoneProcessStatusImpl(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
+    void handleBaritoneLogImpl(int connectionId, const mankool::mcbot::protocol::BaritoneLogMessage &log);
     void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
     void handleQueryItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);
@@ -526,6 +541,8 @@ private:
     void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
+    void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
                                    mankool::mcbot::protocol::BlockFaceGadget::BlockFace face);
@@ -564,6 +581,11 @@ private:
         bool enabled = false;
     };
 
+    struct PendingStatisticsEntry {
+        QSemaphore sem{0};
+        bool received = false;
+    };
+
     QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
@@ -571,6 +593,10 @@ private:
     QHash<QString, PendingCanReachBlockEntry*> m_pendingCanReachBlockRequests;
     QMutex m_pendingHoldAttackStatusMutex;
     QHash<QString, PendingHoldAttackStatusEntry*> m_pendingHoldAttackStatusRequests;
+    QMutex m_pendingStatisticsMutex;
+    QHash<QString, PendingStatisticsEntry*> m_pendingStatisticsRequests;
+    QMutex m_statsCacheMutex;
+    QHash<QString, QMap<QString, QMap<QString, qint64>>> m_statsCache;
 
     // Block state registry cache: data_version -> (state_id -> block_state_string)
     QMap<int, QMap<quint32, QString>> blockRegistryCache;

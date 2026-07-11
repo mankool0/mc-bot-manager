@@ -219,6 +219,11 @@ QString BotConsoleWidget::findCommandHelp(const QString &commandName)
 
 void BotConsoleWidget::appendOutput(const QString &text, const QColor &color)
 {
+    // Script lifecycle/error lines arrive here (not via pushLogLine); they
+    // belong in the log file too.
+    if (m_fileSink)
+        m_fileSink->write(text);
+
     QTextCursor cursor = outputEdit->textCursor();
     cursor.movePosition(QTextCursor::End);
     QTextCharFormat format;
@@ -324,6 +329,14 @@ void BotConsoleWidget::appendResponse(bool success, const QString &message)
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     QColor color = success ? AppColors::consoleSuccess()
                            : AppColors::consoleError();
+    appendOutput(QString("[%1] %2").arg(timestamp, message), color);
+}
+
+void BotConsoleWidget::appendBaritoneLog(const QString &message, bool isError)
+{
+    QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
+    QColor color = isError ? AppColors::consoleError()
+                           : AppColors::consoleBaritone();
     appendOutput(QString("[%1] %2").arg(timestamp, message), color);
 }
 

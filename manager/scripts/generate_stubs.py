@@ -67,6 +67,8 @@ def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None)
 
 def to_py_default(raw):
     raw = raw.strip().rstrip(',').strip()
+    # The py::arg regex may truncate at the '(' of "py::none()", so match by prefix.
+    if raw.startswith('py::none'): return 'None'
     if raw in ('false', 'False'): return 'False'
     if raw in ('true', 'True'): return 'True'
     if re.match(r'^-?\d+$', raw): return raw
@@ -231,7 +233,9 @@ def extract_cpp_method(stmt):
 
 
 def parse_function(stmt, method_map):
-    m = re.match(r'\s*m\.def\s*\(\s*"([^"]+)"', stmt)
+    # Functions are registered directly via m.def(...) or through the
+    # def_action(...)/def_state(...) lambda wrappers, which share m.def's signature.
+    m = re.match(r'\s*(?:m\.def|def_action|def_state)\s*\(\s*"([^"]+)"', stmt)
     if not m:
         return None
     name = m.group(1)
@@ -411,7 +415,7 @@ def main():
                 strings = extract_strings(s)
                 if strings:
                     doc = strings[0]
-            elif re.match(r'm\.def\s*\(', s):
+            elif re.match(r'(?:m\.def|def_action|def_state)\s*\(\s*"', s):
                 f = parse_function(s, method_map)
                 if f:
                     functions.append(f)

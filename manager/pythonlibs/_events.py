@@ -32,6 +32,13 @@ class BaritoneStatus:
     estimated_ticks_to_goal: int
     ticks_remaining_in_segment: int
 
+class BaritoneLog:
+    content: str
+    kind: str
+    is_error: bool
+    title: str
+    timestamp: int
+
 class ContainerUpdate:
     id: int
     type: int
@@ -41,6 +48,13 @@ class ContainerUpdate:
     z: int
     properties: dict
 
+class ScriptMessage:
+    topic: str
+    data: object
+    sender_scope: str
+    sender_script: str
+    timestamp: float
+
 EVENT_HANDLER_PARAMS = {
     'chat_message': 'msg: ChatMessage',
     'player_state': 'state: PlayerState',
@@ -48,10 +62,14 @@ EVENT_HANDLER_PARAMS = {
     'hunger_change': 'state: PlayerState',
     'inventory_update': 'selected_slot: int, items: list',
     'baritone_status_update': 'status: BaritoneStatus',
+    'baritone_log': 'log: BaritoneLog',
     'chunk_loaded': 'chunk_x: int, chunk_z: int, dimension: str',
     'chunk_unloaded': 'chunk_x: int, chunk_z: int',
     'block_update': 'x: int, y: int, z: int, block_id: str',
     'multi_block_update': 'count: int',
     'container_update': 'container: ContainerUpdate',
     'screen_updated': 'screen: ScreenState',
+    'script_message': 'msg: ScriptMessage',
+    'bot_connected': 'bot_name: str',
+    'bot_disconnected': 'bot_name: str, uptime_seconds: float',
 }

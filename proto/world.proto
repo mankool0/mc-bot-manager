@@ -49,7 +49,7 @@ message CanReachBlockCommand {
 
 message CanReachBlockResponse {
   bool reachable = 1;
-  string command_id = 2;
+  string request_id = 2;          // Echoes the request's message_id for correlation
 }
 
 // Chunk data synchronization (Client -> Manager)
@@ -116,7 +116,7 @@ message ChunkUnloadMessage {
 message GetHoldAttackStatusCommand {}
 
 message HoldAttackStatusResponse {
-  string command_id = 1;
+  string request_id = 1;          // Echoes the request's message_id for correlation
   bool enabled = 2;
 }
 

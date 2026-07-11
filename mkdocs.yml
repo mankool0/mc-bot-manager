@@ -20,6 +20,10 @@ theme:
   features:
     - content.code.copy
 
+extra:
+  version:
+    provider: mike
+
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
@@ -39,5 +43,8 @@ nav:
     - meteor: api/meteor.md
     - world: api/world.md
     - utils: api/utils.md
+    - server: api/server.md
+    - manager: api/manager.md
+    - comms: api/comms.md
   - Examples: examples.md
   - Events: events.md

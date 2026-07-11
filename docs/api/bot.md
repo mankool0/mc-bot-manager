@@ -183,6 +183,12 @@ The item dict schema used by `bot.inventory()`, `world.get_container()`, and ent
 | `display_name` | `str` | Display name (may include formatting) |
 | `enchantments` | `dict[str, int]` | Map of enchantment ID to level (e.g. `{"minecraft:sharpness": 3}`) |
 
+!!! warning "Item dict fields are sparse"
+    A field is only present when it is meaningful: `damage`/`max_damage` are
+    absent for undamaged/undamageable items, `enchantments` is absent when there
+    are none, etc. Always read optional fields with `item.get("field", default)`
+    - `item["damage"]` raises `KeyError` on a full-durability tool. 
+
 ### `get_screen(bot_name="")`
 
 Get full screen dump as a `ScreenState` object.
@@ -334,6 +340,30 @@ Restart the bot.
 ```python
 bot.restart()  # Restart with default reason
 bot.restart("Updating configuration")  # Restart with custom reason
+```
+
+### `wait_for_online(timeout=60.0, bot_name="")`
+
+Block until the bot is Online. `bot.start()` returns as soon as the launch is
+triggered; use this to wait for the game client to actually connect. A launch
+that never connects is marked Error after 2 minutes.
+
+**Parameters:**
+
+- `timeout` (`float`, optional) - Seconds to wait, default 60
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `bool` - `True` when online; `False` on timeout, on a startup
+Error, or if the script is stopped while waiting
+
+**Raises:** `RuntimeError` if bot not found
+
+```python
+bot.start("Repairer")
+if bot.wait_for_online(timeout=120, bot_name="Repairer"):
+    comms.send("Repairer", {"cmd": "collect_pickaxes"})
+else:
+    utils.error("Repairer failed to come online")
 ```
 
 ## Commands

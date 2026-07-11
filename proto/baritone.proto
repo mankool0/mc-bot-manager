@@ -147,6 +147,21 @@ message BaritoneSettingUpdate {
   BaritoneSettingValue new_value = 2;
 }
 
+// Baritone log output captured from the client-side logger hooks (Client -> Manager)
+message BaritoneLogMessage {
+  enum Kind {
+    CHAT = 0;          // settings.logger - normal chat log line
+    TOAST = 1;         // settings.toaster - toast popup
+    NOTIFICATION = 2;  // settings.notifier - desktop notification
+  }
+
+  Kind kind = 1;
+  string content = 2;         // Plain text, [Baritone] prefix stripped
+  int64 timestamp = 3;        // Unix ms, capture time on the client
+  optional string title = 4;  // TOAST only: toast title text
+  bool is_error = 5;          // NOTIFICATION only: Baritone's error flag
+}
+
 // Path event types matching Baritone's PathEvent enum
 enum PathEventType {
   PATH_EVENT_CALC_STARTED = 0;
