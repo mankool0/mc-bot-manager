@@ -57,7 +57,10 @@ sourceSets {
             srcDirs += [mcDeps.compat]
         }
         resources {
-            srcDirs += [mcDeps.compatResources]
+            // Compat resources must come FIRST: DuplicatesStrategy.EXCLUDE keeps the
+            // first-seen file, so per-version overrides win over src/main/resources.
+            def compatDir = file(mcDeps.compatResources)
+            srcDirs = [compatDir] + srcDirs.findAll { it != compatDir }
         }
     }
 }
@@ -85,6 +88,55 @@ tasks.withType(Copy).configureEach {
 tasks.withType(Jar).configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+// Every compat variant must declare identical public static signatures, even
+// though only one compiles per build. Drift = compile error on the next
+// version switch, discovered too late.
+def compatFiles = mcVersions.values()*.compat.unique().collectEntries { dir ->
+    [(dir): file("$dir/mankool/mcBotClient/util/VersionCompat.java")]
+}
+def checkCompatParity = tasks.register('checkCompatParity') {
+    group = 'verification'
+    description = 'Fails if VersionCompat public static signatures differ across MC versions.'
+    inputs.files(compatFiles.values()).withPathSensitivity(PathSensitivity.RELATIVE)
+    def stampFile = layout.buildDirectory.file('compat-parity/ok')
+    outputs.file(stampFile)
+    doLast {
+        def extract = { File f ->
+            def src = f.getText('UTF-8')
+                .replaceAll(/(?s)\/\*.*?\*\//, ' ')
+                .replaceAll(/\/\/[^\r\n]*/, ' ')
+            src.findAll(/public\s+static\s+[^;{}]+\{/).collect { raw ->
+                raw[0..-2]
+                    .replaceAll(/@\w+(\([^)]*\))?/, ' ')
+                    .replaceAll(/\s+/, ' ')
+                    .replaceAll(/ ?([<>,()\[\]]) ?/, '$1')
+                    .trim()
+            } as TreeSet
+        }
+        def sigs = compatFiles.collectEntries { dir, f ->
+            if (!f.file) throw new GradleException("VersionCompat parity: missing $f")
+            [(dir): extract(f)]
+        }
+        def union = sigs.values().flatten() as TreeSet
+        def lines = []
+        sigs.each { dir, set ->
+            def missing = union - set
+            if (missing) {
+                lines << "  ${dir} (${set.size()}/${union.size()} signatures) is missing:"
+                missing.each { lines << "    - $it" }
+            }
+        }
+        if (lines) {
+            throw new GradleException("VersionCompat signature drift detected:\n" + lines.join('\n') +
+                "\nNote: a signature missing from all dirs but one means that one dir added/renamed a method.")
+        }
+        stampFile.get().asFile.with { parentFile.mkdirs(); text = "ok: ${union.size()} signatures\n" }
+        logger.lifecycle("VersionCompat parity OK: ${union.size()} signatures x ${sigs.size()} variants")
+    }
+}
+tasks.named('compileJava') { dependsOn checkCompatParity }
+tasks.named('check') { dependsOn checkCompatParity }
 
 repositories {
     // Add repositories to retrieve artifacts from in here.
