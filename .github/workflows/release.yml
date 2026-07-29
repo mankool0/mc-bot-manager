@@ -326,7 +326,7 @@ jobs:
         id: changelog
         run: |
           CURRENT_TAG="${{ steps.version.outputs.TAG }}"
-          PREV_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          PREV_TAG=$(git describe --abbrev=0 --tags --match 'v[0-9]*' --exclude "$CURRENT_TAG" "$CURRENT_TAG" 2>/dev/null || echo "")
           
           if [ -n "$PREV_TAG" ]; then
             echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
