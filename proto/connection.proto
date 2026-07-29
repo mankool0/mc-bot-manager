@@ -16,6 +16,7 @@ message ConnectionInfo {
   int32 data_version = 8;       // Minecraft data version (e.g., 3465 for 1.20.1)
   string version_series = 9;    // Version series (usually "main", or "ccpreview" for experimental)
   bool version_is_snapshot = 10; // Whether this is a snapshot version
+  repeated string capabilities = 11; // Optional features available in this mod (e.g. "meteor", "baritone", "proxy")
 }
 
 // Manager -> Client: the handshake was refused. The manager closes the socket right

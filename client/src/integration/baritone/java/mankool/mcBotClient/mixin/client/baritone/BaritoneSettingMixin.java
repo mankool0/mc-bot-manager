@@ -1,7 +1,7 @@
 package mankool.mcBotClient.mixin.client.baritone;
 
 import baritone.api.Settings;
-import mankool.mcBotClient.api.baritone.IBaritoneSettingChangeListener;
+import mankool.mcBotClient.integration.baritone.IBaritoneSettingChangeListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;

@@ -1,7 +1,8 @@
-package mankool.mcBotClient.handler.inbound;
+package mankool.mcBotClient.integration.meteor;
 
 import mankool.mcbot.protocol.Meteor.*;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.handler.inbound.BaseInboundHandler;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
@@ -329,7 +330,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     }
                 }
                 case PacketListSetting packetListSetting -> {
-                    for (String packetName : VersionCompat.getPacketListPossibleValues(packetListSetting)) {
+                    for (String packetName : MeteorVersionCompat.getPacketListPossibleValues(packetListSetting)) {
                         builder.addPossibleValues(packetName);
                     }
                 }
@@ -642,7 +643,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                 }
                 case PacketListSetting packetListSetting -> {
                     if (protoValue.hasPacketListValue()) {
-                        VersionCompat.setPacketListValue(packetListSetting, protoValue.getPacketListValue().getPacketsList());
+                        MeteorVersionCompat.setPacketListValue(packetListSetting, protoValue.getPacketListValue().getPacketsList());
                     } else {
                         LOGGER.error("Type mismatch for {}.{}: expected PACKET_LIST but got {}", moduleName, settingPath, protoValue.getValueCase());
                         return false;
@@ -810,7 +811,7 @@ public class MeteorModuleHandler extends BaseInboundHandler {
                     builder.setModuleListValue(ModuleList.newBuilder().addAllModules(moduleNames).build());
                 }
                 case PacketListSetting packetListSetting -> {
-                    builder.setPacketListValue(PacketList.newBuilder().addAllPackets(VersionCompat.getPacketListValues(packetListSetting)).build());
+                    builder.setPacketListValue(PacketList.newBuilder().addAllPackets(MeteorVersionCompat.getPacketListValues(packetListSetting)).build());
                 }
                 case EnchantmentListSetting enchantmentListSetting -> {
                     List<String> enchantmentIds = enchantmentListSetting.get().stream()

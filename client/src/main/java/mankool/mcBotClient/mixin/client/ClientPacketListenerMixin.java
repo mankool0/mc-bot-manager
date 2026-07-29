@@ -1,5 +1,6 @@
 package mankool.mcBotClient.mixin.client;
 
+import mankool.mcBotClient.handler.outbound.ChatOutbound;
 import mankool.mcBotClient.handler.outbound.StatsOutbound;
 import mankool.mcBotClient.handler.outbound.WorldOutbound;
 import mankool.mcBotClient.util.VersionCompat;
@@ -119,6 +120,31 @@ public class ClientPacketListenerMixin {
         StatsOutbound handler = StatsOutbound.getInstance();
         if (handler != null) {
             handler.onStatsReceived(packet);
+        }
+    }
+
+    // HEAD runs before PacketUtils.ensureRunningOnSameThread, which reschedules onto the game thread
+    // and throws - so these fire twice, once per thread. Skip the netty pass to forward chat once.
+    // HEAD rather than TAIL because handlePlayerChat returns early on several error paths in 26.1+.
+    @Inject(method = "handlePlayerChat", at = @At("HEAD"))
+    private void onPlayerChat(ClientboundPlayerChatPacket packet, CallbackInfo ci) {
+        if (!Minecraft.getInstance().isSameThread()) {
+            return;
+        }
+        ChatOutbound handler = ChatOutbound.getInstance();
+        if (handler != null) {
+            handler.onPlayerChatPacket(packet);
+        }
+    }
+
+    @Inject(method = "handleSystemChat", at = @At("HEAD"))
+    private void onSystemChat(ClientboundSystemChatPacket packet, CallbackInfo ci) {
+        if (!Minecraft.getInstance().isSameThread()) {
+            return;
+        }
+        ChatOutbound handler = ChatOutbound.getInstance();
+        if (handler != null) {
+            handler.onSystemChatPacket(packet);
         }
     }
 

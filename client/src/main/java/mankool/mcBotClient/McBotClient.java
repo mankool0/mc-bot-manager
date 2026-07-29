@@ -2,14 +2,13 @@ package mankool.mcBotClient;
 
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.handler.MessageHandler;
+import mankool.mcBotClient.integration.IntegrationRegistry;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.lang.invoke.MethodHandles;
 
 public class McBotClient implements ClientModInitializer {
     public static final String MOD_ID = "mc-bot-client";
@@ -25,16 +24,7 @@ public class McBotClient implements ClientModInitializer {
         instance = this;
         LOGGER.info("Initializing Minecraft Bot Client");
 
-        // Register lambda factory for Orbit event bus (required for @EventHandler annotations)
-        try {
-            meteordevelopment.meteorclient.MeteorClient.EVENT_BUS.registerLambdaFactory(
-                "mankool.mcBotClient",
-                (lookupInMethod, klass) -> (MethodHandles.Lookup) lookupInMethod.invoke(null, klass, MethodHandles.lookup())
-            );
-            LOGGER.info("Registered Orbit lambda factory for event handlers");
-        } catch (Exception e) {
-            LOGGER.error("Failed to register Orbit lambda factory", e);
-        }
+        IntegrationRegistry.initializeAll(Minecraft::getInstance);
 
         // Register lifecycle events
         ClientLifecycleEvents.CLIENT_STARTED.register(this::onClientStarted);

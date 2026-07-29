@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "mankool.mcBotClient.mixin.client.baritone",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "mankool.mcBotClient.mixin.client.baritone.BaritoneMixinPlugin",
+  "client": [
+    "BaritoneSettingMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

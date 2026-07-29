@@ -303,9 +303,9 @@ void ManagerMainWindow::setupUI()
     connect(ui->saveMapDataCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->proxyEnabledCheckBox, &QCheckBox::toggled, this, &ManagerMainWindow::onConfigurationChanged);
     connect(ui->proxyEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
-        if (!checked || selectedBotName.isEmpty()) return;
+        if (loadingConfiguration || !checked || selectedBotName.isEmpty()) return;
         BotInstance *bot = BotManager::getBotByName(selectedBotName);
-        if (bot && bot->connectionId > 0)
+        if (bot && bot->connectionId > 0 && bot->hasCapability(QStringLiteral("proxy")))
             BotManager::sendProxyConfig(bot->name);
     });
     connect(ui->proxyTypeComboBox, &QComboBox::currentTextChanged, this, &ManagerMainWindow::onConfigurationChanged);
@@ -1132,15 +1132,41 @@ void ManagerMainWindow::onTestProxyClicked()
     watcher->setFuture(future);
 }
 
+void ManagerMainWindow::updateCapabilityUiFor(const BotInstance *bot)
+{
+    // Capabilities are only known while Online; anything else stays neutral (enabled) so an offline
+    // bot is still configurable and a deleted selection doesn't leave its gating behind.
+    const bool online = bot && bot->status == BotStatus::Online;
+
+    auto gateTab = [this, online, bot](QWidget *tab, const QString &cap, const QString &label) {
+        int idx = ui->mainTabWidget->indexOf(tab);
+        if (idx < 0) return;
+        bool ok = !online || bot->hasCapability(cap);
+        ui->mainTabWidget->setTabEnabled(idx, ok);
+        ui->mainTabWidget->setTabToolTip(idx, ok ? QString()
+            : QStringLiteral("This bot's mod was built without %1 support").arg(label));
+    };
+    gateTab(ui->meteorTab, QStringLiteral("meteor"), QStringLiteral("Meteor"));
+    gateTab(ui->baritoneTab, QStringLiteral("baritone"), QStringLiteral("Baritone"));
+
+    // Gating the whole group box rather than its controls keeps the per-control test logic intact.
+    bool proxyEditable = !online || bot->hasCapability(QStringLiteral("proxy"));
+    ui->proxyGroupBox->setEnabled(proxyEditable);
+    ui->proxyGroupBox->setToolTip(proxyEditable ? QString()
+        : QStringLiteral("This bot's mod was built without proxy support"));
+}
+
 void ManagerMainWindow::updateStatusDisplay()
 {
     if (selectedBotName.isEmpty()) {
+        updateCapabilityUiFor(nullptr);
         ui->detailsStackedWidget->setCurrentIndex(0);
         ui->detailsStackedWidget->hide();
         return;
     }
 
     BotInstance *selectedBot = BotManager::getBotByName(selectedBotName);
+    updateCapabilityUiFor(selectedBot);
     if (selectedBot) {
         ui->pipeStatusLabel->setText(QString("Connection %1 [%2]")
             .arg(selectedBot->connectionId)
@@ -1892,7 +1918,7 @@ void ManagerMainWindow::checkBotProxyHealth(const QString &botName)
             b->proxyHealth = BotInstance::ProxyHealth::Alive;
             if (prev == BotInstance::ProxyHealth::Dead) {
                 LogManager::log(QString("[%1] Proxy recovered").arg(botName), LogManager::Info);
-                if (b->proxyDisabledAutoReconnect) {
+                if (b->hasCapability(QStringLiteral("meteor")) && b->proxyDisabledAutoReconnect) {
                     BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", true);
                     b->proxyDisabledAutoReconnect = false;
                     LogManager::log(QString("[%1] Re-enabled auto-reconnect module").arg(botName), LogManager::Info);
@@ -1908,7 +1934,7 @@ void ManagerMainWindow::checkBotProxyHealth(const QString &botName)
                 if (b->meteorModules.contains("auto-reconnect")) {
                     autoReconnectEnabled = b->meteorModules["auto-reconnect"].enabled;
                 }
-                if (autoReconnectEnabled) {
+                if (b->hasCapability(QStringLiteral("meteor")) && autoReconnectEnabled) {
                     BotManager::setMeteorModuleEnabled(botName, "auto-reconnect", false);
                     b->proxyDisabledAutoReconnect = true;
                     LogManager::log(QString("[%1] Disabled auto-reconnect module due to dead proxy").arg(botName), LogManager::Warning);
@@ -2007,10 +2033,13 @@ void ManagerMainWindow::onClientConnected(int connectionId, const QString &botNa
             updateStatusDisplay();
 
             // Request Meteor modules list
-            BotManager::sendCommand(botName, "meteor list", true);
+            if (bot->hasCapability(QStringLiteral("meteor")))
+                BotManager::sendCommand(botName, "meteor list", true);
 
-            BotManager::requestBaritoneSettings(botName);
-            BotManager::requestBaritoneCommands(botName);
+            if (bot->hasCapability(QStringLiteral("baritone"))) {
+                BotManager::requestBaritoneSettings(botName);
+                BotManager::requestBaritoneCommands(botName);
+            }
         }
     }
 }

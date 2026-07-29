@@ -1,5 +1,15 @@
 # meteor module
 
+!!! note "Requires a Meteor-enabled bot"
+    Every function in this module requires the bot's mod build to include Meteor support (the
+    `meteor` capability). A connected bot whose mod was built without Meteor, or that is running in
+    a game with no Meteor Client installed, raises `RuntimeError: Bot does not support meteor`.
+    Wrap calls in `try/except` to keep scripts portable across bot builds.
+
+    A bot only reports its capabilities while connected, so for an offline or unknown bot the read
+    functions (`get_setting`, `get_module`, `list_modules`) keep their usual "no data" return
+    instead of raising - there is nothing to check against until the mod connects.
+
 ## Module Control
 
 ### `toggle(module, bot_name="")`

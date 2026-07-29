@@ -1,4 +1,4 @@
-package mankool.mcBotClient.handler.inbound;
+package mankool.mcBotClient.integration.meteor;
 
 import meteordevelopment.meteorclient.events.meteor.ActiveModulesChangedEvent;
 import meteordevelopment.meteorclient.systems.modules.Module;

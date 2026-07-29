@@ -45,9 +45,14 @@ private:
     QComboBox *m_funcCombo;
     QStackedWidget *m_paramsStack;
     QPlainTextEdit *m_resultEdit;
+    QPushButton *m_runButton;
     bool m_queryTabReady = false;
     bool m_stateModulesReady = false;
-    QStringList m_stateModuleNames;
+    // (module name -> its __debug_state__ function names), discovered once on the first refresh.
+    QList<QPair<QString, QStringList>> m_stateSpec;
+    // A gather can be slow, so these keep refreshes and queries from stacking up.
+    bool m_refreshInFlight = false;
+    bool m_queryInFlight = false;
 
     struct QueryParam {
         QString name;
@@ -71,12 +76,6 @@ private:
     void runQuery();
     static QList<QueryParam> parseQuerySignature(const QString &doc, const QString &botKwarg,
                                                  const pybind11::object &mod);
-
-    static QTreeWidgetItem *addSection(QTreeWidget *tree, const QString &title);
-    static QTreeWidgetItem *addRow(QTreeWidgetItem *parent, const QString &key, const QString &value);
-    static QTreeWidgetItem *addSpanRow(QTreeWidgetItem *parent, const QString &text);
-    static void buildTreeItem(QTreeWidgetItem *parent, const QString &key,
-                              const pybind11::object &value, const pybind11::object &builtins);
 
     static QString stableKey(const QString &title);
     static void saveExpandState(QTreeWidgetItem *item, const QString &prefix, QMap<QString, bool> &state);

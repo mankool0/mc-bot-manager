@@ -1,5 +1,15 @@
 # baritone module
 
+!!! note "Requires a Baritone-enabled bot"
+    Every function in this module requires the bot's mod build to include Baritone support (the
+    `baritone` capability). A connected bot whose mod was built without Baritone, or that is running
+    in a game with no Baritone installed, raises `RuntimeError: Bot does not support baritone`.
+    Wrap calls in `try/except` to keep scripts portable across bot builds.
+
+    A bot only reports its capabilities while connected, so for an offline or unknown bot the read
+    functions (`get_setting`, `get_process_status`) keep their usual "no data" return instead of
+    raising - there is nothing to check against until the mod connects.
+
 ## Navigation
 
 ### `goto(x, y, z, bot_name="")` or `goto(x, z, bot_name="")`

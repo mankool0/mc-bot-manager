@@ -35,7 +35,6 @@
   },
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "minecraft": "${minecraft_version}",
-    "meteor-client": "*"
+    "minecraft": "${minecraft_version}"
   }
 }

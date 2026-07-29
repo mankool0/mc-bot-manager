@@ -3,6 +3,7 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Connection;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.integration.IntegrationRegistry;
 import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcBotClient.mixin.client.ClientPlayNetworkHandlerAccessor;
 import net.minecraft.SharedConstants;
@@ -66,6 +67,7 @@ public class ServerOutbound extends BaseOutbound {
             .setDataVersion(dataVersion)
             .setVersionSeries(versionSeries)
             .setVersionIsSnapshot(isSnapshot)
+            .addAllCapabilities(IntegrationRegistry.capabilities())
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

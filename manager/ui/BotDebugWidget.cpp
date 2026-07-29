@@ -8,12 +8,14 @@ namespace py = pybind11;
 #include <QDebug>
 #include <QFontDatabase>
 #include <QFormLayout>
+#include <QFutureWatcher>
 #include <QHeaderView>
 #include <QHideEvent>
 #include <QRegularExpression>
 #include <QScrollBar>
 #include <QSet>
 #include <QShowEvent>
+#include <QtConcurrent>
 
 namespace {
 
@@ -93,6 +95,125 @@ QList<py::module_> modulesWithAttr(const char *attr)
     return result;
 }
 
+// A py-free tree row, so state gathered on a worker thread can be rendered on the UI thread
+// without any py::object crossing between them.
+struct DebugNode {
+    QString col0;
+    QString col1;
+    bool bold = false;
+    bool spanned = false;
+    QVector<DebugNode> children;
+};
+
+// Must be called with the GIL held.
+DebugNode pyToNode(const QString &key, const py::object &value, const py::object &builtins)
+{
+    DebugNode node;
+    node.col0 = key;
+
+    if (value.is_none()) { node.col1 = "None"; return node; }
+
+    // bool must be checked before int (bool is a subclass of int in Python)
+    if (py::isinstance<py::bool_>(value)) { node.col1 = value.cast<bool>() ? "true" : "false"; return node; }
+    if (py::isinstance<py::int_>(value)) { node.col1 = QString::number(value.cast<long long>()); return node; }
+    if (py::isinstance<py::float_>(value)) { node.col1 = QString::number(value.cast<double>(), 'f', 4); return node; }
+    if (py::isinstance<py::str>(value)) { node.col1 = QString::fromStdString(value.cast<std::string>()); return node; }
+
+    if (py::isinstance<py::dict>(value)) {
+        py::dict d = value.cast<py::dict>();
+        if (d.empty()) { node.col1 = "{}"; return node; }
+        for (auto [k, v] : d)
+            node.children.append(pyToNode(QString::fromStdString(py::str(k).cast<std::string>()),
+                                          v.cast<py::object>(), builtins));
+        return node;
+    }
+
+    if (py::isinstance<py::list>(value) || py::isinstance<py::tuple>(value)) {
+        auto size = static_cast<Py_ssize_t>(py::len(value));
+
+        // Small all-primitive sequences: show as a single repr row
+        if (size <= 4) {
+            bool allPrim = true;
+            for (Py_ssize_t i = 0; i < size && allPrim; ++i) {
+                py::object item = value.attr("__getitem__")(py::int_(i));
+                allPrim = py::isinstance<py::bool_>(item) || py::isinstance<py::int_>(item)
+                       || py::isinstance<py::float_>(item) || py::isinstance<py::str>(item)
+                       || item.is_none();
+            }
+            if (allPrim) { node.col1 = QString::fromStdString(py::repr(value).cast<std::string>()); return node; }
+        }
+
+        node.col0 = QString("%1 (%2)").arg(key).arg(size);
+        constexpr Py_ssize_t MAX_ITEMS = 100;
+        Py_ssize_t show = std::min(size, MAX_ITEMS);
+        for (Py_ssize_t i = 0; i < show; ++i)
+            node.children.append(pyToNode(QString("[%1]").arg(i),
+                                          value.attr("__getitem__")(py::int_(i)).cast<py::object>(), builtins));
+        if (size > MAX_ITEMS) {
+            DebugNode more;
+            more.col0 = QString("... (%1 more)").arg(size - MAX_ITEMS);
+            more.spanned = true;
+            node.children.append(more);
+        }
+        return node;
+    }
+
+    // pybind11 enums expose every other enumerator as an attribute of each value, so the generic
+    // dir() expansion below would recurse forever. Render them as a single leaf instead.
+    if (py::hasattr(py::type::of(value), "__members__")) {
+        node.col1 = QString::fromStdString(py::repr(value).cast<std::string>());
+        return node;
+    }
+
+    try {
+        py::list attrs = builtins.attr("dir")(value);
+        QList<std::pair<QString, py::object>> pubAttrs;
+        for (auto a : attrs) {
+            std::string name = a.cast<std::string>();
+            if (name.empty() || name[0] == '_') continue;
+            try {
+                py::object attr = value.attr(name.c_str());
+                if (!builtins.attr("callable")(attr).cast<bool>())
+                    pubAttrs.append({QString::fromStdString(name), attr});
+            } catch (...) {}
+        }
+        if (!pubAttrs.isEmpty()) {
+            for (auto &[k, v] : pubAttrs)
+                node.children.append(pyToNode(k, v, builtins));
+            return node;
+        }
+    } catch (...) {}
+
+    node.col1 = QString::fromStdString(py::repr(value).cast<std::string>());
+    return node;
+}
+
+// What one worker-thread refresh hands back to the UI thread.
+struct GatherResult {
+    QList<QPair<QString, QStringList>> spec;
+    bool specReady = false;
+    QVector<DebugNode> sections;
+    QString error;
+};
+
+// UI thread only.
+void makeItem(QTreeWidget *tree, QTreeWidgetItem *parent, const DebugNode &n)
+{
+    QTreeWidgetItem *item = parent ? new QTreeWidgetItem(parent) : new QTreeWidgetItem(tree);
+    item->setText(0, n.col0);
+    if (!n.col1.isEmpty())
+        item->setText(1, n.col1);
+    if (n.bold) {
+        QFont f = item->font(0);
+        f.setBold(true);
+        item->setFont(0, f);
+    }
+    if (n.spanned)
+        item->setFirstColumnSpanned(true);
+    for (const DebugNode &c : n.children)
+        makeItem(tree, item, c);
+}
+
 } // namespace
 
 BotDebugWidget::BotDebugWidget(BotInstance *bot, QWidget *parent)
@@ -162,9 +283,9 @@ void BotDebugWidget::initQueryTab(QWidget *tab)
     funcRow->addWidget(new QLabel("Function:", tab));
     m_funcCombo = new QComboBox(tab);
     funcRow->addWidget(m_funcCombo, 1);
-    auto *runBtn = new QPushButton("Run", tab);
+    m_runButton = new QPushButton("Run", tab);
     auto *clearBtn = new QPushButton("Clear", tab);
-    funcRow->addWidget(runBtn);
+    funcRow->addWidget(m_runButton);
     funcRow->addWidget(clearBtn);
     layout->addLayout(funcRow);
 
@@ -181,7 +302,7 @@ void BotDebugWidget::initQueryTab(QWidget *tab)
     m_resultEdit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
     layout->addWidget(m_resultEdit, 1);
 
-    connect(runBtn, &QPushButton::clicked, this, &BotDebugWidget::runQuery);
+    connect(m_runButton, &QPushButton::clicked, this, &BotDebugWidget::runQuery);
     connect(clearBtn, &QPushButton::clicked, this, [this] { m_resultEdit->clear(); });
     connect(m_funcCombo, &QComboBox::currentIndexChanged,
             this, [this] { m_resultEdit->clear(); });
@@ -356,84 +477,109 @@ void BotDebugWidget::initQueryFunctions()
 
 void BotDebugWidget::runQuery()
 {
+    if (m_queryInFlight)
+        return;
+
     int idx = m_funcCombo->currentIndex();
     if (idx < 0 || idx >= m_queryFuncs.size())
         return;
 
     const QueryFuncInfo &info = m_queryFuncs[idx];
-    std::string botName = m_bot ? m_bot->name.toStdString() : "";
 
-    QString result;
-    try {
-        py::gil_scoped_acquire gil;
-
-        py::dict kwargs;
-        bool valid = true;
-
-        py::object mod = py::module_::import(info.module.toStdString().c_str());
-
-        for (int i = 0; i < info.params.size() && valid; ++i) {
-            const QueryParam &p = info.params[i];
-            QString type = p.type;
-            bool optional = type.endsWith('?');
-            if (optional) type.chop(1);
-
-            QString text;
-            if (auto *combo = qobject_cast<QComboBox *>(info.inputs[i]))
-                text = combo->currentText();
-            else if (auto *edit = qobject_cast<QLineEdit *>(info.inputs[i]))
-                text = edit->text().trimmed();
-
-            if (type == "enum") {
-                // Combobox always has a selection; pass the enum member object.
-                kwargs[p.name.toStdString().c_str()] = mod.attr(p.enumClass.toStdString().c_str())
-                                                          .attr(text.toStdString().c_str());
-                continue;
-            }
-
-            if (text.isEmpty()) {
-                if (!optional) {
-                    result = QString("(need value for %1)").arg(p.name);
-                    valid = false;
-                }
-                continue;
-            }
-
-            std::string key = p.name.toStdString();
-            if (type == "int") {
-                bool ok; int v = text.toInt(&ok);
-                if (!ok) { result = QString("(need integer for %1)").arg(p.name); valid = false; break; }
-                kwargs[key.c_str()] = py::int_(v);
-            } else if (type == "float") {
-                bool ok; double v = text.toDouble(&ok);
-                if (!ok) { result = QString("(need number for %1)").arg(p.name); valid = false; break; }
-                kwargs[key.c_str()] = py::float_(v);
-            } else if (type == "bool") {
-                kwargs[key.c_str()] = py::bool_(text == "true" || text == "1");
-            } else if (type == "strlist") {
-                py::list lst;
-                for (const QString &t : text.split(','))
-                    if (!t.trimmed().isEmpty())
-                        lst.append(py::str(t.trimmed().toStdString()));
-                kwargs[key.c_str()] = lst;
-            } else {
-                kwargs[key.c_str()] = py::str(text.toStdString());
-            }
-        }
-
-        if (valid) {
-            kwargs[info.botKwarg.toStdString().c_str()] = py::str(botName);
-            py::object fn = mod.attr(info.fn.toStdString().c_str());
-            py::object ret = fn(**kwargs);
-            result = QString::fromStdString(py::repr(ret).cast<std::string>());
-        }
-    } catch (const py::error_already_set &e) {
-        result = QString("Python error: %1").arg(e.what());
-    } catch (const std::exception &e) {
-        result = QString("Error: %1").arg(e.what());
+    // Snapshot the widget text here; everything Python happens on the worker, since a query
+    // function may block on a client round-trip.
+    QStringList rawValues;
+    rawValues.reserve(info.params.size());
+    for (int i = 0; i < info.params.size(); ++i) {
+        if (auto *combo = qobject_cast<QComboBox *>(info.inputs[i]))
+            rawValues.append(combo->currentText());
+        else if (auto *edit = qobject_cast<QLineEdit *>(info.inputs[i]))
+            rawValues.append(edit->text().trimmed());
+        else
+            rawValues.append(QString());
     }
 
-    m_resultEdit->setPlainText(result);
+    const QString module = info.module;
+    const QString fnName = info.fn;
+    const QString botKwarg = info.botKwarg;
+    const QList<QueryParam> params = info.params;
+    const std::string botName = m_bot ? m_bot->name.toStdString() : "";
+
+    m_queryInFlight = true;
+    m_runButton->setEnabled(false);
+    m_resultEdit->setPlainText("(running...)");
+
+    auto *watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher]() {
+        m_queryInFlight = false;
+        m_runButton->setEnabled(true);
+        m_resultEdit->setPlainText(watcher->result());
+        watcher->deleteLater();
+    });
+
+    watcher->setFuture(QtConcurrent::run(
+            [module, fnName, botKwarg, params, rawValues, botName]() -> QString {
+        // Acquire the GIL outside the try so it is still held in the catch handlers.
+        py::gil_scoped_acquire gil;
+        try {
+            py::dict kwargs;
+            py::object mod = py::module_::import(module.toStdString().c_str());
+
+            for (int i = 0; i < params.size(); ++i) {
+                const QueryParam &p = params[i];
+                QString type = p.type;
+                bool optional = type.endsWith('?');
+                if (optional) type.chop(1);
+
+                const QString &text = rawValues[i];
+
+                if (type == "enum") {
+                    // Combobox always has a selection; pass the enum member object.
+                    kwargs[p.name.toStdString().c_str()] = mod.attr(p.enumClass.toStdString().c_str())
+                                                              .attr(text.toStdString().c_str());
+                    continue;
+                }
+
+                if (text.isEmpty()) {
+                    if (!optional)
+                        return QString("(need value for %1)").arg(p.name);
+                    continue;
+                }
+
+                std::string key = p.name.toStdString();
+                if (type == "int") {
+                    bool ok; int v = text.toInt(&ok);
+                    if (!ok) return QString("(need integer for %1)").arg(p.name);
+                    kwargs[key.c_str()] = py::int_(v);
+                } else if (type == "float") {
+                    bool ok; double v = text.toDouble(&ok);
+                    if (!ok) return QString("(need number for %1)").arg(p.name);
+                    kwargs[key.c_str()] = py::float_(v);
+                } else if (type == "bool") {
+                    kwargs[key.c_str()] = py::bool_(text == "true" || text == "1");
+                } else if (type == "strlist") {
+                    py::list lst;
+                    for (const QString &t : text.split(','))
+                        if (!t.trimmed().isEmpty())
+                            lst.append(py::str(t.trimmed().toStdString()));
+                    kwargs[key.c_str()] = lst;
+                } else {
+                    kwargs[key.c_str()] = py::str(text.toStdString());
+                }
+            }
+
+            kwargs[botKwarg.toStdString().c_str()] = py::str(botName);
+            py::object fn = mod.attr(fnName.toStdString().c_str());
+            py::object ret = fn(**kwargs);
+            return QString::fromStdString(py::repr(ret).cast<std::string>());
+        } catch (const py::error_already_set &e) {
+            return QString("Python error: %1").arg(e.what());
+        } catch (const std::exception &e) {
+            return QString("Error: %1").arg(e.what());
+        } catch (...) {
+            return QStringLiteral("Error: unknown failure");
+        }
+    }));
 }
 
 void BotDebugWidget::showEvent(QShowEvent *event)
@@ -456,11 +602,14 @@ void BotDebugWidget::hideEvent(QHideEvent *event)
 
 void BotDebugWidget::populate()
 {
+    // A previous refresh may still be gathering; skip this tick rather than stacking up.
+    if (m_refreshInFlight)
+        return;
+
     QMap<QString, bool> expandState;
     for (int i = 0; i < m_tree->topLevelItemCount(); ++i)
         saveExpandState(m_tree->topLevelItem(i), "", expandState);
 
-    // Save selected items as index paths
     QList<QList<int>> selectedPaths;
     for (QTreeWidgetItem *sel : m_tree->selectedItems()) {
         QList<int> path;
@@ -473,203 +622,125 @@ void BotDebugWidget::populate()
         selectedPaths.append(path);
     }
 
-    // Preserve scroll position across the rebuild so the view doesn't jump to
-    // the top while the user is reading.
+    // Preserved across the rebuild so the view doesn't jump while the user is reading.
     int scrollV = m_tree->verticalScrollBar()->value();
     int scrollH = m_tree->horizontalScrollBar()->value();
 
-    m_tree->clear();
+    const QString botName = m_bot ? m_bot->name : QString();
+    const auto spec = m_stateSpec;
+    const bool specReady = m_stateModulesReady;
 
-    try {
-        py::gil_scoped_acquire gil;
-        std::string botName = m_bot ? m_bot->name.toStdString() : "";
-        py::object builtins = py::module_::import("builtins");
+    // Everything that touches Python runs on a worker thread, including the one-time module scan:
+    // a state function can block on a client round-trip, and even the cheap ones queue for the GIL
+    // behind any running script.
+    m_refreshInFlight = true;
+    auto *watcher = new QFutureWatcher<GatherResult>(this);
+    connect(watcher, &QFutureWatcher<GatherResult>::finished, this,
+            [this, watcher, expandState, selectedPaths, scrollV, scrollH]() {
+        m_refreshInFlight = false;
+        const GatherResult gathered = watcher->result();
+        watcher->deleteLater();
 
-        if (!m_stateModulesReady) {
-            for (const py::module_ &mod : modulesWithAttr("__debug_state__"))
-                m_stateModuleNames.append(QString::fromStdString(py::str(mod.attr("__name__")).cast<std::string>()));
+        if (!m_stateModulesReady && gathered.specReady) {
+            m_stateSpec = gathered.spec;
             m_stateModulesReady = true;
         }
 
-        for (const QString &qModName : m_stateModuleNames) {
-            std::string modName = qModName.toStdString();
-            py::module_ mod = py::module_::import(modName.c_str());
-            py::list fns = mod.attr("__debug_state__").cast<py::list>();
+        m_tree->clear();
 
-            QTreeWidgetItem *section = addSection(m_tree, QString::fromStdString(modName));
-
-            for (auto fnNameObj : fns) {
-                std::string fnName = fnNameObj.cast<std::string>();
-                py::object fn = mod.attr(fnName.c_str());
-                py::object result;
-                try {
-                    result = fn(py::arg("bot_name") = py::str(botName));
-                } catch (const py::error_already_set &e) {
-                    result = py::str(std::string("(error: ") + e.what() + ")");
-                } catch (const std::exception &e) {
-                    result = py::str(std::string("(error: ") + e.what() + ")");
-                }
-                buildTreeItem(section, QString::fromStdString(fnName), result, builtins);
-            }
-        }
-    } catch (const py::error_already_set &e) {
-        auto *errItem = new QTreeWidgetItem(m_tree);
-        errItem->setText(0, QString("Python error: %1").arg(e.what()));
-    } catch (const std::exception &e) {
-        auto *errItem = new QTreeWidgetItem(m_tree);
-        errItem->setText(0, QString("Error: %1").arg(e.what()));
-    }
-
-    for (int i = 0; i < m_tree->topLevelItemCount(); ++i)
-        restoreExpandState(m_tree->topLevelItem(i), "", expandState);
-
-    for (const QList<int> &path : std::as_const(selectedPaths)) {
-        QTreeWidgetItem *item = m_tree->topLevelItem(path.value(0, -1));
-        for (int i = 1; i < path.size() && item; ++i)
-            item = item->child(path[i]);
-        if (item)
-            item->setSelected(true);
-    }
-
-    m_tree->resizeColumnToContents(0);
-
-    // Restore scroll position (clamped by the scrollbars to the new range).
-    m_tree->verticalScrollBar()->setValue(scrollV);
-    m_tree->horizontalScrollBar()->setValue(scrollH);
-}
-
-QTreeWidgetItem *BotDebugWidget::addSection(QTreeWidget *tree, const QString &title)
-{
-    auto *item = new QTreeWidgetItem(tree);
-    item->setText(0, title);
-    QFont f = item->font(0);
-    f.setBold(true);
-    item->setFont(0, f);
-    return item;
-}
-
-QTreeWidgetItem *BotDebugWidget::addRow(QTreeWidgetItem *parent, const QString &key, const QString &value)
-{
-    auto *item = new QTreeWidgetItem(parent);
-    item->setText(0, key);
-    item->setText(1, value);
-    return item;
-}
-
-QTreeWidgetItem *BotDebugWidget::addSpanRow(QTreeWidgetItem *parent, const QString &text)
-{
-    auto *item = new QTreeWidgetItem(parent);
-    item->setText(0, text);
-    item->setFirstColumnSpanned(true);
-    return item;
-}
-
-void BotDebugWidget::buildTreeItem(QTreeWidgetItem *parent, const QString &key,
-                                    const py::object &value, const py::object &builtins)
-{
-    if (value.is_none()) {
-        addRow(parent, key, "None");
-        return;
-    }
-
-    // bool must be checked before int (bool is a subclass of int in Python)
-    if (py::isinstance<py::bool_>(value)) {
-        addRow(parent, key, value.cast<bool>() ? "true" : "false");
-        return;
-    }
-
-    if (py::isinstance<py::int_>(value)) {
-        addRow(parent, key, QString::number(value.cast<long long>()));
-        return;
-    }
-
-    if (py::isinstance<py::float_>(value)) {
-        addRow(parent, key, QString::number(value.cast<double>(), 'f', 4));
-        return;
-    }
-
-    if (py::isinstance<py::str>(value)) {
-        addRow(parent, key, QString::fromStdString(value.cast<std::string>()));
-        return;
-    }
-
-    if (py::isinstance<py::dict>(value)) {
-        py::dict d = value.cast<py::dict>();
-        if (d.empty()) {
-            addRow(parent, key, "{}");
+        if (!gathered.error.isEmpty()) {
+            auto *errItem = new QTreeWidgetItem(m_tree);
+            errItem->setText(0, gathered.error);
             return;
         }
-        auto *sub = new QTreeWidgetItem(parent);
-        sub->setText(0, key);
-        for (auto [k, v] : d)
-            buildTreeItem(sub, QString::fromStdString(py::str(k).cast<std::string>()),
-                          v.cast<py::object>(), builtins);
-        return;
-    }
 
-    if (py::isinstance<py::list>(value) || py::isinstance<py::tuple>(value)) {
-        auto size = static_cast<Py_ssize_t>(py::len(value));
+        for (const DebugNode &section : gathered.sections)
+            makeItem(m_tree, nullptr, section);
 
-        // Small all-primitive sequences: show as a single repr row
-        if (size <= 4) {
-            bool allPrim = true;
-            for (Py_ssize_t i = 0; i < size && allPrim; ++i) {
-                py::object item = value.attr("__getitem__")(py::int_(i));
-                allPrim = py::isinstance<py::bool_>(item) || py::isinstance<py::int_>(item)
-                       || py::isinstance<py::float_>(item) || py::isinstance<py::str>(item)
-                       || item.is_none();
-            }
-            if (allPrim) {
-                addRow(parent, key,
-                       QString::fromStdString(py::repr(value).cast<std::string>()));
-                return;
-            }
+        for (int i = 0; i < m_tree->topLevelItemCount(); ++i)
+            restoreExpandState(m_tree->topLevelItem(i), "", expandState);
+
+        for (const QList<int> &path : selectedPaths) {
+            QTreeWidgetItem *item = m_tree->topLevelItem(path.value(0, -1));
+            for (int i = 1; i < path.size() && item; ++i)
+                item = item->child(path[i]);
+            if (item)
+                item->setSelected(true);
         }
 
-        auto *sub = new QTreeWidgetItem(parent);
-        sub->setText(0, QString("%1 (%2)").arg(key).arg(size));
-        constexpr Py_ssize_t MAX_ITEMS = 100;
-        Py_ssize_t show = std::min(size, MAX_ITEMS);
-        for (Py_ssize_t i = 0; i < show; ++i) {
-            buildTreeItem(sub, QString("[%1]").arg(i),
-                          value.attr("__getitem__")(py::int_(i)).cast<py::object>(), builtins);
-        }
-        if (size > MAX_ITEMS)
-            addSpanRow(sub, QString("... (%1 more)").arg(size - MAX_ITEMS));
-        return;
-    }
+        m_tree->resizeColumnToContents(0);
+        m_tree->verticalScrollBar()->setValue(scrollV);
+        m_tree->horizontalScrollBar()->setValue(scrollH);
+    });
 
-    // pybind11 enums expose every other enumerator as an attribute of each
-    // value (e.g. Gamemode.SURVIVAL.CREATIVE), so the generic dir() expansion
-    // below would recurse forever. Render them as a single leaf instead.
-    if (py::hasattr(py::type::of(value), "__members__")) {
-        addRow(parent, key, QString::fromStdString(py::repr(value).cast<std::string>()));
-        return;
-    }
+    watcher->setFuture(QtConcurrent::run([botName, spec, specReady]() -> GatherResult {
+        // Every exception stays inside the lambda; nothing may propagate through the QFuture to
+        // result() on the UI thread.
+        GatherResult out;
+        out.spec = spec;
+        out.specReady = specReady;
+        const std::string bn = botName.toStdString();
 
-    // Pybind11 object: expand non-callable public attributes via dir()
-    try {
-        py::list attrs = builtins.attr("dir")(value);
-        QList<std::pair<QString, py::object>> pubAttrs;
-        for (auto a : attrs) {
-            std::string name = a.cast<std::string>();
-            if (name.empty() || name[0] == '_') continue;
+        // Discover which modules expose __debug_state__ (first refresh only).
+        if (!out.specReady) {
             try {
-                py::object attr = value.attr(name.c_str());
-                if (!builtins.attr("callable")(attr).cast<bool>())
-                    pubAttrs.append({QString::fromStdString(name), attr});
-            } catch (...) {}
+                py::gil_scoped_acquire gil;
+                for (const py::module_ &mod : modulesWithAttr("__debug_state__")) {
+                    QString modName = QString::fromStdString(py::str(mod.attr("__name__")).cast<std::string>());
+                    QStringList fns;
+                    for (auto f : mod.attr("__debug_state__").cast<py::list>())
+                        fns.append(QString::fromStdString(f.cast<std::string>()));
+                    out.spec.append({modName, fns});
+                }
+                out.specReady = true;
+            } catch (const std::exception &e) {
+                out.error = QString("Error: %1").arg(e.what());
+                return out;
+            } catch (...) {
+                out.error = QStringLiteral("Error: failed to enumerate debug state modules");
+                return out;
+            }
         }
-        if (!pubAttrs.isEmpty()) {
-            auto *sub = new QTreeWidgetItem(parent);
-            sub->setText(0, key);
-            for (auto &[k, v] : pubAttrs)
-                buildTreeItem(sub, k, v, builtins);
-            return;
-        }
-    } catch (...) {}
 
-    addRow(parent, key, QString::fromStdString(py::repr(value).cast<std::string>()));
+        for (const auto &entry : out.spec) {
+            DebugNode section;
+            section.col0 = entry.first;
+            section.bold = true;
+
+            for (const QString &fnName : entry.second) {
+                DebugNode child;
+                // Taken per state function and dropped in between, so a long refresh never starves
+                // script threads. Every py::object stays inside this scope.
+                try {
+                    py::gil_scoped_acquire gil;
+                    py::object builtins = py::module_::import("builtins");
+                    py::module_ mod = py::module_::import(entry.first.toStdString().c_str());
+
+                    py::object result;
+                    try {
+                        py::object fn = mod.attr(fnName.toStdString().c_str());
+                        result = fn(py::arg("bot_name") = py::str(bn));
+                    } catch (const py::error_already_set &e) {
+                        result = py::str(std::string("(error: ") + e.what() + ")");
+                    } catch (const std::exception &e) {
+                        result = py::str(std::string("(error: ") + e.what() + ")");
+                    }
+                    child = pyToNode(fnName, result, builtins);
+                } catch (const std::exception &e) {
+                    child = DebugNode{};
+                    child.col0 = fnName;
+                    child.col1 = QString("(error: %1)").arg(e.what());
+                } catch (...) {
+                    child = DebugNode{};
+                    child.col0 = fnName;
+                    child.col1 = "(error)";
+                }
+                section.children.append(child);
+            }
+            out.sections.append(section);
+        }
+        return out;
+    }));
 }
 
 QString BotDebugWidget::stableKey(const QString &title)

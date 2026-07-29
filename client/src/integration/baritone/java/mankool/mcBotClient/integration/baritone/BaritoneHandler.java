@@ -1,4 +1,4 @@
-package mankool.mcBotClient.handler.inbound;
+package mankool.mcBotClient.integration.baritone;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
@@ -21,7 +21,7 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import mankool.mcBotClient.connection.PipeConnection;
-import mankool.mcBotClient.api.baritone.IBaritoneSettingChangeListener;
+import mankool.mcBotClient.handler.inbound.BaseInboundHandler;
 import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

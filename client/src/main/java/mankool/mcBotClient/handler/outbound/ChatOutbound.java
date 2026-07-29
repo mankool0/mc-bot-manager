@@ -4,9 +4,6 @@ import mankool.mcbot.protocol.Chat;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.util.VersionCompat;
-import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.events.packets.PacketEvent;
-import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
@@ -28,60 +25,57 @@ public class ChatOutbound {
         this.client = client;
         this.connection = connection;
         instance = this;
-
-        MeteorClient.EVENT_BUS.subscribe(this);
     }
 
     public static ChatOutbound getInstance() {
         return instance;
     }
 
-    @EventHandler
-    private void onPacketReceive(PacketEvent.Receive event) {
-        if (event.packet instanceof ClientboundPlayerChatPacket packet) {
-            try {
-                UUID senderUuid = packet.sender();
-                String senderUuidStr = senderUuid.toString();
+    public void onPlayerChatPacket(ClientboundPlayerChatPacket packet) {
+        try {
+            UUID senderUuid = packet.sender();
+            String senderUuidStr = senderUuid.toString();
 
-                String senderName = "";
-                PlayerInfo playerInfo = client.getConnection().getPlayerInfo(senderUuid);
-                if (playerInfo != null) {
-                    senderName = VersionCompat.profileName(playerInfo.getProfile());
-                }
-
-                String content = packet.body().content();
-                Component message = Component.literal(content);
-                boolean isSigned = packet.signature() != null;
-
-                long timestamp = packet.body().timeStamp().toEpochMilli();
-
-                String chatTypeStr = packet.chatType().chatType().unwrapKey()
-                    .map(VersionCompat::keyId)
-                    .orElse("minecraft:chat");
-
-                Chat.ChatMessage.MinecraftChatType chatType = switch (chatTypeStr) {
-                    case "minecraft:chat" -> Chat.ChatMessage.MinecraftChatType.CHAT;
-                    case "minecraft:msg_command_incoming" -> Chat.ChatMessage.MinecraftChatType.MSG_COMMAND_INCOMING;
-                    case "minecraft:msg_command_outgoing" -> Chat.ChatMessage.MinecraftChatType.MSG_COMMAND_OUTGOING;
-                    case "minecraft:emote_command" -> Chat.ChatMessage.MinecraftChatType.EMOTE_COMMAND;
-                    case "minecraft:say_command" -> Chat.ChatMessage.MinecraftChatType.SAY_COMMAND;
-                    case "minecraft:team_msg_command_incoming" -> Chat.ChatMessage.MinecraftChatType.TEAM_MSG_COMMAND_INCOMING;
-                    case "minecraft:team_msg_command_outgoing" -> Chat.ChatMessage.MinecraftChatType.TEAM_MSG_COMMAND_OUTGOING;
-                    default -> Chat.ChatMessage.MinecraftChatType.UNKNOWN;
-                };
-
-                onChatMessage(message, senderName, senderUuidStr, false, isSigned, chatType, timestamp);
-            } catch (Exception e) {
-                LOGGER.error("Failed to process player chat packet", e);
+            String senderName = "";
+            PlayerInfo playerInfo = client.getConnection().getPlayerInfo(senderUuid);
+            if (playerInfo != null) {
+                senderName = VersionCompat.profileName(playerInfo.getProfile());
             }
-        } else if (event.packet instanceof ClientboundSystemChatPacket packet) {
-            try {
-                // System messages don't have a timestamp in the packet, use current time
-                long timestamp = System.currentTimeMillis();
-                onChatMessage(packet.content(), "SYSTEM", null, true, false, null, timestamp);
-            } catch (Exception e) {
-                LOGGER.error("Failed to process system chat packet", e);
-            }
+
+            String content = packet.body().content();
+            Component message = Component.literal(content);
+            boolean isSigned = packet.signature() != null;
+
+            long timestamp = packet.body().timeStamp().toEpochMilli();
+
+            String chatTypeStr = packet.chatType().chatType().unwrapKey()
+                .map(VersionCompat::keyId)
+                .orElse("minecraft:chat");
+
+            Chat.ChatMessage.MinecraftChatType chatType = switch (chatTypeStr) {
+                case "minecraft:chat" -> Chat.ChatMessage.MinecraftChatType.CHAT;
+                case "minecraft:msg_command_incoming" -> Chat.ChatMessage.MinecraftChatType.MSG_COMMAND_INCOMING;
+                case "minecraft:msg_command_outgoing" -> Chat.ChatMessage.MinecraftChatType.MSG_COMMAND_OUTGOING;
+                case "minecraft:emote_command" -> Chat.ChatMessage.MinecraftChatType.EMOTE_COMMAND;
+                case "minecraft:say_command" -> Chat.ChatMessage.MinecraftChatType.SAY_COMMAND;
+                case "minecraft:team_msg_command_incoming" -> Chat.ChatMessage.MinecraftChatType.TEAM_MSG_COMMAND_INCOMING;
+                case "minecraft:team_msg_command_outgoing" -> Chat.ChatMessage.MinecraftChatType.TEAM_MSG_COMMAND_OUTGOING;
+                default -> Chat.ChatMessage.MinecraftChatType.UNKNOWN;
+            };
+
+            onChatMessage(message, senderName, senderUuidStr, false, isSigned, chatType, timestamp);
+        } catch (Exception e) {
+            LOGGER.error("Failed to process player chat packet", e);
+        }
+    }
+
+    public void onSystemChatPacket(ClientboundSystemChatPacket packet) {
+        try {
+            // System messages don't have a timestamp in the packet, use current time
+            long timestamp = System.currentTimeMillis();
+            onChatMessage(packet.content(), "SYSTEM", null, true, false, null, timestamp);
+        } catch (Exception e) {
+            LOGGER.error("Failed to process system chat packet", e);
         }
     }
 

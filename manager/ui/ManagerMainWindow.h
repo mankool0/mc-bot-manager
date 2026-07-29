@@ -129,6 +129,7 @@ private:
     void updateInstancesTable();
     void loadBotConfiguration(const BotInstance &bot);
     void updateStatusDisplay();
+    void updateCapabilityUiFor(const BotInstance *bot);
     void loadPrismLauncherConfig();
     void updateInstanceComboBox();
     void updateAccountComboBox();

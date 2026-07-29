@@ -31,8 +31,11 @@ without editing the file: `./gradlew build -Pminecraft_version=<v>`.
 Add a row to the `mcVersions` map at the top of `build.gradle`:
 
 ```groovy
-'<mc version>': [loader: '<fabric loader>', fabric: '<fabric api>', meteor: '<meteor snapshot>', baritone: '<baritone snapshot>', compat: 'src/compat/api_<x>/java', compatResources: 'src/compat/api_<x>/resources', javaVersion: <jdk>],
+'<mc version>': [loader: '<fabric loader>', fabric: '<fabric api>', meteor: '<meteor snapshot>', baritone: '<baritone snapshot>', compat: 'src/compat/api_<x>/java', compatResources: 'src/compat/api_<x>/resources', meteorCompat: 'src/integration/meteor/compat/api_<x>/java', javaVersion: <jdk>],
 ```
+
+`meteorCompat` points at the version-split `MeteorVersionCompat.java` used only by the optional
+Meteor integration (see section 6).
 
 Version strings: loader and fabric from https://fabricmc.net/develop/, meteor and
 baritone from the Meteor snapshots maven (browse for the newest `<version>-SNAPSHOT`).
@@ -59,6 +62,11 @@ Only if the new version cannot share an existing dir:
 3. Never change a method signature in only one dir. The signature set must stay
    identical across all compat dirs; if a new version forces a signature change, apply
    it to every `VersionCompat.java` and all call sites in `src/main/java`.
+4. Do the same for the Meteor integration's version-split compat:
+   `cp -r src/integration/meteor/compat/api_26_1 src/integration/meteor/compat/api_<x>`
+   and port `MeteorVersionCompat.java` (the three `PacketListSetting` helpers). This is a
+   separate parity family (section 7), so its signatures must also match across all versions.
+   Only needed if you build with Meteor enabled (the default).
 
 ## 7. Parity check
 
@@ -80,7 +88,51 @@ add an override when the file must actually differ for that version.
 Verify every mixin listed in `src/main/resources/mc-bot-client.mixins.json` still
 applies on the new version (injection targets can be renamed or removed between
 versions). Mixin failures surface at client launch as apply errors in the log. The
-mixin classes live in `src/main/java/mankool/mcBotClient/mixin/`.
+core mixin classes live in `src/main/java/mankool/mcBotClient/mixin/`. The optional
+Baritone integration adds one more, `BaritoneSettingMixin`, in its own config
+`src/integration/baritone/resources/mc-bot-client.baritone.mixins.json` (only present when
+built with Baritone). Verify it too when Baritone is enabled.
+
+## Optional integrations (Meteor / Baritone)
+
+Meteor and Baritone are optional, selected by the `integrations` Gradle property, which defaults
+to every integration. Build a reduced mod with e.g. `./gradlew build -Pintegrations=meteor` or
+`./gradlew build -Pintegrations=none`. When an integration is not selected, its source set,
+dependency, `fabric.mod.json` entrypoint/mixin/suggest entries, compat parity family, and
+capability string are all excluded. Integrations plug in via the `mcbot:integration` Fabric
+entrypoint and the `ClientIntegration` SPI (`src/main/java/.../integration/`); the client
+advertises its capabilities to the manager in the `ConnectionInfo` handshake, and the
+manager auto-disables the matching UI tabs / proxy / Python calls for bots that lack them.
+
+Everything is driven off the `integrationSpecs` map at the top of `build.gradle` - adding another
+base client is an entry there plus a `ClientIntegration` implementation in its own source set:
+
+```groovy
+'<name>': [
+    srcDir: 'src/integration/<name>/java',
+    resourceDir: 'src/integration/<name>/resources',        // optional
+    mixins: ['mc-bot-client.<name>.mixins.json'],           // optional
+    compatKey: '<name>Compat',                              // optional, key into the mcVersions entries
+    compatClass: [name: '<Name>VersionCompat', rel: 'mankool/mcBotClient/integration/<name>/<Name>VersionCompat.java'],
+    entrypoint: 'mankool.mcBotClient.integration.<name>.<Name>Integration',
+    suggests: ['<fabric mod id>'],                          // what isAvailable() checks for
+    deps: ["<group>:<artifact>:${mcDeps.<name>}"],
+],
+```
+
+Only `srcDir`, `entrypoint` and `deps` are required. `compatKey`/`compatClass` are for a client
+whose API differs across Minecraft versions (as Meteor's does); omit both if one source set
+compiles everywhere, as Baritone's does. A version entry that omits `compatKey` drops out of that
+parity family, so a new Minecraft version can land before this client supports it.
+
+Then add `<name>` to the `integrations` matrix in `.github/workflows/release.yml` so its
+standalone build is covered.
+
+Detection is also dynamic at runtime: an integration that is compiled in but whose mod isn't loaded
+deactivates itself (`ClientIntegration.isAvailable()` -> `FabricLoader.isModLoaded`). Meteor is
+`meteor-client`; Baritone's Meteor fork is `baritone-meteor` (upstream is `baritone`). The Baritone
+mixin is gated by `BaritoneMixinPlugin` so it soft-skips when Baritone is absent, and both mods are
+`suggests` (not `depends`), so a full jar loads and adapts to whatever mods are present.
 
 ## 10. Reference sources
 

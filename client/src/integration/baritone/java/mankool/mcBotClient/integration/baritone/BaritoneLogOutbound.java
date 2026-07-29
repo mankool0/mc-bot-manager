@@ -1,4 +1,4 @@
-package mankool.mcBotClient.handler.outbound;
+package mankool.mcBotClient.integration.baritone;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.Settings;

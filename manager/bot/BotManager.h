@@ -341,6 +341,10 @@ struct BotInstance : public BotConfig {
     QString versionSeries = "main";
     bool versionIsSnapshot = false;
     QString modVersion;
+    // Optional features the connected mod supports (e.g. "meteor", "baritone", "proxy").
+    // Only meaningful while Online - the mod reports these in its handshake.
+    QSet<QString> capabilities;
+    bool hasCapability(const QString &cap) const { return capabilities.contains(cap); }
     bool isSingleplayer = false;
     QString singleplayerWorld;
     QString serverMotd;
