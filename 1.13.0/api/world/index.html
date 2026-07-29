@@ -1,0 +1,3845 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python API documentation for mc-bot-manager scripting system">
+      
+      
+        <meta name="author" content="mc-bot-manager contributors">
+      
+      
+        <link rel="canonical" href="https://mankool0.github.io/mc-bot-manager/1.13.0/api/world/">
+      
+      
+        <link rel="prev" href="../meteor/">
+      
+      
+        <link rel="next" href="../utils/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>world - MC Bot Manager - Python Scripting API</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#world-module" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="MC Bot Manager - Python Scripting API" class="md-header__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MC Bot Manager - Python Scripting API
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              world
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mankool0/mc-bot-manager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mankool0/mc-bot-manager
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="MC Bot Manager - Python Scripting API" class="md-nav__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MC Bot Manager - Python Scripting API
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mankool0/mc-bot-manager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mankool0/mc-bot-manager
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../first-script/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Script
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../event-handlers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Handlers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../baritone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    baritone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../meteor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    meteor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    world
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    world
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#block-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_blockx-y-z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_block(x, y, z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_nearestblock_types-max_distance128-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_nearest(block_types, max_distance=128, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-entities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Entities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Entities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_block_entityx-y-z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_block_entity(x, y, z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_block_entities_in_chunkchunk_x-chunk_z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Interaction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Interaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hold_attackenabled-duration_ticks0-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hold_attack(enabled, duration_ticks=0, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_hold_attackbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_hold_attack(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interact_blockx-y-z-sneakfalse-look_at_blocktrue-faceworldblockfaceauto-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can_reach_blockx-y-z-sneakfalse-faceworldblockfaceauto-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can_reach_block_fromfrom_x-from_y-from_z-x-y-z-sneakfalse-faceworldblockfaceauto-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blockface-enum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BlockFace enum
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#container-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Interaction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Container Interaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_containerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_container(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#click_slotslot_index-buttonworldmousebuttonleft-click_typeworldclicktypepickup-bot_name-silentfalse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot_name="", silent=False)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#click_widgetscreen_id-widget_index-buttonworldmousebuttonleft-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_widget(screen_id, widget_index, button=world.MouseButton.LEFT, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#click_screenscreen_id-x-y-buttonworldmousebuttonleft-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_screen(screen_id, x, y, button=world.MouseButton.LEFT, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#type_textscreen_id-text-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        type_text(screen_id, text, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#press_keyscreen_id-key_code-modifiers0-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        press_key(screen_id, key_code, modifiers=0, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#close_containerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        close_container(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open_inventorybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        open_inventory(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enums
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#worldmousebutton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.MouseButton
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldclicktype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.ClickType
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldcontainertype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.ContainerType
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk Information
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chunk Information">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#loaded_chunk_countbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        loaded_chunk_count(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loaded_chunksbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        loaded_chunks(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#memory_usagebot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        memory_usage(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mining-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mining Helper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-finder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Finder
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#block-scanner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Scanner
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe Registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recipe Registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_reciperecipe_id-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_recipe(recipe_id, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_recipes_foritem_id-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_recipes_for(item_id, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_item_infoitem_id-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_item_info(item_id, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_all_recipesbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_all_recipes(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plan_recursive_craftitem_id-count1-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        plan_recursive_craft(item_id, count=1, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entity-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entity Tracking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Entity Tracking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entity-dict-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entity dict schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldentitiesbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.entities(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldfind_entities_nearx-y-z-radius-type-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.find_entities_near(x, y, z, radius, type="", bot_name="")
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="world.find_entities_near(x, y, z, radius, type=&#34;&#34;, bot_name=&#34;&#34;)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wait-for-a-specific-item-to-drop-after-breaking-a-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wait for a specific item to drop after breaking a block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-nearby-mob-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check nearby mob health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#light" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Light
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Light">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_lightx-y-z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_light(x, y, z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-solidity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Solidity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Solidity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_solidblock_state-facedirectionup-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_solid(block_state, face=Direction.UP, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weather" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weather
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Weather">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_weatherbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_weather(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    comms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#block-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_blockx-y-z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_block(x, y, z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_nearestblock_types-max_distance128-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_nearest(block_types, max_distance=128, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-entities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Entities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Entities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_block_entityx-y-z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_block_entity(x, y, z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_block_entities_in_chunkchunk_x-chunk_z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Interaction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Interaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hold_attackenabled-duration_ticks0-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hold_attack(enabled, duration_ticks=0, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_hold_attackbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_hold_attack(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interact_blockx-y-z-sneakfalse-look_at_blocktrue-faceworldblockfaceauto-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can_reach_blockx-y-z-sneakfalse-faceworldblockfaceauto-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#can_reach_block_fromfrom_x-from_y-from_z-x-y-z-sneakfalse-faceworldblockfaceauto-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blockface-enum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BlockFace enum
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#container-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Interaction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Container Interaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_containerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_container(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#click_slotslot_index-buttonworldmousebuttonleft-click_typeworldclicktypepickup-bot_name-silentfalse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot_name="", silent=False)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#click_widgetscreen_id-widget_index-buttonworldmousebuttonleft-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_widget(screen_id, widget_index, button=world.MouseButton.LEFT, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#click_screenscreen_id-x-y-buttonworldmousebuttonleft-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_screen(screen_id, x, y, button=world.MouseButton.LEFT, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#type_textscreen_id-text-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        type_text(screen_id, text, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#press_keyscreen_id-key_code-modifiers0-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        press_key(screen_id, key_code, modifiers=0, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#close_containerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        close_container(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open_inventorybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        open_inventory(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enums
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#worldmousebutton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.MouseButton
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldclicktype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.ClickType
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldcontainertype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.ContainerType
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunk Information
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chunk Information">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#loaded_chunk_countbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        loaded_chunk_count(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loaded_chunksbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        loaded_chunks(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#memory_usagebot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        memory_usage(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mining-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mining Helper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-finder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Finder
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#block-scanner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Scanner
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe Registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recipe Registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_reciperecipe_id-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_recipe(recipe_id, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_recipes_foritem_id-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_recipes_for(item_id, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_item_infoitem_id-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_item_info(item_id, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_all_recipesbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_all_recipes(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plan_recursive_craftitem_id-count1-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        plan_recursive_craft(item_id, count=1, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entity-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entity Tracking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Entity Tracking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entity-dict-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entity dict schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldentitiesbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.entities(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worldfind_entities_nearx-y-z-radius-type-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        world.find_entities_near(x, y, z, radius, type="", bot_name="")
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="world.find_entities_near(x, y, z, radius, type=&#34;&#34;, bot_name=&#34;&#34;)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wait-for-a-specific-item-to-drop-after-breaking-a-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wait for a specific item to drop after breaking a block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-nearby-mob-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check nearby mob health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#light" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Light
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Light">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_lightx-y-z-use_diskfalse-dimension-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_light(x, y, z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-solidity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block Solidity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block Solidity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_solidblock_state-facedirectionup-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_solid(block_state, face=Direction.UP, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weather" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weather
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Weather">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_weatherbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_weather(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="world-module">world module</h1>
+<p>World data queries and block interaction.</p>
+<p>The world module provides access to chunk data collected from the Minecraft client, enabling block queries and world interaction. Chunks are automatically synchronized and cached in memory.</p>
+<h2 id="block-queries">Block Queries</h2>
+<h3 id="get_blockx-y-z-use_diskfalse-dimension-bot_name"><code>get_block(x, y, z, use_disk=False, dimension="", bot_name="")</code></h3>
+<p>Get the block state at the specified coordinates.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x</code> (<code>int</code>) - Block X coordinate</li>
+<li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
+<li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and the chunk is not loaded in memory, read the block from the saved <code>.mca</code> region file on disk (default: <code>False</code>)</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. <strong>Requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>str</code> - Block state string (e.g., <code>"minecraft:stone"</code>, <code>"minecraft:chest[facing=north]"</code>), or <code>None</code> if chunk is not loaded (and not on disk when <code>use_disk=True</code>) or bot is offline</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online; <code>ValueError</code> if <code>dimension</code> is set without <code>use_disk=True</code></p>
+<p><strong>Note:</strong> Disk reads require world saving to be enabled. Returns <code>None</code> if the world save path is not available or the chunk has never been saved.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get block at specific position</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">block</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Block at (100, 64, 200): </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Check block type</span>
+    <span class="k">if</span> <span class="s2">&quot;chest&quot;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Found a chest!&quot;</span><span class="p">)</span>
+
+<span class="c1"># Read a block from a chunk that isn&#39;t currently loaded</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">block</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved block: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Read a block from a different dimension</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">&quot;minecraft:the_nether&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name"><code>find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")</code></h3>
+<p>Find all blocks of a specific type within a spherical radius, with optional light level filters.</p>
+<p>This function only searches loaded chunks. Blocks in unloaded chunks will not be found.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>block_type</code> (<code>str</code>) - Block type to search for (e.g., <code>"minecraft:diamond_ore"</code>)</li>
+<li><code>center_x</code> (<code>float</code>) - Search center X coordinate</li>
+<li><code>center_y</code> (<code>float</code>) - Search center Y coordinate</li>
+<li><code>center_z</code> (<code>float</code>) - Search center Z coordinate</li>
+<li><code>radius</code> (<code>int</code>) - Search radius in blocks</li>
+<li><code>min_block_light</code> (<code>int</code>, optional) - Minimum block light level, inclusive (default: 0)</li>
+<li><code>max_block_light</code> (<code>int</code>, optional) - Maximum block light level, inclusive (default: 15)</li>
+<li><code>min_sky_light</code> (<code>int</code>, optional) - Minimum sky light level, inclusive (default: 0)</li>
+<li><code>max_sky_light</code> (<code>int</code>, optional) - Maximum sky light level, inclusive (default: 15)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>list[tuple]</code> - List of block positions as <code>(x, y, z)</code> tuples of floats</p>
+<p><strong>Note:</strong> Returns float coordinates. Convert to int for block operations: <code>int(x), int(y), int(z)</code></p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find all diamond ore within 64 blocks of bot</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">diamonds</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:diamond_ore&quot;</span><span class="p">,</span>
+                             <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+                             <span class="n">radius</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diamonds</span><span class="p">)</span><span class="si">}</span><span class="s2"> diamond ore blocks&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">diamonds</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Diamond at (</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Find all chests near spawn</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Find air blocks with no block light and no sky access (fully dark, unlit caves)</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">dark_air</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:air&quot;</span><span class="p">,</span>
+                             <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+                             <span class="n">radius</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                             <span class="n">max_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">max_sky_light</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="find_nearestblock_types-max_distance128-bot_name"><code>find_nearest(block_types, max_distance=128, bot_name="")</code></h3>
+<p>Find the nearest block matching any of the specified types.</p>
+<p>This function searches from the bot's current position and only searches loaded chunks.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>block_types</code> (<code>list[str]</code>) - List of block types to search for</li>
+<li><code>max_distance</code> (<code>int</code>, optional) - Maximum search distance in blocks (default: 128)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>tuple</code> - Position as <code>(x, y, z)</code> tuple of floats, or <code>None</code> if no matching block found</p>
+<p><strong>Note:</strong> Returns float coordinates. Convert to int for block operations: <code>int(x), int(y), int(z)</code></p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="c1"># Find nearest chest or barrel</span>
+<span class="n">container</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span>
+    <span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;minecraft:barrel&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;minecraft:trapped_chest&quot;</span>
+<span class="p">])</span>
+
+<span class="k">if</span> <span class="n">container</span><span class="p">:</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">container</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found container at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Find a valid standing position around the container</span>
+    <span class="c1"># Check adjacent blocks (not diagonals)</span>
+    <span class="n">offsets</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+    <span class="n">standing_pos</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">for</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dz</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">:</span>
+        <span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span><span class="p">,</span> <span class="n">check_z</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">dx</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="n">dy</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">+</span> <span class="n">dz</span>
+        <span class="c1"># Check if position is air (can stand there)</span>
+        <span class="n">block_at_pos</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span><span class="p">,</span> <span class="n">check_z</span><span class="p">)</span>
+        <span class="n">block_above</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">check_z</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">block_at_pos</span> <span class="ow">and</span> <span class="n">block_above</span> <span class="ow">and</span> <span class="s2">&quot;air&quot;</span> <span class="ow">in</span> <span class="n">block_at_pos</span> <span class="ow">and</span> <span class="s2">&quot;air&quot;</span> <span class="ow">in</span> <span class="n">block_above</span><span class="p">:</span>
+            <span class="n">standing_pos</span> <span class="o">=</span> <span class="p">(</span><span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span><span class="p">,</span> <span class="n">check_z</span><span class="p">)</span>
+            <span class="k">break</span>
+
+    <span class="k">if</span> <span class="n">standing_pos</span><span class="p">:</span>
+        <span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">sz</span> <span class="o">=</span> <span class="n">standing_pos</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Going to standing position (</span><span class="si">{</span><span class="n">sx</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sy</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sz</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span>
+
+        <span class="c1"># Wait for bot to arrive</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sz</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+
+        <span class="c1"># To interact, convert to int:</span>
+        <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid standing position found near container&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No containers found nearby&quot;</span><span class="p">)</span>
+
+<span class="c1"># Find nearest ore</span>
+<span class="n">ore</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span>
+    <span class="s2">&quot;minecraft:diamond_ore&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;minecraft:iron_ore&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;minecraft:coal_ore&quot;</span>
+<span class="p">],</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">ore</span><span class="p">:</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">ore</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found ore at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ore type: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No ore found within 50 blocks&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="block-entities">Block Entities</h2>
+<p>Block entities are blocks with attached data: chests, furnaces, signs, shulker boxes, etc. The bot tracks block entities for chunks it has loaded this session. With <code>use_disk=True</code>, entities from saved but currently unloaded chunks can also be queried.</p>
+<h3 id="get_block_entityx-y-z-use_diskfalse-dimension-bot_name"><code>get_block_entity(x, y, z, use_disk=False, dimension="", bot_name="")</code></h3>
+<p>Get the block entity at the specified position.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x</code> (<code>int</code>) - Block X coordinate</li>
+<li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
+<li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and no in-memory data exists, read from the saved <code>.mca</code> file (default: <code>False</code>)</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension. <strong>Requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> if set without it.</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if no block entity exists at that position</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Present when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type</code></td>
+<td><code>str</code></td>
+<td>always (e.g. <code>"minecraft:chest"</code>)</td>
+</tr>
+<tr>
+<td><code>x</code></td>
+<td><code>int</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>y</code></td>
+<td><code>int</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>z</code></td>
+<td><code>int</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>items</code></td>
+<td><code>list</code></td>
+<td>container was opened this session (memory) or in a previous session that was saved to disk</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note on <code>items</code>:</strong> The Minecraft server only sends container contents when a container is opened, so <code>items</code> is only present if the container was opened at some point. Memory always takes priority: if items are already in memory (opened this session), they are returned even when <code>use_disk=True</code>. Disk is only consulted when items are absent from memory - in that case, items may be present on disk if the container was opened in a previous session that was saved.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># items only present if container was opened this session</span>
+<span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="s1">&#39;items&#39;</span> <span class="ow">in</span> <span class="n">be</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">be</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;minecraft:air&#39;</span><span class="p">:</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># also check saved data from previous sessions where container was opened</span>
+<span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="s1">&#39;items&#39;</span> <span class="ow">in</span> <span class="n">be</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chest contents from disk: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> stacks&quot;</span><span class="p">)</span>
+
+<span class="c1"># check a saved but unloaded chunk</span>
+<span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="n">be</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;minecraft:chest&#39;</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Found a chest in saved data&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="get_block_entities_in_chunkchunk_x-chunk_z-use_diskfalse-dimension-bot_name"><code>get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")</code></h3>
+<p>Get all block entities in a chunk.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>chunk_x</code> (<code>int</code>) - Chunk X coordinate (block X divided by 16, rounded down)</li>
+<li><code>chunk_z</code> (<code>int</code>) - Chunk Z coordinate (block Z divided by 16, rounded down)</li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and the chunk is not loaded, read from the saved <code>.mca</code> file (default: <code>False</code>)</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. If a different dimension is specified, <strong>requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> otherwise.</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>list[dict]</code> - List of block entity dicts (same schema as <code>get_block_entity</code>)</p>
+<p>Memory always takes priority: if the chunk is loaded, memory data is returned regardless of <code>use_disk</code>. Disk is only read when the chunk is not loaded. <code>items</code> is present on any container that was opened (either this session from memory, or a previous session from disk).</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="c1"># Get all block entities in the chunk under the bot</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">cx</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">cz</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
+
+<span class="n">entities</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">entities</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> at (</span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Scan a saved chunk for chests</span>
+<span class="n">entities</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="mi">312</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="p">[</span><span class="n">be</span> <span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">entities</span> <span class="k">if</span> <span class="n">be</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;minecraft:chest&#39;</span><span class="p">]</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chests</span><span class="p">)</span><span class="si">}</span><span class="s2"> chests in saved chunk (312, -5)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Scan a chunk in the nether from disk</span>
+<span class="n">nether_ents</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">&quot;minecraft:the_nether&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="block-interaction">Block Interaction</h2>
+<h3 id="hold_attackenabled-duration_ticks0-bot_name"><code>hold_attack(enabled, duration_ticks=0, bot_name="")</code></h3>
+<p>Hold or release the left-click attack button in-game. While enabled, the client drives <code>continueDestroyBlock</code> every game tick against whatever block the crosshair is currently targeting.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>enabled</code> (<code>bool</code>) - <code>True</code> to start holding attack, <code>False</code> to release</li>
+<li><code>duration_ticks</code> (<code>int</code>, optional) - Auto-release after this many game ticks. <code>0</code> holds indefinitely until an explicit <code>False</code> call (default: <code>0</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># Hold for 100 ticks (5 seconds), then auto-release</span>
+<span class="n">world</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">duration_ticks</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Hold indefinitely</span>
+<span class="n">world</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># ... later:</span>
+<span class="n">world</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="get_hold_attackbot_name"><code>get_hold_attack(bot_name="")</code></h3>
+<p>Query whether the client is currently holding the attack button.</p>
+<p><strong>Returns:</strong> <code>bool</code> - <code>True</code> if attack is being held, <code>False</code> otherwise</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">get_hold_attack</span><span class="p">():</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Currently mining&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name"><code>look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")</code></h3>
+<p>Rotate the bot to look at a block. With <code>face=AUTO</code> the handler raycasts each face and picks the first visible one. When a specific face is given it uses candidate points on that face (center + near-corners for UP/DOWN, top/bottom for horizontal faces) and picks the first visible candidate. If <code>sneak=False</code> and no candidate is visible standing up, it automatically retries with the crouched eye position.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x</code> (<code>int</code>) - Block X coordinate</li>
+<li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
+<li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
+<li><code>face</code> (<code>world.BlockFace</code>, optional) - Which face to target (default: <code>world.BlockFace.AUTO</code>)</li>
+<li><code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height for raytrace; when False, tries standing first then sneaking (default: False)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Look at the top face of a block before placing on it</span>
+<span class="n">world</span><span class="o">.</span><span class="n">look_at</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">UP</span><span class="p">)</span>
+<span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="n">sneak</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">look_at_block</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">UP</span><span class="p">)</span>
+
+<span class="c1"># Auto-find best visible face</span>
+<span class="n">world</span><span class="o">.</span><span class="n">look_at</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="interact_blockx-y-z-sneakfalse-look_at_blocktrue-faceworldblockfaceauto-bot_name"><code>interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")</code></h3>
+<p>Interact with (right-click) a block at the specified position.</p>
+<p>This is used to open containers, press buttons, use beds, place blocks against a neighbour face, etc.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x</code> (<code>int</code>) - Block X coordinate</li>
+<li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
+<li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
+<li><code>sneak</code> (<code>bool</code>, optional) - Whether to sneak while interacting (default: False)</li>
+<li><code>look_at_block</code> (<code>bool</code>, optional) - Whether to rotate and look at the block before interacting (default: True)</li>
+<li><code>face</code> (<code>world.BlockFace</code>, optional) - Which face of the block to interact with. When set to anything other than <code>AUTO</code>, bypasses the automatic raytrace and clicks the specified face directly regardless of bot position (default: <code>world.BlockFace.AUTO</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Open a chest (bot will look at it)</span>
+<span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+
+<span class="c1"># Open a chest while sneaking (places block instead if holding one)</span>
+<span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">sneak</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Place a block against the west face of a neighbour</span>
+<span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">sneak</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">WEST</span><span class="p">)</span>
+
+<span class="c1"># Use a bed</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span><span class="s2">&quot;minecraft:white_bed&quot;</span><span class="p">])</span>
+<span class="k">if</span> <span class="n">pos</span><span class="p">:</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">pos</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="can_reach_blockx-y-z-sneakfalse-faceworldblockfaceauto-bot_name"><code>can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")</code></h3>
+<p>Check if a block is reachable (visible via raytrace) from the bot's current eye position.</p>
+<p><strong>Parameters:</strong>
+- <code>x, y, z</code> (<code>int</code>) - Block coordinates
+- <code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height (default: False)
+- <code>face</code> (<code>world.BlockFace</code>, optional) - Check reachability of a specific face only. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)
+- <code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</p>
+<p><strong>Returns:</strong> <code>bool</code> - True if the block (or specified face) is reachable</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">can_reach_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+<span class="c1"># Check a specific face before placing</span>
+<span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">can_reach_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">UP</span><span class="p">):</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">UP</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="can_reach_block_fromfrom_x-from_y-from_z-x-y-z-sneakfalse-faceworldblockfaceauto-bot_name"><code>can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")</code></h3>
+<p>Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.</p>
+<p><strong>Parameters:</strong>
+- <code>from_x, from_y, from_z</code> (<code>int</code>) - Hypothetical foot position (eye height is added automatically)
+- <code>x, y, z</code> (<code>int</code>) - Block coordinates to check
+- <code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height (default: False)
+- <code>face</code> (<code>world.BlockFace</code>, optional) - Check reachability of a specific face only. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)
+- <code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</p>
+<p><strong>Returns:</strong> <code>bool</code> - True if the block (or specified face) would be reachable from that position</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find a standable position from which the UP face is reachable</span>
+<span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">can_reach_block_from</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">UP</span><span class="p">):</span>
+    <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="blockface-enum"><code>BlockFace</code> enum</h3>
+<p>Used with <code>look_at</code>, <code>interact_block</code>, <code>can_reach_block</code>, and <code>can_reach_block_from</code> to specify a block face.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>world.BlockFace.AUTO</code></td>
+<td>Auto-detect via raytrace from bot eye position (default)</td>
+</tr>
+<tr>
+<td><code>world.BlockFace.DOWN</code></td>
+<td>Bottom face (-Y)</td>
+</tr>
+<tr>
+<td><code>world.BlockFace.UP</code></td>
+<td>Top face (+Y)</td>
+</tr>
+<tr>
+<td><code>world.BlockFace.NORTH</code></td>
+<td>North face (-Z)</td>
+</tr>
+<tr>
+<td><code>world.BlockFace.SOUTH</code></td>
+<td>South face (+Z)</td>
+</tr>
+<tr>
+<td><code>world.BlockFace.WEST</code></td>
+<td>West face (-X)</td>
+</tr>
+<tr>
+<td><code>world.BlockFace.EAST</code></td>
+<td>East face (+X)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="container-interaction">Container Interaction</h2>
+<h3 id="get_containerbot_name"><code>get_container(bot_name="")</code></h3>
+<p>Get the currently open container. Returns <code>None</code> if no container is open or bot is offline.</p>
+<p><strong>Returns:</strong> <code>dict</code> with container info, or <code>None</code></p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>int</code></td>
+<td>Container ID</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>ContainerType</code></td>
+<td>Container type enum value</td>
+</tr>
+<tr>
+<td><code>items</code></td>
+<td><code>list</code></td>
+<td>List of <a href="../bot/#item-dict">item dicts</a> for all slots</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> Only works for external containers (chests, barrels, etc.). For the player's own inventory use <code>bot.inventory()</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">world</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>  <span class="c1"># wait for server to open container</span>
+
+<span class="n">container</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_container</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">container</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Container type: </span><span class="si">{</span><span class="n">container</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">container</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;minecraft:air&#39;</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="click_slotslot_index-buttonworldmousebuttonleft-click_typeworldclicktypepickup-bot_name-silentfalse"><code>click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot_name="", silent=False)</code></h3>
+<p>Click a slot in the currently open container (or player inventory).</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>slot_index</code> (<code>int</code>) - Slot index using <strong>InventoryMenu numbering</strong> (see note below)</li>
+<li><code>button</code> (<code>int</code> or <code>MouseButton</code>, optional) - Mouse button for normal clicks, or hotbar key number (1-9) for <code>SWAP</code> (default: <code>LEFT</code>)</li>
+<li><code>click_type</code> (<code>ClickType</code>, optional) - Click type (default: <code>PICKUP</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+<li><code>silent</code> (<code>bool</code>, optional) - Suppress the per-click confirmation message in the bot console (default: <code>False</code>). Useful in loops that call <code>click_slot</code> repeatedly.</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<p><strong>Slot numbering</strong> depends on what is open. Container slots always start at 0, with player inventory slots appended after.</p>
+<p><strong>Single chest (27 slots):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Range</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0–26</td>
+<td>Chest</td>
+</tr>
+<tr>
+<td>27–53</td>
+<td>Player main inventory</td>
+</tr>
+<tr>
+<td>54–62</td>
+<td>Player hotbar</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Double chest (54 slots):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Range</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0–53</td>
+<td>Chest</td>
+</tr>
+<tr>
+<td>54–80</td>
+<td>Player main inventory</td>
+</tr>
+<tr>
+<td>81–89</td>
+<td>Player hotbar</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Player inventory screen (no external container):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Range</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Crafting output</td>
+</tr>
+<tr>
+<td>1–4</td>
+<td>Crafting grid</td>
+</tr>
+<tr>
+<td>5–8</td>
+<td>Armor</td>
+</tr>
+<tr>
+<td>9–35</td>
+<td>Main inventory</td>
+</tr>
+<tr>
+<td>36–44</td>
+<td>Hotbar</td>
+</tr>
+<tr>
+<td>45</td>
+<td>Offhand</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> <code>bot.inventory()</code> numbers hotbar as 0–8 and main as 9–35. When a chest is open, player main starts at <code>chest_size</code> and hotbar at <code>chest_size + 27</code>, so <code>bot.inventory()</code> slot numbers cannot be used directly - calculate the offset based on container size.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">world</span>
+
+<span class="c1"># Shift-click slot 0 of a chest into inventory</span>
+<span class="n">world</span><span class="o">.</span><span class="n">click_slot</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">click_type</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">ClickType</span><span class="o">.</span><span class="n">QUICK_MOVE</span><span class="p">)</span>
+
+<span class="c1"># Swap chest slot 0 with hotbar slot 8 (button = slot index + 1)</span>
+<span class="n">world</span><span class="o">.</span><span class="n">click_slot</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">button</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">click_type</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">ClickType</span><span class="o">.</span><span class="n">SWAP</span><span class="p">)</span>
+
+<span class="c1"># Right-click a slot (split stack)</span>
+<span class="n">world</span><span class="o">.</span><span class="n">click_slot</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">button</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">MouseButton</span><span class="o">.</span><span class="n">RIGHT</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="click_widgetscreen_id-widget_index-buttonworldmousebuttonleft-bot_name"><code>click_widget(screen_id, widget_index, button=world.MouseButton.LEFT, bot_name="")</code></h3>
+<p>Click a widget (button, etc.) on the currently open screen.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>screen_id</code> (<code>str</code>) - The <code>id</code> from <code>bot.get_screen()</code>. Ensures the screen hasn't changed since you read the dump.</li>
+<li><code>widget_index</code> (<code>int</code>) - The <code>index</code> from a <code>GuiWidget</code> in <code>bot.get_screen().widgets</code></li>
+<li><code>button</code> (<code>MouseButton</code>, optional) - Mouse button (default: <code>LEFT</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found, not online, or <code>screen_id</code> doesn't match the currently open screen</p>
+<blockquote>
+<p><strong>Note:</strong> Only use for non-slot widgets (buttons, checkboxes, etc.). For container slots, use <code>click_slot()</code>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;Accept&quot;</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+            <span class="n">world</span><span class="o">.</span><span class="n">click_widget</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="k">break</span>
+</code></pre></div>
+<hr />
+<h3 id="click_screenscreen_id-x-y-buttonworldmousebuttonleft-bot_name"><code>click_screen(screen_id, x, y, button=world.MouseButton.LEFT, bot_name="")</code></h3>
+<p>Click at specific pixel coordinates on the currently open screen. Useful for sliders and other widgets where you need to control the exact click position.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>screen_id</code> (<code>str</code>) - The <code>id</code> from <code>bot.get_screen()</code>. Ensures the screen hasn't changed since you read the dump.</li>
+<li><code>x</code> (<code>float</code>) - Screen pixel X coordinate</li>
+<li><code>y</code> (<code>float</code>) - Screen pixel Y coordinate</li>
+<li><code>button</code> (<code>MouseButton</code>, optional) - Mouse button (default: <code>LEFT</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found, not online, or <code>screen_id</code> doesn't match the currently open screen</p>
+<div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Max Framerate&quot;</span><span class="p">):</span>
+            <span class="c1"># Slider range: 10-260 fps</span>
+            <span class="n">fraction</span> <span class="o">=</span> <span class="p">(</span><span class="mi">90</span> <span class="o">-</span> <span class="mi">10</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">260</span> <span class="o">-</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">click_x</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">fraction</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">width</span>
+            <span class="n">world</span><span class="o">.</span><span class="n">click_screen</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">click_x</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">w</span><span class="o">.</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="k">break</span>
+</code></pre></div>
+<hr />
+<h3 id="type_textscreen_id-text-bot_name"><code>type_text(screen_id, text, bot_name="")</code></h3>
+<p>Type text into the currently focused element on the open screen (sign lines, chat, edit boxes). Sends individual <code>charTyped</code> events for each character.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>screen_id</code> (<code>str</code>) - The <code>id</code> from <code>bot.get_screen()</code>. Ensures the screen hasn't changed since you read the dump.</li>
+<li><code>text</code> (<code>str</code>) - The text to type</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">and</span> <span class="s2">&quot;SignEditScreen&quot;</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="p">:</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">type_text</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;Hello world&quot;</span><span class="p">)</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">press_key</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Key</span><span class="o">.</span><span class="n">ENTER</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="press_keyscreen_id-key_code-modifiers0-bot_name"><code>press_key(screen_id, key_code, modifiers=0, bot_name="")</code></h3>
+<p>Press a key on the currently open screen (sends <code>keyPressed</code> + <code>keyReleased</code>).</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>screen_id</code> (<code>str</code>) - The <code>id</code> from <code>bot.get_screen()</code>. Ensures the screen hasn't changed since you read the dump.</li>
+<li><code>key_code</code> (<code>int</code>) - GLFW key code - use <code>world.Key.*</code> constants</li>
+<li><code>modifiers</code> (<code>int</code>, optional) - GLFW modifier flags - use <code>world.KeyMod.*</code> constants, default <code>0</code></li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<p><strong><code>world.Key</code> constants:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Constants</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Navigation</td>
+<td><code>UP</code>, <code>DOWN</code>, <code>LEFT</code>, <code>RIGHT</code>, <code>HOME</code>, <code>END</code>, <code>PAGE_UP</code>, <code>PAGE_DOWN</code>, <code>INSERT</code>, <code>DELETE</code></td>
+</tr>
+<tr>
+<td>Control</td>
+<td><code>ESCAPE</code>, <code>ENTER</code>, <code>TAB</code>, <code>BACKSPACE</code>, <code>SPACE</code>, <code>CAPS_LOCK</code>, <code>SCROLL_LOCK</code>, <code>NUM_LOCK</code>, <code>PRINT_SCREEN</code>, <code>PAUSE</code>, <code>MENU</code></td>
+</tr>
+<tr>
+<td>Letters</td>
+<td><code>A</code>-<code>Z</code></td>
+</tr>
+<tr>
+<td>Digits</td>
+<td><code>NUM_0</code>-<code>NUM_9</code></td>
+</tr>
+<tr>
+<td>Punctuation</td>
+<td><code>APOSTROPHE</code>, <code>COMMA</code>, <code>MINUS</code>, <code>PERIOD</code>, <code>SLASH</code>, <code>SEMICOLON</code>, <code>EQUAL</code>, <code>LEFT_BRACKET</code>, <code>BACKSLASH</code>, <code>RIGHT_BRACKET</code>, <code>GRAVE_ACCENT</code></td>
+</tr>
+<tr>
+<td>Function</td>
+<td><code>F1</code>-<code>F12</code></td>
+</tr>
+<tr>
+<td>Keypad</td>
+<td><code>KP_0</code>-<code>KP_9</code>, <code>KP_DECIMAL</code>, <code>KP_DIVIDE</code>, <code>KP_MULTIPLY</code>, <code>KP_SUBTRACT</code>, <code>KP_ADD</code>, <code>KP_ENTER</code>, <code>KP_EQUAL</code></td>
+</tr>
+<tr>
+<td>Modifiers</td>
+<td><code>LEFT_SHIFT</code>, <code>LEFT_CONTROL</code>, <code>LEFT_ALT</code>, <code>LEFT_SUPER</code>, <code>RIGHT_SHIFT</code>, <code>RIGHT_CONTROL</code>, <code>RIGHT_ALT</code>, <code>RIGHT_SUPER</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>world.KeyMod</code> constants:</strong> <code>SHIFT</code>, <code>CONTROL</code>, <code>ALT</code>, <code>SUPER</code>, <code>CAPS_LOCK</code>, <code>NUM_LOCK</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Select all text and delete it</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">press_key</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Key</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">KeyMod</span><span class="o">.</span><span class="n">CONTROL</span><span class="p">)</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">press_key</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Key</span><span class="o">.</span><span class="n">DELETE</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="close_containerbot_name"><code>close_container(bot_name="")</code></h3>
+<p>Close the currently open container.</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">world</span><span class="o">.</span><span class="n">close_container</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h3 id="open_inventorybot_name"><code>open_inventory(bot_name="")</code></h3>
+<p>Open the player's own inventory screen.</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">world</span><span class="o">.</span><span class="n">open_inventory</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h3 id="enums">Enums</h3>
+<h4 id="worldmousebutton"><code>world.MouseButton</code></h4>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LEFT</code></td>
+<td>Left mouse button</td>
+</tr>
+<tr>
+<td><code>RIGHT</code></td>
+<td>Right mouse button</td>
+</tr>
+<tr>
+<td><code>MIDDLE</code></td>
+<td>Middle mouse button</td>
+</tr>
+</tbody>
+</table>
+<h4 id="worldclicktype"><code>world.ClickType</code></h4>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PICKUP</code></td>
+<td>Pick up / place item (left or right click)</td>
+</tr>
+<tr>
+<td><code>QUICK_MOVE</code></td>
+<td>Shift-click (move to/from inventory)</td>
+</tr>
+<tr>
+<td><code>SWAP</code></td>
+<td>Swap with hotbar slot (<code>button</code> = hotbar index 0–8)</td>
+</tr>
+<tr>
+<td><code>CLONE</code></td>
+<td>Clone item (creative mode middle-click)</td>
+</tr>
+<tr>
+<td><code>THROW</code></td>
+<td>Throw item out of inventory</td>
+</tr>
+<tr>
+<td><code>QUICK_CRAFT</code></td>
+<td>Quick craft drag operation</td>
+</tr>
+<tr>
+<td><code>PICKUP_ALL</code></td>
+<td>Double-click to collect all matching items</td>
+</tr>
+</tbody>
+</table>
+<h4 id="worldcontainertype"><code>world.ContainerType</code></h4>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PLAYER_INVENTORY</code></td>
+<td><code>CRAFTING_TABLE</code></td>
+</tr>
+<tr>
+<td><code>CHEST</code></td>
+<td><code>ENCHANTING_TABLE</code></td>
+</tr>
+<tr>
+<td><code>ENDER_CHEST</code></td>
+<td><code>ANVIL</code></td>
+</tr>
+<tr>
+<td><code>SHULKER_BOX</code></td>
+<td><code>BREWING_STAND</code></td>
+</tr>
+<tr>
+<td><code>FURNACE</code></td>
+<td><code>VILLAGER_TRADE</code></td>
+</tr>
+<tr>
+<td><code>BLAST_FURNACE</code></td>
+<td><code>HORSE_INVENTORY</code></td>
+</tr>
+<tr>
+<td><code>SMOKER</code></td>
+<td><code>HOPPER</code></td>
+</tr>
+<tr>
+<td><code>DISPENSER</code></td>
+<td><code>DROPPER</code></td>
+</tr>
+<tr>
+<td><code>BEACON</code></td>
+<td><code>OTHER</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="chunk-information">Chunk Information</h2>
+<h3 id="loaded_chunk_countbot_name"><code>loaded_chunk_count(bot_name="")</code></h3>
+<p>Get the number of chunks currently loaded in memory.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>int</code> - Number of loaded chunks</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">count</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">loaded_chunk_count</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded chunks: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="loaded_chunksbot_name"><code>loaded_chunks(bot_name="")</code></h3>
+<p>Get list of all loaded chunk positions.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>list[tuple]</code> - List of chunk positions as <code>(chunk_x, chunk_z)</code> tuples</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">chunks</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">loaded_chunks</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> chunks:&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cz</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Chunk (</span><span class="si">{</span><span class="n">cx</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="si">}</span><span class="s2">) - blocks (</span><span class="si">{</span><span class="n">cx</span><span class="o">*</span><span class="mi">16</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="o">*</span><span class="mi">16</span><span class="si">}</span><span class="s2">) to (</span><span class="si">{</span><span class="n">cx</span><span class="o">*</span><span class="mi">16</span><span class="o">+</span><span class="mi">15</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="o">*</span><span class="mi">16</span><span class="o">+</span><span class="mi">15</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="memory_usagebot_name"><code>memory_usage(bot_name="")</code></h3>
+<p>Get the total memory used by world data storage.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>int</code> - Memory usage in bytes</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">memory</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;World data memory usage: </span><span class="si">{</span><span class="n">memory</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="mining-helper">Mining Helper</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="c1"># Check if bot has a pickaxe</span>
+<span class="n">inventory</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">inventory</span><span class="p">()</span>
+<span class="n">has_pickaxe</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="k">if</span> <span class="n">inventory</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">inventory</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">item</span> <span class="ow">and</span> <span class="s2">&quot;pickaxe&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="n">has_pickaxe</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">has_pickaxe</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No pickaxe found in inventory! Cannot mine.&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Find diamond ore</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+    <span class="n">diamonds</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:diamond_ore&quot;</span><span class="p">,</span>
+                                 <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+                                 <span class="n">radius</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">diamonds</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diamonds</span><span class="p">)</span><span class="si">}</span><span class="s2"> diamond ore blocks&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Sort by distance</span>
+        <span class="n">diamonds</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Mine each one</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">diamonds</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mining diamond at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Go near the block</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+            <span class="c1"># Wait for arrival</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="c1"># Break the block using sel cleararea command</span>
+            <span class="c1"># Set selection for the single block</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sel pos1 </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sel pos2 </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;sel cleararea&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Wait for block to be broken</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">block</span> <span class="ow">and</span> <span class="s2">&quot;air&quot;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="c1"># Clear selections for next iteration</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;sel clear&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No diamonds found nearby&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="container-finder">Container Finder</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find all chests</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span>
+                           <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+                           <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chests</span><span class="p">)</span><span class="si">}</span><span class="s2"> chests&quot;</span><span class="p">)</span>
+
+<span class="c1"># Go to nearest chest and open it</span>
+<span class="k">if</span> <span class="n">chests</span><span class="p">:</span>
+    <span class="n">nearest</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">chests</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">nearest</span>
+
+    <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="c1"># Wait for arrival...</span>
+
+    <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Opened chest!&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="block-scanner">Block Scanner</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Scan area and categorize blocks</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">radius</span> <span class="o">=</span> <span class="mi">32</span>
+
+<span class="n">ores</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">containers</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">fluids</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">loaded_chunks</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scanning </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> loaded chunks...&quot;</span><span class="p">)</span>
+
+<span class="c1"># Count different block types</span>
+<span class="k">for</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cz</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="c1"># Check if chunk is in range</span>
+    <span class="n">chunk_center_x</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">8</span>
+    <span class="n">chunk_center_z</span> <span class="o">=</span> <span class="n">cz</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">8</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="p">((</span><span class="n">chunk_center_x</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">chunk_center_z</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+
+    <span class="k">if</span> <span class="n">dist</span> <span class="o">&gt;</span> <span class="n">radius</span><span class="p">:</span>
+        <span class="k">continue</span>
+
+    <span class="c1"># Scan blocks in chunk</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cx</span> <span class="o">*</span> <span class="mi">16</span><span class="p">,</span> <span class="n">cx</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">16</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cz</span> <span class="o">*</span> <span class="mi">16</span><span class="p">,</span> <span class="n">cz</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">16</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">64</span><span class="p">,</span> <span class="mi">320</span><span class="p">):</span>
+                <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">block</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="s2">&quot;ore&quot;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+                    <span class="n">ores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">block</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;chest&quot;</span><span class="p">,</span> <span class="s2">&quot;barrel&quot;</span><span class="p">,</span> <span class="s2">&quot;shulker&quot;</span><span class="p">]):</span>
+                    <span class="n">containers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">f</span> <span class="ow">in</span> <span class="n">block</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">,</span> <span class="s2">&quot;lava&quot;</span><span class="p">]):</span>
+                    <span class="n">fluids</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ores</span><span class="p">)</span><span class="si">}</span><span class="s2"> ore blocks&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">containers</span><span class="p">)</span><span class="si">}</span><span class="s2"> containers&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fluids</span><span class="p">)</span><span class="si">}</span><span class="s2"> fluid blocks&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="recipe-registry">Recipe Registry</h2>
+<h3 id="get_reciperecipe_id-bot_name"><code>get_recipe(recipe_id, bot_name="")</code></h3>
+<p>Get recipe data by its exact recipe ID.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>recipe_id</code> (<code>str</code>) - Exact recipe ID (e.g., <code>"minecraft:gold_ingot_from_gold_block"</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>dict</code> with recipe data, or <code>None</code> if not found</p>
+<div class="highlight"><pre><span></span><code><span class="n">recipe</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_recipe</span><span class="p">(</span><span class="s2">&quot;minecraft:stick&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">recipe</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Makes </span><span class="si">{</span><span class="n">recipe</span><span class="p">[</span><span class="s1">&#39;result_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">recipe</span><span class="p">[</span><span class="s1">&#39;result_item&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ing</span> <span class="ow">in</span> <span class="n">recipe</span><span class="p">[</span><span class="s1">&#39;ingredients&#39;</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Slot </span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Recipe dict fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>recipe_id</code></td>
+<td><code>str</code></td>
+<td>The recipe's unique ID</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>str</code></td>
+<td>Recipe type (e.g., <code>"minecraft:crafting_shaped"</code>)</td>
+</tr>
+<tr>
+<td><code>result_item</code></td>
+<td><code>str</code></td>
+<td>Output item ID</td>
+</tr>
+<tr>
+<td><code>result_count</code></td>
+<td><code>int</code></td>
+<td>Number of items produced</td>
+</tr>
+<tr>
+<td><code>is_shapeless</code></td>
+<td><code>bool</code></td>
+<td>Whether the recipe is shapeless</td>
+</tr>
+<tr>
+<td><code>ingredients</code></td>
+<td><code>list</code></td>
+<td>List of ingredient dicts (see below)</td>
+</tr>
+<tr>
+<td><code>experience</code></td>
+<td><code>float</code></td>
+<td>XP granted (smelting recipes only)</td>
+</tr>
+<tr>
+<td><code>cooking_time</code></td>
+<td><code>int</code></td>
+<td>Ticks to smelt (smelting recipes only)</td>
+</tr>
+</tbody>
+</table>
+<p>Each ingredient dict:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slot</code></td>
+<td><code>int</code></td>
+<td>Grid slot index (1-9 for 3×3, 1-4 for 2×2)</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td><code>int</code></td>
+<td>Amount required</td>
+</tr>
+<tr>
+<td><code>items</code></td>
+<td><code>list[str]</code></td>
+<td>Accepted item IDs (e.g., any log type)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="get_recipes_foritem_id-bot_name"><code>get_recipes_for(item_id, bot_name="")</code></h3>
+<p>Get all recipes that produce a given item.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>item_id</code> (<code>str</code>) - Item ID to look up (e.g., <code>"minecraft:gold_ingot"</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>list[dict]</code> - List of recipe dicts (same format as <code>get_recipe()</code>). Empty list if no recipes found.</p>
+<div class="highlight"><pre><span></span><code><span class="n">recipes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_recipes_for</span><span class="p">(</span><span class="s2">&quot;minecraft:gold_ingot&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">recipes</span><span class="p">)</span><span class="si">}</span><span class="s2"> way(s) to craft gold ingot:&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recipes</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;recipe_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># e.g.:</span>
+<span class="c1">#   minecraft:gold_ingot_from_nuggets</span>
+<span class="c1">#   minecraft:gold_ingot_from_gold_block</span>
+</code></pre></div>
+<hr />
+<h3 id="get_item_infoitem_id-bot_name"><code>get_item_info(item_id, bot_name="")</code></h3>
+<p>Get item metadata from the item registry.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>item_id</code> (<code>str</code>) - Item ID (e.g., <code>"minecraft:diamond_sword"</code>)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if item not found</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>item_id</code></td>
+<td><code>str</code></td>
+<td>Item ID</td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td><code>str</code></td>
+<td>Human-readable item name (e.g., <code>"Diamond Pickaxe"</code>)</td>
+</tr>
+<tr>
+<td><code>max_stack_size</code></td>
+<td><code>int</code></td>
+<td>Maximum stack size (usually 1, 16, or 64)</td>
+</tr>
+<tr>
+<td><code>max_damage</code></td>
+<td><code>int</code></td>
+<td>Maximum durability (0 for non-damageable items)</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="n">info</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_item_info</span><span class="p">(</span><span class="s2">&quot;minecraft:diamond_pickaxe&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">info</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Name: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Max durability: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;max_damage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stack size: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;max_stack_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="get_all_recipesbot_name"><code>get_all_recipes(bot_name="")</code></h3>
+<p>Get a list of all known recipe IDs.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>list[str]</code> - All recipe IDs</p>
+<div class="highlight"><pre><span></span><code><span class="n">recipes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_all_recipes</span><span class="p">()</span>
+<span class="c1"># Filter to just pickaxe recipes</span>
+<span class="n">pickaxe_recipes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recipes</span> <span class="k">if</span> <span class="s2">&quot;pickaxe&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+</code></pre></div>
+<hr />
+<h3 id="plan_recursive_craftitem_id-count1-bot_name"><code>plan_recursive_craft(item_id, count=1, bot_name="")</code></h3>
+<p>Plan the full crafting tree for an item, including all intermediate steps, based on the bot's current inventory.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>item_id</code> (<code>str</code>) - Item to craft (e.g., <code>"minecraft:piston"</code>)</li>
+<li><code>count</code> (<code>int</code>, optional) - How many to craft (default: 1)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>dict</code></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>success</code></td>
+<td><code>bool</code></td>
+<td>Whether a complete plan was found</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>str</code></td>
+<td>Error message if <code>success</code> is False</td>
+</tr>
+<tr>
+<td><code>steps</code></td>
+<td><code>list</code></td>
+<td>Ordered crafting steps (see below)</td>
+</tr>
+<tr>
+<td><code>raw_materials</code></td>
+<td><code>dict</code></td>
+<td>Items needed that cannot be crafted: <code>{item_id: count}</code></td>
+</tr>
+<tr>
+<td><code>leftovers</code></td>
+<td><code>dict</code></td>
+<td>Items left over after all steps: <code>{item_id: count}</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each step dict:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>recipe_id</code></td>
+<td><code>str</code></td>
+<td>Recipe to use for this step</td>
+</tr>
+<tr>
+<td><code>output_item</code></td>
+<td><code>str</code></td>
+<td>Item produced</td>
+</tr>
+<tr>
+<td><code>output_count</code></td>
+<td><code>int</code></td>
+<td>Items produced per craft</td>
+</tr>
+<tr>
+<td><code>times</code></td>
+<td><code>int</code></td>
+<td>How many times to run this recipe</td>
+</tr>
+<tr>
+<td><code>inputs</code></td>
+<td><code>dict</code></td>
+<td>Items consumed: <code>{item_id: count}</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="n">plan</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">plan_recursive_craft</span><span class="p">(</span><span class="s2">&quot;minecraft:piston&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Can&#39;t plan: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Raw materials needed: </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;raw_materials&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">]:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Craft </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;output_item&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;times&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (recipe: </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;recipe_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Pass <code>step['recipe_id']</code> to <code>get_recipe()</code> when executing plan steps - do not re-look up by item ID, as there may be multiple recipes for the same output.</p>
+</div>
+<h2 id="entity-tracking">Entity Tracking</h2>
+<p>Live entity data is pushed from the Minecraft client every tick (only changed/new/removed entities).</p>
+<h3 id="entity-dict-schema">Entity dict schema</h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Present when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>entity_id</code></td>
+<td><code>int</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>uuid</code></td>
+<td><code>str</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>str</code></td>
+<td>always (e.g. <code>"minecraft:item"</code>, <code>"minecraft:zombie"</code>)</td>
+</tr>
+<tr>
+<td><code>x</code>, <code>y</code>, <code>z</code></td>
+<td><code>float</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>yaw</code>, <code>pitch</code></td>
+<td><code>float</code></td>
+<td>always - yaw is normalised to -180–180</td>
+</tr>
+<tr>
+<td><code>vel_x</code>, <code>vel_y</code>, <code>vel_z</code></td>
+<td><code>float</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>health</code></td>
+<td><code>float</code></td>
+<td>living entities</td>
+</tr>
+<tr>
+<td><code>max_health</code></td>
+<td><code>float</code></td>
+<td>living entities</td>
+</tr>
+<tr>
+<td><code>item</code></td>
+<td><a href="../bot/#item-dict">item dict</a></td>
+<td><code>type == "minecraft:item"</code> (dropped item entities)</td>
+</tr>
+<tr>
+<td><code>player_name</code></td>
+<td><code>str</code></td>
+<td>player entities</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>item</code> sub-dict follows the standard <a href="../bot/#item-dict">item dict schema</a>.</p>
+<hr />
+<h3 id="worldentitiesbot_name"><code>world.entities(bot_name="")</code></h3>
+<p>Returns a list of all currently tracked entity dicts.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">world</span>
+
+<span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">world</span><span class="o">.</span><span class="n">entities</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
+</code></pre></div>
+<hr />
+<h3 id="worldfind_entities_nearx-y-z-radius-type-bot_name"><code>world.find_entities_near(x, y, z, radius, type="", bot_name="")</code></h3>
+<p>Returns entities within <code>radius</code> blocks of <code>(x, y, z)</code>. Optional <code>type</code> is a prefix filter on the entity type string (e.g. <code>"minecraft:item"</code> or <code>"minecraft:"</code> for all vanilla entities).</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span><span class="o">,</span><span class="w"> </span><span class="nn">world</span>
+
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">items</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">],</span> <span class="mi">8</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;minecraft:item&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">item_ent</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;item&#39;</span><span class="p">][</span><span class="s1">&#39;item_id&#39;</span><span class="p">],</span> <span class="s1">&#39;at&#39;</span><span class="p">,</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
+</code></pre></div>
+<h4 id="wait-for-a-specific-item-to-drop-after-breaking-a-block">Wait for a specific item to drop after breaking a block</h4>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span><span class="o">,</span><span class="w"> </span><span class="nn">world</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="n">MINE_ITEMS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;minecraft:diamond&#39;</span><span class="p">,</span> <span class="s1">&#39;minecraft:ancient_debris&#39;</span><span class="p">}</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">wait_for_drops</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">3.0</span><span class="p">):</span>
+    <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span>
+    <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">deadline</span><span class="p">:</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;minecraft:item&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s1">&#39;item&#39;</span><span class="p">][</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">MINE_ITEMS</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">items</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">items</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[]</span>
+</code></pre></div>
+<h4 id="check-nearby-mob-health">Check nearby mob health</h4>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span><span class="o">,</span><span class="w"> </span><span class="nn">world</span>
+
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">mobs</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;health&#39;</span> <span class="ow">in</span> <span class="n">e</span> <span class="ow">and</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;minecraft:player&#39;</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">mob</span> <span class="ow">in</span> <span class="n">mobs</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">mob</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mob</span><span class="p">[</span><span class="s1">&#39;health&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">mob</span><span class="p">[</span><span class="s1">&#39;max_health&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> HP&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="update-strategy">Update strategy</h3>
+<p>The Java client sends <code>EntityUpdate</code> messages only when entities change - new arrivals, position/rotation changes, and removals.</p>
+<p>On server disconnect, all entity data is cleared so stale entities never persist across reconnections.</p>
+<hr />
+<h2 id="light">Light</h2>
+<h3 id="get_lightx-y-z-use_diskfalse-dimension-bot_name"><code>get_light(x, y, z, use_disk=False, dimension="", bot_name="")</code></h3>
+<p>Get the light levels at the specified block position.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x</code> (<code>float</code>) - X coordinate</li>
+<li><code>y</code> (<code>float</code>) - Y coordinate</li>
+<li><code>z</code> (<code>float</code>) - Z coordinate</li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and the chunk is not loaded in memory, read light data from the saved <code>.mca</code> region file on disk (default: <code>False</code>)</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension. <strong>Requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online; <code>ValueError</code> if <code>dimension</code> is set without <code>use_disk=True</code></p>
+<p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if the chunk is not loaded (and not on disk when <code>use_disk=True</code>)</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>block</code></td>
+<td><code>int</code></td>
+<td>Block light level (0-15, from torches, lava, etc.)</td>
+</tr>
+<tr>
+<td><code>sky</code></td>
+<td><code>int</code></td>
+<td>Raw sky light level (0-15, always 0 in nether/end)</td>
+</tr>
+</tbody>
+</table>
+<p>Light data is captured on chunk load and updated as the server sends light updates (e.g. from placing or removing light sources).</p>
+<p><strong>Note:</strong> <code>sky</code> is the raw stored sky light, not the internal sky light used for mob spawning calculations. Internal sky light also depends on time of day and weather, which are not factored in here.</p>
+<div class="highlight"><pre><span></span><code><span class="n">light</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_light</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">light</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Block light: </span><span class="si">{</span><span class="n">light</span><span class="p">[</span><span class="s1">&#39;block&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Sky light: </span><span class="si">{</span><span class="n">light</span><span class="p">[</span><span class="s1">&#39;sky&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># A position with no block light and no sky access is fully dark</span>
+    <span class="k">if</span> <span class="n">light</span><span class="p">[</span><span class="s1">&#39;block&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">light</span><span class="p">[</span><span class="s1">&#39;sky&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;No light sources reach this block&quot;</span><span class="p">)</span>
+
+<span class="c1"># Read light from a saved but unloaded chunk</span>
+<span class="n">light</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_light</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="block-solidity">Block Solidity</h2>
+<h3 id="is_solidblock_state-facedirectionup-bot_name"><code>is_solid(block_state, face=Direction.UP, bot_name="")</code></h3>
+<p>Check if a block state has a fully solid face in the given direction. Useful for finding mob spawn surfaces, attachment points, and pathfinding.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>block_state</code> (<code>str</code>) - Block state string (e.g. <code>"minecraft:stone"</code> or <code>"minecraft:oak_slab[type=top,waterlogged=false]"</code>)</li>
+<li><code>face</code> (<code>Direction</code>, optional) - Face direction to check, defaults to <code>Direction.UP</code></li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>bool</code>, or <code>None</code> if the block registry is not loaded</p>
+<h3 id="direction"><code>Direction</code></h3>
+<p>Enum for block face directions, matching Minecraft's internal direction ordering.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Direction.DOWN</code></td>
+<td>Bottom face</td>
+</tr>
+<tr>
+<td><code>Direction.UP</code></td>
+<td>Top face</td>
+</tr>
+<tr>
+<td><code>Direction.NORTH</code></td>
+<td>North face (-Z)</td>
+</tr>
+<tr>
+<td><code>Direction.SOUTH</code></td>
+<td>South face (+Z)</td>
+</tr>
+<tr>
+<td><code>Direction.WEST</code></td>
+<td>West face (-X)</td>
+</tr>
+<tr>
+<td><code>Direction.EAST</code></td>
+<td>East face (+X)</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check if a block has a solid top face (mob spawn surface)</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="n">block</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2"> has a solid top face&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check a specific face</span>
+<span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="s2">&quot;minecraft:oak_stairs[facing=north,half=bottom,shape=straight]&quot;</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Direction</span><span class="o">.</span><span class="n">NORTH</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;North face is solid&quot;</span><span class="p">)</span>
+
+<span class="c1"># Find all spawnable locations in a radius</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
+<span class="n">dark_air</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:air&quot;</span><span class="p">,</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span>
+                             <span class="n">min_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">spawnable</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dark_air</span><span class="p">:</span>
+    <span class="n">surface</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">surface</span> <span class="ow">and</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="n">surface</span><span class="p">)</span> <span class="ow">and</span> <span class="n">head</span> <span class="o">==</span> <span class="s2">&quot;minecraft:air&quot;</span><span class="p">:</span>
+        <span class="n">spawnable</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">))</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">spawnable</span><span class="p">)</span><span class="si">}</span><span class="s2"> spawnable locations&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="weather">Weather</h2>
+<h3 id="get_weatherbot_name"><code>get_weather(bot_name="")</code></h3>
+<p>Get the current weather state.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if bot is offline</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>is_raining</code></td>
+<td><code>bool</code></td>
+<td>Whether it is raining</td>
+</tr>
+<tr>
+<td><code>is_thundering</code></td>
+<td><code>bool</code></td>
+<td>Whether there is a thunderstorm</td>
+</tr>
+<tr>
+<td><code>rain_level</code></td>
+<td><code>float</code></td>
+<td>Rain intensity (0.0-1.0)</td>
+</tr>
+<tr>
+<td><code>thunder_level</code></td>
+<td><code>float</code></td>
+<td>Thunder intensity (0.0-1.0)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> Weather only applies to the overworld. In the nether or end, values will show no rain since those dimensions have no weather system.</p>
+<div class="highlight"><pre><span></span><code><span class="n">weather</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_weather</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">weather</span> <span class="ow">and</span> <span class="n">weather</span><span class="p">[</span><span class="s1">&#39;is_raining&#39;</span><span class="p">]:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;It&#39;s raining (intensity: </span><span class="si">{</span><span class="n">weather</span><span class="p">[</span><span class="s1">&#39;rain_level&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">weather</span><span class="p">[</span><span class="s1">&#39;is_thundering&#39;</span><span class="p">]:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Thunderstorm!&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="notes">Notes</h2>
+<ul>
+<li><strong>Chunk Loading</strong>: Blocks can only be queried in loaded chunks. The client automatically loads chunks as the bot moves around.</li>
+<li><strong>Performance</strong>: Block queries are O(1) for <code>get_block()</code>. Searches like <code>find_blocks()</code> are optimized but still need to scan blocks, so prefer smaller radii when possible.</li>
+<li><strong>Block State Format</strong>: Block states are returned as strings in the format <code>"minecraft:block_name[property=value,...]"</code>. Use Python string operations to check block types.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

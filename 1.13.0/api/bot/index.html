@@ -1,0 +1,2167 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python API documentation for mc-bot-manager scripting system">
+      
+      
+        <meta name="author" content="mc-bot-manager contributors">
+      
+      
+        <link rel="canonical" href="https://mankool0.github.io/mc-bot-manager/1.13.0/api/bot/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../baritone/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>bot - MC Bot Manager - Python Scripting API</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bot-module" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="MC Bot Manager - Python Scripting API" class="md-header__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MC Bot Manager - Python Scripting API
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              bot
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mankool0/mc-bot-manager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mankool0/mc-bot-manager
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="MC Bot Manager - Python Scripting API" class="md-nav__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MC Bot Manager - Python Scripting API
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mankool0/mc-bot-manager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mankool0/mc-bot-manager
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../first-script/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Script
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../event-handlers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Handlers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bot
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#state-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#positionbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        position(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#healthbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        health(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hungerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hunger(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#saturationbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        saturation(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#airbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        air(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experience_levelbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        experience_level(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experience_progressbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        experience_progress(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selected_slotbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        selected_slot(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select_slotslot-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        select_slot(slot, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serverbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        server(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singleplayer_worldbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        singleplayer_world(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_singleplayerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_singleplayer(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accountbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uptimebot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uptime(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proxybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        proxy(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dimensionbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dimension(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_onlinebot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_online(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#statusbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        status(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inventorybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inventory(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resync_inventorybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resync_inventory(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_screenbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_screen(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open_game_menubot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        open_game_menu(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network_statsbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        network_stats(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list_all()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bot-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bot Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bot Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#startbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stopreason-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop(reason="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restartreason-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        restart(reason="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wait_for_onlinetimeout600-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wait_for_online(timeout=60.0, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chatmessage-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chat(message, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manager_commandcommand-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manager_command(command, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../baritone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    baritone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../meteor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    meteor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    world
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    comms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#state-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#positionbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        position(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#healthbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        health(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hungerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hunger(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#saturationbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        saturation(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#airbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        air(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experience_levelbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        experience_level(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experience_progressbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        experience_progress(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selected_slotbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        selected_slot(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select_slotslot-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        select_slot(slot, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serverbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        server(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singleplayer_worldbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        singleplayer_world(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_singleplayerbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_singleplayer(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accountbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        account(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uptimebot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uptime(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proxybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        proxy(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dimensionbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dimension(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_onlinebot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_online(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#statusbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        status(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inventorybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inventory(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resync_inventorybot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resync_inventory(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#item-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Item dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_screenbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_screen(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open_game_menubot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        open_game_menu(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network_statsbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        network_stats(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list_all()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bot-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bot Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bot Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#startbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stopreason-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop(reason="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restartreason-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        restart(reason="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wait_for_onlinetimeout600-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wait_for_online(timeout=60.0, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chatmessage-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chat(message, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manager_commandcommand-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manager_command(command, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bot-module">bot module</h1>
+<p>Bot state queries and basic commands.</p>
+<h2 id="state-queries">State Queries</h2>
+<h3 id="positionbot_name"><code>position(bot_name="")</code></h3>
+<p>Get bot position.</p>
+<p><strong>Returns:</strong> <code>dict</code> with keys <code>x</code>, <code>y</code>, <code>z</code>, or <code>None</code> if bot is offline</p>
+<h3 id="healthbot_name"><code>health(bot_name="")</code></h3>
+<p>Get bot health.</p>
+<p><strong>Returns:</strong> <code>float</code> or <code>None</code> if bot is offline</p>
+<h3 id="hungerbot_name"><code>hunger(bot_name="")</code></h3>
+<p>Get bot hunger level.</p>
+<p><strong>Returns:</strong> <code>int</code> or <code>None</code> if bot is offline</p>
+<h3 id="saturationbot_name"><code>saturation(bot_name="")</code></h3>
+<p>Get bot food saturation.</p>
+<p><strong>Returns:</strong> <code>float</code> or <code>None</code> if bot is offline</p>
+<h3 id="airbot_name"><code>air(bot_name="")</code></h3>
+<p>Get bot air level.</p>
+<p><strong>Returns:</strong> <code>int</code> or <code>None</code> if bot is offline</p>
+<h3 id="experience_levelbot_name"><code>experience_level(bot_name="")</code></h3>
+<p>Get bot XP level.</p>
+<p><strong>Returns:</strong> <code>int</code> or <code>None</code> if bot is offline</p>
+<h3 id="experience_progressbot_name"><code>experience_progress(bot_name="")</code></h3>
+<p>Get bot XP progress to next level.</p>
+<p><strong>Returns:</strong> <code>float</code> or <code>None</code> if bot is offline</p>
+<h3 id="selected_slotbot_name"><code>selected_slot(bot_name="")</code></h3>
+<p>Get currently selected hotbar slot.</p>
+<p><strong>Returns:</strong> <code>int</code> or <code>None</code> if bot is offline</p>
+<h3 id="select_slotslot-bot_name"><code>select_slot(slot, bot_name="")</code></h3>
+<p>Select a hotbar slot.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>slot</code> (<code>int</code>) - Slot to select (0–8)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online, or if slot is out of range</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">select_slot</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Select first hotbar slot</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">select_slot</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>  <span class="c1"># Select last hotbar slot</span>
+</code></pre></div>
+<h3 id="serverbot_name"><code>server(bot_name="")</code></h3>
+<p>Get server address.</p>
+<p><strong>Returns:</strong> <code>str</code> or <code>None</code></p>
+<h3 id="singleplayer_worldbot_name"><code>singleplayer_world(bot_name="")</code></h3>
+<p>Get the singleplayer world name. Returns <code>None</code> if connected to a multiplayer server.</p>
+<p><strong>Returns:</strong> <code>str</code> or <code>None</code></p>
+<h3 id="is_singleplayerbot_name"><code>is_singleplayer(bot_name="")</code></h3>
+<p>Check if the bot is connected to a local/singleplayer world.</p>
+<p><strong>Returns:</strong> <code>bool</code></p>
+<h3 id="accountbot_name"><code>account(bot_name="")</code></h3>
+<p>Get account username.</p>
+<p><strong>Returns:</strong> <code>str</code> or <code>None</code></p>
+<h3 id="uptimebot_name"><code>uptime(bot_name="")</code></h3>
+<p>Get bot uptime in seconds.</p>
+<p><strong>Returns:</strong> <code>int</code> or <code>None</code></p>
+<h3 id="proxybot_name"><code>proxy(bot_name="")</code></h3>
+<p>Get proxy configuration and health state.</p>
+<p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if no proxy is configured (host is empty)</p>
+<p>Keys:</p>
+<ul>
+<li><code>enabled</code> (<code>bool</code>) - Whether the proxy is currently enabled</li>
+<li><code>host</code> (<code>str</code>) - Proxy host address</li>
+<li><code>port</code> (<code>int</code>) - Proxy port</li>
+<li><code>type</code> (<code>str</code>) - Proxy type: <code>"SOCKS4"</code> or <code>"SOCKS5"</code></li>
+<li><code>username</code> (<code>str</code>) - Username (empty string if not set)</li>
+<li><code>password</code> (<code>str</code>) - Password (empty string if not set)</li>
+<li><code>health</code> (<code>str</code>) - One of: <code>"Unknown"</code>, <code>"Alive"</code>, <code>"Dead"</code></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="n">p</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">proxy</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">p</span> <span class="ow">and</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;health&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Dead&quot;</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Proxy is down&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="dimensionbot_name"><code>dimension(bot_name="")</code></h3>
+<p>Get current dimension.</p>
+<p><strong>Returns:</strong> <code>str</code> or <code>None</code> if bot is offline or dimension not available</p>
+<h3 id="is_onlinebot_name"><code>is_online(bot_name="")</code></h3>
+<p>Check if bot is online.</p>
+<p><strong>Returns:</strong> <code>bool</code></p>
+<h3 id="statusbot_name"><code>status(bot_name="")</code></h3>
+<p>Get bot status string.</p>
+<p><strong>Returns:</strong> <code>str</code> - One of: <code>"Offline"</code>, <code>"Starting"</code>, <code>"Online"</code>, <code>"Stopping"</code>, <code>"Error"</code></p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
+<h3 id="inventorybot_name"><code>inventory(bot_name="")</code></h3>
+<p>Get bot inventory.</p>
+<p><strong>Returns:</strong> <code>list</code> of <a href="#item-dict">item dicts</a>, or <code>None</code> if bot is offline. Each dict also includes a <code>slot</code> field (0–40). Shulker boxes and other container items additionally have <code>container_items</code> (list of item dicts for the contents).</p>
+<div class="highlight"><pre><span></span><code><span class="n">items</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">inventory</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">items</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="resync_inventorybot_name"><code>resync_inventory(bot_name="")</code></h3>
+<p>Force a full inventory resync from the server. Sends a stateId mismatch packet to trigger <code>sendAllDataToRemote</code> server-side, which sends back the authoritative inventory state.</p>
+<p>Only works when no container is currently open. Raises if a container is open.</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found, not online, or a container is open</p>
+<div class="highlight"><pre><span></span><code><span class="n">world</span><span class="o">.</span><span class="n">close_container</span><span class="p">()</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">resync_inventory</span><span class="p">()</span>
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>  <span class="c1"># wait for server response</span>
+<span class="n">items</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">inventory</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h3 id="item-dict">Item dict</h3>
+<p>The item dict schema used by <code>bot.inventory()</code>, <code>world.get_container()</code>, and entity item fields:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>item_id</code></td>
+<td><code>str</code></td>
+<td>Item ID (e.g. <code>"minecraft:diamond"</code>)</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td><code>int</code></td>
+<td>Stack size</td>
+</tr>
+<tr>
+<td><code>damage</code></td>
+<td><code>int</code></td>
+<td>Current damage (0 = undamaged)</td>
+</tr>
+<tr>
+<td><code>max_damage</code></td>
+<td><code>int</code></td>
+<td>Max durability (0 for non-damageable items)</td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td><code>str</code></td>
+<td>Display name (may include formatting)</td>
+</tr>
+<tr>
+<td><code>enchantments</code></td>
+<td><code>dict[str, int]</code></td>
+<td>Map of enchantment ID to level (e.g. <code>{"minecraft:sharpness": 3}</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Item dict fields are sparse</p>
+<p>A field is only present when it is meaningful: <code>damage</code>/<code>max_damage</code> are
+absent for undamaged/undamageable items, <code>enchantments</code> is absent when there
+are none, etc. Always read optional fields with <code>item.get("field", default)</code>
+- <code>item["damage"]</code> raises <code>KeyError</code> on a full-durability tool. </p>
+</div>
+<h3 id="get_screenbot_name"><code>get_screen(bot_name="")</code></h3>
+<p>Get full screen dump as a <code>ScreenState</code> object.</p>
+<p><strong>Returns:</strong> <code>ScreenState</code> or <code>None</code> if no screen is open (in-game)</p>
+<p><strong><code>ScreenState</code> attributes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>str</code></td>
+<td>Stable screen ID - pass to <code>world.click_widget()</code></td>
+</tr>
+<tr>
+<td><code>screen_class</code></td>
+<td><code>str</code></td>
+<td>Fully qualified Java class name</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>str</code></td>
+<td>Display title of the screen</td>
+</tr>
+<tr>
+<td><code>width</code></td>
+<td><code>int</code></td>
+<td>Screen width in pixels</td>
+</tr>
+<tr>
+<td><code>height</code></td>
+<td><code>int</code></td>
+<td>Screen height in pixels</td>
+</tr>
+<tr>
+<td><code>widgets</code></td>
+<td><code>list[GuiWidget]</code></td>
+<td>All interactive widgets (buttons, edit boxes, sliders, etc.) - includes widgets nested inside list-based screens like Video Settings</td>
+</tr>
+<tr>
+<td><code>slots</code></td>
+<td><code>list[GuiSlot]</code></td>
+<td>Container slots (only present for inventory-like screens)</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>GuiWidget</code> attributes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index</code></td>
+<td><code>int</code></td>
+<td>Widget index - pass to <code>world.click_widget()</code></td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>str</code></td>
+<td><code>"Button"</code>, <code>"EditBox"</code>, <code>"Checkbox"</code>, <code>"ListEntry"</code>, <code>"SignLine"</code>, or simple class name for others</td>
+</tr>
+<tr>
+<td><code>class_name</code></td>
+<td><code>str</code></td>
+<td>Fully qualified class name</td>
+</tr>
+<tr>
+<td><code>x</code>, <code>y</code></td>
+<td><code>int</code></td>
+<td>Screen pixel coordinates</td>
+</tr>
+<tr>
+<td><code>width</code>, <code>height</code></td>
+<td><code>int</code></td>
+<td>Widget dimensions</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td><code>bool</code></td>
+<td>Whether the widget can be interacted with</td>
+</tr>
+<tr>
+<td><code>visible</code></td>
+<td><code>bool</code></td>
+<td>Whether the widget is rendered</td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td><code>str</code></td>
+<td>Button label or widget text</td>
+</tr>
+<tr>
+<td><code>edit_value</code></td>
+<td><code>str</code></td>
+<td>Current text (EditBox only)</td>
+</tr>
+<tr>
+<td><code>edit_editable</code></td>
+<td><code>bool</code></td>
+<td>Whether the EditBox can be edited</td>
+</tr>
+<tr>
+<td><code>selected</code></td>
+<td><code>bool</code></td>
+<td>Whether this widget is currently focused/selected (e.g. selected entry in the multiplayer or world list)</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>GuiSlot</code> attributes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index</code></td>
+<td><code>int</code></td>
+<td>Slot index - pass to <code>world.click_slot()</code></td>
+</tr>
+<tr>
+<td><code>x</code>, <code>y</code></td>
+<td><code>int</code></td>
+<td>Screen pixel coordinates</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td><code>bool</code></td>
+<td>Whether the slot is active</td>
+</tr>
+<tr>
+<td><code>item_id</code></td>
+<td><code>str</code></td>
+<td>Item ID (e.g. <code>"minecraft:diamond"</code>, <code>"minecraft:air"</code> if empty)</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td><code>int</code></td>
+<td>Stack count</td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td><code>str</code></td>
+<td>Display name</td>
+</tr>
+<tr>
+<td><code>damage</code></td>
+<td><code>int</code></td>
+<td>Current durability damage</td>
+</tr>
+<tr>
+<td><code>max_damage</code></td>
+<td><code>int</code></td>
+<td>Max durability (0 if not damageable)</td>
+</tr>
+<tr>
+<td><code>enchantments</code></td>
+<td><code>dict[str, int]</code></td>
+<td>Enchantment ID to level</td>
+</tr>
+<tr>
+<td><code>repair_cost</code></td>
+<td><code>int</code></td>
+<td>Anvil repair cost</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Click a button by label on any screen</span>
+<span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;Multiplayer&quot;</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+            <span class="n">world</span><span class="o">.</span><span class="n">click_widget</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="k">break</span>
+
+<span class="c1"># Auction house: slots act as buttons, items describe what they do</span>
+<span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">slots</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;Buy&quot;</span> <span class="ow">in</span> <span class="n">slot</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
+            <span class="n">world</span><span class="o">.</span><span class="n">click_slot</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="k">break</span>
+</code></pre></div>
+<h3 id="open_game_menubot_name"><code>open_game_menu(bot_name="")</code></h3>
+<p>Open the game/pause menu, equivalent to pressing ESC while in-game.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<p><strong>Note:</strong> The client performs additional checks before opening the menu (screen already open, not in a world) and will send a failure response if these conditions aren't met.</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">open_game_menu</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="network_statsbot_name"><code>network_stats(bot_name="")</code></h3>
+<p>Get network statistics.</p>
+<p><strong>Returns:</strong> <code>dict</code> with network information</p>
+<h3 id="list_all"><code>list_all()</code></h3>
+<p>List all bots with their status.</p>
+<p><strong>Returns:</strong> <code>list[dict]</code> where each dict has:</p>
+<ul>
+<li><code>name</code> (<code>str</code>) - Bot name</li>
+<li><code>status</code> (<code>str</code>) - Bot status ("Offline", "Starting", "Online", "Stopping", "Error")</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="n">bots</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">list_all</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bots</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="bot-control">Bot Control</h2>
+<h3 id="startbot_name"><code>start(bot_name="")</code></h3>
+<p>Start the bot.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># Start current bot</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;bot2&quot;</span><span class="p">)</span>  <span class="c1"># Start specific bot</span>
+</code></pre></div>
+<h3 id="stopreason-bot_name"><code>stop(reason="", bot_name="")</code></h3>
+<p>Stop the bot gracefully.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>reason</code> (<code>str</code>, optional) - Reason for stopping (shown in logs)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>  <span class="c1"># Stop with default reason</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="s2">&quot;Task completed&quot;</span><span class="p">)</span>  <span class="c1"># Stop with custom reason</span>
+</code></pre></div>
+<h3 id="restartreason-bot_name"><code>restart(reason="", bot_name="")</code></h3>
+<p>Restart the bot.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>reason</code> (<code>str</code>, optional) - Reason for restarting (shown in logs)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">restart</span><span class="p">()</span>  <span class="c1"># Restart with default reason</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">restart</span><span class="p">(</span><span class="s2">&quot;Updating configuration&quot;</span><span class="p">)</span>  <span class="c1"># Restart with custom reason</span>
+</code></pre></div>
+<h3 id="wait_for_onlinetimeout600-bot_name"><code>wait_for_online(timeout=60.0, bot_name="")</code></h3>
+<p>Block until the bot is Online. <code>bot.start()</code> returns as soon as the launch is
+triggered; use this to wait for the game client to actually connect. A launch
+that never connects is marked Error after 2 minutes.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>timeout</code> (<code>float</code>, optional) - Seconds to wait, default 60</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>bool</code> - <code>True</code> when online; <code>False</code> on timeout, on a startup
+Error, or if the script is stopped while waiting</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;Repairer&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">wait_for_online</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bot_name</span><span class="o">=</span><span class="s2">&quot;Repairer&quot;</span><span class="p">):</span>
+    <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;Repairer&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;collect_pickaxes&quot;</span><span class="p">})</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Repairer failed to come online&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="commands">Commands</h2>
+<h3 id="chatmessage-bot_name"><code>chat(message, bot_name="")</code></h3>
+<p>Send chat message. Supports <code>/</code> commands and <code>#</code> for baritone.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>message</code> (<code>str</code>) - Message to send</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Hello world!&quot;</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;/tp 0 64 0&quot;</span><span class="p">)</span>  <span class="c1"># Slash commands work</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;#goto 100 64 100&quot;</span><span class="p">)</span>  <span class="c1"># Baritone commands work</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Hello from bot2!&quot;</span><span class="p">,</span> <span class="s2">&quot;bot2&quot;</span><span class="p">)</span>  <span class="c1"># Send from specific bot</span>
+</code></pre></div>
+<h3 id="manager_commandcommand-bot_name"><code>manager_command(command, bot_name="")</code></h3>
+<p>Send raw manager protocol command (advanced).</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>command</code> (<code>str</code>) - Manager command to execute</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Advanced usage - prefer using bot.chat() or specific APIs</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">&quot;chat Hello&quot;</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">&quot;baritone goto 100 64 100&quot;</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">&quot;chat Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;bot2&quot;</span><span class="p">)</span>  <span class="c1"># Send to specific bot</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
