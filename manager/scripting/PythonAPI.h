@@ -312,6 +312,11 @@ public:
 private:
     static QString resolveBotName(const std::string &botName);
     static struct BotInstance* ensureBotOnline(const QString &botName);
+    // Like ensureBotOnline, but also requires the bot to advertise the capability (e.g. "meteor").
+    static struct BotInstance* ensureBotCapability(const QString &botName, const char *capability);
+    // Read-side counterpart: throws only when the bot is Online and lacks the capability. An offline
+    // or unknown bot is returned as-is, since it has not reported any capabilities to check against.
+    static struct BotInstance* botIfCapable(const QString &botName, const char *capability);
     static QVariant pyObjectToQVariant(const py::object &value);
     static QVariant pyObjectToPlainVariant(const py::object &value);
     // The calling script's bus scope: its bot name, or "_global".

@@ -2,7 +2,6 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Connection;
-import mankool.mcBotClient.proxy.MeteorProxyManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.chat.Component;
@@ -77,11 +76,6 @@ public class ConnectionHandler extends BaseInboundHandler {
             reason, reject.getManagerVersion(), reject.getModVersion());
 
         client.destroy();
-    }
-
-    public void handleSetProxyConfig(String messageId, Commands.SetProxyConfigCommand command) {
-        MeteorProxyManager.apply(command.getConfig());
-        sendSuccess(messageId, "Proxy config applied");
     }
 
     public void handleShutdown(String messageId, Commands.ShutdownCommand command) {

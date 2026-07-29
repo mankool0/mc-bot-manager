@@ -57,6 +57,43 @@ jobs:
           path: client/build/libs/*.jar
           if-no-files-found: error
 
+  # Releases always ship the full build; these reduced builds just keep the optional-integration
+  # decoupling from rotting. "none" proves core compiles with no integration source at all; each
+  # single-integration build proves that integration stands alone. Add a new integration -> add its
+  # name here, so this stays 1 + N jobs rather than every on/off combination.
+  # One MC version, not uploaded.
+  build-client-variants:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        integrations: ['none', 'meteor', 'baritone']
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        working-directory: client
+        run: chmod +x gradlew
+
+      - name: Build with integrations=${{ matrix.integrations }} (26.1.2)
+        working-directory: client
+        run: |
+          ./gradlew build \
+            -Pminecraft_version=26.1.2 \
+            -Pintegrations=${{ matrix.integrations }} \
+            -Pmod_version="$(git describe --always --tags --first-parent | sed 's/^v//')"
+
   build-linux:
     runs-on: ubuntu-latest
 

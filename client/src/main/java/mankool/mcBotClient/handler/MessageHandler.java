@@ -4,11 +4,16 @@ import mankool.mcbot.protocol.*;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.handler.inbound.*;
 import mankool.mcBotClient.handler.outbound.*;
+import mankool.mcBotClient.integration.ClientIntegration;
+import mankool.mcBotClient.integration.ConnectionContext;
+import mankool.mcBotClient.integration.IntegrationRegistry;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -21,13 +26,13 @@ public class MessageHandler {
 
     private final Map<Protocol.ManagerToClientMessage.PayloadCase, Consumer<Protocol.ManagerToClientMessage>> handlers;
 
+    private final List<Runnable> integrationTicks = new ArrayList<>();
+
     // Inbound handlers (handle incoming commands)
     private final ConnectionHandler connectionHandler;
     private final PlayerActionHandler playerActionHandler;
     private final InventoryHandler inventoryHandler;
     private final ChatHandler chatHandler;
-    private final MeteorModuleHandler meteorModuleHandler;
-    private final BaritoneHandler baritoneHandler;
     private final WorldInteractionHandler worldInteractionHandler;
     private final ScreenInteractionHandler screenInteractionHandler;
 
@@ -42,7 +47,6 @@ public class MessageHandler {
     private final EntityOutbound entityOutbound;
     private final TabListOutbound tabListOutbound;
     private final StatsOutbound statsOutbound;
-    private final BaritoneLogOutbound baritoneLogOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -53,8 +57,6 @@ public class MessageHandler {
         this.playerActionHandler = new PlayerActionHandler(this.client, connection);
         this.inventoryHandler = new InventoryHandler(this.client, connection);
         this.chatHandler = new ChatHandler(this.client, connection);
-        this.meteorModuleHandler = new MeteorModuleHandler(this.client, connection);
-        this.baritoneHandler = new BaritoneHandler(this.client, connection);
         this.worldInteractionHandler = new WorldInteractionHandler(this.client, connection);
 
         // Initialize outbound handlers
@@ -68,15 +70,49 @@ public class MessageHandler {
         this.entityOutbound = new EntityOutbound(this.client, connection);
         this.tabListOutbound = new TabListOutbound(this.client, connection);
         this.statsOutbound = new StatsOutbound(this.client, connection);
-        this.baritoneLogOutbound = new BaritoneLogOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
         registerHandlers();
 
+        setupIntegrations(connection);
+
         // Register tick handler for protocol-level updates
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+    }
+
+    private void setupIntegrations(PipeConnection connection) {
+        ConnectionContext ctx = new ConnectionContext() {
+            @Override
+            public Minecraft client() {
+                return client;
+            }
+
+            @Override
+            public PipeConnection connection() {
+                return connection;
+            }
+
+            @Override
+            public void registerHandler(Protocol.ManagerToClientMessage.PayloadCase payloadCase,
+                                        Consumer<Protocol.ManagerToClientMessage> handler) {
+                handlers.put(payloadCase, handler);
+            }
+
+            @Override
+            public void registerTick(Runnable tickHook) {
+                integrationTicks.add(tickHook);
+            }
+        };
+
+        for (ClientIntegration integration : IntegrationRegistry.integrations()) {
+            try {
+                integration.onConnectionSetup(ctx);
+            } catch (Throwable t) {
+                LOGGER.error("Integration {} failed onConnectionSetup", integration.getClass().getName(), t);
+            }
+        }
     }
 
     private void registerHandlers() {
@@ -102,18 +138,6 @@ public class MessageHandler {
             msg -> inventoryHandler.handleDropItem(msg.getMessageId(), msg.getDropItem()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SHUTDOWN,
             msg -> connectionHandler.handleShutdown(msg.getMessageId(), msg.getShutdown()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_MODULES,
-            msg -> meteorModuleHandler.handleGetModules(msg.getMessageId(), msg.getGetModules()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_MODULE_CONFIG,
-            msg -> meteorModuleHandler.handleSetModuleConfig(msg.getMessageId(), msg.getSetModuleConfig()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_BARITONE_SETTINGS,
-            msg -> baritoneHandler.handleGetBaritoneSettings(msg.getMessageId(), msg.getGetBaritoneSettings()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_BARITONE_COMMANDS,
-            msg -> baritoneHandler.handleGetBaritoneCommands(msg.getMessageId(), msg.getGetBaritoneCommands()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_BARITONE_SETTINGS,
-            msg -> baritoneHandler.handleSetBaritoneSettings(msg.getMessageId(), msg.getSetBaritoneSettings()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.EXECUTE_BARITONE_COMMAND,
-            msg -> baritoneHandler.handleExecuteBaritoneCommand(msg.getMessageId(), msg.getExecuteBaritoneCommand()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.INTERACT_WITH_BLOCK,
             msg -> worldInteractionHandler.handleInteractWithBlock(msg.getMessageId(), msg.getInteractWithBlock()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CAN_REACH_BLOCK,
@@ -138,8 +162,6 @@ public class MessageHandler {
             msg -> screenInteractionHandler.handlePressKey(msg.getMessageId(), msg.getPressKey()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.OPEN_GAME_MENU,
             msg -> screenInteractionHandler.handleOpenGameMenu(msg.getMessageId()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_PROXY_CONFIG,
-            msg -> connectionHandler.handleSetProxyConfig(msg.getMessageId(), msg.getSetProxyConfig()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HOLD_ATTACK,
             msg -> worldInteractionHandler.handleHoldAttack(msg.getHoldAttack()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_ATTACK_STATUS,
@@ -203,8 +225,9 @@ public class MessageHandler {
             connection.sendHeartbeat();
         }
 
-        // Tick Baritone handler for setting change polling
-        baritoneHandler.tick();
+        for (Runnable tickHook : integrationTicks) {
+            tickHook.run();
+        }
 
         // Tick world interaction handler for continuous actions
         worldInteractionHandler.tick();

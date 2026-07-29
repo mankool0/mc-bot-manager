@@ -14,8 +14,7 @@
     "EditBoxAccessor",
     "AbstractSignEditScreenAccessor",
     "ClientCommonDisconnectMixin",
-    "LoginDisconnectMixin",
-    "baritone.BaritoneSettingMixin"
+    "LoginDisconnectMixin"
   ],
   "injectors": {
     "defaultRequire": 1

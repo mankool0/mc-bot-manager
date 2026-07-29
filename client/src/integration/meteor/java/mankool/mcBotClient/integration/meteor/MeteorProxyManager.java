@@ -1,4 +1,4 @@
-package mankool.mcBotClient.proxy;
+package mankool.mcBotClient.integration.meteor;
 
 import mankool.mcbot.protocol.Commands;
 import meteordevelopment.meteorclient.systems.proxies.Proxies;

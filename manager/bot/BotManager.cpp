@@ -942,6 +942,8 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         bot->versionSeries = info.versionSeries();
         bot->versionIsSnapshot = info.versionIsSnapshot();
         bot->modVersion = info.modVersion();
+        const QStringList caps = info.capabilities();
+        bot->capabilities = QSet<QString>(caps.begin(), caps.end());
 
         // Load recipes and tags for this version
         if (!bot->recipeRegistry.loadFromCache(clientVersion)) {
@@ -950,8 +952,10 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
 
         emit botUpdated(bot->name);
 
-        // Send proxy config immediately so it's applied before any server connection
-        sendProxyConfig(bot->name);
+        // Send proxy config immediately so it's applied before any server connection.
+        if (bot->hasCapability(QStringLiteral("proxy"))) {
+            sendProxyConfig(bot->name);
+        }
 
         // Notify scripts: the bot's own engine and the global engine.
         if (bot->scriptEngine)

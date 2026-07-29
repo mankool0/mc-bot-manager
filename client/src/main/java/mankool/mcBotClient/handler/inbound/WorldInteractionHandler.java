@@ -1,6 +1,5 @@
 package mankool.mcBotClient.handler.inbound;
 
-import baritone.api.BaritoneAPI;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Protocol;
@@ -115,8 +114,7 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         }
 
         try {
-            var ctx = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext();
-            double blockReachDistance = ctx.playerController().getBlockReachDistance();
+            double blockReachDistance = VersionCompat.getBlockReachDistance(player);
 
             Common.BlockFace protoFace = command.getFace();
             Optional<BlockHitResult> hitOpt = (protoFace != Common.BlockFace.FACE_AUTO)
@@ -166,8 +164,7 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         BlockPos blockPos = new BlockPos(protoPos.getX(), protoPos.getY(), protoPos.getZ());
 
         try {
-            var ctx = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext();
-            double blockReachDistance = ctx.playerController().getBlockReachDistance();
+            double blockReachDistance = VersionCompat.getBlockReachDistance(player);
 
             Common.BlockPos from = command.hasFromPosition() ? command.getFromPosition() : null;
             double baseX = from != null ? from.getX() + 0.5 : player.getX();

@@ -63,6 +63,25 @@ BotInstance* PythonAPI::ensureBotOnline(const QString &botName)
     return bot;
 }
 
+BotInstance* PythonAPI::ensureBotCapability(const QString &botName, const char *capability)
+{
+    BotInstance *bot = ensureBotOnline(botName);
+    if (!bot->hasCapability(QString::fromLatin1(capability))) {
+        throw std::runtime_error(std::string("Bot does not support ") + capability);
+    }
+    return bot;
+}
+
+BotInstance* PythonAPI::botIfCapable(const QString &botName, const char *capability)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->status == BotStatus::Online
+        && !bot->hasCapability(QString::fromLatin1(capability))) {
+        throw std::runtime_error(std::string("Bot does not support ") + capability);
+    }
+    return bot;
+}
+
 QVariant PythonAPI::pyObjectToQVariant(const py::object &value)
 {
     if (py::isinstance<py::bool_>(value)) {
@@ -1023,7 +1042,7 @@ void PythonAPI::restartBot(const std::string &reason, const std::string &botName
 void PythonAPI::baritoneGoto(double x, double y, double z, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, QString("goto %1 %2 %3").arg(x).arg(y).arg(z));
 }
@@ -1031,7 +1050,7 @@ void PythonAPI::baritoneGoto(double x, double y, double z, const std::string &bo
 void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, QString("goto %1 %2").arg(x).arg(z));
 }
@@ -1039,7 +1058,7 @@ void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
 void PythonAPI::baritoneFollow(const std::string &player, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, QString("follow player %1").arg(QString::fromStdString(player)));
 }
@@ -1047,7 +1066,7 @@ void PythonAPI::baritoneFollow(const std::string &player, const std::string &bot
 void PythonAPI::baritoneCancel(const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, "cancel");
 }
@@ -1055,7 +1074,7 @@ void PythonAPI::baritoneCancel(const std::string &bot)
 void PythonAPI::baritoneMine(const std::string &blockType, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, QString("mine %1").arg(QString::fromStdString(blockType)));
 }
@@ -1063,7 +1082,7 @@ void PythonAPI::baritoneMine(const std::string &blockType, const std::string &bo
 void PythonAPI::baritoneFarm(const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, "farm");
 }
@@ -1071,7 +1090,7 @@ void PythonAPI::baritoneFarm(const std::string &bot)
 void PythonAPI::baritoneCommand(const std::string &command, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     BotManager::sendBaritoneCommand(name, QString::fromStdString(command));
 }
@@ -1079,7 +1098,7 @@ void PythonAPI::baritoneCommand(const std::string &command, const std::string &b
 void PythonAPI::baritoneSetSetting(const std::string &setting, const py::object &value, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "baritone");
 
     QVariant qValue = pyObjectToQVariant(value);
     BotManager::sendBaritoneSettingChange(name, QString::fromStdString(setting), qValue);
@@ -1089,7 +1108,7 @@ py::object PythonAPI::baritoneGetSetting(const std::string &setting, const std::
 {
     QString name = resolveBotName(bot);
 
-    BotInstance *botInst = BotManager::getBotByName(name);
+    BotInstance *botInst = botIfCapable(name, "baritone");
     if (!botInst) {
         return py::none();
     }
@@ -1107,7 +1126,7 @@ py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
 {
     QString name = resolveBotName(bot);
 
-    BotInstance *botInst = BotManager::getBotByName(name);
+    BotInstance *botInst = botIfCapable(name, "baritone");
     if (!botInst) {
         return py::dict();
     }
@@ -1146,7 +1165,7 @@ py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
 void PythonAPI::meteorToggle(const std::string &module, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    BotInstance *botInst = ensureBotOnline(name);
+    BotInstance *botInst = ensureBotCapability(name, "meteor");
 
     QString qModule = QString::fromStdString(module);
     if (botInst->meteorModules.contains(qModule)) {
@@ -1160,7 +1179,7 @@ void PythonAPI::meteorToggle(const std::string &module, const std::string &bot)
 void PythonAPI::meteorEnable(const std::string &module, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "meteor");
 
     BotManager::sendCommand(name, QString("meteor set %1 enabled true").arg(QString::fromStdString(module)), true);
 }
@@ -1168,7 +1187,7 @@ void PythonAPI::meteorEnable(const std::string &module, const std::string &bot)
 void PythonAPI::meteorDisable(const std::string &module, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "meteor");
 
     BotManager::sendCommand(name, QString("meteor set %1 enabled false").arg(QString::fromStdString(module)), true);
 }
@@ -1177,7 +1196,7 @@ void PythonAPI::meteorSetSetting(const std::string &module, const std::string &s
                                  const py::object &value, const std::string &bot)
 {
     QString name = resolveBotName(bot);
-    ensureBotOnline(name);
+    ensureBotCapability(name, "meteor");
 
     QVariant qValue = pyObjectToQVariant(value);
     BotManager::sendMeteorSettingChange(name, QString::fromStdString(module), QString::fromStdString(setting), qValue);
@@ -1188,7 +1207,7 @@ py::object PythonAPI::meteorGetSetting(const std::string &module, const std::str
 {
     QString name = resolveBotName(bot);
 
-    BotInstance *botInst = BotManager::getBotByName(name);
+    BotInstance *botInst = botIfCapable(name, "meteor");
     if (!botInst) {
         return py::none();
     }
@@ -1211,7 +1230,7 @@ py::dict PythonAPI::meteorGetModule(const std::string &module, const std::string
     QString name = resolveBotName(bot);
     py::dict result;
 
-    BotInstance *botInst = BotManager::getBotByName(name);
+    BotInstance *botInst = botIfCapable(name, "meteor");
     if (!botInst) {
         return result;
     }
@@ -1239,6 +1258,10 @@ py::dict PythonAPI::meteorGetModule(const std::string &module, const std::string
 py::list PythonAPI::meteorListModules(const std::string &bot)
 {
     QString name = resolveBotName(bot);
+
+    // Check the capability before dropping the GIL, so the exception propagates from a normal
+    // GIL-held frame rather than unwinding through the release guard.
+    botIfCapable(name, "meteor");
 
     py::gil_scoped_release release;
 

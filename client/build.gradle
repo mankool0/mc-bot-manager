@@ -6,14 +6,51 @@ plugins {
 
 // Multiple versions may share the same compat dir if their APIs are identical.
 def mcVersions = [
-    '1.21.4':  [loader: '0.18.6', fabric: '0.119.4+1.21.4',  meteor: '1.21.4-SNAPSHOT',  baritone: '1.21.4-SNAPSHOT',  compat: 'src/compat/api_1_21_4/java',  compatResources: 'src/compat/api_1_21_4/resources',  javaVersion: 21],
-    '1.21.11': [loader: '0.18.6', fabric: '0.141.3+1.21.11', meteor: '1.21.11-SNAPSHOT', baritone: '1.21.11-SNAPSHOT', compat: 'src/compat/api_1_21_11/java', compatResources: 'src/compat/api_1_21_11/resources', javaVersion: 21],
-    '26.1.2':  [loader: '0.19.2', fabric: '0.153.0+26.1.2',  meteor: '26.1.2-SNAPSHOT',  baritone: '26.1-SNAPSHOT',    compat: 'src/compat/api_26_1/java',    compatResources: 'src/compat/api_26_1/resources',    javaVersion: 25],
+    '1.21.4':  [loader: '0.18.6', fabric: '0.119.4+1.21.4',  meteor: '1.21.4-SNAPSHOT',  baritone: '1.21.4-SNAPSHOT',  compat: 'src/compat/api_1_21_4/java',  compatResources: 'src/compat/api_1_21_4/resources',  meteorCompat: 'src/integration/meteor/compat/api_1_21_4/java',  javaVersion: 21],
+    '1.21.11': [loader: '0.18.6', fabric: '0.141.3+1.21.11', meteor: '1.21.11-SNAPSHOT', baritone: '1.21.11-SNAPSHOT', compat: 'src/compat/api_1_21_11/java', compatResources: 'src/compat/api_1_21_11/resources', meteorCompat: 'src/integration/meteor/compat/api_1_21_11/java', javaVersion: 21],
+    '26.1.2':  [loader: '0.19.2', fabric: '0.153.0+26.1.2',  meteor: '26.1.2-SNAPSHOT',  baritone: '26.1-SNAPSHOT',    compat: 'src/compat/api_26_1/java',    compatResources: 'src/compat/api_26_1/resources',    meteorCompat: 'src/integration/meteor/compat/api_26_1/java',    javaVersion: 25],
 ]
 
 def mcVer = project.findProperty('minecraft_version') ?: project.minecraft_version
 def mcDeps = mcVersions[mcVer]
 if (mcDeps == null) throw new GradleException("Unknown minecraft_version: $mcVer. Valid: ${mcVersions.keySet()}")
+
+// Optional client integrations, keyed by the name used in the `integrations` property. Each is a
+// source set under src/integration/<name>/ that is only compiled and bundled when enabled:
+//   ./gradlew build                          every integration (default)
+//   ./gradlew build -Pintegrations=meteor    Meteor only
+//   ./gradlew build -Pintegrations=none      neither
+// Supporting another base client is one entry here plus a ClientIntegration impl in its source set;
+// everything below (source dirs, deps, compat parity, fabric.mod.json) is driven off this map.
+def integrationSpecs = [
+    meteor: [
+        srcDir: 'src/integration/meteor/java',
+        // Key into the mcVersions entry holding this integration's per-version compat source dir.
+        compatKey: 'meteorCompat',
+        compatClass: [name: 'MeteorVersionCompat', rel: 'mankool/mcBotClient/integration/meteor/MeteorVersionCompat.java'],
+        entrypoint: 'mankool.mcBotClient.integration.meteor.MeteorIntegration',
+        suggests: ['meteor-client'],
+        deps: ["meteordevelopment:meteor-client:${mcDeps.meteor}"],
+    ],
+    baritone: [
+        srcDir: 'src/integration/baritone/java',
+        resourceDir: 'src/integration/baritone/resources',
+        mixins: ['mc-bot-client.baritone.mixins.json'],
+        entrypoint: 'mankool.mcBotClient.integration.baritone.BaritoneIntegration',
+        // Meteor's Baritone fork is "baritone-meteor"; upstream Baritone is "baritone".
+        suggests: ['baritone-meteor', 'baritone'],
+        deps: ["meteordevelopment:baritone:${mcDeps.baritone}", "dev.babbaj:nether-pathfinder:1.6"],
+    ],
+]
+
+def integrationsProp = project.findProperty('integrations')
+def enabledIntegrations = integrationsProp == null
+    ? integrationSpecs.keySet().toList()
+    : integrationsProp.toString().split(',')*.trim().findAll { it && it != 'none' }
+def unknownIntegrations = enabledIntegrations - integrationSpecs.keySet()
+if (unknownIntegrations) throw new GradleException(
+    "Unknown integration(s): ${unknownIntegrations.join(', ')}. Known: ${integrationSpecs.keySet().join(', ')}")
+def enabledSpecs = enabledIntegrations.collect { integrationSpecs[it] }
 
 // Load local deployment configuration if it exists
 if (file('deploy.gradle').exists()) {
@@ -27,11 +64,10 @@ base {
     archivesName = "${project.archives_base_name}-${project.minecraft_version}"
 }
 
-ext.loader_version   = mcDeps.loader
-ext.fabric_version   = mcDeps.fabric
-ext.meteor_version   = mcDeps.meteor
-ext.baritone_version = mcDeps.baritone
-ext.java_version     = mcDeps.javaVersion
+// Integration dependency versions are read straight off mcDeps by integrationSpecs.
+ext.loader_version = mcDeps.loader
+ext.fabric_version = mcDeps.fabric
+ext.java_version = mcDeps.javaVersion
 
 loom {
     mods {
@@ -57,9 +93,27 @@ sourceSets {
             srcDirs += [mcDeps.compat]
         }
         resources {
-            srcDirs += [mcDeps.compatResources]
+            // Compat resources must come FIRST: DuplicatesStrategy.EXCLUDE keeps the
+            // first-seen file, so per-version overrides win over src/main/resources.
+            def compatDir = file(mcDeps.compatResources)
+            srcDirs = [compatDir] + srcDirs.findAll { it != compatDir }
         }
     }
+}
+
+enabledIntegrations.each { name ->
+    def spec = integrationSpecs[name]
+    sourceSets.main.java.srcDirs += spec.srcDir
+    if (spec.compatKey) {
+        // A version entry may omit the key entirely while the integration has no build for that MC
+        // version yet. Selecting the integration anyway is a mistake worth naming.
+        def compatDir = mcDeps[spec.compatKey]
+        if (!compatDir) throw new GradleException(
+            "Minecraft $mcVer declares no '${spec.compatKey}' dir, so it cannot be built with the " +
+            "$name integration yet. Drop it, e.g. -Pintegrations=${(enabledIntegrations - name).join(',') ?: 'none'}")
+        sourceSets.main.java.srcDirs += compatDir
+    }
+    if (spec.resourceDir) sourceSets.main.resources.srcDirs += spec.resourceDir
 }
 
 protobuf {
@@ -85,6 +139,70 @@ tasks.withType(Copy).configureEach {
 tasks.withType(Jar).configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+// Every compat variant must declare identical public static signatures, even
+// though only one compiles per build. Drift = compile error on the next
+// version switch, discovered too late. One "family" per version-split compat class.
+def compatFamilies = [
+    [name: 'VersionCompat', dirs: mcVersions.values()*.compat.unique(), rel: 'mankool/mcBotClient/util/VersionCompat.java'],
+]
+enabledSpecs.findAll { it.compatClass }.each { spec ->
+    compatFamilies += [[
+        name: spec.compatClass.name,
+        // findAll() drops versions that declare no compat dir for this integration, so a new MC
+        // version can be added before the integration supports it without failing parity.
+        dirs: mcVersions.values().collect { it[spec.compatKey] }.findAll().unique(),
+        rel: spec.compatClass.rel,
+    ]]
+}
+def allCompatFiles = compatFamilies.collectMany { fam -> fam.dirs.collect { dir -> file("$dir/${fam.rel}") } }
+def checkCompatParity = tasks.register('checkCompatParity') {
+    group = 'verification'
+    description = 'Fails if compat class public static signatures differ across MC versions.'
+    inputs.files(allCompatFiles).withPathSensitivity(PathSensitivity.RELATIVE)
+    def stampFile = layout.buildDirectory.file('compat-parity/ok')
+    outputs.file(stampFile)
+    doLast {
+        def extract = { File f ->
+            def src = f.getText('UTF-8')
+                .replaceAll(/(?s)\/\*.*?\*\//, ' ')
+                .replaceAll(/\/\/[^\r\n]*/, ' ')
+            src.findAll(/public\s+static\s+[^;{}]+\{/).collect { raw ->
+                raw[0..-2]
+                    .replaceAll(/@\w+(\([^)]*\))?/, ' ')
+                    .replaceAll(/\s+/, ' ')
+                    .replaceAll(/ ?([<>,()\[\]]) ?/, '$1')
+                    .trim()
+            } as TreeSet
+        }
+        def lines = []
+        def totalSigs = 0
+        compatFamilies.each { fam ->
+            def sigs = fam.dirs.collectEntries { dir ->
+                def f = file("$dir/${fam.rel}")
+                if (!f.file) throw new GradleException("${fam.name} parity: missing $f")
+                [(dir): extract(f)]
+            }
+            def union = sigs.values().flatten() as TreeSet
+            totalSigs += union.size()
+            sigs.each { dir, set ->
+                def missing = union - set
+                if (missing) {
+                    lines << "  [${fam.name}] ${dir} (${set.size()}/${union.size()} signatures) is missing:"
+                    missing.each { lines << "    - $it" }
+                }
+            }
+        }
+        if (lines) {
+            throw new GradleException("Compat signature drift detected:\n" + lines.join('\n') +
+                "\nNote: a signature missing from all dirs but one means that one dir added/renamed a method.")
+        }
+        stampFile.get().asFile.with { parentFile.mkdirs(); text = "ok: ${totalSigs} signatures\n" }
+        logger.lifecycle("Compat parity OK: ${totalSigs} signatures across ${compatFamilies.size()} families")
+    }
+}
+tasks.named('compileJava') { dependsOn checkCompatParity }
+tasks.named('check') { dependsOn checkCompatParity }
 
 repositories {
     // Add repositories to retrieve artifacts from in here.
@@ -121,9 +239,7 @@ dependencies {
 
     add(modDep, "net.fabricmc:fabric-loader:${loader_version}")
     add(modDep, "net.fabricmc.fabric-api:fabric-api:${fabric_version}")
-    add(modDep, "meteordevelopment:meteor-client:${meteor_version}")
-    add(modDep, "meteordevelopment:baritone:${baritone_version}")
-    add(modDep, "dev.babbaj:nether-pathfinder:1.6")
+    enabledSpecs.each { spec -> spec.deps.each { add(modDep, it.toString()) } }
 
     // Protocol Buffers - using implementation for compile, include for runtime
     implementation "com.google.protobuf:protobuf-java:${project.protobuf_version}"
@@ -135,12 +251,32 @@ processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", loader_version
+    inputs.property "integrations", enabledIntegrations.join(',')
     filteringCharset "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
                 "minecraft_version": project.minecraft_version,
                 "loader_version": loader_version
+    }
+
+    // Merge the enabled integrations' entrypoint / mixin / suggests entries into the copied
+    // fabric.mod.json
+    def resourcesOutputDir = destinationDir
+    doLast {
+        def modJsonFile = new File(resourcesOutputDir, 'fabric.mod.json')
+        def modJson = new groovy.json.JsonSlurper().parseText(modJsonFile.getText('UTF-8'))
+
+        def entrypoints = enabledSpecs*.entrypoint.findAll()
+        if (entrypoints) modJson.entrypoints['mcbot:integration'] = entrypoints
+
+        def mixins = enabledSpecs.collectMany { it.mixins ?: [] }
+        if (mixins) modJson.mixins += mixins
+
+        def suggests = enabledSpecs.collectMany { it.suggests ?: [] }
+        if (suggests) modJson.suggests = suggests.collectEntries { [(it): '*'] }
+
+        modJsonFile.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(modJson)), 'UTF-8')
     }
 }
 

@@ -1,4 +1,4 @@
-package mankool.mcBotClient.api.baritone;
+package mankool.mcBotClient.integration.baritone;
 
 public interface IBaritoneSettingChangeListener {
 
