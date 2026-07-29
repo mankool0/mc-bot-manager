@@ -201,6 +201,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handlePlayerState(connectionId, clientMsg.playerState());
         } else if (clientMsg.hasInventory()) {
             BotManager::handleInventoryUpdate(connectionId, clientMsg.inventory());
+        } else if (clientMsg.hasInventoryDelta()) {
+            BotManager::handleInventoryDeltaUpdate(connectionId, clientMsg.inventoryDelta());
         } else if (clientMsg.hasChat()) {
             BotManager::handleChatMessage(connectionId, clientMsg.chat());
         } else if (clientMsg.hasCommandResponse()) {

@@ -1148,6 +1148,26 @@ void BotManager::handleInventoryUpdate(int connectionId, const mankool::mcbot::p
     instance().handleInventoryUpdateImpl(connectionId, inventory);
 }
 
+void BotManager::handleInventoryDeltaUpdate(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta)
+{
+    instance().handleInventoryDeltaUpdateImpl(connectionId, delta);
+}
+
+static void applyInventorySlots(BotInstance *bot,
+                                const QList<mankool::mcbot::protocol::ItemStack> &items)
+{
+    if (bot->inventory.isEmpty()) {
+        bot->inventory.resize(41);
+    }
+
+    for (const auto &item : items) {
+        int slot = item.slot();
+        if (slot >= 0 && slot < bot->inventory.size()) {
+            bot->inventory[slot] = item;
+        }
+    }
+}
+
 void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
@@ -1157,40 +1177,10 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
         QMutexLocker locker(bot->dataMutex.get());
         bot->selectedSlot = inventory.selectedSlot();
         bot->cursorItem = inventory.cursorItem();
-
-        if (bot->inventory.isEmpty()) {
-            bot->inventory.resize(41);
-        }
-
-        for (const auto &item : inventory.items()) {
-            int slot = item.slot();
-            if (slot >= 0 && slot < bot->inventory.size()) {
-                bot->inventory[slot] = item;
-            }
-        }
+        applyInventorySlots(bot, inventory.items());
     }
 
-    if (bot->scriptEngine) {
-        QVariantList inventoryList;
-        for (const auto &item : std::as_const(bot->inventory)) {
-            if (!item.itemId().isEmpty()) {
-                QVariantMap itemMap;
-                itemMap["slot"] = static_cast<int>(item.slot());
-                itemMap["item_id"] = item.itemId();
-                itemMap["count"] = static_cast<int>(item.count());
-                itemMap["display_name"] = item.displayName();
-                QVariantMap enchMap;
-                for (const auto &[k, v] : item.enchantments().asKeyValueRange())
-                    enchMap[k] = static_cast<int>(v);
-                itemMap["enchantments"] = enchMap;
-                inventoryList.append(itemMap);
-            }
-        }
-
-        QVariantList args;
-        args << static_cast<int>(inventory.selectedSlot()) << QVariant(inventoryList);
-        bot->scriptEngine->fireEvent("inventory_update", args);
-    }
+    notifyInventoryChanged(bot);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] InventoryUpdate received: %2 items, selected slot %3")
@@ -1199,6 +1189,71 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
                             .arg(static_cast<int>(inventory.selectedSlot())),
                         LogManager::Debug);
     }
+}
+
+void BotManager::handleInventoryDeltaUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        if (delta.hasSelectedSlot()) {
+            bot->selectedSlot = delta.selectedSlot();
+        }
+        if (delta.hasCursorItem()) {
+            bot->cursorItem = delta.cursorItem();
+        }
+        applyInventorySlots(bot, delta.changedItems());
+    }
+
+    notifyInventoryChanged(bot);
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] InventoryDeltaUpdate received: %2 changed slots%3%4")
+                            .arg(bot->name)
+                            .arg(delta.changedItems().size())
+                            .arg(delta.hasSelectedSlot()
+                                     ? QString(", selected slot %1").arg(static_cast<int>(delta.selectedSlot()))
+                                     : QString())
+                            .arg(delta.hasCursorItem() ? QString(", cursor item") : QString()),
+                        LogManager::Debug);
+    }
+}
+
+// Fires inventory_update from the bot's merged inventory, so scripts see the same full state
+// whether the message that triggered it was a full snapshot or a delta.
+void BotManager::notifyInventoryChanged(BotInstance *bot)
+{
+    if (!bot->scriptEngine) return;
+
+    QVector<mankool::mcbot::protocol::ItemStack> items;
+    int selectedSlot = 0;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        items = bot->inventory;
+        selectedSlot = bot->selectedSlot;
+    }
+
+    QVariantList inventoryList;
+    for (const auto &item : std::as_const(items)) {
+        if (!item.itemId().isEmpty()) {
+            QVariantMap itemMap;
+            itemMap["slot"] = static_cast<int>(item.slot());
+            itemMap["item_id"] = item.itemId();
+            itemMap["count"] = static_cast<int>(item.count());
+            itemMap["display_name"] = item.displayName();
+            QVariantMap enchMap;
+            for (const auto &[k, v] : item.enchantments().asKeyValueRange())
+                enchMap[k] = static_cast<int>(v);
+            itemMap["enchantments"] = enchMap;
+            inventoryList.append(itemMap);
+        }
+    }
+
+    QVariantList args;
+    args << selectedSlot << QVariant(inventoryList);
+    bot->scriptEngine->fireEvent("inventory_update", args);
 }
 
 void BotManager::handleChatMessage(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat)

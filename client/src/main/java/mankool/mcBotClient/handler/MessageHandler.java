@@ -188,6 +188,10 @@ public class MessageHandler {
         // Send item registry query
         worldOutbound.sendItemRegistryQuery();
 
+        // Seed the manager with a full inventory snapshot. Later updates are deltas against
+        // it, so a fresh connection must not have to wait for the next inventory change.
+        inventoryOutbound.queueFullUpdate();
+
         LOGGER.info("MessageHandler started, processing messages on game tick");
     }
 

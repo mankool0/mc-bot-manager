@@ -392,6 +392,7 @@ public:
     static void handleServerStatus(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     static void handlePlayerState(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);
     static void handleInventoryUpdate(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory);
+    static void handleInventoryDeltaUpdate(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta);
     static void handleChatMessage(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     static void handleCommandResponse(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     static void handleHeartbeat(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
@@ -510,6 +511,8 @@ private:
     void handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     void handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);
     void handleInventoryUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory);
+    void handleInventoryDeltaUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta);
+    void notifyInventoryChanged(BotInstance *bot);
     void handleChatMessageImpl(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     void handleCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     void handleHeartbeatImpl(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);

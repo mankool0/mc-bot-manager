@@ -35,6 +35,7 @@ message ClientToManagerMessage {
 
     // Inventory updates
     InventoryUpdate inventory = 7;
+    InventoryDeltaUpdate inventory_delta = 40;
     ContainerUpdate container = 24;
 
     // Chat messages from game
