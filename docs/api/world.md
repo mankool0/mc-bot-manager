@@ -369,6 +369,7 @@ if pos:
 Check if a block is reachable (visible via raytrace) from the bot's current eye position.
 
 **Parameters:**
+
 - `x, y, z` (`int`) - Block coordinates
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
@@ -378,6 +379,7 @@ Check if a block is reachable (visible via raytrace) from the bot's current eye 
 **Returns:** `bool` - True if the block (or specified face) is reachable
 
 **Raises:**
+
 - `ValueError` if `timeout` is not positive
 - `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
 - `TimeoutError` if the client did not answer within `timeout`
@@ -398,6 +400,7 @@ if world.can_reach_block(x, y, z, face=world.BlockFace.UP):
 Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.
 
 **Parameters:**
+
 - `from_x, from_y, from_z` (`int`) - Hypothetical foot position (eye height is added automatically)
 - `x, y, z` (`int`) - Block coordinates to check
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
@@ -408,6 +411,7 @@ Check if a block is reachable from a hypothetical standing position without movi
 **Returns:** `bool` - True if the block (or specified face) would be reachable from that position
 
 **Raises:**
+
 - `ValueError` if `timeout` is not positive
 - `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
 - `TimeoutError` if the client did not answer within `timeout`
@@ -425,6 +429,7 @@ if world.can_reach_block_from(cx, cy, cz, bx, by, bz, face=world.BlockFace.UP):
 Check many positions in a single round trip. Equivalent to calling `can_reach_block` once per query, except the whole list goes to the client as one message, so a scan costs one game tick instead of one tick per query.
 
 **Parameters:**
+
 - `queries` (`list` or any sequence) - Each entry is either an `(x, y, z)` tuple or a [`world.ReachQuery`](#reachquery)
 - `sneak` (`bool`, optional) - Crouching eye height, for every entry that does not override it (default: False)
 - `face` (`world.BlockFace`, optional) - Face to check, for every entry that does not override it. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
@@ -434,6 +439,7 @@ Check many positions in a single round trip. Equivalent to calling `can_reach_bl
 **Returns:** `list[bool]` - One entry per query, in the same order
 
 **Raises:**
+
 - `ValueError` if an entry is neither a 3-tuple nor a `ReachQuery`, if a coordinate is not a number, if `timeout` is not positive, or if the batch is too large to fit in a single request (roughly 210,000 queries)
 - `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the batch (e.g. bot not in a world)
 - `TimeoutError` if the client did not answer within `timeout`
