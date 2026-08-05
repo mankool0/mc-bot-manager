@@ -104,7 +104,7 @@ Fired when inventory is updated.
 **Parameters:**
 
 - `selected_slot` (`int`) - Currently selected hotbar slot (0-8)
-- `inventory` (`list`) - List of inventory items, each item is a dict with keys: `slot`, `item_id`, `count`, `display_name`
+- `inventory` (`list`) - List of inventory items, each item is a dict with keys: `slot`, `item_id`, `count`, `display_name`, `enchantments`. Empty slots are omitted. The full inventory is always passed, even though the client sends updates as deltas.
 
 ```python
 @on("inventory_update")
@@ -131,6 +131,99 @@ def on_screen_update(screen):
         bot.chat("I died!")
     else:
         utils.log(f"Screen: {screen.title or screen.screen_class}, {len(screen.widgets)} widgets")
+```
+
+### `container_update`
+
+Fired when an open container's contents are synced (chest, furnace, crafting table,
+etc.). Not fired when the container closes.
+
+**Parameters:**
+
+- `container` (`dict`) - Container state with keys:
+  - `id` (`int`) - Container/window ID
+  - `type` (`int`) - Menu type ID
+  - `items` (`list`) - Items in the container, each a dict with keys `slot`, `item_id`, `count`, `damage`, `max_damage`, `display_name`, `enchantments`
+  - `x`, `y`, `z` (`int`, optional) - Block position, present only for containers with a world position
+  - `properties` (`dict`, optional) - Menu properties (e.g. furnace burn/cook progress), present only when non-empty
+
+Slot numbering covers the whole open menu: container slots first, then the player's
+main inventory and hotbar (for a single chest: 0-26 chest, 27-53 player main, 54-62
+hotbar).
+
+```python
+@on("container_update")
+def on_container(container):
+    utils.log(f"Container {container['id']} has {len(container['items'])} slots")
+    for item in container['items']:
+        if item['item_id'] != "minecraft:air":
+            utils.log(f"  slot {item['slot']}: {item['item_id']} x{item['count']}")
+```
+
+### `block_update`
+
+Fired when a single block changes.
+
+**Parameters:**
+
+- `x` (`int`) - Block X coordinate
+- `y` (`int`) - Block Y coordinate
+- `z` (`int`) - Block Z coordinate
+- `block_id` (`str`) - New block state string (e.g. `"minecraft:oak_log[axis=y]"`)
+
+```python
+@on("block_update")
+def on_block(x, y, z, block_id):
+    if "chest" in block_id:
+        utils.log(f"Chest placed at ({x}, {y}, {z})")
+```
+
+### `multi_block_update`
+
+Fired when several blocks in one chunk section change at once. Only the number of changed blocks is passed; the world data is already
+updated, so query positions with [`world.get_block`](api/world.md).
+
+**Parameters:**
+
+- `count` (`int`) - Number of blocks that changed
+
+```python
+@on("multi_block_update")
+def on_multi_block(count):
+    utils.log(f"{count} blocks changed at once")
+```
+
+### `chunk_loaded`
+
+Fired when a chunk is received from the server and added to the world data.
+
+**Parameters:**
+
+- `chunk_x` (`int`) - Chunk X coordinate (block X >> 4)
+- `chunk_z` (`int`) - Chunk Z coordinate (block Z >> 4)
+- `dimension` (`str`) - Dimension the chunk belongs to (e.g. `"minecraft:overworld"`)
+
+```python
+@on("chunk_loaded")
+def on_chunk(chunk_x, chunk_z, dimension):
+    utils.log(f"Loaded chunk ({chunk_x}, {chunk_z}) in {dimension}")
+```
+
+### `chunk_unloaded`
+
+Fired when a chunk leaves render distance and is dropped from the world data. Blocks
+in that chunk are no longer readable from memory (`world.get_block(..., use_disk=True)`
+can still read them if world saving is on).
+
+**Parameters:**
+
+- `chunk_x` (`int`) - Chunk X coordinate
+- `chunk_z` (`int`) - Chunk Z coordinate
+
+```python
+@on("chunk_unloaded")
+def on_chunk_unload(chunk_x, chunk_z):
+    utils.log(f"Unloaded chunk ({chunk_x}, {chunk_z})")
 ```
 
 ### `baritone_status_update`

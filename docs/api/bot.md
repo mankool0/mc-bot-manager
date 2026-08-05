@@ -189,6 +189,21 @@ The item dict schema used by `bot.inventory()`, `world.get_container()`, and ent
     are none, etc. Always read optional fields with `item.get("field", default)`
     - `item["damage"]` raises `KeyError` on a full-durability tool. 
 
+### `get_cursor_item(bot_name="")`
+
+Get the item currently held on the mouse cursor (the stack picked up by a container
+click). Returns an [item dict](#item-dict) with `slot` set to `-1`; when the cursor is
+empty, `item_id` is `"minecraft:air"` and `count` is `0`.
+
+**Returns:** `dict` or `None` if the bot is not found or not online
+
+```python
+world.click_slot(0)
+cursor = bot.get_cursor_item()
+if cursor and cursor["item_id"] != "minecraft:air":
+    utils.log(f"Holding {cursor['item_id']} x{cursor['count']}")
+```
+
 ### `get_screen(bot_name="")`
 
 Get full screen dump as a `ScreenState` object.
