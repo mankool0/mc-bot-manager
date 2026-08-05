@@ -911,6 +911,61 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#container_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        container_update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#block_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        block_update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi_block_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multi_block_update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk_loaded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chunk_loaded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk_unloaded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chunk_unloaded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#baritone_status_update" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1094,6 +1149,61 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#container_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        container_update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#block_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        block_update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi_block_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multi_block_update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk_loaded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chunk_loaded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk_unloaded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chunk_unloaded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#baritone_status_update" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1257,7 +1367,7 @@
 <p><strong>Parameters:</strong></p>
 <ul>
 <li><code>selected_slot</code> (<code>int</code>) - Currently selected hotbar slot (0-8)</li>
-<li><code>inventory</code> (<code>list</code>) - List of inventory items, each item is a dict with keys: <code>slot</code>, <code>item_id</code>, <code>count</code>, <code>display_name</code></li>
+<li><code>inventory</code> (<code>list</code>) - List of inventory items, each item is a dict with keys: <code>slot</code>, <code>item_id</code>, <code>count</code>, <code>display_name</code>, <code>enchantments</code>. Empty slots are omitted. The full inventory is always passed, even though the client sends updates as deltas.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;inventory_update&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">inv_update</span><span class="p">(</span><span class="n">selected_slot</span><span class="p">,</span> <span class="n">inventory</span><span class="p">):</span>
@@ -1279,6 +1389,78 @@
         <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;I died!&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Screen: </span><span class="si">{</span><span class="n">screen</span><span class="o">.</span><span class="n">title</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">)</span><span class="si">}</span><span class="s2"> widgets&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="container_update"><code>container_update</code></h3>
+<p>Fired when an open container's contents are synced (chest, furnace, crafting table,
+etc.). Not fired when the container closes.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>container</code> (<code>dict</code>) - Container state with keys:</li>
+<li><code>id</code> (<code>int</code>) - Container/window ID</li>
+<li><code>type</code> (<code>int</code>) - Menu type ID</li>
+<li><code>items</code> (<code>list</code>) - Items in the container, each a dict with keys <code>slot</code>, <code>item_id</code>, <code>count</code>, <code>damage</code>, <code>max_damage</code>, <code>display_name</code>, <code>enchantments</code></li>
+<li><code>x</code>, <code>y</code>, <code>z</code> (<code>int</code>, optional) - Block position, present only for containers with a world position</li>
+<li><code>properties</code> (<code>dict</code>, optional) - Menu properties (e.g. furnace burn/cook progress), present only when non-empty</li>
+</ul>
+<p>Slot numbering covers the whole open menu: container slots first, then the player's
+main inventory and hotbar (for a single chest: 0-26 chest, 27-53 player main, 54-62
+hotbar).</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;container_update&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">on_container</span><span class="p">(</span><span class="n">container</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Container </span><span class="si">{</span><span class="n">container</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">container</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> slots&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">container</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;minecraft:air&quot;</span><span class="p">:</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="block_update"><code>block_update</code></h3>
+<p>Fired when a single block changes.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x</code> (<code>int</code>) - Block X coordinate</li>
+<li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
+<li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
+<li><code>block_id</code> (<code>str</code>) - New block state string (e.g. <code>"minecraft:oak_log[axis=y]"</code>)</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;block_update&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">on_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block_id</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;chest&quot;</span> <span class="ow">in</span> <span class="n">block_id</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chest placed at (</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="multi_block_update"><code>multi_block_update</code></h3>
+<p>Fired when several blocks in one chunk section change at once. Only the number of changed blocks is passed; the world data is already
+updated, so query positions with <a href="../api/world/"><code>world.get_block</code></a>.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>count</code> (<code>int</code>) - Number of blocks that changed</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;multi_block_update&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">on_multi_block</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> blocks changed at once&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="chunk_loaded"><code>chunk_loaded</code></h3>
+<p>Fired when a chunk is received from the server and added to the world data.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>chunk_x</code> (<code>int</code>) - Chunk X coordinate (block X &gt;&gt; 4)</li>
+<li><code>chunk_z</code> (<code>int</code>) - Chunk Z coordinate (block Z &gt;&gt; 4)</li>
+<li><code>dimension</code> (<code>str</code>) - Dimension the chunk belongs to (e.g. <code>"minecraft:overworld"</code>)</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chunk_loaded&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">on_chunk</span><span class="p">(</span><span class="n">chunk_x</span><span class="p">,</span> <span class="n">chunk_z</span><span class="p">,</span> <span class="n">dimension</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded chunk (</span><span class="si">{</span><span class="n">chunk_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">chunk_z</span><span class="si">}</span><span class="s2">) in </span><span class="si">{</span><span class="n">dimension</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="chunk_unloaded"><code>chunk_unloaded</code></h3>
+<p>Fired when a chunk leaves render distance and is dropped from the world data. Blocks
+in that chunk are no longer readable from memory (<code>world.get_block(..., use_disk=True)</code>
+can still read them if world saving is on).</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>chunk_x</code> (<code>int</code>) - Chunk X coordinate</li>
+<li><code>chunk_z</code> (<code>int</code>) - Chunk Z coordinate</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chunk_unloaded&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">on_chunk_unload</span><span class="p">(</span><span class="n">chunk_x</span><span class="p">,</span> <span class="n">chunk_z</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unloaded chunk (</span><span class="si">{</span><span class="n">chunk_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">chunk_z</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="baritone_status_update"><code>baritone_status_update</code></h3>
 <p>Fired when baritone pathfinding status changes.</p>
