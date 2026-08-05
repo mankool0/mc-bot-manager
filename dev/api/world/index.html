@@ -2663,17 +2663,21 @@
 </code></pre></div>
 <h3 id="can_reach_blockx-y-z-sneakfalse-faceworldblockfaceauto-timeout30-bot_name"><code>can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, timeout=3.0, bot_name="")</code></h3>
 <p>Check if a block is reachable (visible via raytrace) from the bot's current eye position.</p>
-<p><strong>Parameters:</strong>
-- <code>x, y, z</code> (<code>int</code>) - Block coordinates
-- <code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height (default: False)
-- <code>face</code> (<code>world.BlockFace</code>, optional) - Check reachability of a specific face only. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)
-- <code>timeout</code> (<code>float</code>, optional) - Seconds to wait for the client's reply (default: 3.0)
-- <code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>x, y, z</code> (<code>int</code>) - Block coordinates</li>
+<li><code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height (default: False)</li>
+<li><code>face</code> (<code>world.BlockFace</code>, optional) - Check reachability of a specific face only. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)</li>
+<li><code>timeout</code> (<code>float</code>, optional) - Seconds to wait for the client's reply (default: 3.0)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</li>
+</ul>
 <p><strong>Returns:</strong> <code>bool</code> - True if the block (or specified face) is reachable</p>
-<p><strong>Raises:</strong>
-- <code>ValueError</code> if <code>timeout</code> is not positive
-- <code>RuntimeError</code> if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
-- <code>TimeoutError</code> if the client did not answer within <code>timeout</code></p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><code>ValueError</code> if <code>timeout</code> is not positive</li>
+<li><code>RuntimeError</code> if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)</li>
+<li><code>TimeoutError</code> if the client did not answer within <code>timeout</code></li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">can_reach_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
     <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
 
@@ -2684,18 +2688,22 @@
 <hr />
 <h3 id="can_reach_block_fromfrom_x-from_y-from_z-x-y-z-sneakfalse-faceworldblockfaceauto-timeout30-bot_name"><code>can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, timeout=3.0, bot_name="")</code></h3>
 <p>Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.</p>
-<p><strong>Parameters:</strong>
-- <code>from_x, from_y, from_z</code> (<code>int</code>) - Hypothetical foot position (eye height is added automatically)
-- <code>x, y, z</code> (<code>int</code>) - Block coordinates to check
-- <code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height (default: False)
-- <code>face</code> (<code>world.BlockFace</code>, optional) - Check reachability of a specific face only. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)
-- <code>timeout</code> (<code>float</code>, optional) - Seconds to wait for the client's reply (default: 3.0)
-- <code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>from_x, from_y, from_z</code> (<code>int</code>) - Hypothetical foot position (eye height is added automatically)</li>
+<li><code>x, y, z</code> (<code>int</code>) - Block coordinates to check</li>
+<li><code>sneak</code> (<code>bool</code>, optional) - Use crouching eye height (default: False)</li>
+<li><code>face</code> (<code>world.BlockFace</code>, optional) - Check reachability of a specific face only. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)</li>
+<li><code>timeout</code> (<code>float</code>, optional) - Seconds to wait for the client's reply (default: 3.0)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</li>
+</ul>
 <p><strong>Returns:</strong> <code>bool</code> - True if the block (or specified face) would be reachable from that position</p>
-<p><strong>Raises:</strong>
-- <code>ValueError</code> if <code>timeout</code> is not positive
-- <code>RuntimeError</code> if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
-- <code>TimeoutError</code> if the client did not answer within <code>timeout</code></p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><code>ValueError</code> if <code>timeout</code> is not positive</li>
+<li><code>RuntimeError</code> if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)</li>
+<li><code>TimeoutError</code> if the client did not answer within <code>timeout</code></li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find a standable position from which the UP face is reachable</span>
 <span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">can_reach_block_from</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">UP</span><span class="p">):</span>
     <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
@@ -2703,17 +2711,21 @@
 <hr />
 <h3 id="can_reach_blocksqueries-sneakfalse-faceworldblockfaceauto-timeout50-bot_name"><code>can_reach_blocks(queries, sneak=False, face=world.BlockFace.AUTO, timeout=5.0, bot_name="")</code></h3>
 <p>Check many positions in a single round trip. Equivalent to calling <code>can_reach_block</code> once per query, except the whole list goes to the client as one message, so a scan costs one game tick instead of one tick per query.</p>
-<p><strong>Parameters:</strong>
-- <code>queries</code> (<code>list</code> or any sequence) - Each entry is either an <code>(x, y, z)</code> tuple or a <a href="#reachquery"><code>world.ReachQuery</code></a>
-- <code>sneak</code> (<code>bool</code>, optional) - Crouching eye height, for every entry that does not override it (default: False)
-- <code>face</code> (<code>world.BlockFace</code>, optional) - Face to check, for every entry that does not override it. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)
-- <code>timeout</code> (<code>float</code>, optional) - Seconds to wait for the client's reply (default: 5.0)
-- <code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>queries</code> (<code>list</code> or any sequence) - Each entry is either an <code>(x, y, z)</code> tuple or a <a href="#reachquery"><code>world.ReachQuery</code></a></li>
+<li><code>sneak</code> (<code>bool</code>, optional) - Crouching eye height, for every entry that does not override it (default: False)</li>
+<li><code>face</code> (<code>world.BlockFace</code>, optional) - Face to check, for every entry that does not override it. <code>AUTO</code> checks all faces (default: <code>world.BlockFace.AUTO</code>)</li>
+<li><code>timeout</code> (<code>float</code>, optional) - Seconds to wait for the client's reply (default: 5.0)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name (default: active bot)</li>
+</ul>
 <p><strong>Returns:</strong> <code>list[bool]</code> - One entry per query, in the same order</p>
-<p><strong>Raises:</strong>
-- <code>ValueError</code> if an entry is neither a 3-tuple nor a <code>ReachQuery</code>, if a coordinate is not a number, if <code>timeout</code> is not positive, or if the batch is too large to fit in a single request (roughly 210,000 queries)
-- <code>RuntimeError</code> if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the batch (e.g. bot not in a world)
-- <code>TimeoutError</code> if the client did not answer within <code>timeout</code></p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><code>ValueError</code> if an entry is neither a 3-tuple nor a <code>ReachQuery</code>, if a coordinate is not a number, if <code>timeout</code> is not positive, or if the batch is too large to fit in a single request (roughly 210,000 queries)</li>
+<li><code>RuntimeError</code> if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the batch (e.g. bot not in a world)</li>
+<li><code>TimeoutError</code> if the client did not answer within <code>timeout</code></li>
+</ul>
 <p><strong>Note:</strong> The client does the whole batch within one game tick, so every query is evaluated against the same bot position and the results are consistent with each other even if the bot is moving. The flip side is that a very large batch may briefly freeze the client.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Which of these chests can the bot reach right now?</span>
 <span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span> <span class="n">px</span><span class="p">,</span> <span class="n">py</span><span class="p">,</span> <span class="n">pz</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
