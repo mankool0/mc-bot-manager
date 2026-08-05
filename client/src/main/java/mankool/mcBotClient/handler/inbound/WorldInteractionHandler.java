@@ -21,6 +21,7 @@ import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -151,40 +152,66 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         }
     }
 
-    public void handleCanReachBlock(String messageId, World.CanReachBlockCommand command) {
-        LocalPlayer player = client.player;
-        ClientLevel level = client.level;
+    // Eye position a query is traced from: its own from_position when set (centered on the block
+    // in X/Z), otherwise the supplied player origin. Sneak selects the crouching eye height.
+    private Vec3 reachEyePosition(LocalPlayer player, Vec3 origin, World.CanReachBlockCommand query) {
+        Common.BlockPos from = query.hasFromPosition() ? query.getFromPosition() : null;
+        double baseX = from != null ? from.getX() + 0.5 : origin.x;
+        double baseY = from != null ? from.getY() : origin.y;
+        double baseZ = from != null ? from.getZ() + 0.5 : origin.z;
+        Pose pose = query.getSneak() ? Pose.CROUCHING : Pose.STANDING;
+        return new Vec3(baseX, baseY + player.getEyeHeight(pose), baseZ);
+    }
 
-        if (player == null || level == null) {
-            sendCanReachBlockResponse(messageId, false);
+    private boolean evaluateReach(ClientLevel level, LocalPlayer player, Vec3 origin,
+                                  double reachDistance, World.CanReachBlockCommand query) {
+        Common.BlockPos protoPos = query.getPosition();
+        BlockPos blockPos = new BlockPos(protoPos.getX(), protoPos.getY(), protoPos.getZ());
+        try {
+            Vec3 eyePos = reachEyePosition(player, origin, query);
+            int faceOrdinal = query.getFace().getNumber();
+            if (faceOrdinal == 0) { // AUTO - check all faces
+                return rayTraceBlock(level, player, eyePos, blockPos, reachDistance).isPresent();
+            }
+            return rayTraceBlockFace(level, player, eyePos, blockPos, reachDistance, faceOrdinal).isPresent();
+        } catch (Exception e) {
+            LOGGER.error("Error checking reachability at {}", blockPos.toShortString(), e);
+            return false;
+        }
+    }
+
+    public void handleCanReachBlocks(String messageId, World.CanReachBlocksCommand command) {
+        final int count = command.getQueriesCount();
+        if (count == 0) {
+            sendCanReachBlocksResponse(messageId, new boolean[0], 0);
             return;
         }
 
-        Common.BlockPos protoPos = command.getPosition();
-        BlockPos blockPos = new BlockPos(protoPos.getX(), protoPos.getY(), protoPos.getZ());
-
-        try {
-            double blockReachDistance = VersionCompat.getBlockReachDistance(player);
-
-            Common.BlockPos from = command.hasFromPosition() ? command.getFromPosition() : null;
-            double baseX = from != null ? from.getX() + 0.5 : player.getX();
-            double baseY = from != null ? from.getY()       : player.getY();
-            double baseZ = from != null ? from.getZ() + 0.5 : player.getZ();
-            Vec3 eyePos = new Vec3(baseX, baseY + player.getEyeHeight(command.getSneak() ? Pose.CROUCHING : Pose.STANDING), baseZ);
-
-            int faceOrdinal = command.getFace().getNumber();
-            boolean reachable;
-            if (faceOrdinal == 0) { // AUTO - check all faces
-                reachable = rayTraceBlock(level, player, eyePos, blockPos, blockReachDistance).isPresent();
-            } else {
-                reachable = rayTraceBlockFace(level, player, eyePos, blockPos, blockReachDistance, faceOrdinal).isPresent();
-            }
-            sendCanReachBlockResponse(messageId, reachable);
-
-        } catch (Exception e) {
-            LOGGER.error("Error checking reachability", e);
-            sendCanReachBlockResponse(messageId, false);
+        LocalPlayer player = client.player;
+        ClientLevel level = client.level;
+        if (player == null || level == null) {
+            sendCanReachBlocksResponse(messageId, new boolean[0], 0);
+            return;
         }
+
+        Vec3 origin = new Vec3(player.getX(), player.getY(), player.getZ());
+
+        double reachDistance;
+        try {
+            reachDistance = VersionCompat.getBlockReachDistance(player);
+        } catch (Exception e) {
+            LOGGER.error("Could not determine block reach distance", e);
+            sendCanReachBlocksResponse(messageId, new boolean[0], 0);
+            return;
+        }
+
+        boolean[] results = new boolean[count];
+        List<World.CanReachBlockCommand> queries = command.getQueriesList();
+        for (int i = 0; i < count; i++) {
+            results[i] = evaluateReach(level, player, origin, reachDistance, queries.get(i));
+        }
+
+        sendCanReachBlocksResponse(messageId, results, count);
     }
 
     private Optional<BlockHitResult> rayTraceBlock(ClientLevel level, LocalPlayer player, Vec3 eyePos, BlockPos blockPos, double reachDistance) {
@@ -231,15 +258,16 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         return Optional.empty();
     }
 
-    private void sendCanReachBlockResponse(String messageId, boolean reachable) {
-        World.CanReachBlockResponse response = World.CanReachBlockResponse.newBuilder()
-            .setRequestId(messageId)
-            .setReachable(reachable)
-            .build();
+    private void sendCanReachBlocksResponse(String messageId, boolean[] reachable, int count) {
+        World.CanReachBlocksResponse.Builder response = World.CanReachBlocksResponse.newBuilder()
+            .setRequestId(messageId);
+        for (int i = 0; i < count; i++) {
+            response.addReachable(reachable[i]);
+        }
         Protocol.ClientToManagerMessage msg = Protocol.ClientToManagerMessage.newBuilder()
             .setMessageId(UUID.randomUUID().toString())
             .setTimestamp(System.currentTimeMillis())
-            .setCanReachBlockResponse(response)
+            .setCanReachBlocksResponse(response.build())
             .build();
         connection.sendMessage(msg);
     }

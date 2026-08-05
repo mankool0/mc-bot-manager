@@ -2410,30 +2410,175 @@ py::list PythonAPI::findEntitiesNear(double x, double y, double z, double radius
     return result;
 }
 
-bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, BlockFace face, const std::string &bot)
+static void raiseOnReachFailure(const BotManager::ReachBatchResult &result, int total, double timeout)
 {
-    QString botName = resolveBotName(bot);
-    ensureBotOnline(botName);
-
-    bool result;
-    {
-        py::gil_scoped_release release;
-        result = BotManager::sendCanReachBlock(botName, x, y, z, sneak, 3000, static_cast<int>(face));
+    switch (result.status) {
+    case BotManager::ReachBatchResult::Status::Ok:
+        return;
+    case BotManager::ReachBatchResult::Status::NotConnected:
+        throw std::runtime_error("Bot went offline before the reach queries could be sent");
+    case BotManager::ReachBatchResult::Status::SendFailed:
+        throw std::runtime_error("Failed to send reach queries to the client");
+    case BotManager::ReachBatchResult::Status::TimedOut: {
+        std::string msg = "client did not answer " + std::to_string(total)
+                          + (total == 1 ? " reach query within " : " reach queries within ")
+                          + QString::number(timeout).toStdString() + "s";
+        PyErr_SetString(PyExc_TimeoutError, msg.c_str());
+        throw py::error_already_set();
     }
-    return result;
+    case BotManager::ReachBatchResult::Status::Partial:
+        if (result.evaluated == 0)
+            throw std::runtime_error("Client could not evaluate the reach "
+                                     + std::string(total == 1 ? "query" : "queries")
+                                     + " (bot is not in a world)");
+        throw std::runtime_error("Client evaluated only " + std::to_string(result.evaluated)
+                                 + " of " + std::to_string(total) + " reach queries");
+    case BotManager::ReachBatchResult::Status::TooLarge:
+        // Not a policy limit on batch size, just the largest request that fits in one message.
+        // The whole call must go in one message so every query sees the same player position.
+        throw std::invalid_argument(std::to_string(total) + " queries exceeds what fits in a single "
+                                    + "request to the client; at most " + std::to_string(result.maxQueries)
+                                    + " per call. Split the work across calls, noting that each call "
+                                    + "re-reads the bot's position.");
+    }
 }
 
-bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, BlockFace face, const std::string &bot)
+static bool runSingleReachQuery(const QString &botName, const BotManager::ReachQuery &q, double timeout)
 {
+    BotManager::ReachBatchResult result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::sendCanReachBlocks(botName, {q}, static_cast<int>(timeout * 1000.0));
+    }
+    raiseOnReachFailure(result, 1, timeout);
+    return result.results.at(0);
+}
+
+bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, BlockFace face, double timeout, const std::string &bot)
+{
+    if (timeout <= 0.0)
+        throw std::invalid_argument("timeout must be greater than 0");
+
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
-    bool result;
+    BotManager::ReachQuery q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.sneak = sneak;
+    q.face = static_cast<int>(face);
+    return runSingleReachQuery(botName, q, timeout);
+}
+
+bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, BlockFace face, double timeout, const std::string &bot)
+{
+    if (timeout <= 0.0)
+        throw std::invalid_argument("timeout must be greater than 0");
+
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::ReachQuery q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.sneak = sneak;
+    q.face = static_cast<int>(face);
+    q.hasFrom = true;
+    q.fromX = fromX;
+    q.fromY = fromY;
+    q.fromZ = fromZ;
+    return runSingleReachQuery(botName, q, timeout);
+}
+
+static BotManager::ReachQuery reachQueryFromItem(const py::handle &item, int index,
+                                                 bool callSneak, PythonAPI::BlockFace callFace)
+{
+    BotManager::ReachQuery q;
+    q.sneak = callSneak;
+    q.face = static_cast<int>(callFace);
+
+    if (py::isinstance<PyReachQuery>(item)) {
+        const PyReachQuery &rq = item.cast<const PyReachQuery &>();
+        q.x = rq.x;
+        q.y = rq.y;
+        q.z = rq.z;
+        q.hasFrom = rq.hasFrom;
+        q.fromX = rq.fromX;
+        q.fromY = rq.fromY;
+        q.fromZ = rq.fromZ;
+        if (rq.sneak.has_value())
+            q.sneak = rq.sneak.value();
+        if (rq.face.has_value())
+            q.face = static_cast<int>(rq.face.value());
+        return q;
+    }
+
+    // Reject strings and dicts up front: both are sequences, so without this a typo like
+    // "1,2,3" would fail with a confusing per-element message instead of a clear one.
+    if (py::isinstance<py::str>(item) || py::isinstance<py::dict>(item) || !py::isinstance<py::sequence>(item)) {
+        throw std::invalid_argument("queries[" + std::to_string(index)
+                                    + "] must be an (x, y, z) tuple or a world.ReachQuery");
+    }
+
+    py::sequence seq = item.cast<py::sequence>();
+    const int len = static_cast<int>(py::len(seq));
+    if (len != 3) {
+        throw std::invalid_argument("queries[" + std::to_string(index) + "] must have exactly 3 values (x, y, z), got "
+                                    + std::to_string(len)
+                                    + "; use world.ReachQuery(x, y, z, from_pos=(fx, fy, fz)) to trace from another position");
+    }
+
+    int v[3] = {0, 0, 0};
+    for (int i = 0; i < 3; ++i) {
+        try {
+            v[i] = seq[i].cast<int>();
+        } catch (const py::cast_error &) {
+            throw std::invalid_argument("queries[" + std::to_string(index) + "][" + std::to_string(i)
+                                        + "] is not a number");
+        }
+    }
+    q.x = v[0];
+    q.y = v[1];
+    q.z = v[2];
+    return q;
+}
+
+py::list PythonAPI::canReachBlocks(const py::sequence &queries, bool sneak, BlockFace face,
+                                   double timeout, const std::string &bot)
+{
+    if (timeout <= 0.0)
+        throw std::invalid_argument("timeout must be greater than 0");
+
+    if (py::isinstance<py::str>(queries) || py::isinstance<py::bytes>(queries))
+        throw std::invalid_argument("queries must be a list of (x, y, z) tuples or world.ReachQuery objects");
+
+    const int total = static_cast<int>(py::len(queries));
+    QList<BotManager::ReachQuery> resolved;
+    resolved.reserve(total);
+    int index = 0;
+    for (const auto &item : queries)
+        resolved.append(reachQueryFromItem(item, index++, sneak, face));
+
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    if (resolved.isEmpty())
+        return py::list();
+
+    BotManager::ReachBatchResult result;
     {
         py::gil_scoped_release release;
-        result = BotManager::sendCanReachBlockFrom(botName, fromX, fromY, fromZ, x, y, z, sneak, 3000, static_cast<int>(face));
+        result = BotManager::sendCanReachBlocks(botName, resolved, static_cast<int>(timeout * 1000.0));
     }
-    return result;
+
+    raiseOnReachFailure(result, total, timeout);
+
+    py::list out;
+    for (bool r : result.results)
+        out.append(py::bool_(r));
+    return out;
 }
 
 void PythonAPI::holdAttack(bool enabled, int durationTicks, const std::string &botName)
@@ -2447,7 +2592,13 @@ bool PythonAPI::getHoldAttack(const std::string &botName)
 {
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
-    return BotManager::getHoldAttackStatus(name);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::getHoldAttackStatus(name);
+    }
+    return result;
 }
 
 void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak, const std::string &botName)

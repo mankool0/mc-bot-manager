@@ -75,7 +75,7 @@ message ClientToManagerMessage {
     ItemRegistryMessage item_registry = 28;
 
     // World interaction responses
-    CanReachBlockResponse can_reach_block_response = 29;
+    CanReachBlocksResponse can_reach_blocks_response = 29;
     HoldAttackStatusResponse hold_attack_status_response = 34;
 
     // Entity tracking
@@ -147,7 +147,7 @@ message ManagerToClientMessage {
 
     // World interaction
     InteractWithBlockCommand interact_with_block = 20;
-    CanReachBlockCommand can_reach_block = 26;
+    CanReachBlocksCommand can_reach_blocks = 26;
 
     // Block registry response
     BlockRegistryResponse registry_response = 21;

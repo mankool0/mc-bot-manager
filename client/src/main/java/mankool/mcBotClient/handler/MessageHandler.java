@@ -15,10 +15,15 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class MessageHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandler.class);
+
+    private static final AtomicBoolean tickHookInstalled = new AtomicBoolean(false);
+    private static volatile MessageHandler activeHandler;
+
     private final PipeConnection connection;
     private final Minecraft client;
     private volatile boolean running = false;
@@ -27,6 +32,7 @@ public class MessageHandler {
     private final Map<Protocol.ManagerToClientMessage.PayloadCase, Consumer<Protocol.ManagerToClientMessage>> handlers;
 
     private final List<Runnable> integrationTicks = new ArrayList<>();
+    private final List<BaseOutbound> outbounds;
 
     // Inbound handlers (handle incoming commands)
     private final ConnectionHandler connectionHandler;
@@ -72,14 +78,33 @@ public class MessageHandler {
         this.statsOutbound = new StatsOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
+        // Ticked from onClientTick below, in construction order
+        this.outbounds = List.of(serverOutbound, playerOutbound, inventoryOutbound,
+                                 worldOutbound, containerOutbound, screenOutbound, entityOutbound,
+                                 tabListOutbound, statsOutbound);
+
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
         registerHandlers();
 
         setupIntegrations(connection);
 
-        // Register tick handler for protocol-level updates
-        ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+        installTickHook();
+    }
+
+    // Installs the single shared tick hook the first time a handler is built. The lambda holds no
+    // reference to any instance, so a handler becomes collectable as soon as it stops being the
+    // active one.
+    private static void installTickHook() {
+        if (!tickHookInstalled.compareAndSet(false, true)) {
+            return;
+        }
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            MessageHandler handler = activeHandler;
+            if (handler != null) {
+                handler.onClientTick(client);
+            }
+        });
     }
 
     private void setupIntegrations(PipeConnection connection) {
@@ -140,8 +165,8 @@ public class MessageHandler {
             msg -> connectionHandler.handleShutdown(msg.getMessageId(), msg.getShutdown()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.INTERACT_WITH_BLOCK,
             msg -> worldInteractionHandler.handleInteractWithBlock(msg.getMessageId(), msg.getInteractWithBlock()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CAN_REACH_BLOCK,
-            msg -> worldInteractionHandler.handleCanReachBlock(msg.getMessageId(), msg.getCanReachBlock()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CAN_REACH_BLOCKS,
+            msg -> worldInteractionHandler.handleCanReachBlocks(msg.getMessageId(), msg.getCanReachBlocks()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REGISTRY_RESPONSE,
             msg -> worldOutbound.handleRegistryResponse(msg.getRegistryResponse()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.ITEM_REGISTRY_RESPONSE,
@@ -178,6 +203,8 @@ public class MessageHandler {
         }
 
         running = true;
+        // Takes over the shared tick hook, which drops the previous handler's last reference.
+        activeHandler = this;
 
         // Send initial connection info
         serverOutbound.sendConnectionInfo();
@@ -197,6 +224,10 @@ public class MessageHandler {
 
     public void stop() {
         running = false;
+        // Only clear the hook if a newer handler has not already taken it over.
+        if (activeHandler == this) {
+            activeHandler = null;
+        }
     }
 
     public ServerOutbound getServerOutbound() {
@@ -217,6 +248,10 @@ public class MessageHandler {
             return;
         }
         tick++;
+
+        for (BaseOutbound outbound : outbounds) {
+            outbound.tick(client);
+        }
 
         // Process all pending messages from manager
         Protocol.ManagerToClientMessage message;

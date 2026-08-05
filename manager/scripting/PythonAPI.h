@@ -79,19 +79,32 @@ struct PyTabListPlayer {
     std::string display_name;
 };
 
+enum class BlockFace {
+    AUTO = 0,
+    DOWN = 1,
+    UP = 2,
+    NORTH = 3,
+    SOUTH = 4,
+    WEST = 5,
+    EAST = 6
+};
+
+struct PyReachQuery {
+    int x = 0;
+    int y = 0;
+    int z = 0;
+    bool hasFrom = false;
+    int fromX = 0;
+    int fromY = 0;
+    int fromZ = 0;
+    std::optional<bool> sneak;
+    std::optional<BlockFace> face;
+};
+
 class PythonAPI
 {
 public:
-    // Block face enum for interact_block face override
-    enum class BlockFace {
-        AUTO  = 0,
-        DOWN  = 1,
-        UP    = 2,
-        NORTH = 3,
-        SOUTH = 4,
-        WEST  = 5,
-        EAST  = 6
-    };
+    using BlockFace = ::BlockFace;
 
     // Enums for container interaction
     enum class MouseButton {
@@ -244,8 +257,10 @@ public:
     static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
     static bool getHoldAttack(const std::string &botName = "");
     static void lookAt(double x, double y, double z, BlockFace face = BlockFace::AUTO, bool sneak = false, const std::string &botName = "");
-    static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
-    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
+    static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
+    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
+    static py::list canReachBlocks(const py::sequence &queries, bool sneak = false, BlockFace face = BlockFace::AUTO,
+                                   double timeout = 5.0, const std::string &bot = "");
     static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
 
     // Container interaction

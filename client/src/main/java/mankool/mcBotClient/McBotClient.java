@@ -64,6 +64,9 @@ public class McBotClient implements ClientModInitializer {
             return;
         }
 
+        // Shut down the previous attempt before replacing it
+        disconnect();
+
         try {
             // Generate unique client ID
             String clientId = "minecraft_" + System.currentTimeMillis();

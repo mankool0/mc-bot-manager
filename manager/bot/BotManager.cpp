@@ -3278,81 +3278,118 @@ void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::
 // World Interaction Commands
 // ============================================================================
 
-bool BotManager::sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs, int face)
+// Expresses one reach query on the wire.
+static mankool::mcbot::protocol::CanReachBlockCommand buildCanReachBlockCommand(const BotManager::ReachQuery &q)
 {
-    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, false, 0, 0, 0, face);
-}
-
-bool BotManager::sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, int timeoutMs, int face)
-{
-    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, true, fromX, fromY, fromZ, face);
-}
-
-bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
-                                        bool hasFrom, int fromX, int fromY, int fromZ, int face)
-{
-    BotInstance *bot = getBotByNameImpl(botName);
-    if (!bot || bot->connectionId <= 0)
-        return false;
-
-    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-    PendingCanReachBlockEntry entry;
-    {
-        QMutexLocker lock(&m_pendingCanReachBlockMutex);
-        m_pendingCanReachBlockRequests[msgId] = &entry;
-    }
-
     mankool::mcbot::protocol::BlockPos pos;
-    pos.setX(x);
-    pos.setY(y);
-    pos.setZ(z);
+    pos.setX(q.x);
+    pos.setY(q.y);
+    pos.setZ(q.z);
 
     mankool::mcbot::protocol::CanReachBlockCommand cmd;
     cmd.setPosition(pos);
-    cmd.setSneak(sneak);
-    if (face != 0)
-        cmd.setFace(static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(face));
-    if (hasFrom) {
+    cmd.setSneak(q.sneak);
+    if (q.face != 0)
+        cmd.setFace(static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(q.face));
+    if (q.hasFrom) {
         mankool::mcbot::protocol::BlockPos fromPos;
-        fromPos.setX(fromX);
-        fromPos.setY(fromY);
-        fromPos.setZ(fromZ);
+        fromPos.setX(q.fromX);
+        fromPos.setY(q.fromY);
+        fromPos.setZ(q.fromZ);
         cmd.setFromPosition(fromPos);
     }
+    return cmd;
+}
+
+// Must match PipeConnection.MAX_MESSAGE_BYTES on the mod side.
+static constexpr int kMaxReachMessageBytes = 16 * 1024 * 1024;
+
+// Upper bound on one query's wire size, so anything that passes the check below always fits and
+// can never drop the connection. Two BlockPos of three int32, where a negative int32 is a 10-byte
+// varint in proto3, plus sneak, face and framing.
+static constexpr int kReachQueryMaxBytes = 80;
+static constexpr int kReachEnvelopeMaxBytes = 128;
+
+int BotManager::maxReachQueriesPerCall()
+{
+    return (kMaxReachMessageBytes - kReachEnvelopeMaxBytes) / kReachQueryMaxBytes;
+}
+
+BotManager::ReachBatchResult BotManager::sendCanReachBlocks(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs)
+{
+    return instance().sendCanReachBlocksImpl(botName, queries, timeoutMs);
+}
+
+BotManager::ReachBatchResult BotManager::sendCanReachBlocksImpl(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs)
+{
+    ReachBatchResult out;
+    if (queries.isEmpty())
+        return out;
+
+    const int total = queries.size();
+    if (total > maxReachQueriesPerCall()) {
+        out.status = ReachBatchResult::Status::TooLarge;
+        out.maxQueries = maxReachQueriesPerCall();
+        return out;
+    }
+
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0) {
+        out.status = ReachBatchResult::Status::NotConnected;
+        return out;
+    }
+
+    QList<mankool::mcbot::protocol::CanReachBlockCommand> protoQueries;
+    protoQueries.reserve(total);
+    for (const ReachQuery &q : queries)
+        protoQueries.append(buildCanReachBlockCommand(q));
+
+    mankool::mcbot::protocol::CanReachBlocksCommand cmd;
+    cmd.setQueries(protoQueries);
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<QList<bool>>::Request pending(m_pendingCanReachBlocks, msgId);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setCanReachBlock(cmd);
+    msg.setCanReachBlocks(cmd);
     if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
-        QMutexLocker lock(&m_pendingCanReachBlockMutex);
-        m_pendingCanReachBlockRequests.remove(msgId);
-        return false;
+        out.status = ReachBatchResult::Status::SendFailed;
+        return out;
     }
 
-    bool acquired = entry.sem.tryAcquire(1, timeoutMs);
-
-    {
-        QMutexLocker lock(&m_pendingCanReachBlockMutex);
-        m_pendingCanReachBlockRequests.remove(msgId);
+    if (!pending.wait(timeoutMs)) {
+        out.status = ReachBatchResult::Status::TimedOut;
+        return out;
     }
 
-    return acquired && entry.reachable;
+    // Never let the reply grow results past what was asked for: callers zip the result against
+    // their own query list, so a length mismatch would silently misalign every entry.
+    const QList<bool> &reply = pending.value();
+    const int usable = qMin(static_cast<int>(reply.size()), total);
+    out.results.reserve(usable);
+    for (int i = 0; i < usable; ++i)
+        out.results.append(reply.at(i));
+
+    // A short reply means the client stopped part way. Report the shortfall instead of padding,
+    // so the caller cannot read an unevaluated query as "not reachable".
+    if (usable < total) {
+        out.status = ReachBatchResult::Status::Partial;
+        out.evaluated = usable;
+    }
+    return out;
 }
 
-void BotManager::handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response)
+void BotManager::handleCanReachBlocksResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response)
 {
-    instance().handleCanReachBlockResponseImpl(connectionId, response);
+    instance().handleCanReachBlocksResponseImpl(connectionId, response);
 }
 
-void BotManager::handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response)
+void BotManager::handleCanReachBlocksResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response)
 {
     Q_UNUSED(connectionId);
-    QMutexLocker lock(&m_pendingCanReachBlockMutex);
-    auto it = m_pendingCanReachBlockRequests.find(response.requestId());
-    if (it != m_pendingCanReachBlockRequests.end()) {
-        it.value()->reachable = response.reachable();
-        it.value()->sem.release();
-    }
+    m_pendingCanReachBlocks.complete(response.requestId(), [&](QList<bool> &out) {
+        out = response.reachable();
+    });
 }
 
 void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks)
@@ -3389,27 +3426,14 @@ bool BotManager::getHoldAttackStatusImpl(const QString &botName, int timeoutMs)
         return false;
 
     QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-    PendingHoldAttackStatusEntry entry;
-    {
-        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-        m_pendingHoldAttackStatusRequests[msgId] = &entry;
-    }
+    PendingRequestMap<bool>::Request pending(m_pendingHoldAttackStatus, msgId);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setGetHoldAttackStatus(mankool::mcbot::protocol::GetHoldAttackStatusCommand{});
-    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
-        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-        m_pendingHoldAttackStatusRequests.remove(msgId);
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
         return false;
-    }
 
-    bool acquired = entry.sem.tryAcquire(1, timeoutMs);
-    {
-        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-        m_pendingHoldAttackStatusRequests.remove(msgId);
-    }
-    return acquired && entry.enabled;
+    return pending.wait(timeoutMs) && pending.value();
 }
 
 void BotManager::handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response)
@@ -3420,12 +3444,9 @@ void BotManager::handleHoldAttackStatusResponse(int connectionId, const mankool:
 void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response)
 {
     Q_UNUSED(connectionId);
-    QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-    auto it = m_pendingHoldAttackStatusRequests.find(response.requestId());
-    if (it != m_pendingHoldAttackStatusRequests.end()) {
-        it.value()->enabled = response.enabled();
-        it.value()->sem.release();
-    }
+    m_pendingHoldAttackStatus.complete(response.requestId(), [&](bool &enabled) {
+        enabled = response.enabled();
+    });
 }
 
 std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatistics(const QString &botName, int timeoutMs)
@@ -3442,29 +3463,17 @@ std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatisticsImp
     QString name = bot->name;
     QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
 
-    PendingStatisticsEntry entry;
-    {
-        QMutexLocker lock(&m_pendingStatisticsMutex);
-        m_pendingStatisticsRequests[msgId] = &entry;
-    }
+    PendingRequestMap<bool>::Request pending(m_pendingStatistics, msgId);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setRequestStatistics(mankool::mcbot::protocol::RequestStatisticsCommand{});
-    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
-        QMutexLocker lock(&m_pendingStatisticsMutex);
-        m_pendingStatisticsRequests.remove(msgId);
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
         return std::nullopt;
-    }
 
     // The client replies with a delta that the response handler merges into m_statsCache
-    // before releasing this semaphore. On timeout, fall back to the last cached snapshot;
-    // either way we read m_statsCache below, so the acquire result is intentionally ignored.
-    (void)entry.sem.tryAcquire(1, timeoutMs);
-
-    {
-        QMutexLocker lock(&m_pendingStatisticsMutex);
-        m_pendingStatisticsRequests.remove(msgId);
-    }
+    // before releasing this waiter. On timeout, fall back to the last cached snapshot;
+    // either way we read m_statsCache below, so the wait result is intentionally ignored.
+    (void)pending.wait(timeoutMs);
 
     QMutexLocker cacheLock(&m_statsCacheMutex);
     auto it = m_statsCache.constFind(name);
@@ -3493,12 +3502,7 @@ void BotManager::handlePlayerStatisticsResponseImpl(int connectionId, const mank
         }
     }
 
-    QMutexLocker lock(&m_pendingStatisticsMutex);
-    auto it = m_pendingStatisticsRequests.find(response.requestId());
-    if (it != m_pendingStatisticsRequests.end()) {
-        it.value()->received = true;
-        it.value()->sem.release();
-    }
+    m_pendingStatistics.complete(response.requestId());
 }
 
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,

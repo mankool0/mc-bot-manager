@@ -418,18 +418,100 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                py::arg("bot_name") = "");
     def_query("can_reach_block", &PythonAPI::canReachBlock,
               "Check if a block is reachable from the bot's current position. "
-              "face=AUTO checks any face; pass a specific face to check only that face.",
+              "face=AUTO checks any face; pass a specific face to check only that face. "
+              "Raises TimeoutError if the client does not answer in time.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("sneak") = false,
               py::arg("face") = PythonAPI::BlockFace::AUTO,
+              py::arg("timeout") = 3.0,
               py::arg("bot_name") = "");
     def_query("can_reach_block_from", &PythonAPI::canReachBlockFrom,
               "Check if a block (x,y,z) is reachable when standing at (from_x,from_y,from_z). "
-              "face=AUTO checks any face; pass a specific face to check only that face.",
+              "face=AUTO checks any face; pass a specific face to check only that face. "
+              "Raises TimeoutError if the client does not answer in time.",
               py::arg("from_x"), py::arg("from_y"), py::arg("from_z"),
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("sneak") = false,
               py::arg("face") = PythonAPI::BlockFace::AUTO,
+              py::arg("timeout") = 3.0,
+              py::arg("bot_name") = "");
+
+    py::class_<PyReachQuery>(m, "ReachQuery")
+        .def(py::init([](int x, int y, int z, py::object fromPos, py::object sneak, py::object face) {
+                 PyReachQuery q;
+                 q.x = x;
+                 q.y = y;
+                 q.z = z;
+                 if (!fromPos.is_none()) {
+                     py::sequence seq = fromPos.cast<py::sequence>();
+                     if (py::len(seq) != 3)
+                         throw std::invalid_argument("from_pos must be an (x, y, z) tuple");
+                     q.hasFrom = true;
+                     q.fromX = seq[0].cast<int>();
+                     q.fromY = seq[1].cast<int>();
+                     q.fromZ = seq[2].cast<int>();
+                 }
+                 if (!sneak.is_none())
+                     q.sneak = sneak.cast<bool>();
+                 if (!face.is_none())
+                     q.face = face.cast<PythonAPI::BlockFace>();
+                 return q;
+             }),
+             "One entry of a world.can_reach_blocks batch. sneak and face default to None, which "
+             "means \"use whatever the can_reach_blocks call passed\"; set either to override it "
+             "for this query only. from_pos traces from that standing position instead of the "
+             "bot's current one.",
+             py::arg("x"), py::arg("y"), py::arg("z"),
+             py::arg("from_pos") = py::none(),
+             py::arg("sneak") = py::none(),
+             py::arg("face") = py::none())
+        .def_readwrite("x", &PyReachQuery::x)
+        .def_readwrite("y", &PyReachQuery::y)
+        .def_readwrite("z", &PyReachQuery::z)
+        .def_readwrite("sneak", &PyReachQuery::sneak)
+        .def_readwrite("face", &PyReachQuery::face)
+        .def_property("from_pos",
+                      [](const PyReachQuery &q) -> py::object {
+                          if (!q.hasFrom)
+                              return py::none();
+                          return py::make_tuple(q.fromX, q.fromY, q.fromZ);
+                      },
+                      [](PyReachQuery &q, py::object value) {
+                          if (value.is_none()) {
+                              q.hasFrom = false;
+                              q.fromX = q.fromY = q.fromZ = 0;
+                              return;
+                          }
+                          py::sequence seq = value.cast<py::sequence>();
+                          if (py::len(seq) != 3)
+                              throw std::invalid_argument("from_pos must be an (x, y, z) tuple");
+                          q.hasFrom = true;
+                          q.fromX = seq[0].cast<int>();
+                          q.fromY = seq[1].cast<int>();
+                          q.fromZ = seq[2].cast<int>();
+                      })
+        .def("__repr__", [](const PyReachQuery &q) {
+            std::string s = "ReachQuery(" + std::to_string(q.x) + ", " + std::to_string(q.y) + ", " + std::to_string(q.z);
+            if (q.hasFrom)
+                s += ", from_pos=(" + std::to_string(q.fromX) + ", " + std::to_string(q.fromY) + ", " + std::to_string(q.fromZ) + ")";
+            if (q.sneak.has_value())
+                s += std::string(", sneak=") + (q.sneak.value() ? "True" : "False");
+            if (q.face.has_value())
+                s += ", face=" + std::to_string(static_cast<int>(q.face.value()));
+            return s + ")";
+        });
+
+    def_query("can_reach_blocks", &PythonAPI::canReachBlocks,
+              "Check many blocks in one round trip. queries holds (x, y, z) tuples or "
+              "world.ReachQuery objects; returns bools in the same order. sneak and face apply "
+              "to every element that does not override them. The whole batch is evaluated in a "
+              "single client tick against one bot position, so results are consistent with each "
+              "other, but a very large batch may briefly freeze the game client. Raises ValueError "
+              "if the batch is too large to fit in one message.",
+              py::arg("queries"),
+              py::arg("sneak") = false,
+              py::arg("face") = PythonAPI::BlockFace::AUTO,
+              py::arg("timeout") = 5.0,
               py::arg("bot_name") = "");
     def_action("interact_block", &PythonAPI::interactBlock,
                "Right-click/interact with block at position",

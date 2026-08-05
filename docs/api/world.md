@@ -364,7 +364,7 @@ if pos:
     world.interact_block(int(x), int(y), int(z))
 ```
 
-### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")`
+### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, timeout=3.0, bot_name="")`
 
 Check if a block is reachable (visible via raytrace) from the bot's current eye position.
 
@@ -372,9 +372,15 @@ Check if a block is reachable (visible via raytrace) from the bot's current eye 
 - `x, y, z` (`int`) - Block coordinates
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `timeout` (`float`, optional) - Seconds to wait for the client's reply (default: 3.0)
 - `bot_name` (`str`, optional) - Bot name (default: active bot)
 
 **Returns:** `bool` - True if the block (or specified face) is reachable
+
+**Raises:**
+- `ValueError` if `timeout` is not positive
+- `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
+- `TimeoutError` if the client did not answer within `timeout`
 
 ```python
 if world.can_reach_block(x, y, z):
@@ -387,7 +393,7 @@ if world.can_reach_block(x, y, z, face=world.BlockFace.UP):
 
 ---
 
-### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")`
+### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, timeout=3.0, bot_name="")`
 
 Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.
 
@@ -396,9 +402,15 @@ Check if a block is reachable from a hypothetical standing position without movi
 - `x, y, z` (`int`) - Block coordinates to check
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `timeout` (`float`, optional) - Seconds to wait for the client's reply (default: 3.0)
 - `bot_name` (`str`, optional) - Bot name (default: active bot)
 
 **Returns:** `bool` - True if the block (or specified face) would be reachable from that position
+
+**Raises:**
+- `ValueError` if `timeout` is not positive
+- `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
+- `TimeoutError` if the client did not answer within `timeout`
 
 ```python
 # Find a standable position from which the UP face is reachable
@@ -408,9 +420,82 @@ if world.can_reach_block_from(cx, cy, cz, bx, by, bz, face=world.BlockFace.UP):
 
 ---
 
+### `can_reach_blocks(queries, sneak=False, face=world.BlockFace.AUTO, timeout=5.0, bot_name="")`
+
+Check many positions in a single round trip. Equivalent to calling `can_reach_block` once per query, except the whole list goes to the client as one message, so a scan costs one game tick instead of one tick per query.
+
+**Parameters:**
+- `queries` (`list` or any sequence) - Each entry is either an `(x, y, z)` tuple or a [`world.ReachQuery`](#reachquery)
+- `sneak` (`bool`, optional) - Crouching eye height, for every entry that does not override it (default: False)
+- `face` (`world.BlockFace`, optional) - Face to check, for every entry that does not override it. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `timeout` (`float`, optional) - Seconds to wait for the client's reply (default: 5.0)
+- `bot_name` (`str`, optional) - Bot name (default: active bot)
+
+**Returns:** `list[bool]` - One entry per query, in the same order
+
+**Raises:**
+- `ValueError` if an entry is neither a 3-tuple nor a `ReachQuery`, if a coordinate is not a number, if `timeout` is not positive, or if the batch is too large to fit in a single request (roughly 210,000 queries)
+- `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the batch (e.g. bot not in a world)
+- `TimeoutError` if the client did not answer within `timeout`
+
+**Note:** The client does the whole batch within one game tick, so every query is evaluated against the same bot position and the results are consistent with each other even if the bot is moving. The flip side is that a very large batch may briefly freeze the client.
+
+```python
+# Which of these chests can the bot reach right now?
+chests = world.find_blocks("minecraft:chest", px, py, pz, 8)
+positions = [(int(x), int(y), int(z)) for x, y, z in chests]
+for (x, y, z), ok in zip(positions, world.can_reach_blocks(positions)):
+    if ok:
+        world.interact_block(x, y, z)
+        break
+
+# Score candidate standing positions against a target, one round trip for the whole scan
+queries = [world.ReachQuery(bx, by, bz, from_pos=(cx, cy, cz)) for cx, cy, cz in candidates]
+for (cx, cy, cz), ok in zip(candidates, world.can_reach_blocks(queries)):
+    if ok:
+        baritone.goto(cx, cy, cz)
+        break
+
+# Which faces of a block are exposed?
+faces = [world.BlockFace.UP, world.BlockFace.DOWN, world.BlockFace.NORTH,
+         world.BlockFace.SOUTH, world.BlockFace.WEST, world.BlockFace.EAST]
+reachable = world.can_reach_blocks([world.ReachQuery(x, y, z, face=f) for f in faces])
+usable = [f for f, ok in zip(faces, reachable) if ok]
+```
+
+---
+
+### `ReachQuery`
+
+One entry of a `can_reach_blocks` batch, for when a query needs its own `sneak`, `face`, or standing position rather than the batch-wide defaults. Plain `(x, y, z)` tuples are accepted in the same list, so only the entries that need overrides have to use this.
+
+`world.ReachQuery(x, y, z, from_pos=None, sneak=None, face=None)`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `x`, `y`, `z` | `int` | Coordinates of the block to check |
+| `from_pos` | `tuple[int, int, int]` or `None` | Foot position to trace from, eye height added automatically. `None` uses the bot's current position |
+| `sneak` | `bool` or `None` | `None` inherits the `sneak` passed to `can_reach_blocks` |
+| `face` | `world.BlockFace` or `None` | `None` inherits the `face` passed to `can_reach_blocks` |
+
+All three optional fields default to `None`, meaning "inherit from the call". That is what makes mixing tuples and `ReachQuery` objects predictable: with `can_reach_blocks([...], sneak=True)`, a bare `ReachQuery(x, y, z)` crouches just like a bare tuple would, and only an explicit `sneak=False` opts out.
+
+Fields are readable and writable after construction.
+
+```python
+world.can_reach_blocks([
+    (x1, y1, z1),                                          # batch defaults
+    world.ReachQuery(x2, y2, z2, sneak=True),              # this one crouches
+    world.ReachQuery(x3, y3, z3, face=world.BlockFace.UP), # top face only
+    world.ReachQuery(x4, y4, z4, from_pos=(cx, cy, cz)),   # from a hypothetical position
+])
+```
+
+---
+
 ### `BlockFace` enum
 
-Used with `look_at`, `interact_block`, `can_reach_block`, and `can_reach_block_from` to specify a block face.
+Used with `look_at`, `interact_block`, `can_reach_block`, `can_reach_block_from`, `can_reach_blocks`, and `world.ReachQuery` to specify a block face.
 
 | Value | Direction |
 |-------|-----------|
@@ -1252,4 +1337,5 @@ if weather and weather['is_raining']:
 
 - **Chunk Loading**: Blocks can only be queried in loaded chunks. The client automatically loads chunks as the bot moves around.
 - **Performance**: Block queries are O(1) for `get_block()`. Searches like `find_blocks()` are optimized but still need to scan blocks, so prefer smaller radii when possible.
+- **Round trips**: `get_block()` and the other block queries read the manager's own world copy and are cheap. Reach checks are not: they ask the game client, which only processes messages once per tick, so each `can_reach_block()` / `can_reach_block_from()` costs at least ~50 ms. Scanning hundreds of positions one at a time takes tens of seconds; use `can_reach_blocks()` to send the whole set at once and get it back in a few ticks.
 - **Block State Format**: Block states are returned as strings in the format `"minecraft:block_name[property=value,...]"`. Use Python string operations to check block types.

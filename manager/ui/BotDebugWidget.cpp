@@ -558,11 +558,20 @@ void BotDebugWidget::runQuery()
                 } else if (type == "bool") {
                     kwargs[key.c_str()] = py::bool_(text == "true" || text == "1");
                 } else if (type == "strlist") {
-                    py::list lst;
-                    for (const QString &t : text.split(','))
-                        if (!t.trimmed().isEmpty())
-                            lst.append(py::str(t.trimmed().toStdString()));
-                    kwargs[key.c_str()] = lst;
+                    // Comma splitting can only produce a list of strings, which is useless for
+                    // params that want tuples or objects. Accept a Python literal when the text
+                    // looks like one, so e.g. "[(1,2,3),(4,5,6)]" works.
+                    const QString trimmed = text.trimmed();
+                    if (trimmed.startsWith('[') || trimmed.startsWith('(')) {
+                        kwargs[key.c_str()] = py::module_::import("ast")
+                                                  .attr("literal_eval")(trimmed.toStdString());
+                    } else {
+                        py::list lst;
+                        for (const QString &t : text.split(','))
+                            if (!t.trimmed().isEmpty())
+                                lst.append(py::str(t.trimmed().toStdString()));
+                        kwargs[key.c_str()] = lst;
+                    }
                 } else {
                     kwargs[key.c_str()] = py::str(text.toStdString());
                 }

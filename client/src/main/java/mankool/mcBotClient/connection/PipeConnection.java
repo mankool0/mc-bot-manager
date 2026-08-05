@@ -45,11 +45,20 @@ public class PipeConnection {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean handshakeRejected = new AtomicBoolean(false);
 
+    public static final int MAX_MESSAGE_BYTES = 16 * 1024 * 1024; // 16MiB
+
     private Thread sendThread;
     private Thread receiveThread;
     private OutputStream outputStream;
     private InputStream inputStream;
     private Closeable connection;
+    // Largest buffer worth keeping between messages. Above this a message gets a one-off array,
+    // so an outlier request does not pin megabytes for the rest of the session, while everything
+    // in normal range still reuses one buffer and allocates nothing.
+    private static final int MAX_RETAINED_BUFFER_BYTES = 1024 * 1024;
+
+    // Receive thread only. Grows to fit the largest message seen, up to the retention cap.
+    private byte[] receiveBuffer = new byte[65536];
 
     private final String clientId;
 
@@ -125,10 +134,9 @@ public class PipeConnection {
     }
 
     private void receiveLoop() {
-        byte[] buffer = new byte[65536];
         while (running.get()) {
             try {
-                Protocol.ManagerToClientMessage message = receiveMessage(buffer);
+                Protocol.ManagerToClientMessage message = readFramedMessage();
                 if (message != null) {
                     if (message.getPayloadCase() == Protocol.ManagerToClientMessage.PayloadCase.HANDSHAKE_REJECT) {
                         handshakeRejected.set(true);
@@ -143,7 +151,7 @@ public class PipeConnection {
         }
     }
 
-    private Protocol.ManagerToClientMessage receiveMessage(byte[] buffer) throws IOException {
+    private Protocol.ManagerToClientMessage readFramedMessage() throws IOException {
         byte[] lengthBytes = new byte[4];
         int bytesRead = inputStream.read(lengthBytes);
         if (bytesRead != 4) {
@@ -154,9 +162,11 @@ public class PipeConnection {
         lengthBuffer.order(ByteOrder.LITTLE_ENDIAN);
         int messageLength = lengthBuffer.getInt();
 
-        if (messageLength <= 0 || messageLength > buffer.length) {
+        if (messageLength <= 0 || messageLength > MAX_MESSAGE_BYTES) {
             throw new IOException("Invalid message length: " + messageLength);
         }
+
+        byte[] buffer = obtainReceiveBuffer(messageLength);
 
         int totalRead = 0;
         while (totalRead < messageLength) {
@@ -173,6 +183,17 @@ public class PipeConnection {
             LOGGER.error("Failed to parse protobuf message: {}", e.getMessage());
             return null;
         }
+    }
+
+    private byte[] obtainReceiveBuffer(int needed) {
+        if (needed <= receiveBuffer.length) {
+            return receiveBuffer;
+        }
+        if (needed > MAX_RETAINED_BUFFER_BYTES) {
+            return new byte[needed];
+        }
+        receiveBuffer = new byte[MAX_RETAINED_BUFFER_BYTES];
+        return receiveBuffer;
     }
 
     public void disconnect() {

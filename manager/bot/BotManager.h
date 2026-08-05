@@ -16,6 +16,7 @@
 #include <QPointer>
 #include <memory>
 #include <optional>
+#include "PendingRequestMap.h"
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -440,9 +441,38 @@ public:
     static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
 
     // World interaction commands
-    static bool sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak = false, int timeoutMs = 3000, int face = 0);
-    static bool sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, int timeoutMs = 3000, int face = 0);
-    static void handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
+
+    struct ReachQuery {
+        int x = 0;
+        int y = 0;
+        int z = 0;
+        bool sneak = false;
+        bool hasFrom = false;
+        int fromX = 0;
+        int fromY = 0;
+        int fromZ = 0;
+        int face = 0;
+    };
+
+    static int maxReachQueriesPerCall();
+
+    struct ReachBatchResult {
+        enum class Status {
+            Ok,             // result is fully populated and every entry is meaningful
+            NotConnected,   // bot vanished between the caller's check and the send
+            SendFailed,
+            TimedOut,
+            Partial,        // client answered fewer queries than asked (bot not in a world)
+            TooLarge        // request would not fit in one message the client can receive
+        };
+        Status status = Status::Ok;
+        QList<bool> results;
+        int evaluated = 0;  // Partial: how many queries the client actually answered
+        int maxQueries = 0; // TooLarge: how many would have fit
+    };
+
+    static ReachBatchResult sendCanReachBlocks(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs = 5000);
+    static void handleCanReachBlocksResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response);
     static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
@@ -542,9 +572,8 @@ private:
     void handleMapDataImpl(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData);
     void handleTabListUpdateImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update);
     void handleTabListRemoveImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove);
-    bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
-                               bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0, int face = 0);
-    void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
+    ReachBatchResult sendCanReachBlocksImpl(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs);
+    void handleCanReachBlocksResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response);
     void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
@@ -578,30 +607,13 @@ private:
 
     bool sendOutboundMessage(int connectionId, mankool::mcbot::protocol::ManagerToClientMessage &msg, bool silent = false, const QString &messageId = {});
 
-    struct PendingCanReachBlockEntry {
-        QSemaphore sem{0};
-        bool reachable = false;
-    };
-
-    struct PendingHoldAttackStatusEntry {
-        QSemaphore sem{0};
-        bool enabled = false;
-    };
-
-    struct PendingStatisticsEntry {
-        QSemaphore sem{0};
-        bool received = false;
-    };
-
     QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
-    QMutex m_pendingCanReachBlockMutex;
-    QHash<QString, PendingCanReachBlockEntry*> m_pendingCanReachBlockRequests;
-    QMutex m_pendingHoldAttackStatusMutex;
-    QHash<QString, PendingHoldAttackStatusEntry*> m_pendingHoldAttackStatusRequests;
-    QMutex m_pendingStatisticsMutex;
-    QHash<QString, PendingStatisticsEntry*> m_pendingStatisticsRequests;
+    PendingRequestMap<QList<bool>> m_pendingCanReachBlocks;
+    PendingRequestMap<bool> m_pendingHoldAttackStatus;
+    // Payload is unused: the reply is merged into m_statsCache by the handler before the wake.
+    PendingRequestMap<bool> m_pendingStatistics;
     QMutex m_statsCacheMutex;
     QHash<QString, QMap<QString, QMap<QString, qint64>>> m_statsCache;
 

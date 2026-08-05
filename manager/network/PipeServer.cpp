@@ -247,8 +247,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleQueryItemRegistry(connectionId, clientMsg.queryItemRegistry());
         } else if (clientMsg.hasItemRegistry()) {
             BotManager::handleItemRegistry(connectionId, clientMsg.itemRegistry());
-        } else if (clientMsg.hasCanReachBlockResponse()) {
-            BotManager::handleCanReachBlockResponse(connectionId, clientMsg.canReachBlockResponse());
+        } else if (clientMsg.hasCanReachBlocksResponse()) {
+            BotManager::handleCanReachBlocksResponse(connectionId, clientMsg.canReachBlocksResponse());
         } else if (clientMsg.hasHoldAttackStatusResponse()) {
             BotManager::handleHoldAttackStatusResponse(connectionId, clientMsg.holdAttackStatusResponse());
         } else if (clientMsg.hasEntityUpdate()) {
