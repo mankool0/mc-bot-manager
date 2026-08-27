@@ -720,6 +720,18 @@ std::optional<std::string> PythonAPI::getAccount(const std::string &botName)
     return bot->account.toStdString();
 }
 
+std::optional<int> PythonAPI::getDataVersion(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    // 0 is the unset sentinel: the mod reports this in its handshake
+    if (!bot || bot->dataVersion <= 0)
+        return std::nullopt;
+
+    return bot->dataVersion;
+}
+
 py::object PythonAPI::getProxy(const std::string &botName)
 {
     QString name = resolveBotName(botName);

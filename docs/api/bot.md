@@ -92,6 +92,19 @@ Get account username.
 
 **Returns:** `str` or `None`
 
+### `data_version(bot_name="")`
+
+Get the Minecraft [data version](https://minecraft.wiki/w/Data_version) of the client this bot
+runs -- `4189` for 1.21.4, `4790` for 26.1.2. Reported by the mod in its handshake, so an online
+bot always has one.
+
+This is the **client's** version, not the server's. Under a translating proxy (ViaVersion and
+friends) they differ, and it is the client's that describes the world the bot sees: block and item
+names come from the client's own registry, so this is the vocabulary `world.export_sections()`
+palettes and `world.get_block()` names are written in.
+
+**Returns:** `int` or `None`
+
 ### `uptime(bot_name="")`
 
 Get bot uptime in seconds.

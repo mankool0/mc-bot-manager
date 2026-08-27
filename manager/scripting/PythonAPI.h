@@ -174,6 +174,7 @@ public:
     static std::optional<std::string> getSingleplayerWorld(const std::string &botName = "");
     static bool getIsSingleplayer(const std::string &botName = "");
     static std::optional<std::string> getAccount(const std::string &botName = "");
+    static std::optional<int> getDataVersion(const std::string &botName = "");
     static std::optional<int64_t> getUptime(const std::string &botName = "");
     static py::object getProxy(const std::string &botName = "");
     static bool isOnline(const std::string &botName = "");

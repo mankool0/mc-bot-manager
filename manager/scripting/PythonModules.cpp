@@ -123,6 +123,10 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     def_state("account", &PythonAPI::getAccount,
               "Get account username",
               py::arg("bot_name") = "");
+    def_state("data_version", &PythonAPI::getDataVersion,
+              "Get the client's Minecraft data version (e.g. 4189 for 1.21.4), or None if the "
+              "bot is offline. This is the client's version, not the server's behind a proxy.",
+              py::arg("bot_name") = "");
     def_state("uptime", &PythonAPI::getUptime,
               "Get bot uptime in seconds",
               py::arg("bot_name") = "");
