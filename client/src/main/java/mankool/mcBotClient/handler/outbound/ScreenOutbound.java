@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
 import net.minecraft.world.level.storage.LevelSummary;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
+import mankool.mcBotClient.util.GuiClassNames;
 import mankool.mcBotClient.util.ProtoUtil;
 import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcbot.protocol.Protocol;
@@ -122,7 +123,7 @@ public class ScreenOutbound extends BaseOutbound {
     private Screen.ScreenDump buildScreenDump(net.minecraft.client.gui.screens.Screen mcScreen) {
         Screen.ScreenDump.Builder dump = Screen.ScreenDump.newBuilder();
         dump.setScreenId(currentScreenId);
-        dump.setScreenClass(mcScreen.getClass().getName());
+        dump.setScreenClass(GuiClassNames.of(mcScreen.getClass()));
         dump.setWidth(mcScreen.width);
         dump.setHeight(mcScreen.height);
 
@@ -247,7 +248,7 @@ public class ScreenOutbound extends BaseOutbound {
                 dump.addWidgets(Screen.GuiWidget.newBuilder()
                     .setIndex(idx.getAndIncrement())
                     .setWidgetType("ListEntry")
-                    .setClassName(listener.getClass().getName())
+                    .setClassName(GuiClassNames.of(listener.getClass()))
                     .setX(element.getX())
                     .setY(element.getY())
                     .setWidth(element.getWidth())
@@ -264,11 +265,11 @@ public class ScreenOutbound extends BaseOutbound {
     }
 
     private Screen.GuiWidget buildGuiWidget(int index, AbstractWidget widget, boolean selected) {
-        String simpleType = widget.getClass().getSimpleName();
+        String simpleType = GuiClassNames.simpleOf(widget.getClass());
         String widgetType = switch (widget) {
             case Button b -> "Button";
             case EditBox e -> "EditBox";
-            default -> simpleType.isEmpty() ? widget.getClass().getName() : simpleType;
+            default -> simpleType.isEmpty() ? GuiClassNames.of(widget.getClass()) : simpleType;
         };
 
         Screen.GuiWidget.Builder builder = Screen.GuiWidget.newBuilder()

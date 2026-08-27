@@ -210,12 +210,17 @@ Get full screen dump as a `ScreenState` object.
 
 **Returns:** `ScreenState` or `None` if no screen is open (in-game)
 
+Screen and widget class names are Mojang names on every supported Minecraft version. Obfuscated
+versions (1.21.x) hand the mod intermediary names like `net.minecraft.class_419` at runtime, and it
+maps them back, so matching on `"DeathScreen" in screen.screen_class` works everywhere. Class names
+of screens added by other mods are reported as-is.
+
 **`ScreenState` attributes:**
 
 | Attribute | Type | Description |
 |---|---|---|
 | `id` | `str` | Stable screen ID - pass to `world.click_widget()` |
-| `screen_class` | `str` | Fully qualified Java class name |
+| `screen_class` | `str` | Fully qualified Mojang class name, e.g. `net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen` |
 | `title` | `str` | Display title of the screen |
 | `width` | `int` | Screen width in pixels |
 | `height` | `int` | Screen height in pixels |
@@ -228,7 +233,7 @@ Get full screen dump as a `ScreenState` object.
 |---|---|---|
 | `index` | `int` | Widget index - pass to `world.click_widget()` |
 | `type` | `str` | `"Button"`, `"EditBox"`, `"Checkbox"`, `"ListEntry"`, `"SignLine"`, or simple class name for others |
-| `class_name` | `str` | Fully qualified class name |
+| `class_name` | `str` | Fully qualified Mojang class name |
 | `x`, `y` | `int` | Screen pixel coordinates |
 | `width`, `height` | `int` | Widget dimensions |
 | `active` | `bool` | Whether the widget can be interacted with |
