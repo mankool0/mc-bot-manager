@@ -555,6 +555,7 @@ private:
     void updateBotImpl(const QString &name, const BotConfig &config);
     bool verifyModVersionImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleConnectionInfoImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
+    void loadRecipesFor(BotInstance *bot, const QString &version);
     void handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     void handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);
     void handleInventoryUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory);

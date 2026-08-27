@@ -27,7 +27,6 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QDir>
-#include <QEventLoop>
 
 static QVariant baritoneProtoToVariant(
     const mankool::mcbot::protocol::BaritoneSettingValue &value,
@@ -957,10 +956,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         const QStringList caps = info.capabilities();
         bot->capabilities = QSet<QString>(caps.begin(), caps.end());
 
-        // Load recipes and tags for this version
-        if (!bot->recipeRegistry.loadFromCache(clientVersion)) {
-            LogManager::log(QString("Failed to load recipes for version %1").arg(clientVersion), LogManager::Error);
-        }
+        loadRecipesFor(bot, clientVersion);
 
         emit botUpdated(bot->name);
 
@@ -985,6 +981,40 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     if (bot && bot->debugLogging) {
         LogManager::log(QString("[%1] ConnectionInfo received").arg(bot->name), LogManager::Debug);
     }
+}
+
+void BotManager::loadRecipesFor(BotInstance *bot, const QString &version)
+{
+    if (RecipeRegistry::isCached(version)) {
+        if (!bot->recipeRegistry.loadFromCache(version)) {
+            LogManager::log(QString("[%1] Failed to load recipes for version %2").arg(bot->name, version),
+                            LogManager::Error);
+        }
+        return;
+    }
+
+    // First time this version is seen. Fetched in the background rather than
+    // waited for: this runs inside PipeServer's read loop, where spinning an
+    // event loop lets a disconnect delete the socket that loop is still using.
+    LogManager::log(QString("[%1] Downloading recipe data for version %2").arg(bot->name, version),
+                    LogManager::Info);
+    const QString name = bot->name;
+    const int connectionId = bot->connectionId;
+    RecipeRegistry::fetchCache(version, this, [this, name, version, connectionId](bool ok) {
+        BotInstance *bot = getBotByNameImpl(name);
+        // Gone, reconnected since, or back on another version.
+        if (!bot || bot->status != BotStatus::Online || bot->connectionId != connectionId
+            || bot->versionName != version) {
+            return;
+        }
+        if (!ok || !bot->recipeRegistry.loadFromCache(version)) {
+            LogManager::log(QString("[%1] Failed to load recipes for version %2").arg(name, version),
+                            LogManager::Error);
+            return;
+        }
+        LogManager::log(QString("[%1] Recipe data for version %2 ready").arg(name, version), LogManager::Info);
+        emit botUpdated(name);
+    });
 }
 
 void BotManager::handleServerStatus(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status)
