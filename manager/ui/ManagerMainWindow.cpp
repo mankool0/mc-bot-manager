@@ -1479,6 +1479,7 @@ void ManagerMainWindow::openGlobalSettings()
         m_crashLoopProtectionEnabled = settings.value("CrashRecovery/enabled", true).toBool();
         m_crashMaxCrashes = settings.value("CrashRecovery/maxCrashes", 3).toInt();
         m_crashWindowSecs = settings.value("CrashRecovery/windowMinutes", 5).toInt() * 60;
+        BotManager::reloadWindowLayout();
     }
 }
 
@@ -2057,6 +2058,7 @@ void ManagerMainWindow::onClientDisconnected(int connectionId)
         bot->connectionId = -1;
         bot->status = BotStatus::Offline;
         bot->manualStop = false;
+        BotManager::clearWindowState(botName);
         updateInstancesTable();
         updateStatusDisplay();
 

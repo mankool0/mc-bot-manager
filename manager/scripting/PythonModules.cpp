@@ -56,6 +56,30 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .def_readonly("widgets", &PyScreenState::widgets)
         .def_readonly("slots", &PyScreenState::guiSlots);
 
+    py::class_<PyMonitor>(m, "Monitor")
+        .def_readonly("name", &PyMonitor::name)
+        .def_readonly("primary", &PyMonitor::primary)
+        .def_readonly("x", &PyMonitor::x)
+        .def_readonly("y", &PyMonitor::y)
+        .def_readonly("width", &PyMonitor::width)
+        .def_readonly("height", &PyMonitor::height)
+        .def_readonly("work_x", &PyMonitor::work_x)
+        .def_readonly("work_y", &PyMonitor::work_y)
+        .def_readonly("work_width", &PyMonitor::work_width)
+        .def_readonly("work_height", &PyMonitor::work_height);
+
+    py::class_<PyWindowState>(m, "WindowState")
+        .def_readonly("platform", &PyWindowState::platform)
+        .def_readonly("can_move", &PyWindowState::can_move)
+        .def_readonly("monitor", &PyWindowState::monitor)
+        .def_readonly("x", &PyWindowState::x)
+        .def_readonly("y", &PyWindowState::y)
+        .def_readonly("width", &PyWindowState::width)
+        .def_readonly("height", &PyWindowState::height)
+        .def_readonly("minimized", &PyWindowState::minimized)
+        .def_readonly("focused", &PyWindowState::focused)
+        .def_readonly("monitors", &PyWindowState::monitors);
+
     def_state("position", &PythonAPI::getPosition,
               "Get position as dict {x, y, z}",
               py::arg("bot_name") = "");
@@ -131,6 +155,24 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
               py::arg("bot_name") = "");
     def_action("list_all", &PythonAPI::listAllBots,
                "List all bot names");
+
+    def_action("window", &PythonAPI::getWindow,
+               "Get window placement as a WindowState (frame rect relative to the monitor work area, "
+               "minimized/focused flags, monitor list), or None if the bot is offline or does not answer",
+               py::arg("bot_name") = "");
+    def_action("set_window", &PythonAPI::setWindow,
+               "Move, resize or (un)minimize the window. x/y/width/height are the outer frame relative "
+               "to the work area of `monitor` (a name from window().monitors, empty keeps the current "
+               "one); arguments left as None keep their current value. Returns the resulting WindowState, "
+               "or None on timeout. Positioning is unavailable on native Wayland (can_move is False "
+               "there). Raises if bot is not online.",
+               py::arg("x") = py::none(),
+               py::arg("y") = py::none(),
+               py::arg("width") = py::none(),
+               py::arg("height") = py::none(),
+               py::arg("monitor") = "",
+               py::arg("minimized") = py::none(),
+               py::arg("bot_name") = "");
 
     def_action("chat", &PythonAPI::sendChat,
                "Send chat message",

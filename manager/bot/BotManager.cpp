@@ -817,6 +817,10 @@ void BotManager::removeBotImpl(const QString &name)
             }
 
             emit botRemoved(name);
+
+            // Cells are list indices, so every bot after the removed one just moved up a slot.
+            if (i < botInstances.size())
+                reloadWindowLayoutImpl();
             return;
         }
     }
@@ -3503,6 +3507,135 @@ void BotManager::handlePlayerStatisticsResponseImpl(int connectionId, const mank
     }
 
     m_pendingStatistics.complete(response.requestId());
+}
+
+std::optional<mankool::mcbot::protocol::WindowStateResponse> BotManager::getWindowState(const QString &botName, int timeoutMs)
+{
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setGetWindowState(mankool::mcbot::protocol::GetWindowStateCommand{});
+    return instance().requestWindowStateImpl(botName, msg, timeoutMs);
+}
+
+std::optional<mankool::mcbot::protocol::WindowStateResponse> BotManager::setWindow(const QString &botName, const mankool::mcbot::protocol::SetWindowCommand &cmd, int timeoutMs)
+{
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSetWindow(cmd);
+    return instance().requestWindowStateImpl(botName, msg, timeoutMs);
+}
+
+std::optional<mankool::mcbot::protocol::WindowStateResponse> BotManager::requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<mankool::mcbot::protocol::WindowStateResponse>::Request pending(m_pendingWindowState, msgId);
+
+    if (!sendOutboundMessage(bot->connectionId, msg, true, msgId))
+        return std::nullopt;
+    if (!pending.wait(timeoutMs))
+        return std::nullopt;
+    return pending.value();
+}
+
+void BotManager::handleWindowState(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response)
+{
+    instance().handleWindowStateImpl(connectionId, response);
+}
+
+void BotManager::handleWindowStateImpl(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (bot) {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->windowState = response;
+        bot->windowStateKnown = true;
+    }
+
+    m_pendingWindowState.complete(response.requestId(), [&](mankool::mcbot::protocol::WindowStateResponse &value) {
+        value = response;
+    });
+
+    // The unsolicited post-handshake report is the cue to tile the new window.
+    if (bot && response.requestId().isEmpty())
+        applyWindowLayoutImpl(bot);
+}
+
+void BotManager::applyWindowLayoutImpl(BotInstance *bot)
+{
+    if (!m_windowLayoutSettings.enabled || !bot || bot->connectionId <= 0 || !bot->windowStateKnown)
+        return;
+
+    int cell = botInstances.indexOf(bot);
+    if (cell < 0)
+        return;
+    std::optional<mankool::mcbot::protocol::SetWindowCommand> cmd;
+    bool canMove = false;
+    QString platform;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        cmd = WindowLayout::commandForCell(m_windowLayoutSettings, bot->windowState, cell);
+        canMove = bot->windowState.canMove();
+        platform = bot->windowState.platform();
+    }
+    if (!cmd) {
+        LogManager::log(QString("[%1] No monitors reported, cannot place the window").arg(bot->name), LogManager::Warning);
+        return;
+    }
+    if (!canMove) {
+        LogManager::log(QString("[%1] Window placement unavailable on %2 (native Wayland); only resizing")
+                            .arg(bot->name, platform), LogManager::Warning);
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSetWindow(*cmd);
+    sendOutboundMessage(bot->connectionId, msg, true);
+    LogManager::log(QString("[%1] Window -> cell %2 on '%3'").arg(bot->name).arg(cell).arg(cmd->monitor()), LogManager::Debug);
+}
+
+void BotManager::reloadWindowLayout()
+{
+    // Queued when called off the main thread; the layout state lives there.
+    QMetaObject::invokeMethod(&instance(), []() { instance().reloadWindowLayoutImpl(); }, Qt::AutoConnection);
+}
+
+void BotManager::reloadWindowLayoutImpl()
+{
+    m_windowLayoutSettings = WindowLayoutSettings::load();
+    if (!m_windowLayoutSettings.enabled)
+        return;
+    for (BotInstance *bot : std::as_const(botInstances)) {
+        if (bot->status == BotStatus::Online)
+            applyWindowLayoutImpl(bot);
+    }
+}
+
+void BotManager::clearWindowState(const QString &botName)
+{
+    if (BotInstance *bot = instance().getBotByNameImpl(botName)) {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->windowStateKnown = false;
+        bot->windowState = {};
+    }
+}
+
+QStringList BotManager::knownMonitorNames()
+{
+    QStringList names;
+    for (BotInstance *bot : std::as_const(instance().botInstances)) {
+        if (bot->status != BotStatus::Online)
+            continue;
+        QMutexLocker locker(bot->dataMutex.get());
+        if (!bot->windowStateKnown)
+            continue;
+        const auto monitors = bot->windowState.monitors();
+        for (const auto &m : monitors) {
+            if (!names.contains(m.name()))
+                names.append(m.name());
+        }
+    }
+    return names;
 }
 
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,

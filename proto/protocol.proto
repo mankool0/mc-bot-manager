@@ -15,6 +15,7 @@ import "screen.proto";
 import "registry.proto";
 import "entities.proto";
 import "stats.proto";
+import "window.proto";
 
 // Main protocol definition that ties everything together
 
@@ -99,6 +100,9 @@ message ClientToManagerMessage {
 
     // Baritone log output (chat log lines, toasts, notifications)
     BaritoneLogMessage baritone_log = 39;
+
+    // Game window geometry (post-handshake report and replies to window commands)
+    WindowStateResponse window_state = 41;
   }
 }
 
@@ -181,5 +185,9 @@ message ManagerToClientMessage {
 
     // Request the player's statistics for the current server/world
     RequestStatisticsCommand request_statistics = 37;
+
+    // Game window placement
+    SetWindowCommand set_window = 38;
+    GetWindowStateCommand get_window_state = 39;
   }
 }

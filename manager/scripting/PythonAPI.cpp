@@ -515,6 +515,83 @@ py::object PythonAPI::getServerStats(const std::string &botName)
     return result;
 }
 
+static PyWindowState windowStateToPy(const mankool::mcbot::protocol::WindowStateResponse &state)
+{
+    PyWindowState result;
+    result.platform = state.platform().toStdString();
+    result.can_move = state.canMove();
+    result.monitor = state.monitor().toStdString();
+    result.x = state.x();
+    result.y = state.y();
+    result.width = state.width();
+    result.height = state.height();
+    result.minimized = state.minimized();
+    result.focused = state.focused();
+    const auto monitors = state.monitors();
+    for (const auto &m : monitors) {
+        PyMonitor pm;
+        pm.name = m.name().toStdString();
+        pm.primary = m.primary();
+        pm.x = m.x();
+        pm.y = m.y();
+        pm.width = m.width();
+        pm.height = m.height();
+        pm.work_x = m.workX();
+        pm.work_y = m.workY();
+        pm.work_width = m.workWidth();
+        pm.work_height = m.workHeight();
+        result.monitors.push_back(pm);
+    }
+    return result;
+}
+
+py::object PythonAPI::getWindow(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    std::optional<mankool::mcbot::protocol::WindowStateResponse> state;
+    {
+        py::gil_scoped_release release;
+        state = BotManager::getWindowState(name);
+    }
+    if (!state.has_value()) {
+        return py::none();
+    }
+    return py::cast(windowStateToPy(*state));
+}
+
+py::object PythonAPI::setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
+                                const std::string &monitor, const py::object &minimized, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        throw std::runtime_error("Bot '" + name.toStdString() + "' is not online");
+    }
+
+    mankool::mcbot::protocol::SetWindowCommand cmd;
+    cmd.setMonitor(QString::fromStdString(monitor));
+    if (!x.is_none()) cmd.setX(x.cast<int>());
+    if (!y.is_none()) cmd.setY(y.cast<int>());
+    if (!width.is_none()) cmd.setWidth(width.cast<int>());
+    if (!height.is_none()) cmd.setHeight(height.cast<int>());
+    if (!minimized.is_none()) cmd.setMinimized(minimized.cast<bool>());
+
+    std::optional<mankool::mcbot::protocol::WindowStateResponse> state;
+    {
+        py::gil_scoped_release release;
+        state = BotManager::setWindow(name, cmd);
+    }
+    if (!state.has_value()) {
+        return py::none();
+    }
+    return py::cast(windowStateToPy(*state));
+}
+
 std::optional<float> PythonAPI::getHealth(const std::string &botName)
 {
     QString name = resolveBotName(botName);

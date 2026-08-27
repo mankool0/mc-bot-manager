@@ -31,6 +31,8 @@
 #include "registry.qpb.h"
 #include "entities.qpb.h"
 #include "stats.qpb.h"
+#include "window.qpb.h"
+#include "WindowLayout.h"
 #include "WorldData.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
@@ -346,6 +348,9 @@ struct BotInstance : public BotConfig {
     // Only meaningful while Online - the mod reports these in its handshake.
     QSet<QString> capabilities;
     bool hasCapability(const QString &cap) const { return capabilities.contains(cap); }
+    // Game window geometry and monitor list as last reported by the mod (guarded by dataMutex).
+    mankool::mcbot::protocol::WindowStateResponse windowState;
+    bool windowStateKnown = false;
     bool isSingleplayer = false;
     QString singleplayerWorld;
     QString serverMotd;
@@ -478,6 +483,18 @@ public:
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
     static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
     static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
+
+    // Game window placement. Both calls block for the mod's reply; nullopt on timeout/offline.
+    static std::optional<mankool::mcbot::protocol::WindowStateResponse> getWindowState(const QString &botName, int timeoutMs = 3000);
+    static std::optional<mankool::mcbot::protocol::WindowStateResponse> setWindow(const QString &botName, const mankool::mcbot::protocol::SetWindowCommand &cmd, int timeoutMs = 3000);
+    static void handleWindowState(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response);
+    // Re-reads the BotWindows settings and re-tiles every online bot.
+    static void reloadWindowLayout();
+    // Forgets the bot's window state (on disconnect). Its grid cell is its list index, so
+    // nothing moves until it reconnects and takes the same cell again.
+    static void clearWindowState(const QString &botName);
+    // Monitor names reported by online bots, for the settings UI.
+    static QStringList knownMonitorNames();
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
@@ -579,6 +596,10 @@ private:
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
     std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
     void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
+    std::optional<mankool::mcbot::protocol::WindowStateResponse> requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs);
+    void handleWindowStateImpl(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response);
+    void applyWindowLayoutImpl(BotInstance *bot);
+    void reloadWindowLayoutImpl();
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
                                    mankool::mcbot::protocol::BlockFaceGadget::BlockFace face);
@@ -616,6 +637,9 @@ private:
     PendingRequestMap<bool> m_pendingStatistics;
     QMutex m_statsCacheMutex;
     QHash<QString, QMap<QString, QMap<QString, qint64>>> m_statsCache;
+    PendingRequestMap<mankool::mcbot::protocol::WindowStateResponse> m_pendingWindowState;
+    // Main thread only: the settings dialog and the inbound handler both run there.
+    WindowLayoutSettings m_windowLayoutSettings = WindowLayoutSettings::load();
 
     // Block state registry cache: data_version -> (state_id -> block_state_string)
     QMap<int, QMap<quint32, QString>> blockRegistryCache;

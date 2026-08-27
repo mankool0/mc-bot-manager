@@ -21,3 +21,4 @@ def handle_commands(sender, message, msg_type):
 - [API Reference](api/index.md) - Complete API documentation
 - [Examples](examples.md) - Code examples
 - [Events](events.md) - Available events
+- [Bot Windows](bot-windows.md) - Window class, title, and focus behaviour of bot windows

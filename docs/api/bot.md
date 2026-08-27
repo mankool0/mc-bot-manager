@@ -308,6 +308,77 @@ for b in bots:
     print(f"{b['name']}: {b['status']}")
 ```
 
+## Game Window
+
+The manager can tile bot windows automatically (Settings -> Bots -> Game Windows); these calls give
+scripts the same control. See [Bot Windows](../bot-windows.md) for how windows are identified and
+what each platform supports.
+
+All rectangles are the window's **outer frame** (decorations included) in pixels, relative to the
+top-left of a monitor's **work area** (the monitor minus panels/taskbar).
+
+### `window(bot_name="")`
+
+Get the game window's placement.
+
+**Returns:** `WindowState` or `None` if the bot is offline or did not answer within 3s.
+
+**`WindowState` attributes:**
+
+| Attribute | Type | Description |
+|---|---|---|
+| `platform` | `str` | GLFW platform: `"x11"`, `"wayland"`, `"win32"`, `"cocoa"` |
+| `can_move` | `bool` | Whether the window can be positioned. `False` on native Wayland |
+| `monitor` | `str` | Name of the monitor the window is on |
+| `x`, `y` | `int` | Frame position relative to that monitor's work area |
+| `width`, `height` | `int` | Frame size |
+| `minimized` | `bool` | Iconified |
+| `focused` | `bool` | Has keyboard focus |
+| `monitors` | `list[Monitor]` | All monitors the game sees |
+
+**`Monitor` attributes:**
+
+| Attribute | Type | Description |
+|---|---|---|
+| `name` | `str` | Monitor name as the game reports it (RandR/wl_output name on Linux such as `DP-1`, adapter name on Windows) |
+| `primary` | `bool` | Primary monitor |
+| `x`, `y`, `width`, `height` | `int` | Full monitor rect in screen coordinates |
+| `work_x`, `work_y`, `work_width`, `work_height` | `int` | Work area in screen coordinates |
+
+```python
+w = bot.window()
+if w:
+    utils.log(f"{w.monitor}: {w.width}x{w.height} at ({w.x}, {w.y}), minimized={w.minimized}")
+    for m in w.monitors:
+        utils.log(f"  {m.name}{' (primary)' if m.primary else ''}: work area {m.work_width}x{m.work_height}")
+```
+
+### `set_window(x=None, y=None, width=None, height=None, monitor="", minimized=None, bot_name="")`
+
+Move, resize or (un)minimize the game window. Arguments left as `None` keep their current value.
+
+- `x`, `y` (`int`) - Frame position relative to the work area of `monitor`
+- `width`, `height` (`int`) - Frame size
+- `monitor` (`str`) - Target monitor name from `window().monitors`. Empty keeps the current monitor; with no `x`/`y` the window keeps its offset within the work area when moved to another monitor
+- `minimized` (`bool`) - `True` iconifies, `False` restores
+
+**Returns:** the resulting `WindowState`, or `None` on timeout. Raises if the bot is not online.
+
+Positioning is ignored (with a warning in the game log) on native Wayland and while the game is
+fullscreen; resizing and minimizing still work.
+
+```python
+# Quarter of the primary monitor, top-right
+w = bot.window()
+primary = next(m for m in w.monitors if m.primary)
+bot.set_window(x=primary.work_width // 2, y=0,
+               width=primary.work_width // 2, height=primary.work_height // 2,
+               monitor=primary.name)
+
+# Park it out of the way
+bot.set_window(minimized=True)
+```
+
 ## Bot Control
 
 ### `start(bot_name="")`

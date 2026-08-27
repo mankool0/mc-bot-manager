@@ -53,6 +53,7 @@ public class MessageHandler {
     private final EntityOutbound entityOutbound;
     private final TabListOutbound tabListOutbound;
     private final StatsOutbound statsOutbound;
+    private final WindowOutbound windowOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -76,12 +77,13 @@ public class MessageHandler {
         this.entityOutbound = new EntityOutbound(this.client, connection);
         this.tabListOutbound = new TabListOutbound(this.client, connection);
         this.statsOutbound = new StatsOutbound(this.client, connection);
+        this.windowOutbound = new WindowOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
         // Ticked from onClientTick below, in construction order
         this.outbounds = List.of(serverOutbound, playerOutbound, inventoryOutbound,
                                  worldOutbound, containerOutbound, screenOutbound, entityOutbound,
-                                 tabListOutbound, statsOutbound);
+                                 tabListOutbound, statsOutbound, windowOutbound);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
@@ -195,6 +197,10 @@ public class MessageHandler {
             msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_STATISTICS,
             msg -> statsOutbound.handleRequestStatistics(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_WINDOW,
+            msg -> windowOutbound.handleSetWindow(msg.getMessageId(), msg.getSetWindow()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_WINDOW_STATE,
+            msg -> windowOutbound.handleGetWindowState(msg.getMessageId()));
     }
 
     public void start() {
@@ -208,6 +214,9 @@ public class MessageHandler {
 
         // Send initial connection info
         serverOutbound.sendConnectionInfo();
+
+        // Window geometry and monitors, so the manager can place the window right away
+        windowOutbound.scheduleReport("");
 
         // Send block registry query
         worldOutbound.sendRegistryQuery();

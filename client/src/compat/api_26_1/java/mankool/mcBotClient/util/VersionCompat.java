@@ -1,5 +1,6 @@
 package mankool.mcBotClient.util;
 
+import com.mojang.blaze3d.platform.Window;
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -156,5 +157,10 @@ public class VersionCompat {
             new Int2ObjectArrayMap<>(),
             HashedStack.EMPTY
         ));
+    }
+
+    /** Native GLFW handle of the game window. */
+    public static long windowHandle(Window window) {
+        return window.handle();
     }
 }

@@ -2,6 +2,7 @@
 #include "BotConsoleWidget.h"
 #include "AppColors.h"
 #include "bot/BotManager.h"
+#include "bot/WindowLayout.h"
 #include "logging/LogManager.h"
 #include "scripting/PythonAPI.h"
 #include "AppPaths.h"
@@ -9,12 +10,14 @@
 #include <QGroupBox>
 #include <QSettings>
 #include <QGuiApplication>
+#include <QScreen>
 #include <QStyleHints>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <QColorDialog>
 #include <QToolButton>
+#include <algorithm>
 
 GlobalSettingsDialog::GlobalSettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -248,6 +251,45 @@ void GlobalSettingsDialog::setupUI()
         crashLayout->addRow("Time window:", crashWindowMinutesSpinBox);
 
         layout->addWidget(crashGroup);
+
+        QGroupBox *windowGroup = new QGroupBox("Game Windows");
+        QFormLayout *windowLayout = new QFormLayout(windowGroup);
+
+        windowLayoutEnabledCheckBox = new QCheckBox("Tile bot windows on connect", this);
+        windowLayoutEnabledCheckBox->setToolTip(
+            "Move and resize each bot's game window into a grid cell on the chosen monitor when it connects");
+        windowLayout->addRow(windowLayoutEnabledCheckBox);
+
+        // Names reported by online bots come first - those are what the mod matches on. Qt's
+        // own screen names are the fallback before any bot has connected; they normally agree
+        // on Linux but can differ on Windows.
+        windowMonitorComboBox = new QComboBox(this);
+        windowMonitorComboBox->addItem("Primary monitor", QString());
+        QStringList monitorNames = BotManager::knownMonitorNames();
+        const auto screens = QGuiApplication::screens();
+        for (QScreen *screen : screens) {
+            if (!monitorNames.contains(screen->name()))
+                monitorNames.append(screen->name());
+        }
+        for (const QString &name : std::as_const(monitorNames))
+            windowMonitorComboBox->addItem(name, name);
+        windowMonitorComboBox->setToolTip("Monitor name as the game reports it (e.g. DP-1). Leave on Primary if unsure.");
+        windowLayout->addRow("Monitor:", windowMonitorComboBox);
+
+        windowColumnsSpinBox = new QSpinBox(this);
+        windowColumnsSpinBox->setRange(1, 16);
+        windowColumnsSpinBox->setValue(3);
+        windowLayout->addRow("Columns:", windowColumnsSpinBox);
+
+        windowRowsSpinBox = new QSpinBox(this);
+        windowRowsSpinBox->setRange(1, 16);
+        windowRowsSpinBox->setValue(2);
+        windowLayout->addRow("Rows:", windowRowsSpinBox);
+
+        windowMinimizedCheckBox = new QCheckBox("Minimize after placing", this);
+        windowLayout->addRow(windowMinimizedCheckBox);
+
+        layout->addWidget(windowGroup);
         layout->addStretch();
         sa->setWidget(contents);
         tabWidget->addTab(sa, "Bots");
@@ -255,6 +297,12 @@ void GlobalSettingsDialog::setupUI()
         connect(crashLoopProtectionCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
             crashMaxCrashesSpinBox->setEnabled(checked);
             crashWindowMinutesSpinBox->setEnabled(checked);
+        });
+        connect(windowLayoutEnabledCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+            windowMonitorComboBox->setEnabled(checked);
+            windowColumnsSpinBox->setEnabled(checked);
+            windowRowsSpinBox->setEnabled(checked);
+            windowMinimizedCheckBox->setEnabled(checked);
         });
     }
 
@@ -350,6 +398,22 @@ void GlobalSettingsDialog::loadSettings()
     crashMaxCrashesSpinBox->setEnabled(crashProtection);
     crashWindowMinutesSpinBox->setEnabled(crashProtection);
 
+    WindowLayoutSettings windowSettings = WindowLayoutSettings::load();
+    windowLayoutEnabledCheckBox->setChecked(windowSettings.enabled);
+    int monitorIndex = windowMonitorComboBox->findData(windowSettings.monitor);
+    if (monitorIndex < 0 && !windowSettings.monitor.isEmpty()) {
+        windowMonitorComboBox->addItem(windowSettings.monitor, windowSettings.monitor);
+        monitorIndex = windowMonitorComboBox->count() - 1;
+    }
+    windowMonitorComboBox->setCurrentIndex(std::max(0, monitorIndex));
+    windowColumnsSpinBox->setValue(windowSettings.columns);
+    windowRowsSpinBox->setValue(windowSettings.rows);
+    windowMinimizedCheckBox->setChecked(windowSettings.minimized);
+    windowMonitorComboBox->setEnabled(windowSettings.enabled);
+    windowColumnsSpinBox->setEnabled(windowSettings.enabled);
+    windowRowsSpinBox->setEnabled(windowSettings.enabled);
+    windowMinimizedCheckBox->setEnabled(windowSettings.enabled);
+
     int scheme = settings.value("Appearance/colorScheme", static_cast<int>(Qt::ColorScheme::Unknown)).toInt();
     for (int i = 0; i < colorSchemeComboBox->count(); ++i) {
         if (colorSchemeComboBox->itemData(i).toInt() == scheme) {
@@ -405,6 +469,14 @@ void GlobalSettingsDialog::saveSettings()
     settings.setValue("CrashRecovery/enabled", crashLoopProtectionCheckBox->isChecked());
     settings.setValue("CrashRecovery/maxCrashes", crashMaxCrashesSpinBox->value());
     settings.setValue("CrashRecovery/windowMinutes", crashWindowMinutesSpinBox->value());
+
+    WindowLayoutSettings windowSettings;
+    windowSettings.enabled = windowLayoutEnabledCheckBox->isChecked();
+    windowSettings.monitor = windowMonitorComboBox->currentData().toString();
+    windowSettings.columns = windowColumnsSpinBox->value();
+    windowSettings.rows = windowRowsSpinBox->value();
+    windowSettings.minimized = windowMinimizedCheckBox->isChecked();
+    windowSettings.save();
 
     int scheme = colorSchemeComboBox->currentData().toInt();
     settings.setValue("Appearance/colorScheme", scheme);

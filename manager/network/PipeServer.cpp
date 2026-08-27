@@ -265,6 +265,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleMapData(connectionId, clientMsg.mapData());
         } else if (clientMsg.hasPlayerStatisticsResponse()) {
             BotManager::handlePlayerStatisticsResponse(connectionId, clientMsg.playerStatisticsResponse());
+        } else if (clientMsg.hasWindowState()) {
+            BotManager::handleWindowState(connectionId, clientMsg.windowState());
         }
         return true;
     }
