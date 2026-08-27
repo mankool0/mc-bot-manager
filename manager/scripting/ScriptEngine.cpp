@@ -403,9 +403,11 @@ void ScriptEngine::stopScript(const QString &filename)
 
 void ScriptEngine::stopAllScripts()
 {
-    // Signal all scripts to stop
-    for (auto it = scripts.begin(); it != scripts.end(); ++it) {
-        stopScript(it.key());
+    // Over a copy of the names: stopScript emits scriptStopped, and a slot that
+    // unloads the script would pull the entry out from under an iterator.
+    const QStringList names = scripts.keys();
+    for (const QString &name : names) {
+        stopScript(name);
     }
 
     // Wait for all threads to finish

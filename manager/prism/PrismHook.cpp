@@ -126,7 +126,9 @@ static QByteArray buildInstancesPayload()
 
 static void sendToSubscribers(const QByteArray& data)
 {
-    for (QLocalSocket* s : std::as_const(*g_subscribers)) {
+    // Copy: a subscriber's disconnected handler removes it from the set.
+    const QSet<QLocalSocket*> subscribers = *g_subscribers;
+    for (QLocalSocket* s : subscribers) {
         if (s && s->state() == QLocalSocket::ConnectedState) {
             s->write(data);
         }

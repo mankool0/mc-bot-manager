@@ -833,8 +833,11 @@ void BotManager::removeBotImpl(const QString &name)
 
 void BotManager::clearAllBots()
 {
-    while (!instance().botInstances.isEmpty())
-        instance().removeBotImpl(instance().botInstances.first()->name);
+    while (!instance().botInstances.isEmpty()) {
+        // Copied: removeBotImpl deletes the bot before emitting botRemoved(name)
+        const QString name = instance().botInstances.first()->name;
+        instance().removeBotImpl(name);
+    }
 }
 
 void BotManager::updateBot(const QString &name, const BotConfig &config)

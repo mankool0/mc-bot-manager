@@ -71,6 +71,10 @@ void PipeServer::stopImpl()
     for (auto it = connections.begin(); it != connections.end(); ++it) {
         QLocalSocket *socket = it.value();
         if (socket) {
+            // ~QLocalSocket would emit disconnected() into
+            // handleClientDisconnection mid-teardown; shutdown deliberately
+            // does not announce clientDisconnected.
+            socket->disconnect(this);
             socket->deleteLater();
         }
     }
@@ -284,23 +288,25 @@ void PipeServer::handleClientDisconnection()
         return;
     }
 
+    int connectionId = -1;
     for (auto it = connections.begin(); it != connections.end(); ++it) {
         if (it.value() == socket) {
-            int connectionId = it.key();
-
-            LogManager::log(QString("Client disconnected (Connection ID: %1)").arg(connectionId), LogManager::Warning);
-
-            emit clientDisconnected(connectionId);
-
-            connections.remove(connectionId);
-            connectionBotNames.remove(connectionId);
-
-            if (connectionStreams.contains(connectionId)) {
-                delete connectionStreams[connectionId];
-                connectionStreams.remove(connectionId);
-            }
+            connectionId = it.key();
             break;
         }
+    }
+
+    if (connectionId != -1) {
+        // Bookkeeping first, signal last: the slots run arbitrary code and must
+        // not find a half-gone connection or re-enter here mid-iteration.
+        connections.remove(connectionId);
+        connectionBotNames.remove(connectionId);
+        if (QDataStream *stream = connectionStreams.take(connectionId)) {
+            delete stream;
+        }
+
+        LogManager::log(QString("Client disconnected (Connection ID: %1)").arg(connectionId), LogManager::Warning);
+        emit clientDisconnected(connectionId);
     }
 
     socket->deleteLater();

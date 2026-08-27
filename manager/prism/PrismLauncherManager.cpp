@@ -837,13 +837,19 @@ void PrismLauncherManager::injectHookDLL()
 }
 #endif
 
+void PrismLauncherManager::dropSubscriberSocket()
+{
+    // Taken out of the member before abort(): abort() emits disconnected()
+    // synchronously on a connected socket, and that handler clears the member.
+    QLocalSocket *socket = std::exchange(m_subscriberSocket, nullptr);
+    if (!socket) return;
+    socket->abort();
+    socket->deleteLater();
+}
+
 void PrismLauncherManager::connectSubscriber()
 {
-    if (m_subscriberSocket) {
-        m_subscriberSocket->abort();
-        m_subscriberSocket->deleteLater();
-        m_subscriberSocket = nullptr;
-    }
+    dropSubscriberSocket();
 
     m_subscriberSocket = new QLocalSocket(this);
 
@@ -855,13 +861,18 @@ void PrismLauncherManager::connectSubscriber()
             &PrismLauncherManager::handleSubscriberData);
 
     connect(m_subscriberSocket, &QLocalSocket::disconnected, this, [this]() {
-        m_subscriberSocket->deleteLater();
-        m_subscriberSocket = nullptr;
+        // Also reached re-entrantly from dropSubscriberSocket(), with the
+        // member already cleared.
+        if (QLocalSocket *socket = std::exchange(m_subscriberSocket, nullptr)) {
+            socket->deleteLater();
+        }
     });
 
     connect(m_subscriberSocket, &QLocalSocket::errorOccurred, this,
             [this](QLocalSocket::LocalSocketError) {
-        LogManager::log("[PrismHook]: " + m_subscriberSocket->errorString(), LogManager::Error);
+        if (m_subscriberSocket) {
+            LogManager::log("[PrismHook]: " + m_subscriberSocket->errorString(), LogManager::Error);
+        }
     });
 
     m_subscriberSocket->connectToServer(hookSocketPath());
