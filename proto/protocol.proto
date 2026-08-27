@@ -63,6 +63,7 @@ message ClientToManagerMessage {
     BlockUpdateMessage block_update = 19;
     MultiBlockUpdateMessage multi_block_update = 20;
     ChunkUnloadMessage chunk_unload = 21;
+    BlockEntityUpdateMessage block_entity_update = 42;
 
     // Block registry
     QueryBlockRegistryMessage query_registry = 22;

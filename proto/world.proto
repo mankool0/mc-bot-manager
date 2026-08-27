@@ -107,6 +107,16 @@ message BlockUpdateMessage {
   string dimension = 3;           // Dimension ID
 }
 
+// One block entity changed (Client -> Manager). Chunk data carries every block entity in a chunk,
+// but only at load; this is how an edited sign, a re-dyed banner or a newly placed chest reaches the
+// manager without waiting for the chunk to cycle. `nbt` is the same saveWithFullMetadata payload
+// ChunkDataMessage.block_entity_nbt carries, so both paths store the same shape.
+message BlockEntityUpdateMessage {
+  BlockPos position = 1;
+  string dimension = 2;
+  bytes nbt = 3;
+}
+
 // Multi-block update (Client -> Manager)
 message MultiBlockUpdateMessage {
   repeated BlockPos positions = 1;

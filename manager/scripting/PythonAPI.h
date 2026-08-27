@@ -10,6 +10,7 @@
 #include <map>
 #include <optional>
 #include "world/BlockRegistry.h"
+#include <tag_compound.h>
 
 #undef slots
 #include <pybind11/pybind11.h>
@@ -71,6 +72,26 @@ struct PyWindowState {
     bool focused = false;
     std::vector<PyMonitor> monitors;
 };
+
+// Suppress visibility warning: pybind11 types have hidden visibility
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+
+struct PyBlockEntity {
+    std::string type;
+    int x = 0, y = 0, z = 0;
+    py::list items;
+    bool hasItems = false;
+    std::vector<std::string> frontText;
+    std::vector<std::string> backText;
+    bool isSign = false;
+    bool isWaxed = false;
+    std::string rawNbt;
+    std::shared_ptr<const nbt::tag_compound> parsedNbt;
+    py::object nbtCache;
+};
+
+#pragma GCC diagnostic pop
 
 struct PyServerInfo {
     std::string address;
@@ -258,8 +279,15 @@ public:
     static py::object getWeather(const std::string &bot = "");
     static py::object getBlock(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
     static py::object getLight(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
-    static py::object getBlockEntity(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
-    static py::list getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+    static std::optional<PyBlockEntity> getBlockEntity(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+    static std::vector<PyBlockEntity> getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+
+    static py::object blockEntityNbt(PyBlockEntity &be);
+    static py::object blockEntityGetItem(PyBlockEntity &be, const std::string &key);
+    static py::object blockEntityGet(PyBlockEntity &be, const std::string &key, py::object fallback);
+    static bool blockEntityContains(const PyBlockEntity &be, const std::string &key);
+    static py::list blockEntityKeys(const PyBlockEntity &be);
+    static std::string blockEntityRepr(const PyBlockEntity &be);
     static py::object isBlockSolid(const std::string &blockState, BlockRegistry::Direction face = BlockRegistry::Direction::UP, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius,

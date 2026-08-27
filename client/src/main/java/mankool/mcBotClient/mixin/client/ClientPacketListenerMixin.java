@@ -42,6 +42,14 @@ public class ClientPacketListenerMixin {
         }
     }
 
+    @Inject(method = "handleBlockEntityData", at = @At("TAIL"))
+    private void onBlockEntityData(ClientboundBlockEntityDataPacket packet, CallbackInfo ci) {
+        WorldOutbound handler = WorldOutbound.getInstance();
+        if (handler != null) {
+            handler.sendBlockEntityUpdate(packet.getPos());
+        }
+    }
+
     @Inject(method = "handleChunkBlocksUpdate", at = @At("TAIL"))
     private void onChunkBlocksUpdate(ClientboundSectionBlocksUpdatePacket packet, CallbackInfo ci) {
         WorldOutbound handler = WorldOutbound.getInstance();

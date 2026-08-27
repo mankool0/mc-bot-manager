@@ -2797,6 +2797,13 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
     }
 }
 
+static bool isAirState(const QString &blockState)
+{
+    return blockState == QLatin1String("minecraft:air")
+        || blockState == QLatin1String("minecraft:cave_air")
+        || blockState == QLatin1String("minecraft:void_air");
+}
+
 void BotManager::handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate)
 {
     instance().handleBlockUpdateImpl(connectionId, blockUpdate);
@@ -2829,6 +2836,9 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
     {
         QWriteLocker locker(bot->worldDataLock.get());
         bot->worldData.setBlock(x, y, z, blockStr);
+        if (isAirState(blockStr)) {
+            bot->worldData.removeBlockEntity(x, y, z, bot->dimension);
+        }
     }
 
     if (bot->saveWorldToDisk && bot->worldAutoSaver) {
@@ -2848,6 +2858,62 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
         QVariantList args;
         args << x << y << z << blockStr;
         bot->scriptEngine->fireEvent("block_update", args);
+    }
+}
+
+void BotManager::handleBlockEntityUpdate(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update)
+{
+    instance().handleBlockEntityUpdateImpl(connectionId, update);
+}
+
+void BotManager::handleBlockEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    const QByteArray beBytes = update.nbt();
+    if (beBytes.isEmpty()) return;
+
+    BlockEntityData be;
+    be.x = update.position().x();
+    be.y = update.position().y();
+    be.z = update.position().z();
+    be.dimension = update.dimension().isEmpty() ? bot->dimension : update.dimension();
+    be.rawNbt = beBytes;
+
+    try {
+        std::istringstream ss(std::string(beBytes.constData(), beBytes.size()), std::ios::binary);
+        nbt::io::stream_reader reader(ss);
+        auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+        auto& compound = static_cast<nbt::tag_compound&>(*tagPtr);
+        if (compound.has_key("id")) {
+            be.type = QString::fromStdString(static_cast<nbt::tag_string&>(compound.at("id").get()).get());
+        }
+    } catch (...) {
+        return;  // unreadable payload: keep whatever is stored rather than replacing it with nothing
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        // Items known from a container open stay: they come from the container packet and are
+        // fresher than anything in this snapshot.
+        auto existing = bot->worldData.getBlockEntity(be.x, be.y, be.z, be.dimension);
+        if (existing.has_value() && !existing->items.isEmpty()) {
+            be.items = existing->items;
+        }
+        bot->worldData.updateBlockEntity(be);
+    }
+
+    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
+        bot->worldAutoSaver->markBlockChunkDirty(be.x >> 4, be.z >> 4, bot->dimension);
+    }
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] Block entity update at (%2, %3, %4): %5")
+                       .arg(bot->name)
+                       .arg(be.x).arg(be.y).arg(be.z)
+                       .arg(be.type.isEmpty() ? QStringLiteral("?") : be.type),
+                       LogManager::Debug);
     }
 }
 
@@ -2884,7 +2950,11 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
             } else {
                 bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), *blockState);
             }
+            if (!blockState || isAirState(*blockState)) {
+                bot->worldData.removeBlockEntity(pos.x(), pos.y(), pos.z(), bot->dimension);
+            }
         }
+    }
     }
 
     if (bot->saveWorldToDisk && bot->worldAutoSaver) {

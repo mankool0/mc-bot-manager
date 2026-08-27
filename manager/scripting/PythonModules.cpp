@@ -483,6 +483,22 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("timeout") = 3.0,
               py::arg("bot_name") = "");
 
+    py::class_<PyBlockEntity>(m, "BlockEntity")
+        .def_readonly("type", &PyBlockEntity::type)
+        .def_readonly("x", &PyBlockEntity::x)
+        .def_readonly("y", &PyBlockEntity::y)
+        .def_readonly("z", &PyBlockEntity::z)
+        .def_readonly("items", &PyBlockEntity::items)
+        .def_readonly("front_text", &PyBlockEntity::frontText)
+        .def_readonly("back_text", &PyBlockEntity::backText)
+        .def_readonly("is_waxed", &PyBlockEntity::isWaxed)
+        .def_property_readonly("nbt", &PythonAPI::blockEntityNbt)
+        .def("__getitem__", &PythonAPI::blockEntityGetItem)
+        .def("get", &PythonAPI::blockEntityGet, py::arg("key"), py::arg("default") = py::none())
+        .def("__contains__", &PythonAPI::blockEntityContains)
+        .def("keys", &PythonAPI::blockEntityKeys)
+        .def("__repr__", &PythonAPI::blockEntityRepr);
+
     py::class_<PyReachQuery>(m, "ReachQuery")
         .def(py::init([](int x, int y, int z, py::object fromPos, py::object sneak, py::object face) {
                  PyReachQuery q;

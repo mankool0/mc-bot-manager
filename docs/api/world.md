@@ -191,35 +191,89 @@ Get the block entity at the specified position.
 - `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `dict` or `None` if no block entity exists at that position
+**Returns:** `BlockEntity` or `None` if no block entity exists at that position
 
-| Key | Type | Present when |
-|-----|------|-------------|
-| `type` | `str` | always (e.g. `"minecraft:chest"`) |
-| `x` | `int` | always |
-| `y` | `int` | always |
-| `z` | `int` | always |
-| `items` | `list` | container was opened this session (memory) or in a previous session that was saved to disk |
+**`BlockEntity` attributes:**
 
-**Note on `items`:** The Minecraft server only sends container contents when a container is opened, so `items` is only present if the container was opened at some point. Memory always takes priority: if items are already in memory (opened this session), they are returned even when `use_disk=True`. Disk is only consulted when items are absent from memory - in that case, items may be present on disk if the container was opened in a previous session that was saved.
+| Attribute | Type | Description |
+|---|---|---|
+| `type` | `str` | Block entity id, e.g. `"minecraft:chest"` |
+| `x`, `y`, `z` | `int` | Block position |
+| `items` | `list` | Container contents ([item dicts](bot.md#item-dict)); empty when the container has never been opened |
+| `front_text` | `list[str]` | Signs: the four lines of the front face, in order. Empty for anything else |
+| `back_text` | `list[str]` | Signs: the four lines of the back face, in order. Empty for anything else |
+| `is_waxed` | `bool` | Signs: `True` when the sign has been waxed with honeycomb |
+| `nbt` | `dict` or `None` | The whole NBT compound, parsed on first access. See below |
+
+This used to be a plain `dict` and still behaves like one - `be["type"]`, `be.get("items", [])` and
+`"front_text" in be` all work, with the same keys the dict had, so existing scripts keep running.
+New code should use the attributes: they are typed in the editor and always present, so
+`be.front_text` on a chest is `[]` rather than a `KeyError`.
+
+**Note on `items`:** The Minecraft server only sends container contents when a container is opened,
+so `items` is empty unless the container was opened at some point. Memory always takes priority: if
+items are already in memory (opened this session), they are returned even when `use_disk=True`. Disk
+is only consulted when items are absent from memory - in that case, items may be present on disk if
+the container was opened in a previous session that was saved.
+
+**Note on `nbt`:** the block entity's full NBT compound, exactly as the server sent it with the
+chunk, converted to plain Python. Use it for anything this API does not expose directly - spawner
+mob, beacon effects, banner patterns, lectern books, skull owners, decorated pot sherds, modded
+block entities. It is parsed on first access and cached, so a chunk scan that never touches `nbt`
+costs nothing, and it is `None` when there is no NBT for that block entity.
+
+Two things to know about it:
+
+- **`items` wins over `nbt["Items"]`.** Container contents in `nbt` are the chunk-load snapshot and
+  are never refreshed afterwards, while `items` comes from the container packet and is current.
+- **The conversion is lossy**, because it is meant for reading: `byte`, `short`, `int` and `long`
+  all become `int`; `float` and `double` become `float`; `byte_array`, `int_array` and `long_array`
+  all become `list[int]`; compounds become `dict` and lists become `list`.
 
 ```python
-# items only present if container was opened this session
+# items is empty unless the container was opened
 be = world.get_block_entity(cx, cy, cz)
-if be and 'items' in be:
-    for item in be['items']:
+if be and be.items:
+    for item in be.items:
         if item['item_id'] != 'minecraft:air':
             utils.log(f"  {item['count']}x {item['item_id']}")
 
-# also check saved data from previous sessions where container was opened
-be = world.get_block_entity(cx, cy, cz, use_disk=True)
-if be and 'items' in be:
-    utils.log(f"Chest contents from disk: {len(be['items'])} stacks")
-
 # check a saved but unloaded chunk
 be = world.get_block_entity(5000, 64, 5000, use_disk=True)
-if be and be['type'] == 'minecraft:chest':
+if be and be.type == 'minecraft:chest':
     utils.log("Found a chest in saved data")
+
+# anything not exposed as an attribute is in nbt
+be = world.get_block_entity(sx, sy, sz)
+if be and be.type == 'minecraft:trial_spawner':
+    utils.log(be.nbt.get('normal_config'))
+```
+
+**Note on sign text:** `front_text` / `back_text` come from the block entity data the server sends
+with the chunk, so they are available for any sign in a chunk the bot has loaded (or from disk with
+`use_disk=True`).
+They are normalized here rather than left to `nbt` because the encoding differs by Minecraft
+version. Text components are flattened to plain strings, so styling and colour are dropped and an
+empty line is `""`.
+
+**Freshness:** block entity data arrives with the chunk and is then kept current incrementally. The
+client forwards every block entity update packet the server sends, plus any block entity that shows
+up on a block update, and drops one whose block is broken - so a sign edited or a banner re-dyed
+next to the bot is reflected immediately. The block entities that push updates are signs, banners,
+skulls, spawners, trial spawners, vaults, beacons, campfires, decorated pots, conduits, beds,
+brushable blocks, end gateways, creaking hearts, jigsaws and structure blocks.
+
+**Chests, barrels, furnaces, hoppers, brewing stands, lecterns and beehives send no update packet at
+all** - Minecraft has none for them - so their contents and state still only arrive by opening the
+container (`items`, or the [`container_update`](../events.md#container_update) event, which also
+carries furnace burn and cook progress) or when the chunk is loaded again.
+
+```python
+# Find the chest under the sign that says "eChests"
+for be in world.get_block_entities_in_chunk(cx, cz):
+    if "eChests" in be.front_text:
+        world.interact_block(be.x, be.y - 1, be.z)
+        break
 ```
 
 ---
@@ -236,9 +290,9 @@ Get all block entities in a chunk.
 - `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. If a different dimension is specified, **requires `use_disk=True`** - raises `ValueError` otherwise.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `list[dict]` - List of block entity dicts (same schema as `get_block_entity`)
+**Returns:** `list[BlockEntity]` - same objects as `get_block_entity` returns
 
-Memory always takes priority: if the chunk is loaded, memory data is returned regardless of `use_disk`. Disk is only read when the chunk is not loaded. `items` is present on any container that was opened (either this session from memory, or a previous session from disk).
+Memory always takes priority: if the chunk is loaded, memory data is returned regardless of `use_disk`. Disk is only read when the chunk is not loaded. `items` is filled for any container that was opened (either this session from memory, or a previous session from disk).
 
 ```python
 import math
@@ -250,11 +304,11 @@ cz = math.floor(pos['z'] / 16)
 
 entities = world.get_block_entities_in_chunk(cx, cz)
 for be in entities:
-    utils.log(f"{be['type']} at ({be['x']}, {be['y']}, {be['z']})")
+    utils.log(f"{be.type} at ({be.x}, {be.y}, {be.z})")
 
 # Scan a saved chunk for chests
 entities = world.get_block_entities_in_chunk(312, -5, use_disk=True)
-chests = [be for be in entities if be['type'] == 'minecraft:chest']
+chests = [be for be in entities if be.type == 'minecraft:chest']
 utils.log(f"Found {len(chests)} chests in saved chunk (312, -5)")
 
 # Scan a chunk in the nether from disk

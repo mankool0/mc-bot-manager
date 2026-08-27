@@ -278,6 +278,44 @@ public class WorldOutbound extends BaseOutbound {
             .build();
 
         connection.sendMessage(message);
+
+        // A placed block entity has no update packet of its own (a chest never sends one), so the
+        // block update is the only notice the manager gets that one now exists here.
+        sendBlockEntityUpdate(pos);
+    }
+
+    /**
+     * Sends the block entity at {@code pos} as it stands right now. Chunk data carries every block
+     * entity in a chunk, but only when the chunk loads; this is the incremental path, so an edited
+     * sign or a freshly placed chest reaches the manager without waiting for the chunk to cycle.
+     */
+    public void sendBlockEntityUpdate(BlockPos pos) {
+        if (client.level == null) return;
+
+        BlockEntity be = client.level.getBlockEntity(pos);
+        if (be == null) return;
+
+        try {
+            CompoundTag nbt = be.saveWithFullMetadata(client.level.registryAccess());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            nbt.write(new DataOutputStream(baos));
+
+            World.BlockEntityUpdateMessage update = World.BlockEntityUpdateMessage.newBuilder()
+                .setPosition(toProtoBlockPos(pos))
+                .setDimension(VersionCompat.keyId(client.level.dimension()))
+                .setNbt(ByteString.copyFrom(baos.toByteArray()))
+                .build();
+
+            Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+                .setMessageId(UUID.randomUUID().toString())
+                .setTimestamp(System.currentTimeMillis())
+                .setBlockEntityUpdate(update)
+                .build();
+
+            connection.sendMessage(message);
+        } catch (Exception e) {
+            // skip on error
+        }
     }
 
     public void onMultiBlockUpdate(List<BlockPos> positions, List<BlockState> states) {
@@ -303,6 +341,10 @@ public class WorldOutbound extends BaseOutbound {
             .build();
 
         connection.sendMessage(message);
+
+        for (BlockPos pos : positions) {
+            sendBlockEntityUpdate(pos);
+        }
     }
 
     private void sendChunkData(LevelChunk chunk, ClientboundLightUpdatePacketData lightData) {

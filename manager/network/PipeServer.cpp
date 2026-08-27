@@ -237,6 +237,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleBlockUpdate(connectionId, clientMsg.blockUpdate());
         } else if (clientMsg.hasMultiBlockUpdate()) {
             BotManager::handleMultiBlockUpdate(connectionId, clientMsg.multiBlockUpdate());
+        } else if (clientMsg.hasBlockEntityUpdate()) {
+            BotManager::handleBlockEntityUpdate(connectionId, clientMsg.blockEntityUpdate());
         } else if (clientMsg.hasChunkUnload()) {
             BotManager::handleChunkUnload(connectionId, clientMsg.chunkUnload());
         } else if (clientMsg.hasContainer()) {

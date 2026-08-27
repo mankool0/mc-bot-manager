@@ -1887,21 +1887,114 @@ static py::dict diskItemToDict(const nbt::tag_compound& itemTag,
     return d;
 }
 
-// Converts a block_entity compound from a chunk's block_entities list into a Python dict,
-// including items parsed from the NBT Items list.
-static py::dict diskBlockEntityToDict(const nbt::tag_compound& be,
-                                      const std::shared_ptr<ItemRegistry>& registry)
+// Sign lines live only in the block entity NBT, and two encodings are in the wild: 1.21.4 writes
+// each line as a JSON string (ComponentSerialization.FLAT_CODEC), while 1.21.11 and 26.1 write the
+// component natively - a bare string when plain, a compound when it carries style.
+static std::string signJsonToText(const QJsonValue& value)
 {
-    py::dict d;
+    if (value.isString()) {
+        return value.toString().toStdString();
+    }
+    if (value.isArray()) {
+        std::string out;
+        for (const QJsonValue& element : value.toArray()) {
+            out += signJsonToText(element);
+        }
+        return out;
+    }
+    if (value.isObject()) {
+        const QJsonObject obj = value.toObject();
+        std::string out = obj.value("text").toString().toStdString();
+        // A translatable component has no literal text; its key beats an empty line.
+        if (out.empty()) {
+            out = obj.value("translate").toString().toStdString();
+        }
+        if (obj.contains("extra")) {
+            out += signJsonToText(obj.value("extra"));
+        }
+        return out;
+    }
+    return {};
+}
+
+static std::string signMessageToText(const nbt::value& message)
+{
+    if (message.get_type() == nbt::tag_type::String) {
+        const std::string raw = static_cast<const nbt::tag_string&>(message.get()).get();
+        // A 1.21.4 line is JSON, a newer one is literal text that parses as JSON only by accident.
+        // Wrapped in an array because QJsonDocument rejects a bare string at top level.
+        QJsonParseError err{};
+        const QJsonDocument doc = QJsonDocument::fromJson(
+            "[" + QByteArray::fromStdString(raw) + "]", &err);
+        if (err.error == QJsonParseError::NoError && doc.isArray()) {
+            const QJsonValue inner = doc.array().at(0);
+            if (inner.isString() || inner.isObject() || inner.isArray()) {
+                return signJsonToText(inner);
+            }
+        }
+        return raw;
+    }
+    if (message.get_type() == nbt::tag_type::Compound) {
+        const auto& comp = static_cast<const nbt::tag_compound&>(message.get());
+        std::string out;
+        if (comp.has_key("text")) {
+            out = static_cast<const nbt::tag_string&>(comp.at("text").get()).get();
+        }
+        if (out.empty() && comp.has_key("translate")) {
+            out = static_cast<const nbt::tag_string&>(comp.at("translate").get()).get();
+        }
+        if (comp.has_key("extra")) {
+            try {
+                const auto& extra = static_cast<const nbt::tag_list&>(comp.at("extra").get());
+                for (const nbt::value& element : extra) {
+                    out += signMessageToText(element);
+                }
+            } catch (...) {}
+        }
+        return out;
+    }
+    return {};
+}
+
+// front_text/back_text/is_waxed, present only on the block entities that carry them (signs).
+static void fillSignText(PyBlockEntity& e, const nbt::tag_compound& be)
+{
+    for (const char* key : {"front_text", "back_text"}) {
+        if (!be.has_key(key)) continue;
+        try {
+            const auto& side = static_cast<const nbt::tag_compound&>(be.at(key).get());
+            if (!side.has_key("messages")) continue;
+            const auto& messages = static_cast<const nbt::tag_list&>(side.at("messages").get());
+            auto& out = (std::string(key) == "front_text") ? e.frontText : e.backText;
+            for (const nbt::value& message : messages) {
+                out.push_back(signMessageToText(message));
+            }
+            e.isSign = true;
+        } catch (...) {}
+    }
+    if (be.has_key("is_waxed")) {
+        try {
+            e.isWaxed = static_cast<const nbt::tag_byte&>(be.at("is_waxed").get()).get() != 0;
+            e.isSign = true;
+        } catch (...) {}
+    }
+}
+
+// Converts a block_entity compound from a chunk's block_entities list read off disk. `root` owns the
+// chunk compound this one lives in; `nbt` aliases into it rather than copying, so a chunk scan that
+// never touches `nbt` pays nothing for it.
+static PyBlockEntity diskBlockEntityToPy(const nbt::tag_compound& be,
+                                         const std::shared_ptr<ItemRegistry>& registry,
+                                         const std::shared_ptr<const nbt::tag_compound>& root)
+{
+    PyBlockEntity e;
 
     if (be.has_key("id")) {
-        d["type"] = static_cast<const nbt::tag_string&>(be.at("id").get()).get();
-    } else {
-        d["type"] = std::string("");
+        e.type = static_cast<const nbt::tag_string&>(be.at("id").get()).get();
     }
-    d["x"] = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
-    d["y"] = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
-    d["z"] = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
+    e.x = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
+    e.y = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
+    e.z = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
 
     if (be.has_key("Items")) {
         try {
@@ -1911,29 +2004,116 @@ static py::dict diskBlockEntityToDict(const nbt::tag_compound& be,
                 const auto& itemTag = static_cast<const nbt::tag_compound&>(entry.get());
                 items.append(diskItemToDict(itemTag, registry));
             }
-            d["items"] = items;
+            e.items = items;
+            e.hasItems = true;
         } catch (...) {}
     }
 
-    return d;
+    fillSignText(e, be);
+
+    if (root) {
+        e.parsedNbt = std::shared_ptr<const nbt::tag_compound>(root, &be);
+    }
+    return e;
 }
 
-static py::dict buildBlockEntityDict(const BlockEntityData& be, bool includeItems)
+static PyBlockEntity buildBlockEntity(const BlockEntityData& be, bool includeItems)
 {
-    py::dict d;
-    d["type"] = be.type.toStdString();
-    d["x"] = be.x;
-    d["y"] = be.y;
-    d["z"] = be.z;
+    PyBlockEntity e;
+    e.type = be.type.toStdString();
+    e.x = be.x;
+    e.y = be.y;
+    e.z = be.z;
     if (includeItems && !be.items.isEmpty()) {
         py::list items;
         for (const auto& item : be.items) {
             items.append(buildItemDict(item));
         }
-        d["items"] = items;
+        e.items = items;
+        e.hasItems = true;
     }
-    return d;
+    e.rawNbt = std::string(be.rawNbt.constData(), static_cast<size_t>(be.rawNbt.size()));
+    // Sign lines are the one thing parsed up front (see PyBlockEntity), and only for signs, so a
+    // chunk scan does not read NBT for every chest it passes.
+    if (!e.rawNbt.empty() && be.type.endsWith(QLatin1String("sign"))) {
+        try {
+            std::istringstream ss(e.rawNbt, std::ios::binary);
+            nbt::io::stream_reader reader(ss);
+            auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+            fillSignText(e, static_cast<nbt::tag_compound&>(*tagPtr));
+        } catch (...) {}
+    }
+    return e;
 }
+
+// ---------------------------------------------------------------------------
+// BlockEntity accessors
+// ---------------------------------------------------------------------------
+
+py::object PythonAPI::blockEntityNbt(PyBlockEntity &be)
+{
+    if (be.nbtCache) return be.nbtCache;
+
+    py::object result = py::none();
+    if (be.parsedNbt) {
+        result = nbtCompoundToPy(*be.parsedNbt);
+    } else if (!be.rawNbt.empty()) {
+        try {
+            std::istringstream ss(be.rawNbt, std::ios::binary);
+            nbt::io::stream_reader reader(ss);
+            auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+            result = nbtCompoundToPy(static_cast<nbt::tag_compound&>(*tagPtr));
+        } catch (...) {}
+    }
+    be.nbtCache = result;
+    return result;
+}
+
+bool PythonAPI::blockEntityContains(const PyBlockEntity &be, const std::string &key)
+{
+    if (key == "type" || key == "x" || key == "y" || key == "z") return true;
+    if (key == "items") return be.hasItems;
+    if (key == "front_text" || key == "back_text" || key == "is_waxed") return be.isSign;
+    if (key == "nbt") return be.parsedNbt != nullptr || !be.rawNbt.empty();
+    return false;
+}
+
+py::object PythonAPI::blockEntityGetItem(PyBlockEntity &be, const std::string &key)
+{
+    if (!blockEntityContains(be, key)) throw py::key_error(key);
+    if (key == "type") return py::cast(be.type);
+    if (key == "x") return py::cast(be.x);
+    if (key == "y") return py::cast(be.y);
+    if (key == "z") return py::cast(be.z);
+    if (key == "items") return be.items;
+    if (key == "front_text") return py::cast(be.frontText);
+    if (key == "back_text") return py::cast(be.backText);
+    if (key == "is_waxed") return py::cast(be.isWaxed);
+    return blockEntityNbt(be);
+}
+
+py::object PythonAPI::blockEntityGet(PyBlockEntity &be, const std::string &key, py::object fallback)
+{
+    if (!blockEntityContains(be, key)) return fallback;
+    return blockEntityGetItem(be, key);
+}
+
+py::list PythonAPI::blockEntityKeys(const PyBlockEntity &be)
+{
+    py::list keys;
+    for (const char *key : {"type", "x", "y", "z", "items", "front_text", "back_text",
+                            "is_waxed", "nbt"}) {
+        if (blockEntityContains(be, key)) keys.append(key);
+    }
+    return keys;
+}
+
+std::string PythonAPI::blockEntityRepr(const PyBlockEntity &be)
+{
+    return "<BlockEntity " + (be.type.empty() ? std::string("?") : be.type) + " at "
+           + std::to_string(be.x) + "," + std::to_string(be.y) + "," + std::to_string(be.z) + ">";
+}
+
 
 // ---------------------------------------------------------------------------
 // getBlock / getLight
@@ -2040,7 +2220,7 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
 // getBlockEntity
 // ---------------------------------------------------------------------------
 
-py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
+std::optional<PyBlockEntity> PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
     if (!dimension.empty() && !useDisk)
         throw std::invalid_argument("dimension parameter requires use_disk=True for get_block_entity");
@@ -2061,50 +2241,51 @@ py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk,
 
     // Use memory if items are known; if use_disk and items are absent, fall through to disk
     if (beOpt.has_value() && (!useDisk || !beOpt->items.isEmpty())) {
-        return buildBlockEntityDict(beOpt.value(), true);
+        return buildBlockEntity(beOpt.value(), true);
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
-        if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
-        return py::none();
+        if (beOpt.has_value()) return buildBlockEntity(beOpt.value(), true);
+        return std::nullopt;
     }
 
     QString worldPath = botInstance->worldAutoSaver->getWorldPath();
-    nbt::tag_compound chunkNbt;
+    // Held by shared_ptr because the block entity handed back aliases into it for `nbt`.
+    std::shared_ptr<const nbt::tag_compound> root;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(worldPath, ix >> 4, iz >> 4, dim));
     }
 
-    if (!chunkNbt.has_key("block_entities")) {
-        if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
-        return py::none();
+    if (!root->has_key("block_entities")) {
+        if (beOpt.has_value()) return buildBlockEntity(beOpt.value(), true);
+        return std::nullopt;
     }
 
     try {
-        const auto& beList = static_cast<const nbt::tag_list&>(chunkNbt.at("block_entities").get());
+        const auto& beList = static_cast<const nbt::tag_list&>(root->at("block_entities").get());
         for (const nbt::value& entry : beList) {
             const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
             int bex = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
             int bey = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
             int bez = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
             if (bex == ix && bey == iy && bez == iz) {
-                return diskBlockEntityToDict(be, botInstance->itemRegistry);
+                return diskBlockEntityToPy(be, botInstance->itemRegistry, root);
             }
         }
     } catch (...) {}
 
     // Disk didn't find it - fall back to memory data if available
-    if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
-    return py::none();
+    if (beOpt.has_value()) return buildBlockEntity(beOpt.value(), true);
+    return std::nullopt;
 }
 
 // ---------------------------------------------------------------------------
 // getBlockEntitiesInChunk
 // ---------------------------------------------------------------------------
 
-py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk,
-                                            const std::string &dimension, const std::string &bot)
+std::vector<PyBlockEntity> PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk,
+                                                              const std::string &dimension, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
@@ -2126,32 +2307,32 @@ py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk
             QReadLocker locker(botInstance->worldDataLock.get());
             bees = botInstance->worldData.getBlockEntitiesInChunk(chunkX, chunkZ, dim);
         }
-        py::list result;
+        std::vector<PyBlockEntity> result;
         for (const auto& be : std::as_const(bees)) {
-            result.append(buildBlockEntityDict(be, true));
+            result.push_back(buildBlockEntity(be, true));
         }
         return result;
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
-        return py::list();
+        return {};
     }
 
     QString worldPath = botInstance->worldAutoSaver->getWorldPath();
-    nbt::tag_compound chunkNbt;
+    std::shared_ptr<const nbt::tag_compound> root;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, chunkX, chunkZ, dim);
+        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(worldPath, chunkX, chunkZ, dim));
     }
 
-    if (!chunkNbt.has_key("block_entities")) return py::list();
+    if (!root->has_key("block_entities")) return {};
 
-    py::list result;
+    std::vector<PyBlockEntity> result;
     try {
-        const auto& beList = static_cast<const nbt::tag_list&>(chunkNbt.at("block_entities").get());
+        const auto& beList = static_cast<const nbt::tag_list&>(root->at("block_entities").get());
         for (const nbt::value& entry : beList) {
             const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
-            result.append(diskBlockEntityToDict(be, botInstance->itemRegistry));
+            result.push_back(diskBlockEntityToPy(be, botInstance->itemRegistry, root));
         }
     } catch (...) {}
     return result;

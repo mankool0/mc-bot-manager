@@ -440,6 +440,7 @@ public:
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
     static void handleMultiBlockUpdate(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
+    static void handleBlockEntityUpdate(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update);
     static void handleChunkUnload(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     static void handleLightUpdate(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     static void handleContainerUpdate(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
@@ -581,6 +582,7 @@ private:
     void handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     void handleBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
     void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
+    void handleBlockEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update);
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     void handleLightUpdateImpl(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
