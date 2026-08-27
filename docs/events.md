@@ -270,6 +270,10 @@ network packet, so it does not appear in `chat_message` events.
   - `kind` (`str`) - Where Baritone sent the message: `"chat"`, `"toast"` or `"notification"`
   - `is_error` (`bool`) - Whether Baritone flagged the message as an error (`"notification"` kind only)
   - `title` (`str`, optional) - Toast title (`"toast"` kind, only when Baritone used a custom title)
+  - `bot_name` (`str`) - Which bot's Baritone emitted the message
+
+This event is also delivered to **global scripts**, which coordinate multiple
+bots; use `bot_name` to tell whose Baritone spoke.
   - `timestamp` (`int`) - Unix timestamp in milliseconds
 
 ```python

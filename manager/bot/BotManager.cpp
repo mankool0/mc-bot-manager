@@ -2169,6 +2169,8 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
         QVariantMap statusData;
         statusData["is_pathing"] = bot->baritoneProcessStatus.isPathing;
         statusData["event_type"] = static_cast<int>(bot->baritoneProcessStatus.eventType);
+        // Redundant for per-bot scripts, essential for the global-scope copy.
+        statusData["bot_name"] = bot->name;
 
         if (!bot->baritoneProcessStatus.goalDescription.isEmpty()) {
             statusData["goal_description"] = bot->baritoneProcessStatus.goalDescription;
@@ -2195,6 +2197,9 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
         QVariantList args;
         args << statusData;
         bot->scriptEngine->fireEvent("baritone_status_update", args);
+        // Global scripts need AT_GOAL / CALC_FAILED as they happen too.
+        ScriptMessageBus::instance().fireEventForScope(
+            QStringLiteral("_global"), QStringLiteral("baritone_status_update"), args);
     }
 
     emit baritoneProcessStatusUpdated(bot->name);
@@ -2244,6 +2249,8 @@ void BotManager::handleBaritoneLogImpl(int connectionId, const mankool::mcbot::p
         logData["kind"] = kindStr;
         logData["is_error"] = log.isError();
         logData["timestamp"] = static_cast<long long>(log.timestamp());
+        // Redundant for per-bot scripts, essential for the global-scope copy.
+        logData["bot_name"] = bot->name;
 
         if (log.hasTitle()) {
             logData["title"] = log.title();
@@ -2252,6 +2259,10 @@ void BotManager::handleBaritoneLogImpl(int connectionId, const mankool::mcbot::p
         QVariantList args;
         args << logData;
         bot->scriptEngine->fireEvent("baritone_log", args);
+        // Global scripts need Baritone's chat output too - for some processes
+        // it is the only completion signal.
+        ScriptMessageBus::instance().fireEventForScope(
+            QStringLiteral("_global"), QStringLiteral("baritone_log"), args);
     }
 
     if (bot->debugLogging) {
