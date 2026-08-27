@@ -13,6 +13,8 @@
 #include <QDoubleSpinBox>
 #include <QComboBox>
 #include <QMap>
+#include <QPointer>
+#include <optional>
 
 struct BaritoneSettingData;
 
@@ -58,6 +60,11 @@ private:
     QMap<QString, QTreeWidgetItem*> settingItems;
 
     bool updatingFromCode; // Flag to prevent signal loops
+    // True while an item editor has a modal dialog up: a rebuild arriving then
+    // is parked in pendingSettings instead of deleting the widget mid-edit.
+    bool editorOpen = false;
+    std::optional<QMap<QString, BaritoneSettingData>> pendingSettings;
+    void flushPendingSettings();
 };
 
 #endif // BARITONEWIDGET_H

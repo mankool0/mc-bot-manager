@@ -7,6 +7,7 @@
 #include <QHeaderView>
 #include <QColorDialog>
 #include <QEvent>
+#include <QScopeGuard>
 #include <algorithm>
 
 BaritoneWidget::BaritoneWidget(QWidget *parent)
@@ -53,14 +54,28 @@ void BaritoneWidget::setupUI()
 
 void BaritoneWidget::updateSettings(const QMap<QString, BaritoneSettingData> &settings)
 {
+    if (editorOpen) {
+        pendingSettings = settings;
+        return;
+    }
+
     updatingFromCode = true;
     allSettings = settings;
     populateTree();
     updatingFromCode = false;
 }
 
+void BaritoneWidget::flushPendingSettings()
+{
+    if (!pendingSettings) return;
+    const QMap<QString, BaritoneSettingData> settings = std::move(*pendingSettings);
+    pendingSettings.reset();
+    updateSettings(settings);
+}
+
 void BaritoneWidget::clear()
 {
+    pendingSettings.reset();
     settingTree->clear();
     settingItems.clear();
     allSettings.clear();
@@ -220,27 +235,40 @@ void BaritoneWidget::applyFilter()
 bool BaritoneWidget::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonPress) {
-        QLabel *label = qobject_cast<QLabel*>(obj);
-        if (label && label->property("isBaritoneRGB").toBool()) {
+        // QPointer: every branch below runs a modal dialog, and a disconnect
+        // arriving meanwhile clears the tree and deletes this label with it.
+        QPointer<QLabel> label = qobject_cast<QLabel*>(obj);
+        if (!label) return QWidget::eventFilter(obj, event);
+
+        editorOpen = true;
+        const auto editorScope = qScopeGuard([this]() {
+            editorOpen = false;
+            flushPendingSettings();
+        });
+
+        if (label->property("isBaritoneRGB").toBool()) {
             // Get current color from properties
             int r = label->property("colorR").toInt();
             int g = label->property("colorG").toInt();
             int b = label->property("colorB").toInt();
 
             QColor currentColor(r, g, b);
+            // Copied out first: the callback must survive the label.
+            auto callback = label->property("changeCallback").value<SettingEditorFactory::ChangeCallback>();
             QColor newColor = QColorDialog::getColor(currentColor, this, "Select Color");
 
             if (newColor.isValid()) {
-                // Update the pixmap with new color
-                QPixmap colorPixmap(60, 25);
-                colorPixmap.fill(newColor);
+                if (label) {
+                    // Update the pixmap with new color
+                    QPixmap colorPixmap(60, 25);
+                    colorPixmap.fill(newColor);
 
-                label->setPixmap(colorPixmap);
-                label->setProperty("colorR", newColor.red());
-                label->setProperty("colorG", newColor.green());
-                label->setProperty("colorB", newColor.blue());
+                    label->setPixmap(colorPixmap);
+                    label->setProperty("colorR", newColor.red());
+                    label->setProperty("colorG", newColor.green());
+                    label->setProperty("colorB", newColor.blue());
+                }
 
-                auto callback = label->property("changeCallback").value<SettingEditorFactory::ChangeCallback>();
                 if (callback) {
                     RGBColor rgbColor{
                         static_cast<uint32_t>(newColor.red()),
@@ -254,7 +282,7 @@ bool BaritoneWidget::eventFilter(QObject *obj, QEvent *event)
         }
 
         // Handle MAP_BLOCK_TO_BLOCK_LIST label clicks
-        if (label && label->property("isMapBlockToBlockList").toBool()) {
+        if (label->property("isMapBlockToBlockList").toBool()) {
             QString settingName = label->property("settingName").toString();
             QStringList possibleKeys = label->property("mapPossibleKeys").toStringList();
             QStringList possibleValues = label->property("mapPossibleValues").toStringList();
@@ -276,7 +304,7 @@ bool BaritoneWidget::eventFilter(QObject *obj, QEvent *event)
         }
 
         // Handle LIST label clicks
-        if (label && label->property("isListWithPossibleValues").toBool()) {
+        if (label->property("isListWithPossibleValues").toBool()) {
             QString settingName = label->property("settingName").toString();
             QStringList possibleValues = label->property("possibleValues").toStringList();
 
