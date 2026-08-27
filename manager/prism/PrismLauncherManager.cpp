@@ -8,7 +8,9 @@
 #include <QFile>
 #include <QProcessEnvironment>
 #include <QLocalSocket>
-#include <memory>
+#include <QPointer>
+#include <QThread>
+#include <utility>
 
 #ifdef Q_OS_UNIX
 #include <signal.h>
@@ -19,6 +21,27 @@
 #include <windows.h>
 #endif
 
+namespace {
+
+// Every public entry point can be reached from a script thread (PythonAPI's
+// bot.start() runs on ScriptThread) and QProcess may only be touched from the
+// thread its owner lives in - one created on a blocked script thread never
+// leaves QProcess::Starting.
+template <typename Fn>
+bool deferToOwnThread(PrismLauncherManager *mgr, Fn &&fn)
+{
+    if (QThread::currentThread() == mgr->thread()) return false;
+    QMetaObject::invokeMethod(mgr, std::forward<Fn>(fn), Qt::QueuedConnection);
+    return true;
+}
+
+// How often the launch queue checks whether the bot in flight has left
+// Starting. Polled because the status is flipped from several places and not
+// all of them announce it.
+constexpr int kLaunchQueuePollMs = 500;
+
+} // namespace
+
 PrismLauncherManager& PrismLauncherManager::instance()
 {
     static PrismLauncherManager instance;
@@ -28,19 +51,22 @@ PrismLauncherManager& PrismLauncherManager::instance()
 PrismLauncherManager::PrismLauncherManager(QObject *parent)
     : QObject(parent)
 {
+    m_launchQueueTimer = new QTimer(this);
+    m_launchQueueTimer->setInterval(kLaunchQueuePollMs);
+    connect(m_launchQueueTimer, &QTimer::timeout, this, &PrismLauncherManager::pumpLaunchQueue);
+
     connect(this, &PrismLauncherManager::hookAvailabilityChanged, this, [this](bool available) {
         if (available) {
             connectSubscriber();
-        } else if (m_subscriberSocket) {
-            m_subscriberSocket->abort();
-            m_subscriberSocket->deleteLater();
-            m_subscriberSocket = nullptr;
+        } else {
+            dropSubscriberSocket();
         }
     });
 }
 
 PrismLauncherManager::~PrismLauncherManager()
 {
+    // Normally a no-op: ManagerMainWindow's destructor already stopped it
     stopPrismGUI();
 }
 
@@ -51,26 +77,147 @@ void PrismLauncherManager::setPrismConfig(PrismConfig *config)
 
 void PrismLauncherManager::launchBot(BotInstance *bot)
 {
+    if (!bot) return;
+    // Resolved again on the other side rather than captured: the queued call
+    // runs later, and a bot removed in between would leave a dangling pointer.
+    const QString name = bot->name;
+    if (deferToOwnThread(&instance(), [name]() {
+            if (BotInstance *b = BotManager::getBotByName(name)) {
+                instance().launchBotImpl(b);
+            }
+        })) {
+        return;
+    }
     instance().launchBotImpl(bot);
 }
 
 void PrismLauncherManager::launchBotImpl(BotInstance *bot)
 {
     if (!prismConfig) {
-        LogManager::log("PrismLauncher config not set", LogManager::Error);
+        failLaunch(bot, "PrismLauncher config not set");
         return;
     }
 
-    if (prismGUIProcess != nullptr && prismGUIProcess->state() == QProcess::Running) {
-        LogManager::log("PrismLauncher GUI already running, sending launch command...", LogManager::Info);
-        sendLaunchCommandImpl(bot);
-    } else {
+    if (prismGUIProcess == nullptr || prismGUIProcess->state() == QProcess::NotRunning) {
         launchPrismGUIImpl(bot);
+        return;
     }
+
+    // A launcher is up or on its way up. Starting a second one would give a
+    // fleet one `flatpak run` each, all racing for the same instance directory.
+    queueLaunch(bot);
+    pumpLaunchQueue();
+}
+
+void PrismLauncherManager::failLaunch(BotInstance *bot, const QString &reason)
+{
+    if (!bot) return;
+    LogManager::log(QString("[%1] Launch failed: %2").arg(bot->name, reason), LogManager::Error);
+    if (bot->status == BotStatus::Starting) {
+        bot->status = BotStatus::Error;
+        emit BotManager::instance().botUpdated(bot->name);
+    }
+}
+
+void PrismLauncherManager::queueLaunch(BotInstance *bot)
+{
+    if (!bot || m_launchQueue.contains(bot->name) || m_inFlightLaunch == bot->name) return;
+    m_launchQueue.append(bot->name);
+    if (!m_guiReady) {
+        LogManager::log(QString("[%1] Waiting for the PrismLauncher GUI before launching (%2 queued)")
+                            .arg(bot->name).arg(m_launchQueue.size()),
+                        LogManager::Info);
+    } else if (!m_inFlightLaunch.isEmpty()) {
+        LogManager::log(QString("[%1] Queued for launch behind '%2' (position %3)")
+                            .arg(bot->name, m_inFlightLaunch).arg(m_launchQueue.size()),
+                        LogManager::Info);
+    }
+    m_launchQueueTimer->start();
+    emit launchQueueChanged();
+}
+
+void PrismLauncherManager::pumpLaunchQueue()
+{
+    bool changed = false;
+
+    if (!m_inFlightLaunch.isEmpty()) {
+        BotInstance *inFlight = BotManager::getBotByName(m_inFlightLaunch);
+        if (inFlight && inFlight->status == BotStatus::Starting) return;
+        if (inFlight && inFlight->status == BotStatus::Online) {
+            LogManager::log(QString("[%1] Connected, launch queue continues").arg(m_inFlightLaunch),
+                            LogManager::Info);
+        } else if (!m_launchQueue.isEmpty()) {
+            LogManager::log(QString("[%1] Did not come up, launch queue continues").arg(m_inFlightLaunch),
+                            LogManager::Warning);
+        }
+        m_inFlightLaunch.clear();
+        changed = true;
+    }
+
+    if (m_guiReady && prismGUIProcess && prismGUIProcess->state() == QProcess::Running) {
+        while (!m_launchQueue.isEmpty()) {
+            const QString name = m_launchQueue.takeFirst();
+            changed = true;
+            BotInstance *bot = BotManager::getBotByName(name);
+            // Anything but Starting means the wait outlived the request: the
+            // bot connected on its own, was stopped, or timed out.
+            if (!bot || bot->status != BotStatus::Starting) continue;
+            m_inFlightLaunch = name;
+            sendLaunchCommandImpl(bot);
+            // Armed here rather than when the launch was asked for: a bot at
+            // the back of a long queue would time out before its turn.
+            BotManager::armStartupTimeout(name);
+            break;
+        }
+    }
+
+    if (m_launchQueue.isEmpty() && m_inFlightLaunch.isEmpty()) {
+        m_launchQueueTimer->stop();
+    }
+    if (changed) emit launchQueueChanged();
+}
+
+bool PrismLauncherManager::inFlightStillStarting() const
+{
+    if (m_inFlightLaunch.isEmpty()) return false;
+    const BotInstance *bot = BotManager::getBotByName(m_inFlightLaunch);
+    return bot && bot->status == BotStatus::Starting;
+}
+
+int PrismLauncherManager::launchQueuePosition(const QString &botName)
+{
+    return instance().m_launchQueue.indexOf(botName) + 1;
+}
+
+void PrismLauncherManager::clearGUIState()
+{
+    m_guiReady = false;
+    m_launchQueueTimer->stop();
+    // The bot in flight keeps its own startup timeout; the ones still waiting
+    // have none yet and would sit in Starting forever.
+    m_inFlightLaunch.clear();
+    if (!m_launchQueue.isEmpty()) {
+        LogManager::log(QString("PrismLauncher GUI is gone - dropping %1 queued launch(es)")
+                            .arg(m_launchQueue.size()),
+                        LogManager::Warning);
+        const QStringList dropped = std::move(m_launchQueue);
+        m_launchQueue.clear();
+        for (const QString &name : dropped) {
+            failLaunch(BotManager::getBotByName(name), "PrismLauncher GUI is gone");
+        }
+    }
+    emit launchQueueChanged();
+    if (hookHeartbeatTimer) hookHeartbeatTimer->stop();
+    if (m_hookAvailable) {
+        m_hookAvailable = false;
+        emit hookAvailabilityChanged(false);
+    }
+    m_currentlyRefreshingAccount.clear();
 }
 
 void PrismLauncherManager::openPrismGUI()
 {
+    if (deferToOwnThread(&instance(), []() { instance().openPrismGUIImpl(); })) return;
     instance().openPrismGUIImpl();
 }
 
@@ -80,7 +227,7 @@ void PrismLauncherManager::openPrismGUIImpl()
         LogManager::log("PrismLauncher config not set", LogManager::Error);
         return;
     }
-    if (prismGUIProcess != nullptr && prismGUIProcess->state() == QProcess::Running) {
+    if (prismGUIProcess != nullptr && prismGUIProcess->state() != QProcess::NotRunning) {
         LogManager::log("PrismLauncher GUI is already running", LogManager::Info);
         return;
     }
@@ -89,16 +236,16 @@ void PrismLauncherManager::openPrismGUIImpl()
 
 void PrismLauncherManager::stopPrismGUI()
 {
+    if (deferToOwnThread(&instance(), []() { instance().stopPrismGUIImpl(); })) return;
     instance().stopPrismGUIImpl();
 }
 
 void PrismLauncherManager::stopPrismGUIImpl()
 {
     if (prismGUIProcess) {
-        // Disconnect all signals to prevent crashes during deletion
         prismGUIProcess->disconnect();
 
-        // Kill the entire process group to ensure child processes are terminated
+        // Kill the whole process group so the child processes go too
 #ifdef Q_OS_UNIX
         if (prismGUIProcess->state() == QProcess::Running) {
             qint64 pid = prismGUIProcess->processId();
@@ -115,6 +262,7 @@ void PrismLauncherManager::stopPrismGUIImpl()
         }
         prismGUIProcess->deleteLater();
         prismGUIProcess = nullptr;
+        clearGUIState();
         emit prismGUIStopped();
     }
 }
@@ -209,6 +357,11 @@ void PrismLauncherManager::pingHook()
 
 void PrismLauncherManager::stopBot(qint64 minecraftPid)
 {
+    if (deferToOwnThread(&instance(), [minecraftPid]() {
+            instance().stopBotImpl(minecraftPid);
+        })) {
+        return;
+    }
     instance().stopBotImpl(minecraftPid);
 }
 
@@ -262,28 +415,47 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
     parsePrismCommand(prismConfig->prismExecutable, prismExe, arguments);
 
     if (prismGUIProcess) {
+        // Disconnected first: a replaced process keeps emitting until it is
+        // actually deleted, and would tear down the state of its replacement.
+        prismGUIProcess->disconnect(this);
         prismGUIProcess->deleteLater();
     }
 
+    m_guiReady = false;
     prismGUIProcess = new QProcess(this);
+    // Handlers below hold this QPointer rather than reading the member: a
+    // queued signal from a replaced process must not touch its successor.
+    QPointer<QProcess> proc = prismGUIProcess;
+    if (bot != nullptr) {
+        queueLaunch(bot);
+    }
 
-    connect(prismGUIProcess, &QProcess::readyReadStandardOutput, this, [this]() {
-        QByteArray data = prismGUIProcess->readAllStandardOutput();
+    connect(prismGUIProcess, &QProcess::readyReadStandardOutput, this, [this, proc]() {
+        if (!proc) return;
+        QByteArray data = proc->readAllStandardOutput();
         processOutput(QString::fromUtf8(data), false);
     });
 
-    connect(prismGUIProcess, &QProcess::readyReadStandardError, this, [this]() {
-        QByteArray data = prismGUIProcess->readAllStandardError();
+    connect(prismGUIProcess, &QProcess::readyReadStandardError, this, [this, proc]() {
+        if (!proc) return;
+        QByteArray data = proc->readAllStandardError();
         processOutput(QString::fromUtf8(data), true);
     });
 
-    connect(prismGUIProcess, &QProcess::started, this, [this, bot]() {
-        if (bot != nullptr) {
+    // `!proc` first everywhere below: comparing proc to the member alone would
+    // pass when both are null (destroyed process, or member already cleared).
+    connect(prismGUIProcess, &QProcess::started, this, [this, proc]() {
+        if (!proc || proc != prismGUIProcess) return;
+        if (!m_launchQueue.isEmpty()) {
             LogManager::log("PrismLauncher GUI started, waiting for initialization...", LogManager::Info);
-            QTimer::singleShot(2000, this, [this, bot]() { sendLaunchCommandImpl(bot); });
         } else {
             LogManager::log("PrismLauncher GUI started", LogManager::Info);
         }
+        QTimer::singleShot(2000, this, [this, proc]() {
+            if (!proc || proc != prismGUIProcess) return;
+            m_guiReady = true;
+            pumpLaunchQueue();
+        });
         emit prismGUIStarted();
 
         if (prismConfig && prismConfig->useHook) {
@@ -302,7 +474,8 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
     connect(prismGUIProcess,
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this,
-            [this](int exitCode, QProcess::ExitStatus exitStatus) {
+            [this, proc](int exitCode, QProcess::ExitStatus exitStatus) {
+                if (!proc || proc != prismGUIProcess) return;
                 if (exitStatus == QProcess::CrashExit) {
                     LogManager::log(QString("PrismLauncher GUI crashed (exit code: %1)").arg(exitCode),
                               LogManager::Error);
@@ -312,16 +485,13 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
                                     LogManager::Info);
                 }
                 prismGUIProcess = nullptr;
-                if (hookHeartbeatTimer) hookHeartbeatTimer->stop();
-                if (m_hookAvailable) {
-                    m_hookAvailable = false;
-                    emit hookAvailabilityChanged(false);
-                }
-                m_currentlyRefreshingAccount.clear();
+                proc->deleteLater();
+                clearGUIState();
                 emit prismGUIStopped();
             });
 
-    connect(prismGUIProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+    connect(prismGUIProcess, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError error) {
+        if (!proc || proc != prismGUIProcess) return;
         QString errorMsg;
         switch (error) {
         case QProcess::FailedToStart:
@@ -335,13 +505,12 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
         default:
             LogManager::log("Unknown error occurred with PrismLauncher GUI", LogManager::Error);
         }
+        // Read/write errors are reported against a launcher that is still up;
+        // forgetting the process there makes the next launch start a second GUI.
+        if (proc->state() != QProcess::NotRunning) return;
         prismGUIProcess = nullptr;
-        if (hookHeartbeatTimer) hookHeartbeatTimer->stop();
-        if (m_hookAvailable) {
-            m_hookAvailable = false;
-            emit hookAvailabilityChanged(false);
-        }
-        m_currentlyRefreshingAccount.clear();
+        proc->deleteLater();
+        clearGUIState();
         emit prismGUIStopped();
     });
 
@@ -397,8 +566,8 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
 
         if (QFile::exists(hookLib)) {
             if (isFlatpak) {
-                // Use --env for both variables. The hook itself now handles
-                // being loaded into non-Qt processes (like bash) safely via dlsym.
+                // Safe to set for the whole sandbox: the hook handles being
+                // loaded into non-Qt processes (like bash) via dlsym.
                 arguments.insert(arguments.size() - 1, "--env=LD_PRELOAD=" + hookLib);
                 arguments.insert(arguments.size() - 1, "--env=MCBM_HOOK_SOCKET=" + hookSocket);
             } else {
@@ -437,8 +606,8 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
     QStringList arguments;
     parsePrismCommand(prismConfig->prismExecutable, prismExe, arguments);
 
-    arguments << "-l" << bot->instance;    // Launch instance
-    arguments << "-a" << bot->account;     // Use account
+    arguments << "-l" << bot->instance;
+    arguments << "-a" << bot->account;
 
     if (!bot->server.isEmpty() && bot->autoConnect) {
         if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
@@ -448,57 +617,102 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
         }
     }
 
-    bot->process = new QProcess(this);
+    // A launch still in flight for this bot (double-click, restart) would
+    // otherwise be overwritten, and its handlers would tear down the new one.
+    dropLaunchProcess(bot);
 
-    connect(bot->process, &QProcess::started, this, [bot]() {
-        LogManager::log(QString("Sent launch command for bot '%1'").arg(bot->name), LogManager::Info);
+    QProcess *process = new QProcess(this);
+    bot->process = process;
+    QPointer<QProcess> proc = process;
+    // The handlers resolve the bot by name rather than capturing the pointer:
+    // the bot can be removed while the launch command is still running.
+    const QString name = bot->name;
+
+    connect(process, &QProcess::started, this, [name]() {
+        LogManager::log(QString("Sent launch command for bot '%1'").arg(name), LogManager::Info);
     });
 
-    connect(bot->process,
+    connect(process,
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this,
-            [bot](int exitCode, QProcess::ExitStatus exitStatus) {
+            [name, proc](int exitCode, QProcess::ExitStatus exitStatus) {
+                if (!proc) return;
+                BotInstance *bot = BotManager::getBotByName(name);
                 if (exitStatus == QProcess::CrashExit) {
                     LogManager::log(QString("Launch command for bot '%1' crashed (exit code: %2)")
-                                        .arg(bot->name)
+                                        .arg(name)
                                         .arg(exitCode),
                                     LogManager::Error);
-                    bot->status = BotStatus::Offline;
-                    bot->minecraftPid = 0;
+                    if (bot) {
+                        bot->status = BotStatus::Offline;
+                        bot->minecraftPid = 0;
+                    }
                 } else {
                     LogManager::log(QString("Launch command for bot '%1' completed (exit code: %2)")
-                                        .arg(bot->name)
+                                        .arg(name)
                                         .arg(exitCode),
                                     LogManager::Info);
                 }
-
-                bot->process->deleteLater();
-                bot->process = nullptr;
+                launchProcessDone(bot, proc);
             });
 
-    connect(bot->process, &QProcess::errorOccurred, this, [bot](QProcess::ProcessError error) {
+    connect(process, &QProcess::errorOccurred, this, [name, proc](QProcess::ProcessError error) {
+        if (!proc) return;
         QString errorMsg;
         switch (error) {
         case QProcess::FailedToStart:
-            errorMsg = QString("Failed to send launch command for bot '%1'").arg(bot->name);
+            errorMsg = QString("Failed to send launch command for bot '%1'").arg(name);
             break;
         case QProcess::Crashed:
-            errorMsg = QString("Launch command crashed for bot '%1'").arg(bot->name);
+            errorMsg = QString("Launch command crashed for bot '%1'").arg(name);
             break;
         default:
-            errorMsg = QString("Unknown error occurred while launching bot '%1'").arg(bot->name);
+            errorMsg = QString("Unknown error occurred while launching bot '%1'").arg(name);
         }
         LogManager::log(errorMsg, LogManager::Error);
 
-        bot->status = BotStatus::Offline;
-        bot->minecraftPid = 0;
-        bot->process->deleteLater();
-        bot->process = nullptr;
+        // A crash also reaches finished(CrashExit) and read/write errors are
+        // reported while the command still runs; only a failed start gets here.
+        if (proc->state() != QProcess::NotRunning) return;
+        BotInstance *bot = BotManager::getBotByName(name);
+        if (bot) {
+            bot->status = BotStatus::Offline;
+            bot->minecraftPid = 0;
+        }
+        launchProcessDone(bot, proc);
     });
 
     LogManager::log(QString("Executing launch command: %1 %2").arg(prismExe, arguments.join(" ")),
                     LogManager::Info);
-    bot->process->start(prismExe, arguments);
+    process->start(prismExe, arguments);
+}
+
+// Idempotent: both handlers above can reach it for one exit (errorOccurred then
+// finished), so the member is only cleared when it still points at this process.
+void PrismLauncherManager::launchProcessDone(BotInstance *bot, QProcess *process)
+{
+    if (!process) return;
+    if (bot && bot->process == process) {
+        bot->process = nullptr;
+    }
+    process->disconnect();
+    process->deleteLater();
+}
+
+void PrismLauncherManager::dropLaunchProcess(BotInstance *bot)
+{
+    if (!bot) return;
+    QProcess *process = std::exchange(bot->process, nullptr);
+    if (!process) return;
+    process->disconnect();
+    if (process->state() == QProcess::NotRunning) {
+        process->deleteLater();
+    } else {
+        // Not killed: the command is a short-lived forwarder to the running
+        // launcher, so let it finish the handoff and clean itself up.
+        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                process, &QObject::deleteLater);
+    }
 }
 
 void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
@@ -517,13 +731,10 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
         if (cleanLine.contains("org.prismlauncher.EntryPoint")
             || cleanLine.contains("net.minecraft.client.main.Main")
             || cleanLine.contains("cpw.mods.modlauncher.Launcher")) {
-            // Find the bot currently in Starting status (only one bot launches at a time)
-            QVector<BotInstance*> &bots = BotManager::getBots();
-            for (const BotInstance *bot : bots) {
-                if (bot->status == BotStatus::Starting) {
-                    emit minecraftLaunching(bot->name);
-                    break;
-                }
+            // Only the bot in flight has a launch command out; queued bots
+            // are Starting too but nothing of theirs is running yet.
+            if (inFlightStillStarting()) {
+                emit minecraftLaunching(m_inFlightLaunch);
             }
         }
 
@@ -564,12 +775,8 @@ void PrismLauncherManager::processOutput(const QString &output, bool isStderr)
         // Fallback: detect "Process exited with code" for cases where the profile
         // message is never received (e.g. bot crashes before fully starting)
         if (cleanLine.contains("Process exited with code")) {
-            QVector<BotInstance*> &bots = BotManager::getBots();
-            for (const BotInstance *bot : bots) {
-                if (bot->status == BotStatus::Starting) {
-                    emit minecraftStopped(bot->name);
-                    break;
-                }
+            if (inFlightStillStarting()) {
+                emit minecraftStopped(m_inFlightLaunch);
             }
         }
 

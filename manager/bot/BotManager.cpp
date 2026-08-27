@@ -1,6 +1,7 @@
 #include "BotManager.h"
 #include "logging/LogManager.h"
 #include "network/PipeServer.h"
+#include "prism/PrismLauncherManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
@@ -797,6 +798,10 @@ void BotManager::removeBotImpl(const QString &name)
                 delete botInstances[i]->debugWidget;
                 botInstances[i]->debugWidget = nullptr;
             }
+
+            // The QProcess is owned by the launcher manager and would
+            // otherwise outlive the bot it was started for.
+            PrismLauncherManager::dropLaunchProcess(botInstances[i]);
 
             QString serverKey = botInstances[i]->worldAutoSaverServerIp;
             delete botInstances[i];

@@ -390,6 +390,14 @@ bot.set_window(minimized=True)
 
 Start the bot.
 
+Launches are serialized: the manager sends one launch command to Prism at a
+time and only sends the next once the previous bot has connected to the
+manager (or failed - crashed, could not launch, or hit the startup timeout).
+Calling `start()` on many bots in a loop is fine; each one is queued and shown
+as `Queued #n` in the manager until its turn. Prism refreshes the account
+token on every launch, and concurrent refreshes fail, which is why a burst of
+simultaneous launches is never sent.
+
 **Parameters:**
 
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
@@ -399,6 +407,12 @@ Start the bot.
 ```python
 bot.start()  # Start current bot
 bot.start("bot2")  # Start specific bot
+
+# Start a fleet - they launch one after another
+for name in ["bot1", "bot2", "bot3"]:
+    bot.start(name)
+for name in ["bot1", "bot2", "bot3"]:
+    bot.wait_for_online(timeout=300, bot_name=name)
 ```
 
 ### `stop(reason="", bot_name="")`
@@ -436,8 +450,10 @@ bot.restart("Updating configuration")  # Restart with custom reason
 ### `wait_for_online(timeout=60.0, bot_name="")`
 
 Block until the bot is Online. `bot.start()` returns as soon as the launch is
-triggered; use this to wait for the game client to actually connect. A launch
-that never connects is marked Error after 2 minutes.
+queued; use this to wait for the game client to actually connect. A launch
+that never connects is marked Error 2 minutes after its launch command is
+sent to Prism - time spent waiting in the launch queue does not count, so a
+bot behind several others may need a `timeout` well above 60 seconds.
 
 **Parameters:**
 

@@ -1044,13 +1044,8 @@ void PythonAPI::startBot(const std::string &botName)
     bot->status = BotStatus::Starting;
     bot->manualStop = false;
 
+    // Queued behind any launch still in flight; the startup timeout is armed there
     PrismLauncherManager::launchBot(bot);
-
-    // The UI launch path arms this itself; without it a failed launch would
-    // leave the bot Starting forever. Queued: timers must start on the main thread.
-    QMetaObject::invokeMethod(&BotManager::instance(), [name]() {
-        BotManager::armStartupTimeout(name);
-    }, Qt::QueuedConnection);
 }
 
 bool PythonAPI::waitForOnline(double timeout, const std::string &botName)

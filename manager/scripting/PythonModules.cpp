@@ -184,7 +184,8 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                py::arg("bot_name") = "");
 
     def_action("start", &PythonAPI::startBot,
-               "Start bot",
+               "Start bot. Launches are queued one at a time: the next is sent once this bot "
+               "has connected or failed.",
                py::arg("bot_name") = "");
     def_action("stop", &PythonAPI::stopBot,
                "Stop bot",

@@ -217,6 +217,10 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
 ManagerMainWindow::~ManagerMainWindow()
 {
     PipeServer::stop();
+    // Torn down while QApplication is still alive: the singleton's destructor
+    // runs after main() returned, with no event loop left to deliver
+    // deleteLater()s or QProcess notifications.
+    PrismLauncherManager::stopPrismGUI();
     delete ui;
 }
 
@@ -412,7 +416,15 @@ void ManagerMainWindow::setupUI()
     connect(&BotManager::instance(), &BotManager::botRemoved,
             this, [this](const QString &) { updateInstancesTable(); });
     connect(&BotManager::instance(), &BotManager::botUpdated,
-            this, [this](const QString &) { updateInstancesTable(); });
+            this, [this](const QString &name) {
+                updateInstancesTable();
+                // botUpdated also fires on every player state message; the
+                // buttons only need a redraw when the status actually moved.
+                const BotInstance *bot = name == selectedBotName ? BotManager::getBotByName(name) : nullptr;
+                if (bot && bot->status != m_displayedStatus) updateStatusDisplay();
+            });
+    connect(&PrismLauncherManager::instance(), &PrismLauncherManager::launchQueueChanged,
+            this, [this]() { updateInstancesTable(); });
     connect(&BotManager::instance(), &BotManager::meteorModulesReceived,
             this, &ManagerMainWindow::onMeteorModulesReceived);
     connect(&BotManager::instance(), &BotManager::meteorSingleModuleUpdated,
@@ -425,9 +437,6 @@ void ManagerMainWindow::setupUI()
             this, &ManagerMainWindow::onBaritoneSingleSettingUpdated);
     connect(&BotManager::instance(), &BotManager::proxyDisconnectDetected,
             this, &ManagerMainWindow::onProxyDisconnectDetected);
-
-    launchSchedulerTimer = new QTimer(this);
-    connect(launchSchedulerTimer, &QTimer::timeout, this, &ManagerMainWindow::checkScheduledLaunches);
 
     uptimeCheckTimer = new QTimer(this);
     connect(uptimeCheckTimer, &QTimer::timeout, this, &ManagerMainWindow::checkBotUptimes);
@@ -457,12 +466,10 @@ void ManagerMainWindow::showInstancesContextMenu(const QPoint &pos)
             const BotInstance &bot = *bots[row];
             bool isOnline = (bot.status == BotStatus::Online);
             bool canLaunch = (bot.status == BotStatus::Offline || bot.status == BotStatus::Error);
-            bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
-                                              [&bot](const ScheduledLaunch &s) { return s.botName == bot.name; });
 
             contextMenu.addSeparator();
 
-            if (canLaunch && !inLaunchQueue) {
+            if (canLaunch) {
                 QAction *launchAction = contextMenu.addAction("Launch Bot");
                 connect(launchAction, &QAction::triggered, this, &ManagerMainWindow::launchBot);
             } else if (isOnline) {
@@ -645,7 +652,13 @@ void ManagerMainWindow::updateInstancesTable()
             statusItem->setFlags(statusItem->flags() & ~Qt::ItemIsEditable);
             ui->instancesTableWidget->setItem(i, 1, statusItem);
         }
-        statusItem->setText(QString("● %1").arg(statusToString(bot.status)));
+        QString statusText = statusToString(bot.status);
+        if (bot.status == BotStatus::Starting) {
+            if (int queuePos = PrismLauncherManager::launchQueuePosition(bot.name); queuePos > 0) {
+                statusText = QString("Queued #%1").arg(queuePos);
+            }
+        }
+        statusItem->setText(QString("● %1").arg(statusText));
 
         QColor statusColor;
         if (bot.status == BotStatus::Online) {
@@ -1168,6 +1181,7 @@ void ManagerMainWindow::updateStatusDisplay()
     BotInstance *selectedBot = BotManager::getBotByName(selectedBotName);
     updateCapabilityUiFor(selectedBot);
     if (selectedBot) {
+        m_displayedStatus = selectedBot->status;
         ui->pipeStatusLabel->setText(QString("Connection %1 [%2]")
             .arg(selectedBot->connectionId)
             .arg(selectedBot->status == BotStatus::Online ? "Connected" : "Not Connected"));
@@ -1175,10 +1189,8 @@ void ManagerMainWindow::updateStatusDisplay()
         bool isOnline = (selectedBot->status == BotStatus::Online);
         bool isActive = (selectedBot->status == BotStatus::Online || selectedBot->status == BotStatus::Starting);
         bool canLaunch = (selectedBot->status == BotStatus::Offline || selectedBot->status == BotStatus::Error);
-        bool inLaunchQueue = std::any_of(scheduledLaunches.begin(), scheduledLaunches.end(),
-                                          [this](const ScheduledLaunch &s) { return s.botName == selectedBotName; });
 
-        ui->launchBotButton->setEnabled(canLaunch && !inLaunchQueue);
+        ui->launchBotButton->setEnabled(canLaunch);
         ui->stopBotButton->setEnabled(isOnline);
         ui->restartBotButton->setEnabled(isOnline);
         ui->refreshTokenButton->setEnabled(canLaunch && !selectedBot->account.isEmpty()
@@ -1231,18 +1243,8 @@ bool ManagerMainWindow::launchBotByName(const QString &botName)
     updateStatusDisplay();
 
     m_lastBotLaunchTime[botName] = QDateTime::currentDateTime();
+    // PrismLauncherManager serializes the launches and arms the startup timeout
     PrismLauncherManager::launchBot(botToLaunch);
-
-    // Startup timeout: if the bot hasn't connected within 2 minutes, mark as Error
-    QTimer::singleShot(120000, this, [this, botName]() {
-        BotInstance *bot = BotManager::getBotByName(botName);
-        if (bot && bot->status == BotStatus::Starting) {
-            LogManager::log(QString("[%1] Startup timed out (no connection after 2 minutes)").arg(botName), LogManager::Error);
-            bot->status = BotStatus::Error;
-            updateInstancesTable();
-            updateStatusDisplay();
-        }
-    });
 
     return true;
 }
@@ -1759,32 +1761,29 @@ BotConfig ManagerMainWindow::loadBotInstance(QSettings &settings, int index)
 
 void ManagerMainWindow::launchAllBots()
 {
-    if (!scheduledLaunches.isEmpty()) {
-        LogManager::log("Sequential launch already in progress", LogManager::Warning);
-        return;
-    }
-
-    QVector<BotInstance*> &bots = BotManager::getBots();
-    QDateTime now = QDateTime::currentDateTime();
-    int delaySeconds = 0;
-
-    for (const BotInstance *bot : std::as_const(bots)) {
+    // Fired off at once: PrismLauncherManager's queue serializes them
+    QStringList names;
+    for (const BotInstance *bot : std::as_const(BotManager::getBots())) {
         if (bot->status != BotStatus::Online && bot->status != BotStatus::Starting) {
-            ScheduledLaunch launch;
-            launch.botName = bot->name;
-            launch.launchTime = now.addSecs(delaySeconds);
-            scheduledLaunches.append(launch);
-            delaySeconds += 30;
+            names.append(bot->name);
         }
     }
 
-    if (scheduledLaunches.isEmpty()) {
+    if (names.isEmpty()) {
         LogManager::log("All bots are already online", LogManager::Info);
         return;
     }
 
-    LogManager::log(QString("Scheduled %1 bots for sequential launch (30s intervals)").arg(scheduledLaunches.size()), LogManager::Info);
-    launchSchedulerTimer->start(1000);
+    LogManager::log(QString("Launching %1 bots in sequence").arg(names.size()), LogManager::Info);
+    int launched = 0;
+    for (const QString &name : std::as_const(names)) {
+        if (launchBotByName(name)) ++launched;
+    }
+    if (launched < names.size()) {
+        LogManager::log(QString("%1 of %2 bots could not be launched - see errors above")
+                            .arg(names.size() - launched).arg(names.size()),
+                        LogManager::Warning);
+    }
     updateInstancesTable();
     updateStatusDisplay();
 }
@@ -1952,38 +1951,6 @@ void ManagerMainWindow::onProxyDisconnectDetected(const QString &botName)
     if (!bot || !bot->proxySettings.enabled || bot->proxySettings.host.isEmpty()) return;
     LogManager::log(QString("[%1] Abrupt MC connection drop detected - checking proxy health").arg(botName), LogManager::Info);
     checkBotProxyHealth(botName);
-}
-
-void ManagerMainWindow::checkScheduledLaunches()
-{
-    if (scheduledLaunches.isEmpty()) {
-        return;
-    }
-
-    QDateTime now = QDateTime::currentDateTime();
-    QList<ScheduledLaunch> toRemove;
-
-    for (const ScheduledLaunch &launch : std::as_const(scheduledLaunches)) {
-        if (launch.launchTime <= now) {
-            LogManager::log(QString("Launching scheduled bot '%1'").arg(launch.botName), LogManager::Info);
-            launchBotByName(launch.botName);
-            toRemove.append(launch);
-        }
-    }
-
-    for (const ScheduledLaunch &launch : toRemove) {
-        scheduledLaunches.removeAll(launch);
-    }
-
-    if (toRemove.size() > 0) {
-        updateInstancesTable();
-        updateStatusDisplay();
-    }
-
-    if (!toRemove.isEmpty() && scheduledLaunches.isEmpty()) {
-        LogManager::log("Sequential launch complete: All scheduled bots launched", LogManager::Success);
-        launchSchedulerTimer->stop();
-    }
 }
 
 QString ManagerMainWindow::statusToString(BotStatus status)
