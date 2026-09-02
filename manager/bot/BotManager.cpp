@@ -1077,6 +1077,8 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
                 bot->worldData.clearWorldState();
             }
 
+            bot->sectionDirty->clear();
+
             {
                 QMutexLocker statsLocker(&m_statsCacheMutex);
                 m_statsCache.remove(bot->name);
@@ -2632,6 +2634,43 @@ void BotManager::sendProxyConfig(const QString &botName)
 // World Data Handlers
 // ============================================================================
 
+void BotManager::markWorldDirty(BotInstance *bot, WorldChange kind, const QVector<SectionKey> &sections)
+{
+    if (sections.isEmpty()) {
+        return;
+    }
+
+    // Block entity NBT is excluded from the section encoding, so it never invalidates a digest.
+    if (kind != WorldChange::BlockEntity) {
+        bot->sectionDirty->markAll(sections);
+    }
+
+    // A chunk load hands the saver the full column directly (saveChunkAsync), so routing it
+    // through the deferred dirty set as well would only save the same data twice.
+    if (kind != WorldChange::ChunkLoad && bot->saveWorldToDisk && bot->worldAutoSaver) {
+        for (const SectionKey &key : sections) {
+            bot->worldAutoSaver->markBlockChunkDirty(key.chunkX, key.chunkZ, bot->dimension);
+        }
+    }
+}
+
+void BotManager::unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ)
+{
+    // The saver's dirty entry is only a coordinate; it reads the blocks back out of worldData at
+    // flush time. Anything still pending has to be written while the column is here, otherwise the
+    // flush finds no chunk and drops the edits silently.
+    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
+        bot->worldAutoSaver->flushBlockChunk(chunkX, chunkZ, bot->dimension);
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.unloadChunk(chunkX, chunkZ);
+    }
+
+    bot->sectionDirty->dropColumn(chunkX, chunkZ);
+}
+
 void BotManager::handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData)
 {
     instance().handleChunkDataImpl(connectionId, chunkData);
@@ -2771,6 +2810,17 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         }
     }
 
+    // Every section of a (re)loaded chunk counts as changed; the consumer's
+    // hash cache is what keeps an unchanged reload from re-uploading.
+    {
+        QVector<SectionKey> keys;
+        keys.reserve(chunk.sections.size());
+        for (auto it = chunk.sections.cbegin(); it != chunk.sections.cend(); ++it) {
+            keys.append({chunk.chunkX, chunk.chunkZ, it.key()});
+        }
+        markWorldDirty(bot, WorldChange::ChunkLoad, keys);
+    }
+
     // Save the chunk to disk or queue it if the saver isn't ready (only if saving is enabled)
     if (bot->saveWorldToDisk) {
         if (bot->worldAutoSaver) {
@@ -2856,6 +2906,8 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
         return;
     }
 
+    markWorldDirty(bot, WorldChange::Blocks, {{x >> 4, z >> 4, y >> 4}});
+
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Block update at (%2, %3, %4): %5")
                        .arg(bot->name)
@@ -2915,9 +2967,7 @@ void BotManager::handleBlockEntityUpdateImpl(int connectionId, const mankool::mc
         bot->worldData.updateBlockEntity(be);
     }
 
-    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
-        bot->worldAutoSaver->markBlockChunkDirty(be.x >> 4, be.z >> 4, bot->dimension);
-    }
+    markWorldDirty(bot, WorldChange::BlockEntity, {{be.x >> 4, be.z >> 4, be.y >> 4}});
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Block entity update at (%2, %3, %4): %5")
@@ -2947,6 +2997,8 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
 
     int updateCount = qMin(multiBlockUpdate.positions().size(), multiBlockUpdate.stateIds().size());
 
+    QVector<SectionKey> changed;
+    changed.reserve(updateCount);
     {
         QWriteLocker locker(bot->worldDataLock.get());
         for (int i = 0; i < updateCount; ++i) {
@@ -2968,16 +3020,11 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
             if (!blockState || isAirState(*blockState)) {
                 bot->worldData.removeBlockEntity(pos.x(), pos.y(), pos.z(), bot->dimension);
             }
+            changed.append({pos.x() >> 4, pos.z() >> 4, pos.y() >> 4});
         }
-    }
     }
 
-    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
-        for (int i = 0; i < updateCount; ++i) {
-            const auto &pos = multiBlockUpdate.positions()[i];
-            bot->worldAutoSaver->markBlockChunkDirty(pos.x() >> 4, pos.z() >> 4, bot->dimension);
-        }
-    }
+    markWorldDirty(bot, WorldChange::Blocks, changed);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Multi-block update: %2 blocks")
@@ -3007,10 +3054,7 @@ void BotManager::handleChunkUnloadImpl(int connectionId, const mankool::mcbot::p
     int chunkX = chunkUnload.chunkX();
     int chunkZ = chunkUnload.chunkZ();
 
-    {
-        QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.unloadChunk(chunkX, chunkZ);
-    }
+    unloadColumn(bot, chunkX, chunkZ);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Unloaded chunk (%2, %3)")

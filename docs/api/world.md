@@ -889,6 +889,157 @@ memory = world.memory_usage()
 print(f"World data memory usage: {memory / 1024 / 1024:.2f} MB")
 ```
 
+## Section Observation
+
+Bulk primitives for scripts that need to know *what part of the world changed*
+without walking every block themselves - incremental mirroring to an external
+service, minimap or render invalidation, re-scanning only what moved.
+
+A *section* is a 16x16x16 block cube, addressed by
+`(chunk_x, chunk_z, section_y)` where `section_y` is the absolute section index
+(`block_y >> 4`, so y=118 is section 7 and y=-56 is section -4).
+
+### `changed_sections(bot_name="", since=None, dimension="", digest=False, limit=0, digest_prefix=b"")`
+
+Get the chunk sections whose content changed since a previous call.
+
+Change tracking is fed by chunk loads, block updates and chunk unloads. A
+freshly loaded chunk counts as changed in all its sections; light, biome and
+block entity changes do not count.
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `since` (`int | None`, optional) - `token` from a previous call. `None`
+  returns every currently tracked section
+- `dimension` (`str`, optional) - Only report chunks of this dimension (e.g.
+  `"minecraft:the_nether"`). Empty string reports all dimensions
+- `digest` (`bool`, optional) - Also compute a content digest per section. This
+  hashes every returned section, so leave it off when you only need to know
+  *which* sections moved
+- `limit` (`int`, optional) - Cap on how many sections to return. `0` is
+  unlimited. Use it to page: the returned `token` resumes exactly where the call
+  stopped
+- `digest_prefix` (`bytes`, optional) - Domain-separation tag hashed ahead of
+  the section content. Defaults to `b""`, the bare content hash. Digests only
+  compare equal when computed with the same prefix, so pass one value
+  consistently - and give each distinct consumer or format its own tag if their
+  encodings could ever share a content-addressed store
+
+**Returns:** `SectionChanges` with:
+
+- `.token` (`int`) - Pass as `since` next time
+- `.truncated` (`bool`) - `limit` was hit and more sections are pending
+- `.sections` (`list[SectionChange]`) - Iterating the `SectionChanges` directly
+  iterates these
+
+Each `SectionChange` has `.chunk_x`, `.chunk_z`, `.section_y`, `.key` (the three
+as a tuple, ready to pass to `export_sections`) and `.digest` - 32 `bytes` when
+`digest=True`, otherwise `None`.
+
+The digest is BLAKE2b-256 over `digest_prefix` followed by the section's
+canonical palette+indices encoding, covering block states only (light, biomes
+and block entities are excluded). No
+coordinate goes into it, so byte-identical terrain digests identically wherever
+it occurs - same content at a different height, column or dimension is the same
+digest, and palette ordering never matters. That is what lets a content-addressed
+store keep one copy, and what makes the digest usable as a cache key for content
+rather than for a place.
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+token = None
+while True:
+    changes = world.changed_sections("MyBot", since=token, limit=512)
+    token = changes.token
+    for section in changes:
+        rescan(section.chunk_x, section.chunk_z, section.section_y)
+    if not changes.truncated:
+        time.sleep(1)
+```
+
+#### Token semantics
+
+Tokens are per-bot. Passing one bot's token to another bot returns a full
+snapshot rather than a wrong delta, and so does a token from a bot that was
+removed and re-added. Tokens stay valid across a reconnect: the world clears,
+and the sections re-report as chunks load again.
+
+Reading never consumes, so any number of independent pollers can each hold their
+own token without affecting each other.
+
+The report is deliberately conservative in one direction only: it can tell you a
+section changed when the content happens to be identical (a chunk reload
+re-reports every section), so compare digests if that matters. It will not miss
+a change to a section that is still loaded. A section whose chunk unloads before
+you poll is dropped rather than reported - its content is gone from memory
+anyway - and reloading that chunk marks all of it again.
+
+### `get_section(chunk_x, chunk_z, section_y, bot_name="", dimension="", digest_prefix=b"")`
+
+Get one section's blocks in canonical form.
+
+**Parameters:**
+
+- `chunk_x`, `chunk_z`, `section_y` (`int`) - Section to read
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `dimension` (`str`, optional) - Only read if the chunk is in this dimension
+- `digest_prefix` (`bytes`, optional) - Domain-separation tag for `.digest`,
+  as in `changed_sections`
+
+**Returns:** `Section | None` - `None` when the section is not loaded (or fails
+the dimension filter). Fields:
+
+- `.palette` (`list[str]`) - Block state strings, sorted and containing exactly
+  the states the indices reference
+- `.indices` (`bytes`) - 4096 unsigned 16-bit little-endian palette indices in
+  YZX order (`index = y*256 + z*16 + x`)
+- `.dimension` (`str`), `.chunk_x`, `.chunk_z`, `.section_y` (`int`)
+- `.digest` (`bytes`) - The same 32-byte content digest `changed_sections`
+  reports when called with the same `digest_prefix`
+
+```python
+section = world.get_section(10, -3, 4)
+if section:
+    indices = struct.unpack("<4096H", section.indices)
+    block = section.palette[indices[y * 256 + z * 16 + x]]
+```
+
+### `export_sections(keys, bot_name="", dimension="")`
+
+Serialize chunk sections into a single upload payload.
+
+The payload is the manager's bulk section framing: a little-endian frame count
+followed by one frame per section (dimension string, section key, and the
+section's canonical palette+indices blob). It is uncompressed and
+self-describing; a receiver that hashes a frame's blob under its own
+`digest_prefix` gets exactly what `changed_sections` reported for the same
+content and prefix.
+
+`get_section()` gives you the same content without the framing.
+
+**Parameters:**
+
+- `keys` (`list[tuple]`) - Sections to export, as `(chunk_x, chunk_z, section_y)`
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `dimension` (`str`, optional) - Only export chunks of this dimension. Empty
+  string exports all
+
+**Returns:** `bytes` - The framed payload. Sections that are no longer loaded
+(or fail the dimension filter) are silently omitted, so the frame count can be
+lower than `len(keys)`; callers that need exactness should compare counts
+
+**Raises:** `RuntimeError` if bot not found or not online, if a key is not a
+3-tuple, or if more than 4096 keys are passed in one call (batch instead - one
+section is about 8.3 KB, so the cap is roughly a 34 MB payload)
+
+```python
+changes = world.changed_sections("MyBot", digest=True, limit=4096)
+payload = world.export_sections([s.key for s in changes], bot_name="MyBot")
+# POST payload wherever it needs to go
+```
+
 ## Usage Examples
 
 ### Mining Helper

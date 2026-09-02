@@ -11,6 +11,7 @@
 #include "world/ItemRegistry.h"
 #include "world/NBTSerializer.h"
 #include "world/RegionFile.h"
+#include "world/SectionCodec.h"
 #include <QDebug>
 #include <QDeadlineTimer>
 #include <QJsonDocument>
@@ -20,6 +21,8 @@
 #include <QReadWriteLock>
 #include <QDateTime>
 #include <pybind11/stl.h>
+#include <io/stream_reader.h>
+#include <sstream>
 #include <cmath>
 #include <limits>
 
@@ -2604,6 +2607,194 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     }
 
     return chunkList;
+}
+
+namespace {
+
+// One section encodes to ~8.3 KB, so this caps a single export at roughly 34 MB. Without a
+// bound, handing a full first snapshot (~100k sections at render distance 32) straight to
+// export_sections builds a payload big enough to matter, twice over: once as per-section
+// blobs and again as the concatenated result.
+constexpr size_t kMaxExportSections = 4096;
+
+struct PendingSection {
+    SectionKey key;
+    QByteArray dimensionUtf8;
+    ChunkSection section;
+};
+
+// Shallow-copy the named sections under one read lock. Qt's implicit sharing makes each copy O(1);
+// hashing and encoding then run without the lock, so world writes are never blocked behind BLAKE2b.
+// Sections whose chunk unloaded (or that fail the dimension filter) are dropped, not reported empty.
+QVector<PendingSection> snapshotSections(BotInstance *botInstance, const QVector<SectionKey> &keys,
+                                         const QByteArray &dimensionFilter)
+{
+    QVector<PendingSection> pending;
+    pending.reserve(keys.size());
+    QReadLocker locker(botInstance->worldDataLock.get());
+    for (const SectionKey &key : keys) {
+        const ChunkData *chunk = botInstance->worldData.getChunk(key.chunkX, key.chunkZ);
+        if (!chunk) {
+            continue;
+        }
+        QByteArray dim = chunk->dimension.toUtf8();
+        if (!dimensionFilter.isEmpty() && dim != dimensionFilter) {
+            continue;
+        }
+        auto it = chunk->sections.constFind(key.sectionY);
+        if (it == chunk->sections.constEnd()) {
+            continue;
+        }
+        pending.append({key, dim, *it});
+    }
+    return pending;
+}
+
+std::string toStdBytes(const QByteArray &bytes)
+{
+    return std::string(bytes.constData(), static_cast<size_t>(bytes.size()));
+}
+
+}
+
+PySectionChanges PythonAPI::changedSections(const std::string &bot, const py::object &since,
+                                            const std::string &dimension, bool digest, int limit,
+                                            const py::bytes &digestPrefix)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    std::optional<quint64> sinceSeq;
+    if (!since.is_none()) {
+        sinceSeq = since.cast<quint64>();
+    }
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+    // Decoded while the GIL is still held; hashed ahead of each canonical blob below.
+    const QByteArray digestPrefixBytes = QByteArray::fromStdString(digestPrefix.cast<std::string>());
+    // Copied out so polling the tracker does not depend on the bot pointer once the GIL is gone.
+    // The world read below still goes through botInstance, under the same lifetime assumption the
+    // rest of PythonAPI makes.
+    const std::shared_ptr<SectionDirtyTracker> tracker = botInstance->sectionDirty;
+
+    PySectionChanges result;
+    {
+        py::gil_scoped_release release;
+
+        QVector<SectionKey> keys;
+        const SectionDirtyTracker::Snapshot snap = tracker->snapshot(sinceSeq, limit, keys);
+        result.token = snap.token;
+        result.truncated = snap.truncated;
+
+        const QVector<PendingSection> pending = snapshotSections(botInstance, keys, dimensionFilter);
+        result.sections.reserve(pending.size());
+        for (const PendingSection &p : pending) {
+            PySectionChange change;
+            change.chunkX = p.key.chunkX;
+            change.chunkZ = p.key.chunkZ;
+            change.sectionY = p.key.sectionY;
+            if (digest) {
+                auto canon = SectionCodec::canonicalize(p.section);
+                if (!canon) {
+                    continue;
+                }
+                change.digestBytes = toStdBytes(SectionCodec::digest(*canon, digestPrefixBytes));
+                change.hasDigest = true;
+            }
+            result.sections.push_back(std::move(change));
+        }
+    }
+
+    return result;
+}
+
+std::optional<PySection> PythonAPI::getSection(int chunkX, int chunkZ, int sectionY,
+                                               const std::string &bot, const std::string &dimension,
+                                               const py::bytes &digestPrefix)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+    const QByteArray digestPrefixBytes = QByteArray::fromStdString(digestPrefix.cast<std::string>());
+    const QVector<SectionKey> keys{{chunkX, chunkZ, sectionY}};
+
+    std::optional<PySection> result;
+    {
+        py::gil_scoped_release release;
+
+        const QVector<PendingSection> pending = snapshotSections(botInstance, keys, dimensionFilter);
+        if (pending.isEmpty()) {
+            return std::nullopt;
+        }
+        const PendingSection &p = pending.first();
+        auto canon = SectionCodec::canonicalize(p.section);
+        if (!canon) {
+            return std::nullopt;
+        }
+
+        PySection section;
+        section.chunkX = p.key.chunkX;
+        section.chunkZ = p.key.chunkZ;
+        section.sectionY = p.key.sectionY;
+        section.dimension = toStdBytes(p.dimensionUtf8);
+        section.palette.reserve(canon->palette.size());
+        for (const QByteArray &name : std::as_const(canon->palette)) {
+            section.palette.push_back(toStdBytes(name));
+        }
+        section.indicesBytes.reserve(static_cast<size_t>(canon->indices.size()) * 2);
+        for (quint16 idx : std::as_const(canon->indices)) {
+            section.indicesBytes.push_back(static_cast<char>(idx & 0xff));
+            section.indicesBytes.push_back(static_cast<char>((idx >> 8) & 0xff));
+        }
+        section.digestBytes = toStdBytes(SectionCodec::digest(*canon, digestPrefixBytes));
+        result = std::move(section);
+    }
+
+    return result;
+}
+
+py::bytes PythonAPI::exportSections(const py::sequence &keys, const std::string &bot, const std::string &dimension)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    const size_t keyCount = py::len(keys);
+    if (keyCount > kMaxExportSections) {
+        throw std::runtime_error("export_sections: " + std::to_string(keyCount)
+                                 + " keys exceeds the " + std::to_string(kMaxExportSections)
+                                 + " per-call limit; batch the upload");
+    }
+
+    QVector<SectionKey> parsed;
+    parsed.reserve(static_cast<int>(keyCount));
+    for (const auto &item : keys) {
+        auto entry = item.cast<py::sequence>();
+        if (py::len(entry) != 3) {
+            throw std::runtime_error("export_sections: each key must be (chunk_x, chunk_z, section_y)");
+        }
+        parsed.append({entry[0].cast<qint32>(), entry[1].cast<qint32>(), entry[2].cast<qint32>()});
+    }
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+
+    QByteArray payload;
+    {
+        py::gil_scoped_release release;
+
+        const QVector<PendingSection> pending = snapshotSections(botInstance, parsed, dimensionFilter);
+        QVector<SectionCodec::SectionFrame> frames;
+        frames.reserve(pending.size());
+        for (const PendingSection &p : pending) {
+            auto canon = SectionCodec::canonicalize(p.section);
+            if (!canon) {
+                continue;
+            }
+            frames.append({p.dimensionUtf8, p.key.chunkX, p.key.chunkZ, p.key.sectionY,
+                           SectionCodec::encodeBlob(*canon)});
+        }
+        payload = SectionCodec::encodeExport(frames);
+    }
+
+    return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));
 }
 
 static py::dict buildEntityDict(const EntityData &e)

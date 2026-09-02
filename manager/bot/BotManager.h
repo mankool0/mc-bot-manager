@@ -34,6 +34,7 @@
 #include "window.qpb.h"
 #include "WindowLayout.h"
 #include "WorldData.h"
+#include "SectionDirtyTracker.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
@@ -364,6 +365,11 @@ struct BotInstance : public BotConfig {
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;
 
+    // Which chunk sections changed, for world.changed_sections(). Fed by
+    // BotManager::markWorldDirty, never marked from handlers directly. shared_ptr so a
+    // script thread can copy it out and keep polling safely after dropping the GIL.
+    std::shared_ptr<SectionDirtyTracker> sectionDirty = std::make_shared<SectionDirtyTracker>();
+
     // Recipe registry
     RecipeRegistry recipeRegistry;
 
@@ -584,9 +590,29 @@ private:
     void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
     void handleBlockEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update);
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
+
     void handleLightUpdateImpl(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
+
+    // What a world mutation invalidates. Block entities are not part of the section
+    // digest, and a chunk load hands the saver the whole column directly instead of
+    // going through its dirty set, so the two trackers do not always both apply.
+    enum class WorldChange {
+        Blocks,       // block states changed: section digests and the on-disk column both go stale
+        BlockEntity,  // block entity NBT only: resave the column, digests are unaffected
+        ChunkLoad,    // column (re)loaded: every section is stale, the saver got the chunk directly
+    };
+
+    // Single funnel for world mutations. Every dirty-tracking consumer is marked here so
+    // adding one is a change in this function rather than an edit in each handler, and so
+    // handlers cannot half-update the set of trackers. Call it after releasing worldDataLock:
+    // the trackers take their own locks and must not nest inside it.
+    void markWorldDirty(BotInstance *bot, WorldChange kind, const QVector<SectionKey> &sections);
+
+    // Drops a column from world data and from every tracker, flushing pending saves first.
+    void unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ);
+
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
     void handleMapDataImpl(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData);

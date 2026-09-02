@@ -363,6 +363,48 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
         .value("EAST",  BlockRegistry::Direction::EAST)
         .export_values();
 
+    py::class_<PySectionChange>(m, "SectionChange")
+        .def_readonly("chunk_x", &PySectionChange::chunkX)
+        .def_readonly("chunk_z", &PySectionChange::chunkZ)
+        .def_readonly("section_y", &PySectionChange::sectionY)
+        .def_property_readonly("digest", [](const PySectionChange &c) -> py::object {
+            if (!c.hasDigest) return py::none();
+            return py::bytes(c.digestBytes);
+        })
+        .def_property_readonly("key", [](const PySectionChange &c) {
+            return py::make_tuple(c.chunkX, c.chunkZ, c.sectionY);
+        })
+        .def("__repr__", [](const PySectionChange &c) {
+            return "<SectionChange (" + std::to_string(c.chunkX) + ", " + std::to_string(c.chunkZ)
+                   + ", " + std::to_string(c.sectionY) + ")>";
+        });
+
+    py::class_<PySectionChanges>(m, "SectionChanges")
+        .def_readonly("token", &PySectionChanges::token)
+        .def_readonly("truncated", &PySectionChanges::truncated)
+        .def_readonly("sections", &PySectionChanges::sections)
+        .def("__len__", [](const PySectionChanges &c) { return c.sections.size(); })
+        .def("__iter__", [](py::object self) {
+            return py::iter(self.attr("sections"));
+        }, py::keep_alive<0, 1>());
+
+    py::class_<PySection>(m, "Section")
+        .def_readonly("chunk_x", &PySection::chunkX)
+        .def_readonly("chunk_z", &PySection::chunkZ)
+        .def_readonly("section_y", &PySection::sectionY)
+        .def_readonly("dimension", &PySection::dimension)
+        .def_readonly("palette", &PySection::palette)
+        .def_property_readonly("indices", [](const PySection &s) {
+            return py::bytes(s.indicesBytes);
+        })
+        .def_property_readonly("digest", [](const PySection &s) {
+            return py::bytes(s.digestBytes);
+        })
+        .def("__repr__", [](const PySection &s) {
+            return "<Section (" + std::to_string(s.chunkX) + ", " + std::to_string(s.chunkZ)
+                   + ", " + std::to_string(s.sectionY) + ") palette=" + std::to_string(s.palette.size()) + ">";
+        });
+
     // World queries
     def_state("get_weather", &PythonAPI::getWeather,
               "Get current weather state as dict with is_raining, is_thundering, rain_level, thunder_level. Returns None if bot offline.",
@@ -434,6 +476,39 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_state("loaded_chunks", &PythonAPI::getLoadedChunks,
               "Get list of loaded chunk positions as (x,z) tuples",
               py::arg("bot_name") = "");
+    def_action("changed_sections", &PythonAPI::changedSections,
+               "Chunk sections changed since `since` (a token from a previous call; None means "
+               "everything loaded). Returns a SectionChanges with .token, .truncated and "
+               ".sections, each a SectionChange with .chunk_x/.chunk_z/.section_y/.key. Pass "
+               "digest=True to also compute .digest, a 32-byte BLAKE2b-256 hash of "
+               "digest_prefix + the blocks alone. digest_prefix is your domain-separation tag "
+               "(empty = bare content hash); digests only compare equal when computed with the "
+               "same prefix. limit caps how many sections come back; .truncated says more are "
+               "pending and .token resumes where this call stopped.",
+               py::arg("bot_name") = "",
+               py::arg("since") = py::none(),
+               py::arg("dimension") = "",
+               py::arg("digest") = false,
+               py::arg("limit") = 0,
+               py::arg("digest_prefix") = py::bytes());
+    def_query("get_section", &PythonAPI::getSection,
+              "Get one chunk section's blocks in canonical form: .palette (sorted block state "
+              "strings) and .indices (4096 u16 little-endian in YZX order, index = y*256 + z*16 "
+              "+ x), plus .dimension and .digest (BLAKE2b-256 of digest_prefix + the canonical "
+              "encoding, matching changed_sections digests made with the same prefix). Returns "
+              "None if the section is not loaded.",
+              py::arg("chunk_x"), py::arg("chunk_z"), py::arg("section_y"),
+              py::arg("bot_name") = "",
+              py::arg("dimension") = "",
+              py::arg("digest_prefix") = py::bytes());
+    def_action("export_sections", &PythonAPI::exportSections,
+               "Serialize chunk sections into one uncompressed export payload: u32 frame "
+               "count, then per section its dimension, key and canonical blob. keys is a "
+               "list of (chunk_x, chunk_z, section_y); sections that are not loaded (or fail the "
+               "dimension filter) are omitted. At most 4096 keys per call.",
+               py::arg("keys"),
+               py::arg("bot_name") = "",
+               py::arg("dimension") = "");
 
     // World interaction
     def_action("hold_attack", &PythonAPI::holdAttack,

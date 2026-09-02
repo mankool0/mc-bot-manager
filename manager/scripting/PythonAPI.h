@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <optional>
+#include <memory>
 #include "world/BlockRegistry.h"
 #include <tag_compound.h>
 
@@ -54,6 +55,34 @@ struct PyScreenState {
     int width = 0, height = 0;
     std::vector<PyGuiWidget> widgets;
     std::vector<PyGuiSlot> guiSlots;
+};
+
+// One chunk section reported by world.changed_sections(). hasDigest is false when the caller
+// did not ask for digests, which surfaces in Python as .digest being None rather than bytes.
+struct PySectionChange {
+    int chunkX = 0;
+    int chunkZ = 0;
+    int sectionY = 0;
+    std::string digestBytes;
+    bool hasDigest = false;
+};
+
+struct PySectionChanges {
+    unsigned long long token = 0;
+    bool truncated = false;
+    std::vector<PySectionChange> sections;
+};
+
+// Format-neutral view of one section's blocks, for scripts that want to work with the
+// content themselves rather than hand an opaque payload to a server.
+struct PySection {
+    int chunkX = 0;
+    int chunkZ = 0;
+    int sectionY = 0;
+    std::string dimension;
+    std::vector<std::string> palette;
+    std::string indicesBytes;  // 4096 u16 little-endian, YZX order (y*256 + z*16 + x)
+    std::string digestBytes;
 };
 
 struct PyMonitor {
@@ -298,6 +327,14 @@ public:
     static int getLoadedChunkCount(const std::string &bot = "");
     static size_t getWorldMemoryUsage(const std::string &bot = "");
     static py::list getLoadedChunks(const std::string &bot = "");
+
+    static PySectionChanges changedSections(const std::string &bot, const py::object &since,
+                                            const std::string &dimension, bool digest, int limit,
+                                            const py::bytes &digestPrefix);
+    static std::optional<PySection> getSection(int chunkX, int chunkZ, int sectionY,
+                                               const std::string &bot, const std::string &dimension,
+                                               const py::bytes &digestPrefix);
+    static py::bytes exportSections(const py::sequence &keys, const std::string &bot = "", const std::string &dimension = "");
 
     // World interaction
     static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
