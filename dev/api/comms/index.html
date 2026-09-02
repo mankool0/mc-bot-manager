@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1195,7 +1223,7 @@ mutate the sender's objects.</p>
 </ul>
 <p><strong>Returns:</strong> <code>int</code> - number of scripts the message was delivered to at send
 time (delivery itself is asynchronous). <code>0</code> means nobody was subscribed.</p>
-<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s2">&quot;inventory_full&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;bot&quot;</span><span class="p">:</span> <span class="s2">&quot;Miner1&quot;</span><span class="p">,</span> <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()})</span>
+<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s2">"inventory_full"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"bot"</span><span class="p">:</span> <span class="s2">"Miner1"</span><span class="p">,</span> <span class="s2">"pos"</span><span class="p">:</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()})</span>
 </code></pre></div>
 <h3 id="sendbot_name-datanone-topic"><code>send(bot_name, data=None, topic="")</code></h3>
 <p>Send to every listening script of one bot, regardless of topics. Use
@@ -1209,15 +1237,15 @@ time (delivery itself is asynchronous). <code>0</code> means nobody was subscrib
 <p><strong>Returns:</strong> <code>int</code> - number of recipient scripts. <code>0</code> means no script on that
 bot is listening (unknown bot names also return <code>0</code>) - the sender can react,
 e.g. start the script and resend:</p>
-<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;Miner1&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;mine&quot;</span><span class="p">,</span> <span class="s2">&quot;block&quot;</span><span class="p">:</span> <span class="s2">&quot;diamond_ore&quot;</span><span class="p">})</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-    <span class="n">manager</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s2">&quot;miner.py&quot;</span><span class="p">,</span> <span class="s2">&quot;Miner1&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">"Miner1"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"cmd"</span><span class="p">:</span> <span class="s2">"mine"</span><span class="p">,</span> <span class="s2">"block"</span><span class="p">:</span> <span class="s2">"diamond_ore"</span><span class="p">})</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">manager</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s2">"miner.py"</span><span class="p">,</span> <span class="s2">"Miner1"</span><span class="p">)</span>
     <span class="c1"># give the script a moment to start and subscribe, then resend</span>
 </code></pre></div>
 <h3 id="subscribetopic"><code>subscribe(topic="")</code></h3>
 <p>Subscribe this script to a topic for <code>emit</code> broadcasts. With no topic, just
 opens the mailbox so addressed <code>send</code> messages are received. Subscriptions
 last until the script stops (they do not survive a re-run).</p>
-<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s2">"tasks"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="unsubscribetopic"><code>unsubscribe(topic="")</code></h3>
 <p>Remove a topic subscription. With no topic, closes the mailbox opened by
@@ -1230,12 +1258,12 @@ last until the script stops (they do not survive a re-run).</p>
 </ul>
 <p><strong>Returns:</strong> the message dict, or <code>None</code> on timeout (also <code>None</code> if the script
 is being stopped while waiting).</p>
-<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s2">"tasks"</span><span class="p">)</span>
 <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
     <span class="n">msg</span> <span class="o">=</span> <span class="n">comms</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">continue</span>  <span class="c1"># timeout - do housekeeping, check state, etc.</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task from </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;sender_scope&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"task from </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">'sender_scope'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">'data'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="pending"><code>pending()</code></h3>
 <p><strong>Returns:</strong> <code>int</code> - number of messages waiting in this script's <code>receive()</code>

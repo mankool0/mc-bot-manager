@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1326,7 +1354,7 @@ raising - there is nothing to check against until the mod connects.</p>
 <li><code>player</code> (<code>str</code>) - Player name to follow</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">follow</span><span class="p">(</span><span class="s2">&quot;PlayerName&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">follow</span><span class="p">(</span><span class="s2">"PlayerName"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="cancelbot_name"><code>cancel(bot_name="")</code></h3>
 <p>Cancel current task.</p>
@@ -1344,7 +1372,7 @@ raising - there is nothing to check against until the mod connects.</p>
 <li><code>block_type</code> (<code>str</code>) - Block type to mine (e.g., <code>"diamond_ore"</code>)</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="s2">&quot;diamond_ore&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="s2">"diamond_ore"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="farmbot_name"><code>farm(bot_name="")</code></h3>
 <p>Start farming.</p>
@@ -1362,7 +1390,7 @@ raising - there is nothing to check against until the mod connects.</p>
 <li><code>command</code> (<code>str</code>) - Baritone command</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;build structure.schematic&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"build structure.schematic"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="settings">Settings</h2>
 <h3 id="set_settingsetting-value-bot_name"><code>set_setting(setting, value, bot_name="")</code></h3>
@@ -1373,8 +1401,8 @@ raising - there is nothing to check against until the mod connects.</p>
 <li><code>value</code> - Setting value</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">&quot;allowBreak&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
-<span class="n">baritone</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">&quot;primaryTimeoutMS&quot;</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">baritone</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"allowBreak"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<span class="n">baritone</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"primaryTimeoutMS"</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="get_settingsetting-bot_name"><code>get_setting(setting, bot_name="")</code></h3>
 <p>Get Baritone setting value.</p>
@@ -1384,7 +1412,7 @@ raising - there is nothing to check against until the mod connects.</p>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
 <p><strong>Returns:</strong> Setting value</p>
-<div class="highlight"><pre><span></span><code><span class="n">value</span> <span class="o">=</span> <span class="n">baritone</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="s2">&quot;allowBreak&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">value</span> <span class="o">=</span> <span class="n">baritone</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="s2">"allowBreak"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="status-monitoring">Status Monitoring</h2>
 <h3 id="path-event-types">Path Event Types</h3>
@@ -1447,8 +1475,8 @@ raising - there is nothing to check against until the mod connects.</p>
 <span class="c1"># Wait for pathfinding to start</span>
 <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
     <span class="n">status</span> <span class="o">=</span> <span class="n">baritone</span><span class="o">.</span><span class="n">get_process_status</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;is_pathing&#39;</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pathfinding has started!&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">'is_pathing'</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Pathfinding has started!"</span><span class="p">)</span>
         <span class="k">break</span>
     <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
 
@@ -1456,22 +1484,22 @@ raising - there is nothing to check against until the mod connects.</p>
 <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
     <span class="n">status</span> <span class="o">=</span> <span class="n">baritone</span><span class="o">.</span><span class="n">get_process_status</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;is_pathing&#39;</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pathfinding complete or stopped&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">status</span><span class="p">[</span><span class="s1">'is_pathing'</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Pathfinding complete or stopped"</span><span class="p">)</span>
         <span class="k">break</span>
 
     <span class="c1"># Show ETA if available</span>
-    <span class="k">if</span> <span class="s1">&#39;estimated_ticks_to_goal&#39;</span> <span class="ow">in</span> <span class="n">status</span><span class="p">:</span>
-        <span class="n">seconds</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;estimated_ticks_to_goal&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">20.0</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ETA: </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">'estimated_ticks_to_goal'</span> <span class="ow">in</span> <span class="n">status</span><span class="p">:</span>
+        <span class="n">seconds</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">'estimated_ticks_to_goal'</span><span class="p">]</span> <span class="o">/</span> <span class="mf">20.0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ETA: </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
 
     <span class="c1"># Check event type</span>
-    <span class="n">event</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;event_type&#39;</span><span class="p">]</span>
+    <span class="n">event</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">'event_type'</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">CALC_FAILED</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pathfinding failed!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Pathfinding failed!"</span><span class="p">)</span>
         <span class="k">break</span>
     <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">AT_GOAL</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Reached goal!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Reached goal!"</span><span class="p">)</span>
         <span class="k">break</span>
 
     <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -1479,29 +1507,29 @@ raising - there is nothing to check against until the mod connects.</p>
 <p><strong>Events approach:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">baritone</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathEventType</span>
 
-<span class="c1"># Track whether we&#39;ve started</span>
+<span class="c1"># Track whether we've started</span>
 <span class="n">started</span> <span class="o">=</span> <span class="kc">False</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;baritone_status_update&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"baritone_status_update"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_status</span><span class="p">(</span><span class="n">status</span><span class="p">):</span>
     <span class="k">global</span> <span class="n">started</span>
 
-    <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;is_pathing&#39;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">'is_pathing'</span><span class="p">]:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">started</span><span class="p">:</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Pathfinding started!&quot;</span><span class="p">)</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Pathfinding started!"</span><span class="p">)</span>
             <span class="n">started</span> <span class="o">=</span> <span class="kc">True</span>
 
-        <span class="k">if</span> <span class="s1">&#39;estimated_ticks_to_goal&#39;</span> <span class="ow">in</span> <span class="n">status</span><span class="p">:</span>
-            <span class="n">seconds</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;estimated_ticks_to_goal&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">20.0</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ETA: </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">'estimated_ticks_to_goal'</span> <span class="ow">in</span> <span class="n">status</span><span class="p">:</span>
+            <span class="n">seconds</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">'estimated_ticks_to_goal'</span><span class="p">]</span> <span class="o">/</span> <span class="mf">20.0</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ETA: </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
 
     <span class="c1"># Check completion</span>
-    <span class="n">event</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;event_type&#39;</span><span class="p">]</span>
+    <span class="n">event</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">'event_type'</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">AT_GOAL</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Reached destination!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Reached destination!"</span><span class="p">)</span>
         <span class="n">started</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">CALC_FAILED</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Pathfinding failed!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Pathfinding failed!"</span><span class="p">)</span>
         <span class="n">started</span> <span class="o">=</span> <span class="kc">False</span>
 
 <span class="c1"># Start pathfinding - events will handle the rest</span>
@@ -1513,10 +1541,10 @@ errors) is forwarded to the manager and fired as the <a href="../../events/#bari
 event. Use it to react to output that has no structured event:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">baritone</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;baritone_log&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"baritone_log"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_baritone_log</span><span class="p">(</span><span class="n">log</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">log</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Unable to find a path&quot;</span><span class="p">):</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Pathfinding gave up&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">log</span><span class="p">[</span><span class="s1">'content'</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Unable to find a path"</span><span class="p">):</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Pathfinding gave up"</span><span class="p">)</span>
 
 <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="o">-</span><span class="mi">300</span><span class="p">)</span>
 </code></pre></div>

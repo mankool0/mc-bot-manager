@@ -415,6 +415,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1286,7 +1314,7 @@
 <h1 id="available-events">Available Events</h1>
 <p>Events that can be handled with the <code>@on</code> decorator.</p>
 <h2 id="usage">Usage</h2>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;event_name&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"event_name"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">param1</span><span class="p">,</span> <span class="n">param2</span><span class="p">):</span>
     <span class="c1"># Handle event</span>
     <span class="k">pass</span>
@@ -1315,18 +1343,18 @@
 </ul>
 </li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handle_chat</span><span class="p">(</span><span class="n">chat_data</span><span class="p">):</span>
-    <span class="n">sender</span> <span class="o">=</span> <span class="n">chat_data</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
-    <span class="n">message</span> <span class="o">=</span> <span class="n">chat_data</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
-    <span class="n">msg_type</span> <span class="o">=</span> <span class="n">chat_data</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="n">chat_data</span><span class="p">[</span><span class="s2">"sender"</span><span class="p">]</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">chat_data</span><span class="p">[</span><span class="s2">"content"</span><span class="p">]</span>
+    <span class="n">msg_type</span> <span class="o">=</span> <span class="n">chat_data</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!help&quot;</span><span class="p">:</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Available commands: !help, !goto&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!help"</span><span class="p">:</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Available commands: !help, !goto"</span><span class="p">)</span>
 
-    <span class="c1"># Check if it&#39;s a whisper</span>
-    <span class="k">if</span> <span class="n">chat_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;minecraft_chat_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;MSG_COMMAND_INCOMING&quot;</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received whisper from </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Check if it's a whisper</span>
+    <span class="k">if</span> <span class="n">chat_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"minecraft_chat_type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"MSG_COMMAND_INCOMING"</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Received whisper from </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="health_change"><code>health_change</code></h3>
 <p>Fired when bot health changes.</p>
@@ -1335,10 +1363,10 @@
 <li><code>old_health</code> (<code>float</code>) - Previous health</li>
 <li><code>new_health</code> (<code>float</code>) - New health</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;health_change&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"health_change"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health_monitor</span><span class="p">(</span><span class="n">old_health</span><span class="p">,</span> <span class="n">new_health</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">new_health</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Low health warning!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Low health warning!"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="hunger_change"><code>hunger_change</code></h3>
 <p>Fired when bot hunger changes.</p>
@@ -1347,10 +1375,10 @@
 <li><code>old_hunger</code> (<code>float</code>) - Previous hunger</li>
 <li><code>new_hunger</code> (<code>float</code>) - New hunger</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;hunger_change&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"hunger_change"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hunger_monitor</span><span class="p">(</span><span class="n">old_hunger</span><span class="p">,</span> <span class="n">new_hunger</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">new_hunger</span> <span class="o">&lt;</span> <span class="mi">6</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Low hunger!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Low hunger!"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="player_state"><code>player_state</code></h3>
 <p>Fired when player state updates.</p>
@@ -1358,9 +1386,9 @@
 <ul>
 <li><code>state</code> (<code>dict</code>) - Player state information</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;player_state&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"player_state"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">state_update</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;State: </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"State: </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="inventory_update"><code>inventory_update</code></h3>
 <p>Fired when inventory is updated.</p>
@@ -1369,11 +1397,11 @@
 <li><code>selected_slot</code> (<code>int</code>) - Currently selected hotbar slot (0-8)</li>
 <li><code>inventory</code> (<code>list</code>) - List of inventory items, each item is a dict with keys: <code>slot</code>, <code>item_id</code>, <code>count</code>, <code>display_name</code>, <code>enchantments</code>. Empty slots are omitted. The full inventory is always passed, even though the client sends updates as deltas.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;inventory_update&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"inventory_update"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">inv_update</span><span class="p">(</span><span class="n">selected_slot</span><span class="p">,</span> <span class="n">inventory</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Inventory: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s2"> items, slot </span><span class="si">{</span><span class="n">selected_slot</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Inventory: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inventory</span><span class="p">)</span><span class="si">}</span><span class="s2"> items, slot </span><span class="si">{</span><span class="n">selected_slot</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">inventory</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'display_name'</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2"> in slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'slot'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="screen_updated"><code>screen_updated</code></h3>
 <p>Fired when the current GUI screen changes or its state is refreshed (e.g. after a button click or key press).</p>
@@ -1381,14 +1409,14 @@
 <ul>
 <li><code>screen</code> (<code>ScreenState</code> or <code>None</code>) - Full current screen state, or <code>None</code> if no screen is open (back in-game)</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;screen_updated&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"screen_updated"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_screen_update</span><span class="p">(</span><span class="n">screen</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Back in-game&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="s2">&quot;DeathScreen&quot;</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="p">:</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;I died!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Back in-game"</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="s2">"DeathScreen"</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="p">:</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"I died!"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Screen: </span><span class="si">{</span><span class="n">screen</span><span class="o">.</span><span class="n">title</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">)</span><span class="si">}</span><span class="s2"> widgets&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Screen: </span><span class="si">{</span><span class="n">screen</span><span class="o">.</span><span class="n">title</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">)</span><span class="si">}</span><span class="s2"> widgets"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="container_update"><code>container_update</code></h3>
 <p>Fired when an open container's contents are synced (chest, furnace, crafting table,
@@ -1405,12 +1433,12 @@ etc.). Not fired when the container closes.</p>
 <p>Slot numbering covers the whole open menu: container slots first, then the player's
 main inventory and hotbar (for a single chest: 0-26 chest, 27-53 player main, 54-62
 hotbar).</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;container_update&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"container_update"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_container</span><span class="p">(</span><span class="n">container</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Container </span><span class="si">{</span><span class="n">container</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">container</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> slots&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">container</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;minecraft:air&quot;</span><span class="p">:</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Container </span><span class="si">{</span><span class="n">container</span><span class="p">[</span><span class="s1">'id'</span><span class="p">]</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">container</span><span class="p">[</span><span class="s1">'items'</span><span class="p">])</span><span class="si">}</span><span class="s2"> slots"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">container</span><span class="p">[</span><span class="s1">'items'</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"minecraft:air"</span><span class="p">:</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'slot'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="block_update"><code>block_update</code></h3>
 <p>Fired when a single block changes.</p>
@@ -1421,10 +1449,10 @@ hotbar).</p>
 <li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
 <li><code>block_id</code> (<code>str</code>) - New block state string (e.g. <code>"minecraft:oak_log[axis=y]"</code>)</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;block_update&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"block_update"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block_id</span><span class="p">):</span>
-    <span class="k">if</span> <span class="s2">&quot;chest&quot;</span> <span class="ow">in</span> <span class="n">block_id</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chest placed at (</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"chest"</span> <span class="ow">in</span> <span class="n">block_id</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Chest placed at (</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="multi_block_update"><code>multi_block_update</code></h3>
 <p>Fired when several blocks in one chunk section change at once. Only the number of changed blocks is passed; the world data is already
@@ -1433,9 +1461,9 @@ updated, so query positions with <a href="../api/world/"><code>world.get_block</
 <ul>
 <li><code>count</code> (<code>int</code>) - Number of blocks that changed</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;multi_block_update&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"multi_block_update"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_multi_block</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> blocks changed at once&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> blocks changed at once"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="chunk_loaded"><code>chunk_loaded</code></h3>
 <p>Fired when a chunk is received from the server and added to the world data.</p>
@@ -1445,9 +1473,9 @@ updated, so query positions with <a href="../api/world/"><code>world.get_block</
 <li><code>chunk_z</code> (<code>int</code>) - Chunk Z coordinate (block Z &gt;&gt; 4)</li>
 <li><code>dimension</code> (<code>str</code>) - Dimension the chunk belongs to (e.g. <code>"minecraft:overworld"</code>)</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chunk_loaded&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"chunk_loaded"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_chunk</span><span class="p">(</span><span class="n">chunk_x</span><span class="p">,</span> <span class="n">chunk_z</span><span class="p">,</span> <span class="n">dimension</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded chunk (</span><span class="si">{</span><span class="n">chunk_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">chunk_z</span><span class="si">}</span><span class="s2">) in </span><span class="si">{</span><span class="n">dimension</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Loaded chunk (</span><span class="si">{</span><span class="n">chunk_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">chunk_z</span><span class="si">}</span><span class="s2">) in </span><span class="si">{</span><span class="n">dimension</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="chunk_unloaded"><code>chunk_unloaded</code></h3>
 <p>Fired when a chunk leaves render distance and is dropped from the world data. Blocks
@@ -1458,9 +1486,9 @@ can still read them if world saving is on).</p>
 <li><code>chunk_x</code> (<code>int</code>) - Chunk X coordinate</li>
 <li><code>chunk_z</code> (<code>int</code>) - Chunk Z coordinate</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chunk_unloaded&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"chunk_unloaded"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_chunk_unload</span><span class="p">(</span><span class="n">chunk_x</span><span class="p">,</span> <span class="n">chunk_z</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unloaded chunk (</span><span class="si">{</span><span class="n">chunk_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">chunk_z</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unloaded chunk (</span><span class="si">{</span><span class="n">chunk_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">chunk_z</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="baritone_status_update"><code>baritone_status_update</code></h3>
 <p>Fired when baritone pathfinding status changes.</p>
@@ -1476,18 +1504,18 @@ can still read them if world saving is on).</p>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">baritone</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathEventType</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;baritone_status_update&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"baritone_status_update"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_baritone_update</span><span class="p">(</span><span class="n">status</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;is_pathing&#39;</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="s1">&#39;estimated_ticks_to_goal&#39;</span> <span class="ow">in</span> <span class="n">status</span><span class="p">:</span>
-            <span class="n">seconds</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;estimated_ticks_to_goal&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">20.0</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pathfinding - ETA: </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">'is_pathing'</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="s1">'estimated_ticks_to_goal'</span> <span class="ow">in</span> <span class="n">status</span><span class="p">:</span>
+            <span class="n">seconds</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s1">'estimated_ticks_to_goal'</span><span class="p">]</span> <span class="o">/</span> <span class="mf">20.0</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Pathfinding - ETA: </span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
 
         <span class="c1"># Check if reached goal</span>
-        <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;event_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">AT_GOAL</span><span class="p">:</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Reached destination!&quot;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;event_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">CALC_FAILED</span><span class="p">:</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Pathfinding failed!&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">'event_type'</span><span class="p">]</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">AT_GOAL</span><span class="p">:</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Reached destination!"</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">status</span><span class="p">[</span><span class="s1">'event_type'</span><span class="p">]</span> <span class="o">==</span> <span class="n">PathEventType</span><span class="o">.</span><span class="n">CALC_FAILED</span><span class="p">:</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Pathfinding failed!"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="baritone_log"><code>baritone_log</code></h3>
 <p>Fired when Baritone logs a message on the client (chat log lines, toasts, desktop
@@ -1500,15 +1528,18 @@ network packet, so it does not appear in <code>chat_message</code> events.</p>
 <li><code>kind</code> (<code>str</code>) - Where Baritone sent the message: <code>"chat"</code>, <code>"toast"</code> or <code>"notification"</code></li>
 <li><code>is_error</code> (<code>bool</code>) - Whether Baritone flagged the message as an error (<code>"notification"</code> kind only)</li>
 <li><code>title</code> (<code>str</code>, optional) - Toast title (<code>"toast"</code> kind, only when Baritone used a custom title)</li>
-<li><code>timestamp</code> (<code>int</code>) - Unix timestamp in milliseconds</li>
+<li><code>bot_name</code> (<code>str</code>) - Which bot's Baritone emitted the message</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;baritone_log&quot;</span><span class="p">)</span>
+<p>This event is also delivered to <strong>global scripts</strong>, which coordinate multiple
+bots; use <code>bot_name</code> to tell whose Baritone spoke.
+  - <code>timestamp</code> (<code>int</code>) - Unix timestamp in milliseconds</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"baritone_log"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_baritone_log</span><span class="p">(</span><span class="n">log</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Baritone: </span><span class="si">{</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Baritone: </span><span class="si">{</span><span class="n">log</span><span class="p">[</span><span class="s1">'content'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># React to output that has no structured event</span>
-    <span class="k">if</span> <span class="n">log</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Unable to find a path&quot;</span><span class="p">):</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Pathfinding gave up, trying a different goal&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">log</span><span class="p">[</span><span class="s1">'content'</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Unable to find a path"</span><span class="p">):</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Pathfinding gave up, trying a different goal"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="script_message"><code>script_message</code></h3>
 <p>Fired when another script sends this script a message via
@@ -1527,13 +1558,13 @@ reachable by <code>comms.send</code>; broadcasts additionally require a
 <li><code>sender_script</code> (<code>str</code>) - Sender's script filename</li>
 <li><code>timestamp</code> (<code>float</code>) - Send time, epoch seconds</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">comms</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s2">"tasks"</span><span class="p">)</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;script_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"script_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;sender_scope&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;sender_script&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;topic&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;tasks&quot;</span><span class="p">:</span>
-        <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;sender_scope&quot;</span><span class="p">],</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;accepted&quot;</span><span class="p">})</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">'sender_scope'</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">'sender_script'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">'data'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s2">"topic"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"tasks"</span><span class="p">:</span>
+        <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">"sender_scope"</span><span class="p">],</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"accepted"</span><span class="p">})</span>
 </code></pre></div>
 <h3 id="bot_connected"><code>bot_connected</code></h3>
 <p>Fired when a bot finishes connecting to the manager (status becomes Online).
@@ -1542,10 +1573,10 @@ Delivered to the bot's own scripts and to <strong>global scripts</strong>.</p>
 <ul>
 <li><code>bot_name</code> (<code>str</code>) - Name of the bot that connected</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;bot_connected&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"bot_connected"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_connect</span><span class="p">(</span><span class="n">bot_name</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bot_name</span><span class="si">}</span><span class="s2"> is online&quot;</span><span class="p">)</span>
-    <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">bot_name</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;resume&quot;</span><span class="p">})</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">bot_name</span><span class="si">}</span><span class="s2"> is online"</span><span class="p">)</span>
+    <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">bot_name</span><span class="p">,</span> <span class="p">{</span><span class="s2">"cmd"</span><span class="p">:</span> <span class="s2">"resume"</span><span class="p">})</span>
 </code></pre></div>
 <h3 id="bot_disconnected"><code>bot_disconnected</code></h3>
 <p>Fired when a bot disconnects from the manager (status becomes Offline).
@@ -1556,9 +1587,9 @@ scripts keep running in the manager after a disconnect.</p>
 <li><code>bot_name</code> (<code>str</code>) - Name of the bot that disconnected</li>
 <li><code>uptime_seconds</code> (<code>float</code>) - How long the bot was connected (0.0 if unknown)</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;bot_disconnected&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"bot_disconnected"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_disconnect</span><span class="p">(</span><span class="n">bot_name</span><span class="p">,</span> <span class="n">uptime_seconds</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bot_name</span><span class="si">}</span><span class="s2"> went offline after </span><span class="si">{</span><span class="n">uptime_seconds</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">bot_name</span><span class="si">}</span><span class="s2"> went offline after </span><span class="si">{</span><span class="n">uptime_seconds</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
 </code></pre></div>
 
 

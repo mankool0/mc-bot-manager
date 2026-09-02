@@ -2,62 +2,66 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
+    </url>
+    <url>
+         <loc>https://mankool0.github.io/mc-bot-manager/dev/bot-windows/</loc>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/event-handlers/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/events/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/examples/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/first-script/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/getting-started/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/baritone/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/bot/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/comms/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/manager/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/meteor/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/server/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/utils/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://mankool0.github.io/mc-bot-manager/dev/api/world/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
 </urlset>

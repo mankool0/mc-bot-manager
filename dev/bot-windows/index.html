@@ -12,31 +12,31 @@
         <meta name="author" content="mc-bot-manager contributors">
       
       
-        <link rel="canonical" href="https://mankool0.github.io/mc-bot-manager/dev/api/meteor/">
+        <link rel="canonical" href="https://mankool0.github.io/mc-bot-manager/dev/bot-windows/">
       
       
-        <link rel="prev" href="../baritone/">
+        <link rel="prev" href="../event-handlers/">
       
       
-        <link rel="next" href="../world/">
+        <link rel="next" href="../api/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>meteor - MC Bot Manager - Python Scripting API</title>
+        <title>Bot Windows - MC Bot Manager - Python Scripting API</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -55,7 +55,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#meteor-module" class="md-skip">
+        <a href="#bot-windows" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +100,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="MC Bot Manager - Python Scripting API" class="md-header__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+    <a href=".." title="MC Bot Manager - Python Scripting API" class="md-header__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              meteor
+              Bot Windows
             
           </span>
         </div>
@@ -236,7 +236,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="MC Bot Manager - Python Scripting API" class="md-nav__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+    <a href=".." title="MC Bot Manager - Python Scripting API" class="md-nav__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -266,7 +266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -290,18 +290,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -322,7 +324,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -340,7 +342,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
+      <a href="../getting-started/" class="md-nav__link">
         
   
   
@@ -368,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../first-script/" class="md-nav__link">
+      <a href="../first-script/" class="md-nav__link">
         
   
   
@@ -396,7 +398,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../event-handlers/" class="md-nav__link">
+      <a href="../event-handlers/" class="md-nav__link">
         
   
   
@@ -404,174 +406,6 @@
     
   
     Event Handlers
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../bot-windows/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bot Windows
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API Reference
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    API Reference
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../bot/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    bot
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../baritone/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    baritone
   
 
     
@@ -608,7 +442,7 @@
   <span class="md-ellipsis">
     
   
-    meteor
+    Bot Windows
   
 
     
@@ -626,7 +460,7 @@
   <span class="md-ellipsis">
     
   
-    meteor
+    Bot Windows
   
 
     
@@ -652,141 +486,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module-control" class="md-nav__link">
+  <a href="#what-the-mod-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module Control
+        What the mod does
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Module Control">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#togglemodule-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        toggle(module, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enablemodule-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        enable(module, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#disablemodule-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        disable(module, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings" class="md-nav__link">
+  <a href="#auto-tiling-from-the-manager" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings
+        Auto-tiling from the manager
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Settings">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#set_settingmodule-setting-value-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        set_setting(module, setting, value, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_settingmodule-setting-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_setting(module, setting, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#packet-list-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Packet list settings
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#module-info" class="md-nav__link">
+  <a href="#kde-plasma-on-wayland" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module Info
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Module Info">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#list_modulesbot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        list_modules(bot_name="")
+        KDE Plasma on Wayland
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#get_modulemodule-bot_name" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#other-compositors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        get_module(module, bot_name="")
+        Other compositors
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -799,6 +538,60 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
               
                 
   
@@ -806,7 +599,119 @@
   
   
     <li class="md-nav__item">
-      <a href="../world/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/bot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/baritone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    baritone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/meteor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    meteor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/world/" class="md-nav__link">
         
   
   
@@ -834,7 +739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../utils/" class="md-nav__link">
+      <a href="../api/utils/" class="md-nav__link">
         
   
   
@@ -862,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server/" class="md-nav__link">
+      <a href="../api/server/" class="md-nav__link">
         
   
   
@@ -890,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../manager/" class="md-nav__link">
+      <a href="../api/manager/" class="md-nav__link">
         
   
   
@@ -918,7 +823,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../comms/" class="md-nav__link">
+      <a href="../api/comms/" class="md-nav__link">
         
   
   
@@ -953,7 +858,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/" class="md-nav__link">
+      <a href="../examples/" class="md-nav__link">
         
   
   
@@ -980,7 +885,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../events/" class="md-nav__link">
+      <a href="../events/" class="md-nav__link">
         
   
   
@@ -1027,141 +932,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module-control" class="md-nav__link">
+  <a href="#what-the-mod-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module Control
+        What the mod does
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Module Control">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#togglemodule-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        toggle(module, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enablemodule-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        enable(module, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#disablemodule-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        disable(module, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings" class="md-nav__link">
+  <a href="#auto-tiling-from-the-manager" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings
+        Auto-tiling from the manager
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Settings">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#set_settingmodule-setting-value-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        set_setting(module, setting, value, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_settingmodule-setting-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_setting(module, setting, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#packet-list-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Packet list settings
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#module-info" class="md-nav__link">
+  <a href="#kde-plasma-on-wayland" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module Info
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Module Info">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#list_modulesbot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        list_modules(bot_name="")
+        KDE Plasma on Wayland
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#get_modulemodule-bot_name" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#other-compositors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        get_module(module, bot_name="")
+        Other compositors
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1185,104 +995,92 @@
   
 
 
-<h1 id="meteor-module">meteor module</h1>
-<div class="admonition note">
-<p class="admonition-title">Requires a Meteor-enabled bot</p>
-<p>Every function in this module requires the bot's mod build to include Meteor support (the
-<code>meteor</code> capability). A connected bot whose mod was built without Meteor, or that is running in
-a game with no Meteor Client installed, raises <code>RuntimeError: Bot does not support meteor</code>.
-Wrap calls in <code>try/except</code> to keep scripts portable across bot builds.</p>
-<p>A bot only reports its capabilities while connected, so for an offline or unknown bot the read
-functions (<code>get_setting</code>, <code>get_module</code>, <code>list_modules</code>) keep their usual "no data" return
-instead of raising - there is nothing to check against until the mod connects.</p>
-</div>
-<h2 id="module-control">Module Control</h2>
-<h3 id="togglemodule-bot_name"><code>toggle(module, bot_name="")</code></h3>
-<p>Toggle module on/off.</p>
-<p><strong>Parameters:</strong></p>
+<h1 id="bot-windows">Bot Windows</h1>
+<p>The client mod changes how each bot's game window is created so that launching bots does not
+interrupt whatever you are doing, and so that the windows can be told apart. The manager can then
+tile them (see below).</p>
+<h2 id="what-the-mod-does">What the mod does</h2>
 <ul>
-<li><code>module</code> (<code>str</code>) - Module name</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
+<li><strong>Window class</strong>: every bot window is created with the window class <code>mcbot-&lt;account&gt;</code>
+  (lower-cased account name). This is the <code>app_id</code> on Wayland and the <code>WM_CLASS</code> on X11, and is
+  what window rules and tiling tools match on. Windows and macOS have no equivalent; there the
+  window is identified by its process id.</li>
+<li><strong>Title</strong>: the account name is appended to the title, e.g.
+  <code>Minecraft 1.21.11 - Multiplayer (3rd-party) [BotName]</code>.</li>
+<li><strong>No focus on create</strong>: the window is created with GLFW's <code>FOCUSED</code> and <code>FOCUS_ON_SHOW</code> hints
+  off, so the game never asks for focus itself. Windows honours that outright. On X11 and XWayland
+  the window manager has the final say over freshly mapped windows, and some (KWin at its default
+  focus-stealing level) still activate them - see the KDE rule below. Native Wayland compositors
+  ignore the hints entirely.</li>
+<li><strong>X11 over Wayland</strong>: on a Wayland desktop the game runs under XWayland rather than as a native
+  Wayland client, because Wayland does not let applications position their own windows and the
+  manager's tiling would be a no-op. Minecraft 26.1+ already prefers X11 on its own; the mod extends
+  that to 1.21.x.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">toggle</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="enablemodule-bot_name"><code>enable(module, bot_name="")</code></h3>
-<p>Enable module.</p>
-<p><strong>Parameters:</strong></p>
+<p>JVM arguments (Prism Launcher -&gt; instance -&gt; Settings -&gt; Java arguments) to change the defaults:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-Dmcbot.window.focus=true</code></td>
+<td>Keep GLFW's default behaviour where a new window takes focus</td>
+</tr>
+<tr>
+<td><code>-Dmcbot.window.nativeWayland=true</code></td>
+<td>Let GLFW pick native Wayland on 1.21.x. Window placement will not work</td>
+</tr>
+</tbody>
+</table>
+<p>The window class and title are always applied.</p>
+<h2 id="auto-tiling-from-the-manager">Auto-tiling from the manager</h2>
+<p>Settings -&gt; Bots -&gt; <strong>Game Windows</strong>:</p>
 <ul>
-<li><code>module</code> (<code>str</code>) - Module name</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
+<li><strong>Tile bot windows on connect</strong> - when a bot connects, the manager moves and resizes its window
+  into its cell of a grid on the chosen monitor. A bot's cell is its position in the bot list
+  (first bot = top-left, then row by row), so every bot has a fixed slot: a crashed bot leaves
+  its cell empty and takes it back when it relaunches, and nothing else moves. With more bots
+  than cells the numbering wraps and windows overlap.</li>
+<li><strong>Monitor</strong> - a monitor name as the game reports it. The list holds the names reported by online
+  bots plus the desktop's own screen names; "Primary monitor" works without knowing any.</li>
+<li><strong>Columns / Rows</strong> - the grid. 3 x 2 on a 1920x1080 work area gives 640x540 windows.</li>
+<li><strong>Minimize after placing</strong> - iconify each window once it is in its cell.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="disablemodule-bot_name"><code>disable(module, bot_name="")</code></h3>
-<p>Disable module.</p>
-<p><strong>Parameters:</strong></p>
+<p>Changing the settings re-tiles every online bot immediately, as does removing a bot from the list
+(the bots after it move up a cell). Scripts get the same control through
+<a href="../api/bot/#game-window"><code>bot.window()</code> and <code>bot.set_window()</code></a>.</p>
+<p>Placement needs a platform where applications may move their own windows: Windows, X11 and
+XWayland. On native Wayland (1.21.x with <code>-Dmcbot.window.nativeWayland=true</code>, or GNOME without
+XWayland) the manager can still resize and minimize, and logs a warning about the rest.</p>
+<h2 id="kde-plasma-on-wayland">KDE Plasma on Wayland</h2>
+<p>KWin decides whether a newly mapped window is activated, for XWayland windows too. If bot windows
+still grab focus, add a window rule once and it applies to every bot:</p>
+<ol>
+<li>System Settings -&gt; Window Management -&gt; Window Rules -&gt; Add New.</li>
+<li>Window class (application): <strong>Regular Expression</strong> <code>^mcbot-</code>.
+   Match whole window class: No.</li>
+<li>Add Property -&gt; <strong>Focus stealing prevention</strong> -&gt; Force -&gt; <strong>Extreme</strong>.</li>
+<li>Apply.</li>
+</ol>
+<p>Bot windows now open behind whatever you are working in. The game runs under XWayland, so the
+manager's auto-tiling works as on any X11 desktop; KWin rules with <strong>Screen</strong>, <strong>Size</strong>, or
+<strong>Position</strong> properties (<em>Apply Initially</em>) are an alternative for static layouts, one rule per bot
+matching the exact class <code>mcbot-&lt;account&gt;</code>.</p>
+<h2 id="other-compositors">Other compositors</h2>
 <ul>
-<li><code>module</code> (<code>str</code>) - Module name</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
+<li><strong>GNOME (Wayland)</strong>: no window rules and no public placement API; GNOME applies its own
+  focus-stealing heuristics and may show a "window is ready" notification instead of raising the
+  window.</li>
+<li><strong>Sway / i3</strong>: <code>no_focus [app_id="^mcbot-"]</code> keeps focus where it is;
+  <code>for_window [app_id="^mcbot-"] move to output DP-1</code> and friends handle placement
+  (<code>class</code> instead of <code>app_id</code> on i3).</li>
+<li><strong>X11 window managers</strong>: match <code>WM_CLASS</code> <code>mcbot-&lt;account&gt;</code> in the WM's rules; tools like
+  <code>xdotool search --class mcbot-</code> and <code>wmctrl</code> also see the windows.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
-</code></pre></div>
-<h2 id="settings">Settings</h2>
-<h3 id="set_settingmodule-setting-value-bot_name"><code>set_setting(module, setting, value, bot_name="")</code></h3>
-<p>Set module setting.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>module</code> (<code>str</code>) - Module name</li>
-<li><code>setting</code> (<code>str</code>) - Setting path (use dots for nested settings)</li>
-<li><code>value</code> - Setting value</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">,</span> <span class="s2">"health"</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-<span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"kill-aura"</span><span class="p">,</span> <span class="s2">"Targeting.range"</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="get_settingmodule-setting-bot_name"><code>get_setting(module, setting, bot_name="")</code></h3>
-<p>Get module setting value.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>module</code> (<code>str</code>) - Module name</li>
-<li><code>setting</code> (<code>str</code>) - Setting path</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
-</ul>
-<p><strong>Returns:</strong> Setting value</p>
-<div class="highlight"><pre><span></span><code><span class="n">health</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">,</span> <span class="s2">"health"</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="packet-list-settings">Packet list settings</h3>
-<p>Packet list settings (e.g. Packet Canceller's <code>s2c-packets</code>) hold packet names whose format
-depends on the Meteor build the bot is running:</p>
-<ul>
-<li>Older Meteor builds (1.21.x): class names like <code>HandSwingC2SPacket</code> or
-  <code>PlayerMoveC2SPacket.PositionAndOnGround</code></li>
-<li>Newer Meteor builds (PacketType-based, 26.1.2+): flow-prefixed ids like
-  <code>serverbound/minecraft:swing</code></li>
-</ul>
-<p>Treat the names as opaque strings: read the current list, modify it, and write it back
-unchanged. There is no cross-version translation - names from one Meteor generation
-silently resolve to nothing on the other (unknown names are dropped without error), so
-scripts that hardcode packet names are tied to the Meteor generation they were written for.</p>
-<h2 id="module-info">Module Info</h2>
-<h3 id="list_modulesbot_name"><code>list_modules(bot_name="")</code></h3>
-<p>List all available Meteor modules.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
-</ul>
-<p><strong>Returns:</strong> <code>list[str]</code> of module names</p>
-<div class="highlight"><pre><span></span><code><span class="n">modules</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">list_modules</span><span class="p">()</span>
-<span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="get_modulemodule-bot_name"><code>get_module(module, bot_name="")</code></h3>
-<p>Get module information.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>module</code> (<code>str</code>) - Module name</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
-</ul>
-<p><strong>Returns:</strong> <code>dict</code> with module information</p>
-<div class="highlight"><pre><span></span><code><span class="n">info</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">get_module</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
-</code></pre></div>
 
 
 
@@ -1332,10 +1130,10 @@ scripts that hardcode packet names are tied to the Meteor generation they were w
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -510,6 +510,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -975,19 +1003,19 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">baritone</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">utils</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handle_commands</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!pos&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!pos"</span><span class="p">:</span>
         <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Position: </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Position: </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'y'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!goto spawn&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!goto spawn"</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Going to spawn!&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Going to spawn!"</span><span class="p">)</span>
 
-    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!stop&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!stop"</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Stopped&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Stopped"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="how-it-works">How it Works</h2>
 <ol>
@@ -1004,11 +1032,11 @@
 </ol>
 <h2 id="debugging">Debugging</h2>
 <p>Use <code>utils.log()</code> to debug:</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handle_commands</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Received: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!pos&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!pos"</span><span class="p">:</span>
         <span class="c1"># ...</span>
 </code></pre></div>
 <p>Logs appear in the bots console tab.</p>

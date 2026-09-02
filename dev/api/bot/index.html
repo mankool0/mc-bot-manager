@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -723,6 +751,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#data_versionbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        data_version(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#uptimebot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -859,6 +898,45 @@
     <span class="md-ellipsis">
       
         list_all()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#game-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game Window
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Game Window">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#windowbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        window(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_windowxnone-ynone-widthnone-heightnone-monitor-minimizednone-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_window(x=None, y=None, width=None, height=None, monitor="", minimized=None, bot_name="")
       
     </span>
   </a>
@@ -1418,6 +1496,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#data_versionbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        data_version(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#uptimebot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1554,6 +1643,45 @@
     <span class="md-ellipsis">
       
         list_all()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#game-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game Window
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Game Window">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#windowbot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        window(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_windowxnone-ynone-widthnone-heightnone-monitor-minimizednone-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        set_window(x=None, y=None, width=None, height=None, monitor="", minimized=None, bot_name="")
       
     </span>
   </a>
@@ -1735,6 +1863,15 @@
 <h3 id="accountbot_name"><code>account(bot_name="")</code></h3>
 <p>Get account username.</p>
 <p><strong>Returns:</strong> <code>str</code> or <code>None</code></p>
+<h3 id="data_versionbot_name"><code>data_version(bot_name="")</code></h3>
+<p>Get the Minecraft <a href="https://minecraft.wiki/w/Data_version">data version</a> of the client this bot
+runs -- <code>4189</code> for 1.21.4, <code>4790</code> for 26.1.2. Reported by the mod in its handshake, so an online
+bot always has one.</p>
+<p>This is the <strong>client's</strong> version, not the server's. Under a translating proxy (ViaVersion and
+friends) they differ, and it is the client's that describes the world the bot sees: block and item
+names come from the client's own registry, so this is the vocabulary <code>world.export_sections()</code>
+palettes and <code>world.get_block()</code> names are written in.</p>
+<p><strong>Returns:</strong> <code>int</code> or <code>None</code></p>
 <h3 id="uptimebot_name"><code>uptime(bot_name="")</code></h3>
 <p>Get bot uptime in seconds.</p>
 <p><strong>Returns:</strong> <code>int</code> or <code>None</code></p>
@@ -1752,8 +1889,8 @@
 <li><code>health</code> (<code>str</code>) - One of: <code>"Unknown"</code>, <code>"Alive"</code>, <code>"Dead"</code></li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="n">p</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">proxy</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">p</span> <span class="ow">and</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;health&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Dead&quot;</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Proxy is down&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">p</span> <span class="ow">and</span> <span class="n">p</span><span class="p">[</span><span class="s2">"health"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Dead"</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Proxy is down"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="dimensionbot_name"><code>dimension(bot_name="")</code></h3>
 <p>Get current dimension.</p>
@@ -1771,7 +1908,7 @@
 <div class="highlight"><pre><span></span><code><span class="n">items</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">inventory</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">items</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'slot'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'display_name'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="resync_inventorybot_name"><code>resync_inventory(bot_name="")</code></h3>
 <p>Force a full inventory resync from the server. Sends a stateId mismatch packet to trigger <code>sendAllDataToRemote</code> server-side, which sends back the authoritative inventory state.</p>
@@ -1840,12 +1977,16 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 <p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if the bot is not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="n">world</span><span class="o">.</span><span class="n">click_slot</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">cursor</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_cursor_item</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">cursor</span> <span class="ow">and</span> <span class="n">cursor</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;minecraft:air&quot;</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Holding </span><span class="si">{</span><span class="n">cursor</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">cursor</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">cursor</span> <span class="ow">and</span> <span class="n">cursor</span><span class="p">[</span><span class="s2">"item_id"</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"minecraft:air"</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Holding </span><span class="si">{</span><span class="n">cursor</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">cursor</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="get_screenbot_name"><code>get_screen(bot_name="")</code></h3>
 <p>Get full screen dump as a <code>ScreenState</code> object.</p>
 <p><strong>Returns:</strong> <code>ScreenState</code> or <code>None</code> if no screen is open (in-game)</p>
+<p>Screen and widget class names are Mojang names on every supported Minecraft version. Obfuscated
+versions (1.21.x) hand the mod intermediary names like <code>net.minecraft.class_419</code> at runtime, and it
+maps them back, so matching on <code>"DeathScreen" in screen.screen_class</code> works everywhere. Class names
+of screens added by other mods are reported as-is.</p>
 <p><strong><code>ScreenState</code> attributes:</strong></p>
 <table>
 <thead>
@@ -1864,7 +2005,7 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 <tr>
 <td><code>screen_class</code></td>
 <td><code>str</code></td>
-<td>Fully qualified Java class name</td>
+<td>Fully qualified Mojang class name, e.g. <code>net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen</code></td>
 </tr>
 <tr>
 <td><code>title</code></td>
@@ -1916,7 +2057,7 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 <tr>
 <td><code>class_name</code></td>
 <td><code>str</code></td>
-<td>Fully qualified class name</td>
+<td>Fully qualified Mojang class name</td>
 </tr>
 <tr>
 <td><code>x</code>, <code>y</code></td>
@@ -2026,7 +2167,7 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 <span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;Multiplayer&quot;</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">"Multiplayer"</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
             <span class="n">world</span><span class="o">.</span><span class="n">click_widget</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
             <span class="k">break</span>
 
@@ -2034,7 +2175,7 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 <span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">slots</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">&quot;Buy&quot;</span> <span class="ow">in</span> <span class="n">slot</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">"Buy"</span> <span class="ow">in</span> <span class="n">slot</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
             <span class="n">world</span><span class="o">.</span><span class="n">click_slot</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
             <span class="k">break</span>
 </code></pre></div>
@@ -2060,18 +2201,151 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 </ul>
 <div class="highlight"><pre><span></span><code><span class="n">bots</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">list_all</span><span class="p">()</span>
 <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bots</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">'status'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="game-window">Game Window</h2>
+<p>The manager can tile bot windows automatically (Settings -&gt; Bots -&gt; Game Windows); these calls give
+scripts the same control. See <a href="../../bot-windows/">Bot Windows</a> for how windows are identified and
+what each platform supports.</p>
+<p>All rectangles are the window's <strong>outer frame</strong> (decorations included) in pixels, relative to the
+top-left of a monitor's <strong>work area</strong> (the monitor minus panels/taskbar).</p>
+<h3 id="windowbot_name"><code>window(bot_name="")</code></h3>
+<p>Get the game window's placement.</p>
+<p><strong>Returns:</strong> <code>WindowState</code> or <code>None</code> if the bot is offline or did not answer within 3s.</p>
+<p><strong><code>WindowState</code> attributes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>platform</code></td>
+<td><code>str</code></td>
+<td>GLFW platform: <code>"x11"</code>, <code>"wayland"</code>, <code>"win32"</code>, <code>"cocoa"</code></td>
+</tr>
+<tr>
+<td><code>can_move</code></td>
+<td><code>bool</code></td>
+<td>Whether the window can be positioned. <code>False</code> on native Wayland</td>
+</tr>
+<tr>
+<td><code>monitor</code></td>
+<td><code>str</code></td>
+<td>Name of the monitor the window is on</td>
+</tr>
+<tr>
+<td><code>x</code>, <code>y</code></td>
+<td><code>int</code></td>
+<td>Frame position relative to that monitor's work area</td>
+</tr>
+<tr>
+<td><code>width</code>, <code>height</code></td>
+<td><code>int</code></td>
+<td>Frame size</td>
+</tr>
+<tr>
+<td><code>minimized</code></td>
+<td><code>bool</code></td>
+<td>Iconified</td>
+</tr>
+<tr>
+<td><code>focused</code></td>
+<td><code>bool</code></td>
+<td>Has keyboard focus</td>
+</tr>
+<tr>
+<td><code>monitors</code></td>
+<td><code>list[Monitor]</code></td>
+<td>All monitors the game sees</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>Monitor</code> attributes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>str</code></td>
+<td>Monitor name as the game reports it (RandR/wl_output name on Linux such as <code>DP-1</code>, adapter name on Windows)</td>
+</tr>
+<tr>
+<td><code>primary</code></td>
+<td><code>bool</code></td>
+<td>Primary monitor</td>
+</tr>
+<tr>
+<td><code>x</code>, <code>y</code>, <code>width</code>, <code>height</code></td>
+<td><code>int</code></td>
+<td>Full monitor rect in screen coordinates</td>
+</tr>
+<tr>
+<td><code>work_x</code>, <code>work_y</code>, <code>work_width</code>, <code>work_height</code></td>
+<td><code>int</code></td>
+<td>Work area in screen coordinates</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="n">w</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">window</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">w</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">monitor</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2"> at (</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">), minimized=</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">minimized</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">w</span><span class="o">.</span><span class="n">monitors</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">name</span><span class="si">}{</span><span class="s1">' (primary)'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">m</span><span class="o">.</span><span class="n">primary</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">''</span><span class="si">}</span><span class="s2">: work area </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">work_width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">work_height</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="set_windowxnone-ynone-widthnone-heightnone-monitor-minimizednone-bot_name"><code>set_window(x=None, y=None, width=None, height=None, monitor="", minimized=None, bot_name="")</code></h3>
+<p>Move, resize or (un)minimize the game window. Arguments left as <code>None</code> keep their current value.</p>
+<ul>
+<li><code>x</code>, <code>y</code> (<code>int</code>) - Frame position relative to the work area of <code>monitor</code></li>
+<li><code>width</code>, <code>height</code> (<code>int</code>) - Frame size</li>
+<li><code>monitor</code> (<code>str</code>) - Target monitor name from <code>window().monitors</code>. Empty keeps the current monitor; with no <code>x</code>/<code>y</code> the window keeps its offset within the work area when moved to another monitor</li>
+<li><code>minimized</code> (<code>bool</code>) - <code>True</code> iconifies, <code>False</code> restores</li>
+</ul>
+<p><strong>Returns:</strong> the resulting <code>WindowState</code>, or <code>None</code> on timeout. Raises if the bot is not online.</p>
+<p>Positioning is ignored (with a warning in the game log) on native Wayland and while the game is
+fullscreen; resizing and minimizing still work.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Quarter of the primary monitor, top-right</span>
+<span class="n">w</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">window</span><span class="p">()</span>
+<span class="n">primary</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">w</span><span class="o">.</span><span class="n">monitors</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">primary</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">set_window</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">primary</span><span class="o">.</span><span class="n">work_width</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+               <span class="n">width</span><span class="o">=</span><span class="n">primary</span><span class="o">.</span><span class="n">work_width</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">primary</span><span class="o">.</span><span class="n">work_height</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span>
+               <span class="n">monitor</span><span class="o">=</span><span class="n">primary</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+<span class="c1"># Park it out of the way</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">set_window</span><span class="p">(</span><span class="n">minimized</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="bot-control">Bot Control</h2>
 <h3 id="startbot_name"><code>start(bot_name="")</code></h3>
 <p>Start the bot.</p>
+<p>Launches are serialized: the manager sends one launch command to Prism at a
+time and only sends the next once the previous bot has connected to the
+manager (or failed - crashed, could not launch, or hit the startup timeout).
+Calling <code>start()</code> on many bots in a loop is fine; each one is queued and shown
+as <code>Queued #n</code> in the manager until its turn. Prism refreshes the account
+token on every launch, and concurrent refreshes fail, which is why a burst of
+simultaneous launches is never sent.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
 <div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># Start current bot</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;bot2&quot;</span><span class="p">)</span>  <span class="c1"># Start specific bot</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">"bot2"</span><span class="p">)</span>  <span class="c1"># Start specific bot</span>
+
+<span class="c1"># Start a fleet - they launch one after another</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"bot1"</span><span class="p">,</span> <span class="s2">"bot2"</span><span class="p">,</span> <span class="s2">"bot3"</span><span class="p">]:</span>
+    <span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"bot1"</span><span class="p">,</span> <span class="s2">"bot2"</span><span class="p">,</span> <span class="s2">"bot3"</span><span class="p">]:</span>
+    <span class="n">bot</span><span class="o">.</span><span class="n">wait_for_online</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bot_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="stopreason-bot_name"><code>stop(reason="", bot_name="")</code></h3>
 <p>Stop the bot gracefully.</p>
@@ -2082,7 +2356,7 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 </ul>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
 <div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>  <span class="c1"># Stop with default reason</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="s2">&quot;Task completed&quot;</span><span class="p">)</span>  <span class="c1"># Stop with custom reason</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="s2">"Task completed"</span><span class="p">)</span>  <span class="c1"># Stop with custom reason</span>
 </code></pre></div>
 <h3 id="restartreason-bot_name"><code>restart(reason="", bot_name="")</code></h3>
 <p>Restart the bot.</p>
@@ -2093,12 +2367,14 @@ empty, <code>item_id</code> is <code>"minecraft:air"</code> and <code>count</cod
 </ul>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
 <div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">restart</span><span class="p">()</span>  <span class="c1"># Restart with default reason</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">restart</span><span class="p">(</span><span class="s2">&quot;Updating configuration&quot;</span><span class="p">)</span>  <span class="c1"># Restart with custom reason</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">restart</span><span class="p">(</span><span class="s2">"Updating configuration"</span><span class="p">)</span>  <span class="c1"># Restart with custom reason</span>
 </code></pre></div>
 <h3 id="wait_for_onlinetimeout600-bot_name"><code>wait_for_online(timeout=60.0, bot_name="")</code></h3>
 <p>Block until the bot is Online. <code>bot.start()</code> returns as soon as the launch is
-triggered; use this to wait for the game client to actually connect. A launch
-that never connects is marked Error after 2 minutes.</p>
+queued; use this to wait for the game client to actually connect. A launch
+that never connects is marked Error 2 minutes after its launch command is
+sent to Prism - time spent waiting in the launch queue does not count, so a
+bot behind several others may need a <code>timeout</code> well above 60 seconds.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
 <li><code>timeout</code> (<code>float</code>, optional) - Seconds to wait, default 60</li>
@@ -2107,11 +2383,11 @@ that never connects is marked Error after 2 minutes.</p>
 <p><strong>Returns:</strong> <code>bool</code> - <code>True</code> when online; <code>False</code> on timeout, on a startup
 Error, or if the script is stopped while waiting</p>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found</p>
-<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;Repairer&quot;</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">wait_for_online</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bot_name</span><span class="o">=</span><span class="s2">&quot;Repairer&quot;</span><span class="p">):</span>
-    <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">&quot;Repairer&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;collect_pickaxes&quot;</span><span class="p">})</span>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">"Repairer"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">bot</span><span class="o">.</span><span class="n">wait_for_online</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bot_name</span><span class="o">=</span><span class="s2">"Repairer"</span><span class="p">):</span>
+    <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="s2">"Repairer"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"cmd"</span><span class="p">:</span> <span class="s2">"collect_pickaxes"</span><span class="p">})</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Repairer failed to come online&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"Repairer failed to come online"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="commands">Commands</h2>
 <h3 id="chatmessage-bot_name"><code>chat(message, bot_name="")</code></h3>
@@ -2122,10 +2398,10 @@ Error, or if the script is stopped while waiting</p>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
-<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Hello world!&quot;</span><span class="p">)</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;/tp 0 64 0&quot;</span><span class="p">)</span>  <span class="c1"># Slash commands work</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;#goto 100 64 100&quot;</span><span class="p">)</span>  <span class="c1"># Baritone commands work</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Hello from bot2!&quot;</span><span class="p">,</span> <span class="s2">&quot;bot2&quot;</span><span class="p">)</span>  <span class="c1"># Send from specific bot</span>
+<div class="highlight"><pre><span></span><code><span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Hello world!"</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"/tp 0 64 0"</span><span class="p">)</span>  <span class="c1"># Slash commands work</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"#goto 100 64 100"</span><span class="p">)</span>  <span class="c1"># Baritone commands work</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Hello from bot2!"</span><span class="p">,</span> <span class="s2">"bot2"</span><span class="p">)</span>  <span class="c1"># Send from specific bot</span>
 </code></pre></div>
 <h3 id="manager_commandcommand-bot_name"><code>manager_command(command, bot_name="")</code></h3>
 <p>Send raw manager protocol command (advanced).</p>
@@ -2136,9 +2412,9 @@ Error, or if the script is stopped while waiting</p>
 </ul>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Advanced usage - prefer using bot.chat() or specific APIs</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">&quot;chat Hello&quot;</span><span class="p">)</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">&quot;baritone goto 100 64 100&quot;</span><span class="p">)</span>
-<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">&quot;chat Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;bot2&quot;</span><span class="p">)</span>  <span class="c1"># Send to specific bot</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">"chat Hello"</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">"baritone goto 100 64 100"</span><span class="p">)</span>
+<span class="n">bot</span><span class="o">.</span><span class="n">manager_command</span><span class="p">(</span><span class="s2">"chat Hello"</span><span class="p">,</span> <span class="s2">"bot2"</span><span class="p">)</span>  <span class="c1"># Send to specific bot</span>
 </code></pre></div>
 
 

@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1050,6 +1078,73 @@
     <span class="md-ellipsis">
       
         memory_usage(bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#section-observation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section Observation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Section Observation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_sectionsbot_name-sincenone-dimension-digestfalse-limit0-digest_prefixb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        changed_sections(bot_name="", since=None, dimension="", digest=False, limit=0, digest_prefix=b"")
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="changed_sections(bot_name=&#34;&#34;, since=None, dimension=&#34;&#34;, digest=False, limit=0, digest_prefix=b&#34;&#34;)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_sectionchunk_x-chunk_z-section_y-bot_name-dimension-digest_prefixb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_section(chunk_x, chunk_z, section_y, bot_name="", dimension="", digest_prefix=b"")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export_sectionskeys-bot_name-dimension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_sections(keys, bot_name="", dimension="")
       
     </span>
   </a>
@@ -1997,6 +2092,73 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#section-observation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section Observation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Section Observation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_sectionsbot_name-sincenone-dimension-digestfalse-limit0-digest_prefixb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        changed_sections(bot_name="", since=None, dimension="", digest=False, limit=0, digest_prefix=b"")
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="changed_sections(bot_name=&#34;&#34;, since=None, dimension=&#34;&#34;, digest=False, limit=0, digest_prefix=b&#34;&#34;)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_sectionchunk_x-chunk_z-section_y-bot_name-dimension-digest_prefixb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_section(chunk_x, chunk_z, section_y, bot_name="", dimension="", digest_prefix=b"")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export_sectionskeys-bot_name-dimension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_sections(keys, bot_name="", dimension="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#usage-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2345,28 +2507,28 @@
 <li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
 <li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
 <li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and the chunk is not loaded in memory, read the block from the saved <code>.mca</code> region file on disk (default: <code>False</code>)</li>
-<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. <strong>Requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with <code>use_disk=True</code>, the saved world is read instead.</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <p><strong>Returns:</strong> <code>str</code> - Block state string (e.g., <code>"minecraft:stone"</code>, <code>"minecraft:chest[facing=north]"</code>), or <code>None</code> if chunk is not loaded (and not on disk when <code>use_disk=True</code>) or bot is offline</p>
-<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online; <code>ValueError</code> if <code>dimension</code> is set without <code>use_disk=True</code></p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <p><strong>Note:</strong> Disk reads require world saving to be enabled. Returns <code>None</code> if the world save path is not available or the chunk has never been saved.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get block at specific position</span>
 <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">block</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Block at (100, 64, 200): </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Block at (100, 64, 200): </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># Check block type</span>
-    <span class="k">if</span> <span class="s2">&quot;chest&quot;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Found a chest!&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"chest"</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Found a chest!"</span><span class="p">)</span>
 
-<span class="c1"># Read a block from a chunk that isn&#39;t currently loaded</span>
+<span class="c1"># Read a block from a chunk that isn't currently loaded</span>
 <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">block</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved block: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Saved block: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Read a block from a different dimension</span>
-<span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">&quot;minecraft:the_nether&quot;</span><span class="p">)</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name"><code>find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")</code></h3>
 <p>Find all blocks of a specific type within a spherical radius, with optional light level filters.</p>
@@ -2389,21 +2551,21 @@
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find all diamond ore within 64 blocks of bot</span>
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">diamonds</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:diamond_ore&quot;</span><span class="p">,</span>
-                             <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+<span class="n">diamonds</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:diamond_ore"</span><span class="p">,</span>
+                             <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span>
                              <span class="n">radius</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diamonds</span><span class="p">)</span><span class="si">}</span><span class="s2"> diamond ore blocks&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diamonds</span><span class="p">)</span><span class="si">}</span><span class="s2"> diamond ore blocks"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">diamonds</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Diamond at (</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Diamond at (</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 
 <span class="c1"># Find all chests near spawn</span>
-<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:chest"</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 
 <span class="c1"># Find air blocks with no block light and no sky access (fully dark, unlit caves)</span>
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">dark_air</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:air&quot;</span><span class="p">,</span>
-                             <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+<span class="n">dark_air</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:air"</span><span class="p">,</span>
+                             <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span>
                              <span class="n">radius</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
                              <span class="n">max_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                              <span class="n">max_sky_light</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -2424,14 +2586,14 @@
 
 <span class="c1"># Find nearest chest or barrel</span>
 <span class="n">container</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span>
-    <span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;minecraft:barrel&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;minecraft:trapped_chest&quot;</span>
+    <span class="s2">"minecraft:chest"</span><span class="p">,</span>
+    <span class="s2">"minecraft:barrel"</span><span class="p">,</span>
+    <span class="s2">"minecraft:trapped_chest"</span>
 <span class="p">])</span>
 
 <span class="k">if</span> <span class="n">container</span><span class="p">:</span>
     <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">container</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found container at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found container at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 
     <span class="c1"># Find a valid standing position around the container</span>
     <span class="c1"># Check adjacent blocks (not diagonals)</span>
@@ -2444,43 +2606,43 @@
         <span class="n">block_at_pos</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span><span class="p">,</span> <span class="n">check_z</span><span class="p">)</span>
         <span class="n">block_above</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">check_z</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">block_at_pos</span> <span class="ow">and</span> <span class="n">block_above</span> <span class="ow">and</span> <span class="s2">&quot;air&quot;</span> <span class="ow">in</span> <span class="n">block_at_pos</span> <span class="ow">and</span> <span class="s2">&quot;air&quot;</span> <span class="ow">in</span> <span class="n">block_above</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">block_at_pos</span> <span class="ow">and</span> <span class="n">block_above</span> <span class="ow">and</span> <span class="s2">"air"</span> <span class="ow">in</span> <span class="n">block_at_pos</span> <span class="ow">and</span> <span class="s2">"air"</span> <span class="ow">in</span> <span class="n">block_above</span><span class="p">:</span>
             <span class="n">standing_pos</span> <span class="o">=</span> <span class="p">(</span><span class="n">check_x</span><span class="p">,</span> <span class="n">check_y</span><span class="p">,</span> <span class="n">check_z</span><span class="p">)</span>
             <span class="k">break</span>
 
     <span class="k">if</span> <span class="n">standing_pos</span><span class="p">:</span>
         <span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">sz</span> <span class="o">=</span> <span class="n">standing_pos</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Going to standing position (</span><span class="si">{</span><span class="n">sx</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sy</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sz</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Going to standing position (</span><span class="si">{</span><span class="n">sx</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sy</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">sz</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span>
 
         <span class="c1"># Wait for bot to arrive</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">sz</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">]</span> <span class="o">-</span> <span class="n">sx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span> <span class="o">-</span> <span class="n">sy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">]</span> <span class="o">-</span> <span class="n">sz</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.5</span><span class="p">:</span>
                 <span class="k">break</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
 
         <span class="c1"># To interact, convert to int:</span>
         <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid standing position found near container&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"No valid standing position found near container"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No containers found nearby&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"No containers found nearby"</span><span class="p">)</span>
 
 <span class="c1"># Find nearest ore</span>
 <span class="n">ore</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span>
-    <span class="s2">&quot;minecraft:diamond_ore&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;minecraft:iron_ore&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;minecraft:coal_ore&quot;</span>
+    <span class="s2">"minecraft:diamond_ore"</span><span class="p">,</span>
+    <span class="s2">"minecraft:iron_ore"</span><span class="p">,</span>
+    <span class="s2">"minecraft:coal_ore"</span>
 <span class="p">],</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">ore</span><span class="p">:</span>
     <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">ore</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found ore at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found ore at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
     <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ore type: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Ore type: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No ore found within 50 blocks&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"No ore found within 50 blocks"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="block-entities">Block Entities</h2>
 <p>Block entities are blocks with attached data: chests, furnaces, signs, shulker boxes, etc. The bot tracks block entities for chunks it has loaded this session. With <code>use_disk=True</code>, entities from saved but currently unloaded chunks can also be queried.</p>
@@ -2492,63 +2654,117 @@
 <li><code>y</code> (<code>int</code>) - Block Y coordinate</li>
 <li><code>z</code> (<code>int</code>) - Block Z coordinate</li>
 <li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and no in-memory data exists, read from the saved <code>.mca</code> file (default: <code>False</code>)</li>
-<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension. <strong>Requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> if set without it.</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension. Block entities are stored per dimension, so an explicit dimension reads memory directly.</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
-<p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if no block entity exists at that position</p>
+<p><strong>Returns:</strong> <code>BlockEntity</code> or <code>None</code> if no block entity exists at that position</p>
+<p><strong><code>BlockEntity</code> attributes:</strong></p>
 <table>
 <thead>
 <tr>
-<th>Key</th>
+<th>Attribute</th>
 <th>Type</th>
-<th>Present when</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>type</code></td>
 <td><code>str</code></td>
-<td>always (e.g. <code>"minecraft:chest"</code>)</td>
+<td>Block entity id, e.g. <code>"minecraft:chest"</code></td>
 </tr>
 <tr>
-<td><code>x</code></td>
+<td><code>x</code>, <code>y</code>, <code>z</code></td>
 <td><code>int</code></td>
-<td>always</td>
-</tr>
-<tr>
-<td><code>y</code></td>
-<td><code>int</code></td>
-<td>always</td>
-</tr>
-<tr>
-<td><code>z</code></td>
-<td><code>int</code></td>
-<td>always</td>
+<td>Block position</td>
 </tr>
 <tr>
 <td><code>items</code></td>
 <td><code>list</code></td>
-<td>container was opened this session (memory) or in a previous session that was saved to disk</td>
+<td>Container contents (<a href="../bot/#item-dict">item dicts</a>); empty when the container has never been opened</td>
+</tr>
+<tr>
+<td><code>front_text</code></td>
+<td><code>list[str]</code></td>
+<td>Signs: the four lines of the front face, in order. Empty for anything else</td>
+</tr>
+<tr>
+<td><code>back_text</code></td>
+<td><code>list[str]</code></td>
+<td>Signs: the four lines of the back face, in order. Empty for anything else</td>
+</tr>
+<tr>
+<td><code>is_waxed</code></td>
+<td><code>bool</code></td>
+<td>Signs: <code>True</code> when the sign has been waxed with honeycomb</td>
+</tr>
+<tr>
+<td><code>nbt</code></td>
+<td><code>dict</code> or <code>None</code></td>
+<td>The whole NBT compound, parsed on first access. See below</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Note on <code>items</code>:</strong> The Minecraft server only sends container contents when a container is opened, so <code>items</code> is only present if the container was opened at some point. Memory always takes priority: if items are already in memory (opened this session), they are returned even when <code>use_disk=True</code>. Disk is only consulted when items are absent from memory - in that case, items may be present on disk if the container was opened in a previous session that was saved.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># items only present if container was opened this session</span>
+<p>This used to be a plain <code>dict</code> and still behaves like one - <code>be["type"]</code>, <code>be.get("items", [])</code> and
+<code>"front_text" in be</code> all work, with the same keys the dict had, so existing scripts keep running.
+New code should use the attributes: they are typed in the editor and always present, so
+<code>be.front_text</code> on a chest is <code>[]</code> rather than a <code>KeyError</code>.</p>
+<p><strong>Note on <code>items</code>:</strong> The Minecraft server only sends container contents when a container is opened,
+so <code>items</code> is empty unless the container was opened at some point. Memory always takes priority: if
+items are already in memory (opened this session), they are returned even when <code>use_disk=True</code>. Disk
+is only consulted when items are absent from memory - in that case, items may be present on disk if
+the container was opened in a previous session that was saved.</p>
+<p><strong>Note on <code>nbt</code>:</strong> the block entity's full NBT compound, exactly as the server sent it with the
+chunk, converted to plain Python. Use it for anything this API does not expose directly - spawner
+mob, beacon effects, banner patterns, lectern books, skull owners, decorated pot sherds, modded
+block entities. It is parsed on first access and cached, so a chunk scan that never touches <code>nbt</code>
+costs nothing, and it is <code>None</code> when there is no NBT for that block entity.</p>
+<p>Two things to know about it:</p>
+<ul>
+<li><strong><code>items</code> wins over <code>nbt["Items"]</code>.</strong> Container contents in <code>nbt</code> are the chunk-load snapshot and
+  are never refreshed afterwards, while <code>items</code> comes from the container packet and is current.</li>
+<li><strong>The conversion is lossy</strong>, because it is meant for reading: <code>byte</code>, <code>short</code>, <code>int</code> and <code>long</code>
+  all become <code>int</code>; <code>float</code> and <code>double</code> become <code>float</code>; <code>byte_array</code>, <code>int_array</code> and <code>long_array</code>
+  all become <code>list[int]</code>; compounds become <code>dict</code> and lists become <code>list</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># items is empty unless the container was opened</span>
 <span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="s1">&#39;items&#39;</span> <span class="ow">in</span> <span class="n">be</span><span class="p">:</span>
-    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">be</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;minecraft:air&#39;</span><span class="p">:</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="c1"># also check saved data from previous sessions where container was opened</span>
-<span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="s1">&#39;items&#39;</span> <span class="ow">in</span> <span class="n">be</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chest contents from disk: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> stacks&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="n">be</span><span class="o">.</span><span class="n">items</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">be</span><span class="o">.</span><span class="n">items</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">'minecraft:air'</span><span class="p">:</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># check a saved but unloaded chunk</span>
 <span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="n">be</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;minecraft:chest&#39;</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Found a chest in saved data&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="n">be</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'minecraft:chest'</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Found a chest in saved data"</span><span class="p">)</span>
+
+<span class="c1"># anything not exposed as an attribute is in nbt</span>
+<span class="n">be</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entity</span><span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">,</span> <span class="n">sz</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">be</span> <span class="ow">and</span> <span class="n">be</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'minecraft:trial_spawner'</span><span class="p">:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">be</span><span class="o">.</span><span class="n">nbt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'normal_config'</span><span class="p">))</span>
+</code></pre></div>
+<p><strong>Note on sign text:</strong> <code>front_text</code> / <code>back_text</code> come from the block entity data the server sends
+with the chunk, so they are available for any sign in a chunk the bot has loaded (or from disk with
+<code>use_disk=True</code>).
+They are normalized here rather than left to <code>nbt</code> because the encoding differs by Minecraft
+version. Text components are flattened to plain strings, so styling and colour are dropped and an
+empty line is <code>""</code>.</p>
+<p><strong>Freshness:</strong> block entity data arrives with the chunk and is then kept current incrementally. The
+client forwards every block entity update packet the server sends, plus any block entity that shows
+up on a block update, and drops one whose block is broken - so a sign edited or a banner re-dyed
+next to the bot is reflected immediately. The block entities that push updates are signs, banners,
+skulls, spawners, trial spawners, vaults, beacons, campfires, decorated pots, conduits, beds,
+brushable blocks, end gateways, creaking hearts, jigsaws and structure blocks.</p>
+<p><strong>Chests, barrels, furnaces, hoppers, brewing stands, lecterns and beehives send no update packet at
+all</strong> - Minecraft has none for them - so their contents and state still only arrive by opening the
+container (<code>items</code>, or the <a href="../../events/#container_update"><code>container_update</code></a> event, which also
+carries furnace burn and cook progress) or when the chunk is loaded again.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find the chest under the sign that says "eChests"</span>
+<span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cz</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">"eChests"</span> <span class="ow">in</span> <span class="n">be</span><span class="o">.</span><span class="n">front_text</span><span class="p">:</span>
+        <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">be</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">be</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">be</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+        <span class="k">break</span>
 </code></pre></div>
 <hr />
 <h3 id="get_block_entities_in_chunkchunk_x-chunk_z-use_diskfalse-dimension-bot_name"><code>get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")</code></h3>
@@ -2558,30 +2774,30 @@
 <li><code>chunk_x</code> (<code>int</code>) - Chunk X coordinate (block X divided by 16, rounded down)</li>
 <li><code>chunk_z</code> (<code>int</code>) - Chunk Z coordinate (block Z divided by 16, rounded down)</li>
 <li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and the chunk is not loaded, read from the saved <code>.mca</code> file (default: <code>False</code>)</li>
-<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. If a different dimension is specified, <strong>requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> otherwise.</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with <code>use_disk=True</code>, the saved world is read instead.</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
-<p><strong>Returns:</strong> <code>list[dict]</code> - List of block entity dicts (same schema as <code>get_block_entity</code>)</p>
-<p>Memory always takes priority: if the chunk is loaded, memory data is returned regardless of <code>use_disk</code>. Disk is only read when the chunk is not loaded. <code>items</code> is present on any container that was opened (either this session from memory, or a previous session from disk).</p>
+<p><strong>Returns:</strong> <code>list[BlockEntity]</code> - same objects as <code>get_block_entity</code> returns</p>
+<p>Memory always takes priority: if the chunk is loaded, memory data is returned regardless of <code>use_disk</code>. Disk is only read when the chunk is not loaded. <code>items</code> is filled for any container that was opened (either this session from memory, or a previous session from disk).</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 
 <span class="c1"># Get all block entities in the chunk under the bot</span>
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">cx</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
-<span class="n">cz</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">cx</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">cz</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">]</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
 
 <span class="n">entities</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cz</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">entities</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> at (</span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">be</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2"> at (</span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">z</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 
 <span class="c1"># Scan a saved chunk for chests</span>
 <span class="n">entities</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="mi">312</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">chests</span> <span class="o">=</span> <span class="p">[</span><span class="n">be</span> <span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">entities</span> <span class="k">if</span> <span class="n">be</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;minecraft:chest&#39;</span><span class="p">]</span>
-<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chests</span><span class="p">)</span><span class="si">}</span><span class="s2"> chests in saved chunk (312, -5)&quot;</span><span class="p">)</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="p">[</span><span class="n">be</span> <span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">entities</span> <span class="k">if</span> <span class="n">be</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">'minecraft:chest'</span><span class="p">]</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chests</span><span class="p">)</span><span class="si">}</span><span class="s2"> chests in saved chunk (312, -5)"</span><span class="p">)</span>
 
 <span class="c1"># Scan a chunk in the nether from disk</span>
 <span class="n">nether_ents</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">&quot;minecraft:the_nether&quot;</span><span class="p">)</span>
+    <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="block-interaction">Block Interaction</h2>
@@ -2610,7 +2826,7 @@
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">get_hold_attack</span><span class="p">():</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Currently mining&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Currently mining"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h3 id="look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name"><code>look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")</code></h3>
@@ -2656,7 +2872,7 @@
 <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">sneak</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">face</span><span class="o">=</span><span class="n">world</span><span class="o">.</span><span class="n">BlockFace</span><span class="o">.</span><span class="n">WEST</span><span class="p">)</span>
 
 <span class="c1"># Use a bed</span>
-<span class="n">pos</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span><span class="s2">&quot;minecraft:white_bed&quot;</span><span class="p">])</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span><span class="s2">"minecraft:white_bed"</span><span class="p">])</span>
 <span class="k">if</span> <span class="n">pos</span><span class="p">:</span>
     <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">pos</span>
     <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
@@ -2728,7 +2944,7 @@
 </ul>
 <p><strong>Note:</strong> The client does the whole batch within one game tick, so every query is evaluated against the same bot position and the results are consistent with each other even if the bot is moving. The flip side is that a very large batch may briefly freeze the client.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Which of these chests can the bot reach right now?</span>
-<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span> <span class="n">px</span><span class="p">,</span> <span class="n">py</span><span class="p">,</span> <span class="n">pz</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:chest"</span><span class="p">,</span> <span class="n">px</span><span class="p">,</span> <span class="n">py</span><span class="p">,</span> <span class="n">pz</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
 <span class="n">positions</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">chests</span><span class="p">]</span>
 <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">),</span> <span class="n">ok</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">can_reach_blocks</span><span class="p">(</span><span class="n">positions</span><span class="p">)):</span>
     <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
@@ -2871,10 +3087,10 @@
 
 <span class="n">container</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_container</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">container</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Container type: </span><span class="si">{</span><span class="n">container</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">container</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;minecraft:air&#39;</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Container type: </span><span class="si">{</span><span class="n">container</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">container</span><span class="p">[</span><span class="s1">'items'</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">'minecraft:air'</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'slot'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'item_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h3 id="click_slotslot_index-buttonworldmousebuttonleft-click_typeworldclicktypepickup-bot_name-silentfalse"><code>click_slot(slot_index, button=world.MouseButton.LEFT, click_type=world.ClickType.PICKUP, bot_name="", silent=False)</code></h3>
@@ -3001,7 +3217,7 @@
 <div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;Accept&quot;</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">"Accept"</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
             <span class="n">world</span><span class="o">.</span><span class="n">click_widget</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
             <span class="k">break</span>
 </code></pre></div>
@@ -3020,7 +3236,7 @@
 <div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">screen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">widgets</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Max Framerate&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Max Framerate"</span><span class="p">):</span>
             <span class="c1"># Slider range: 10-260 fps</span>
             <span class="n">fraction</span> <span class="o">=</span> <span class="p">(</span><span class="mi">90</span> <span class="o">-</span> <span class="mi">10</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">260</span> <span class="o">-</span> <span class="mi">10</span><span class="p">)</span>
             <span class="n">click_x</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">fraction</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">width</span>
@@ -3038,8 +3254,8 @@
 </ul>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="n">screen</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">get_screen</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">screen</span> <span class="ow">and</span> <span class="s2">&quot;SignEditScreen&quot;</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="p">:</span>
-    <span class="n">world</span><span class="o">.</span><span class="n">type_text</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;Hello world&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">screen</span> <span class="ow">and</span> <span class="s2">"SignEditScreen"</span> <span class="ow">in</span> <span class="n">screen</span><span class="o">.</span><span class="n">screen_class</span><span class="p">:</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">type_text</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">"Hello world"</span><span class="p">)</span>
     <span class="n">world</span><span class="o">.</span><span class="n">press_key</span><span class="p">(</span><span class="n">screen</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Key</span><span class="o">.</span><span class="n">ENTER</span><span class="p">)</span>
 </code></pre></div>
 <hr />
@@ -3237,7 +3453,7 @@
 <p><strong>Returns:</strong> <code>int</code> - Number of loaded chunks</p>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="n">count</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">loaded_chunk_count</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded chunks: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Loaded chunks: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="loaded_chunksbot_name"><code>loaded_chunks(bot_name="")</code></h3>
 <p>Get list of all loaded chunk positions.</p>
@@ -3248,9 +3464,9 @@
 <p><strong>Returns:</strong> <code>list[tuple]</code> - List of chunk positions as <code>(chunk_x, chunk_z)</code> tuples</p>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="n">chunks</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">loaded_chunks</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> chunks:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> chunks:"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cz</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Chunk (</span><span class="si">{</span><span class="n">cx</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="si">}</span><span class="s2">) - blocks (</span><span class="si">{</span><span class="n">cx</span><span class="o">*</span><span class="mi">16</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="o">*</span><span class="mi">16</span><span class="si">}</span><span class="s2">) to (</span><span class="si">{</span><span class="n">cx</span><span class="o">*</span><span class="mi">16</span><span class="o">+</span><span class="mi">15</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="o">*</span><span class="mi">16</span><span class="o">+</span><span class="mi">15</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Chunk (</span><span class="si">{</span><span class="n">cx</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="si">}</span><span class="s2">) - blocks (</span><span class="si">{</span><span class="n">cx</span><span class="o">*</span><span class="mi">16</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="o">*</span><span class="mi">16</span><span class="si">}</span><span class="s2">) to (</span><span class="si">{</span><span class="n">cx</span><span class="o">*</span><span class="mi">16</span><span class="o">+</span><span class="mi">15</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cz</span><span class="o">*</span><span class="mi">16</span><span class="o">+</span><span class="mi">15</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="memory_usagebot_name"><code>memory_usage(bot_name="")</code></h3>
 <p>Get the total memory used by world data storage.</p>
@@ -3261,7 +3477,131 @@
 <p><strong>Returns:</strong> <code>int</code> - Memory usage in bytes</p>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="n">memory</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;World data memory usage: </span><span class="si">{</span><span class="n">memory</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"World data memory usage: </span><span class="si">{</span><span class="n">memory</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="section-observation">Section Observation</h2>
+<p>Bulk primitives for scripts that need to know <em>what part of the world changed</em>
+without walking every block themselves - incremental mirroring to an external
+service, minimap or render invalidation, re-scanning only what moved.</p>
+<p>A <em>section</em> is a 16x16x16 block cube, addressed by
+<code>(chunk_x, chunk_z, section_y)</code> where <code>section_y</code> is the absolute section index
+(<code>block_y &gt;&gt; 4</code>, so y=118 is section 7 and y=-56 is section -4).</p>
+<h3 id="changed_sectionsbot_name-sincenone-dimension-digestfalse-limit0-digest_prefixb"><code>changed_sections(bot_name="", since=None, dimension="", digest=False, limit=0, digest_prefix=b"")</code></h3>
+<p>Get the chunk sections whose content changed since a previous call.</p>
+<p>Change tracking is fed by chunk loads, block updates and chunk unloads. A
+freshly loaded chunk counts as changed in all its sections; light, biome and
+block entity changes do not count.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+<li><code>since</code> (<code>int | None</code>, optional) - <code>token</code> from a previous call. <code>None</code>
+  returns every currently tracked section</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Only report chunks of this dimension (e.g.
+  <code>"minecraft:the_nether"</code>). Empty string reports all dimensions</li>
+<li><code>digest</code> (<code>bool</code>, optional) - Also compute a content digest per section. This
+  hashes every returned section, so leave it off when you only need to know
+  <em>which</em> sections moved</li>
+<li><code>limit</code> (<code>int</code>, optional) - Cap on how many sections to return. <code>0</code> is
+  unlimited. Use it to page: the returned <code>token</code> resumes exactly where the call
+  stopped</li>
+<li><code>digest_prefix</code> (<code>bytes</code>, optional) - Domain-separation tag hashed ahead of
+  the section content. Defaults to <code>b""</code>, the bare content hash. Digests only
+  compare equal when computed with the same prefix, so pass one value
+  consistently - and give each distinct consumer or format its own tag if their
+  encodings could ever share a content-addressed store</li>
+</ul>
+<p><strong>Returns:</strong> <code>SectionChanges</code> with:</p>
+<ul>
+<li><code>.token</code> (<code>int</code>) - Pass as <code>since</code> next time</li>
+<li><code>.truncated</code> (<code>bool</code>) - <code>limit</code> was hit and more sections are pending</li>
+<li><code>.sections</code> (<code>list[SectionChange]</code>) - Iterating the <code>SectionChanges</code> directly
+  iterates these</li>
+</ul>
+<p>Each <code>SectionChange</code> has <code>.chunk_x</code>, <code>.chunk_z</code>, <code>.section_y</code>, <code>.key</code> (the three
+as a tuple, ready to pass to <code>export_sections</code>) and <code>.digest</code> - 32 <code>bytes</code> when
+<code>digest=True</code>, otherwise <code>None</code>.</p>
+<p>The digest is BLAKE2b-256 over <code>digest_prefix</code> followed by the section's
+canonical palette+indices encoding, covering block states only (light, biomes
+and block entities are excluded). No
+coordinate goes into it, so byte-identical terrain digests identically wherever
+it occurs - same content at a different height, column or dimension is the same
+digest, and palette ordering never matters. That is what lets a content-addressed
+store keep one copy, and what makes the digest usable as a cache key for content
+rather than for a place.</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="n">token</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="n">changes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">changed_sections</span><span class="p">(</span><span class="s2">"MyBot"</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="n">token</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">changes</span><span class="o">.</span><span class="n">token</span>
+    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">changes</span><span class="p">:</span>
+        <span class="n">rescan</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">chunk_x</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">chunk_z</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">section_y</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">changes</span><span class="o">.</span><span class="n">truncated</span><span class="p">:</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="token-semantics">Token semantics</h4>
+<p>Tokens are per-bot. Passing one bot's token to another bot returns a full
+snapshot rather than a wrong delta, and so does a token from a bot that was
+removed and re-added. Tokens stay valid across a reconnect: the world clears,
+and the sections re-report as chunks load again.</p>
+<p>Reading never consumes, so any number of independent pollers can each hold their
+own token without affecting each other.</p>
+<p>The report is deliberately conservative in one direction only: it can tell you a
+section changed when the content happens to be identical (a chunk reload
+re-reports every section), so compare digests if that matters. It will not miss
+a change to a section that is still loaded. A section whose chunk unloads before
+you poll is dropped rather than reported - its content is gone from memory
+anyway - and reloading that chunk marks all of it again.</p>
+<h3 id="get_sectionchunk_x-chunk_z-section_y-bot_name-dimension-digest_prefixb"><code>get_section(chunk_x, chunk_z, section_y, bot_name="", dimension="", digest_prefix=b"")</code></h3>
+<p>Get one section's blocks in canonical form.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>chunk_x</code>, <code>chunk_z</code>, <code>section_y</code> (<code>int</code>) - Section to read</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Only read if the chunk is in this dimension</li>
+<li><code>digest_prefix</code> (<code>bytes</code>, optional) - Domain-separation tag for <code>.digest</code>,
+  as in <code>changed_sections</code></li>
+</ul>
+<p><strong>Returns:</strong> <code>Section | None</code> - <code>None</code> when the section is not loaded (or fails
+the dimension filter). Fields:</p>
+<ul>
+<li><code>.palette</code> (<code>list[str]</code>) - Block state strings, sorted and containing exactly
+  the states the indices reference</li>
+<li><code>.indices</code> (<code>bytes</code>) - 4096 unsigned 16-bit little-endian palette indices in
+  YZX order (<code>index = y*256 + z*16 + x</code>)</li>
+<li><code>.dimension</code> (<code>str</code>), <code>.chunk_x</code>, <code>.chunk_z</code>, <code>.section_y</code> (<code>int</code>)</li>
+<li><code>.digest</code> (<code>bytes</code>) - The same 32-byte content digest <code>changed_sections</code>
+  reports when called with the same <code>digest_prefix</code></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="n">section</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_section</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">section</span><span class="p">:</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">"&lt;4096H"</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">palette</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="n">y</span> <span class="o">*</span> <span class="mi">256</span> <span class="o">+</span> <span class="n">z</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="n">x</span><span class="p">]]</span>
+</code></pre></div>
+<h3 id="export_sectionskeys-bot_name-dimension"><code>export_sections(keys, bot_name="", dimension="")</code></h3>
+<p>Serialize chunk sections into a single upload payload.</p>
+<p>The payload is the manager's bulk section framing: a little-endian frame count
+followed by one frame per section (dimension string, section key, and the
+section's canonical palette+indices blob). It is uncompressed and
+self-describing; a receiver that hashes a frame's blob under its own
+<code>digest_prefix</code> gets exactly what <code>changed_sections</code> reported for the same
+content and prefix.</p>
+<p><code>get_section()</code> gives you the same content without the framing.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>keys</code> (<code>list[tuple]</code>) - Sections to export, as <code>(chunk_x, chunk_z, section_y)</code></li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Only export chunks of this dimension. Empty
+  string exports all</li>
+</ul>
+<p><strong>Returns:</strong> <code>bytes</code> - The framed payload. Sections that are no longer loaded
+(or fail the dimension filter) are silently omitted, so the frame count can be
+lower than <code>len(keys)</code>; callers that need exactness should compare counts</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online, if a key is not a
+3-tuple, or if more than 4096 keys are passed in one call (batch instead - one
+section is about 8.3 KB, so the cap is roughly a 34 MB payload)</p>
+<div class="highlight"><pre><span></span><code><span class="n">changes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">changed_sections</span><span class="p">(</span><span class="s2">"MyBot"</span><span class="p">,</span> <span class="n">digest</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">4096</span><span class="p">)</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">export_sections</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">changes</span><span class="p">],</span> <span class="n">bot_name</span><span class="o">=</span><span class="s2">"MyBot"</span><span class="p">)</span>
+<span class="c1"># POST payload wherever it needs to go</span>
 </code></pre></div>
 <h2 id="usage-examples">Usage Examples</h2>
 <h3 id="mining-helper">Mining Helper</h3>
@@ -3273,29 +3613,29 @@
 
 <span class="k">if</span> <span class="n">inventory</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">inventory</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">item</span> <span class="ow">and</span> <span class="s2">&quot;pickaxe&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">item</span> <span class="ow">and</span> <span class="s2">"pickaxe"</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">"item_id"</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
             <span class="n">has_pickaxe</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'display_name'</span><span class="p">]</span><span class="si">}</span><span class="s2"> in slot </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'slot'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">break</span>
 
 <span class="k">if</span> <span class="ow">not</span> <span class="n">has_pickaxe</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No pickaxe found in inventory! Cannot mine.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"No pickaxe found in inventory! Cannot mine."</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="c1"># Find diamond ore</span>
     <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-    <span class="n">diamonds</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:diamond_ore&quot;</span><span class="p">,</span>
-                                 <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+    <span class="n">diamonds</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:diamond_ore"</span><span class="p">,</span>
+                                 <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span>
                                  <span class="n">radius</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">diamonds</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diamonds</span><span class="p">)</span><span class="si">}</span><span class="s2"> diamond ore blocks&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diamonds</span><span class="p">)</span><span class="si">}</span><span class="s2"> diamond ore blocks"</span><span class="p">)</span>
 
         <span class="c1"># Sort by distance</span>
-        <span class="n">diamonds</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">diamonds</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
 
         <span class="c1"># Mine each one</span>
         <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">diamonds</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mining diamond at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Mining diamond at (</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 
             <span class="c1"># Go near the block</span>
             <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
@@ -3303,47 +3643,47 @@
             <span class="c1"># Wait for arrival</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="n">p</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"x"</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"z"</span><span class="p">]</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
                     <span class="k">break</span>
                 <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
 
             <span class="c1"># Break the block using sel cleararea command</span>
             <span class="c1"># Set selection for the single block</span>
-            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sel pos1 </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sel pos2 </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;sel cleararea&quot;</span><span class="p">)</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sel pos1 </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sel pos2 </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"sel cleararea"</span><span class="p">)</span>
 
             <span class="c1"># Wait for block to be broken</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
-                <span class="k">if</span> <span class="n">block</span> <span class="ow">and</span> <span class="s2">&quot;air&quot;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">block</span> <span class="ow">and</span> <span class="s2">"air"</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
                     <span class="k">break</span>
                 <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
 
             <span class="c1"># Clear selections for next iteration</span>
-            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;sel clear&quot;</span><span class="p">)</span>
+            <span class="n">baritone</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">"sel clear"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No diamonds found nearby&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"No diamonds found nearby"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="container-finder">Container Finder</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find all chests</span>
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:chest&quot;</span><span class="p">,</span>
-                           <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">],</span>
+<span class="n">chests</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:chest"</span><span class="p">,</span>
+                           <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span>
                            <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chests</span><span class="p">)</span><span class="si">}</span><span class="s2"> chests&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chests</span><span class="p">)</span><span class="si">}</span><span class="s2"> chests"</span><span class="p">)</span>
 
 <span class="c1"># Go to nearest chest and open it</span>
 <span class="k">if</span> <span class="n">chests</span><span class="p">:</span>
-    <span class="n">nearest</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">chests</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">nearest</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">chests</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">nearest</span>
 
     <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
     <span class="c1"># Wait for arrival...</span>
 
     <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Opened chest!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Opened chest!"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="block-scanner">Block Scanner</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Scan area and categorize blocks</span>
@@ -3355,14 +3695,14 @@
 <span class="n">fluids</span> <span class="o">=</span> <span class="p">[]</span>
 
 <span class="n">chunks</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">loaded_chunks</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scanning </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> loaded chunks...&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Scanning </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> loaded chunks..."</span><span class="p">)</span>
 
 <span class="c1"># Count different block types</span>
 <span class="k">for</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cz</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
     <span class="c1"># Check if chunk is in range</span>
     <span class="n">chunk_center_x</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">8</span>
     <span class="n">chunk_center_z</span> <span class="o">=</span> <span class="n">cz</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">8</span>
-    <span class="n">dist</span> <span class="o">=</span> <span class="p">((</span><span class="n">chunk_center_x</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">chunk_center_z</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+    <span class="n">dist</span> <span class="o">=</span> <span class="p">((</span><span class="n">chunk_center_x</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">chunk_center_z</span> <span class="o">-</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
 
     <span class="k">if</span> <span class="n">dist</span> <span class="o">&gt;</span> <span class="n">radius</span><span class="p">:</span>
         <span class="k">continue</span>
@@ -3375,16 +3715,16 @@
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">block</span><span class="p">:</span>
                     <span class="k">continue</span>
 
-                <span class="k">if</span> <span class="s2">&quot;ore&quot;</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">"ore"</span> <span class="ow">in</span> <span class="n">block</span><span class="p">:</span>
                     <span class="n">ores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block</span><span class="p">))</span>
-                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">block</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;chest&quot;</span><span class="p">,</span> <span class="s2">&quot;barrel&quot;</span><span class="p">,</span> <span class="s2">&quot;shulker&quot;</span><span class="p">]):</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">block</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"chest"</span><span class="p">,</span> <span class="s2">"barrel"</span><span class="p">,</span> <span class="s2">"shulker"</span><span class="p">]):</span>
                     <span class="n">containers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block</span><span class="p">))</span>
-                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">f</span> <span class="ow">in</span> <span class="n">block</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">,</span> <span class="s2">&quot;lava&quot;</span><span class="p">]):</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">f</span> <span class="ow">in</span> <span class="n">block</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"water"</span><span class="p">,</span> <span class="s2">"lava"</span><span class="p">]):</span>
                     <span class="n">fluids</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">block</span><span class="p">))</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ores</span><span class="p">)</span><span class="si">}</span><span class="s2"> ore blocks&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">containers</span><span class="p">)</span><span class="si">}</span><span class="s2"> containers&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fluids</span><span class="p">)</span><span class="si">}</span><span class="s2"> fluid blocks&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ores</span><span class="p">)</span><span class="si">}</span><span class="s2"> ore blocks"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">containers</span><span class="p">)</span><span class="si">}</span><span class="s2"> containers"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fluids</span><span class="p">)</span><span class="si">}</span><span class="s2"> fluid blocks"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="recipe-registry">Recipe Registry</h2>
 <h3 id="get_reciperecipe_id-bot_name"><code>get_recipe(recipe_id, bot_name="")</code></h3>
@@ -3395,11 +3735,11 @@
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <p><strong>Returns:</strong> <code>dict</code> with recipe data, or <code>None</code> if not found</p>
-<div class="highlight"><pre><span></span><code><span class="n">recipe</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_recipe</span><span class="p">(</span><span class="s2">&quot;minecraft:stick&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">recipe</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_recipe</span><span class="p">(</span><span class="s2">"minecraft:stick"</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">recipe</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Makes </span><span class="si">{</span><span class="n">recipe</span><span class="p">[</span><span class="s1">&#39;result_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">recipe</span><span class="p">[</span><span class="s1">&#39;result_item&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">ing</span> <span class="ow">in</span> <span class="n">recipe</span><span class="p">[</span><span class="s1">&#39;ingredients&#39;</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Slot </span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">&#39;slot&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Makes </span><span class="si">{</span><span class="n">recipe</span><span class="p">[</span><span class="s1">'result_count'</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">recipe</span><span class="p">[</span><span class="s1">'result_item'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ing</span> <span class="ow">in</span> <span class="n">recipe</span><span class="p">[</span><span class="s1">'ingredients'</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Slot </span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">'slot'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">'items'</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">ing</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Recipe dict fields:</strong></p>
 <table>
@@ -3489,10 +3829,10 @@
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <p><strong>Returns:</strong> <code>list[dict]</code> - List of recipe dicts (same format as <code>get_recipe()</code>). Empty list if no recipes found.</p>
-<div class="highlight"><pre><span></span><code><span class="n">recipes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_recipes_for</span><span class="p">(</span><span class="s2">&quot;minecraft:gold_ingot&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">recipes</span><span class="p">)</span><span class="si">}</span><span class="s2"> way(s) to craft gold ingot:&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">recipes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_recipes_for</span><span class="p">(</span><span class="s2">"minecraft:gold_ingot"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">recipes</span><span class="p">)</span><span class="si">}</span><span class="s2"> way(s) to craft gold ingot:"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recipes</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;recipe_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">'recipe_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="c1"># e.g.:</span>
 <span class="c1">#   minecraft:gold_ingot_from_nuggets</span>
 <span class="c1">#   minecraft:gold_ingot_from_gold_block</span>
@@ -3537,11 +3877,11 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><span class="n">info</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_item_info</span><span class="p">(</span><span class="s2">&quot;minecraft:diamond_pickaxe&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">info</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_item_info</span><span class="p">(</span><span class="s2">"minecraft:diamond_pickaxe"</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">info</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Name: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;display_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Max durability: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;max_damage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stack size: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;max_stack_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Name: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">'display_name'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Max durability: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">'max_damage'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Stack size: </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">'max_stack_size'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h3 id="get_all_recipesbot_name"><code>get_all_recipes(bot_name="")</code></h3>
@@ -3553,7 +3893,7 @@
 <p><strong>Returns:</strong> <code>list[str]</code> - All recipe IDs</p>
 <div class="highlight"><pre><span></span><code><span class="n">recipes</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_all_recipes</span><span class="p">()</span>
 <span class="c1"># Filter to just pickaxe recipes</span>
-<span class="n">pickaxe_recipes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recipes</span> <span class="k">if</span> <span class="s2">&quot;pickaxe&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+<span class="n">pickaxe_recipes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recipes</span> <span class="k">if</span> <span class="s2">"pickaxe"</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
 </code></pre></div>
 <hr />
 <h3 id="plan_recursive_craftitem_id-count1-bot_name"><code>plan_recursive_craft(item_id, count=1, bot_name="")</code></h3>
@@ -3638,13 +3978,13 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><span class="n">plan</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">plan_recursive_craft</span><span class="p">(</span><span class="s2">&quot;minecraft:piston&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Can&#39;t plan: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">plan</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">plan_recursive_craft</span><span class="p">(</span><span class="s2">"minecraft:piston"</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">plan</span><span class="p">[</span><span class="s1">'success'</span><span class="p">]:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Can't plan: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">'error'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Raw materials needed: </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;raw_materials&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">]:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Craft </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;output_item&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;times&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (recipe: </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;recipe_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Raw materials needed: </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="n">plan</span><span class="p">[</span><span class="s1">'raw_materials'</span><span class="p">])</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">plan</span><span class="p">[</span><span class="s1">'steps'</span><span class="p">]:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Craft </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">'output_item'</span><span class="p">]</span><span class="si">}</span><span class="s2"> x</span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">'times'</span><span class="p">]</span><span class="si">}</span><span class="s2"> (recipe: </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">'recipe_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -3721,7 +4061,7 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">world</span>
 
 <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">world</span><span class="o">.</span><span class="n">entities</span><span class="p">():</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s1">'type'</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">'x'</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">'y'</span><span class="p">],</span> <span class="n">e</span><span class="p">[</span><span class="s1">'z'</span><span class="p">])</span>
 </code></pre></div>
 <hr />
 <h3 id="worldfind_entities_nearx-y-z-radius-type-bot_name"><code>world.find_entities_near(x, y, z, radius, type="", bot_name="")</code></h3>
@@ -3729,20 +4069,20 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span><span class="o">,</span><span class="w"> </span><span class="nn">world</span>
 
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">items</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">],</span> <span class="mi">8</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;minecraft:item&#39;</span><span class="p">)</span>
+<span class="n">items</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">'y'</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">],</span> <span class="mi">8</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">'minecraft:item'</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">item_ent</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;item&#39;</span><span class="p">][</span><span class="s1">&#39;item_id&#39;</span><span class="p">],</span> <span class="s1">&#39;at&#39;</span><span class="p">,</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">item_ent</span><span class="p">[</span><span class="s1">'item'</span><span class="p">][</span><span class="s1">'item_id'</span><span class="p">],</span> <span class="s1">'at'</span><span class="p">,</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">'x'</span><span class="p">],</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">'y'</span><span class="p">],</span> <span class="n">item_ent</span><span class="p">[</span><span class="s1">'z'</span><span class="p">])</span>
 </code></pre></div>
 <h4 id="wait-for-a-specific-item-to-drop-after-breaking-a-block">Wait for a specific item to drop after breaking a block</h4>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span><span class="o">,</span><span class="w"> </span><span class="nn">world</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
 
-<span class="n">MINE_ITEMS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;minecraft:diamond&#39;</span><span class="p">,</span> <span class="s1">&#39;minecraft:ancient_debris&#39;</span><span class="p">}</span>
+<span class="n">MINE_ITEMS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'minecraft:diamond'</span><span class="p">,</span> <span class="s1">'minecraft:ancient_debris'</span><span class="p">}</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">wait_for_drops</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">3.0</span><span class="p">):</span>
     <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span>
     <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">deadline</span><span class="p">:</span>
-        <span class="n">items</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;minecraft:item&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s1">&#39;item&#39;</span><span class="p">][</span><span class="s1">&#39;item_id&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">MINE_ITEMS</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">items</span><span class="p">):</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">'minecraft:item'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s1">'item'</span><span class="p">][</span><span class="s1">'item_id'</span><span class="p">]</span> <span class="ow">in</span> <span class="n">MINE_ITEMS</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">items</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">items</span>
         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">[]</span>
@@ -3751,10 +4091,10 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span><span class="o">,</span><span class="w"> </span><span class="nn">world</span>
 
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">mobs</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s1">&#39;health&#39;</span> <span class="ow">in</span> <span class="n">e</span> <span class="ow">and</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;minecraft:player&#39;</span><span class="p">]</span>
+<span class="n">mobs</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">'y'</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">'health'</span> <span class="ow">in</span> <span class="n">e</span> <span class="ow">and</span> <span class="n">e</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">'minecraft:player'</span><span class="p">]</span>
 <span class="k">for</span> <span class="n">mob</span> <span class="ow">in</span> <span class="n">mobs</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">mob</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mob</span><span class="p">[</span><span class="s1">&#39;health&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">mob</span><span class="p">[</span><span class="s1">&#39;max_health&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> HP&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">mob</span><span class="p">[</span><span class="s1">'type'</span><span class="p">],</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mob</span><span class="p">[</span><span class="s1">'health'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">mob</span><span class="p">[</span><span class="s1">'max_health'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> HP"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h3 id="update-strategy">Update strategy</h3>
@@ -3770,10 +4110,10 @@
 <li><code>y</code> (<code>float</code>) - Y coordinate</li>
 <li><code>z</code> (<code>float</code>) - Z coordinate</li>
 <li><code>use_disk</code> (<code>bool</code>, optional) - If <code>True</code> and the chunk is not loaded in memory, read light data from the saved <code>.mca</code> region file on disk (default: <code>False</code>)</li>
-<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension. <strong>Requires <code>use_disk=True</code></strong> - raises <code>ValueError</code> if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string (e.g. <code>"minecraft:overworld"</code>, <code>"minecraft:the_nether"</code>). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with <code>use_disk=True</code>, the saved world is read instead.</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
-<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online; <code>ValueError</code> if <code>dimension</code> is set without <code>use_disk=True</code></p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <p><strong>Returns:</strong> <code>dict</code> or <code>None</code> if the chunk is not loaded (and not on disk when <code>use_disk=True</code>)</p>
 <table>
 <thead>
@@ -3800,11 +4140,11 @@
 <p><strong>Note:</strong> <code>sky</code> is the raw stored sky light, not the internal sky light used for mob spawning calculations. Internal sky light also depends on time of day and weather, which are not factored in here.</p>
 <div class="highlight"><pre><span></span><code><span class="n">light</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_light</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">light</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Block light: </span><span class="si">{</span><span class="n">light</span><span class="p">[</span><span class="s1">&#39;block&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Sky light: </span><span class="si">{</span><span class="n">light</span><span class="p">[</span><span class="s1">&#39;sky&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Block light: </span><span class="si">{</span><span class="n">light</span><span class="p">[</span><span class="s1">'block'</span><span class="p">]</span><span class="si">}</span><span class="s2">, Sky light: </span><span class="si">{</span><span class="n">light</span><span class="p">[</span><span class="s1">'sky'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># A position with no block light and no sky access is fully dark</span>
-    <span class="k">if</span> <span class="n">light</span><span class="p">[</span><span class="s1">&#39;block&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">light</span><span class="p">[</span><span class="s1">&#39;sky&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;No light sources reach this block&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">light</span><span class="p">[</span><span class="s1">'block'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">light</span><span class="p">[</span><span class="s1">'sky'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"No light sources reach this block"</span><span class="p">)</span>
 
 <span class="c1"># Read light from a saved but unloaded chunk</span>
 <span class="n">light</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_light</span><span class="p">(</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -3859,24 +4199,24 @@
 <div class="highlight"><pre><span></span><code><span class="c1"># Check if a block has a solid top face (mob spawn surface)</span>
 <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="n">block</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2"> has a solid top face&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2"> has a solid top face"</span><span class="p">)</span>
 
 <span class="c1"># Check a specific face</span>
-<span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="s2">&quot;minecraft:oak_stairs[facing=north,half=bottom,shape=straight]&quot;</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Direction</span><span class="o">.</span><span class="n">NORTH</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;North face is solid&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="s2">"minecraft:oak_stairs[facing=north,half=bottom,shape=straight]"</span><span class="p">,</span> <span class="n">world</span><span class="o">.</span><span class="n">Direction</span><span class="o">.</span><span class="n">NORTH</span><span class="p">):</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"North face is solid"</span><span class="p">)</span>
 
 <span class="c1"># Find all spawnable locations in a radius</span>
 <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">])</span>
-<span class="n">dark_air</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">&quot;minecraft:air&quot;</span><span class="p">,</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span>
+<span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'y'</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">])</span>
+<span class="n">dark_air</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:air"</span><span class="p">,</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span>
                              <span class="n">min_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">spawnable</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dark_air</span><span class="p">:</span>
     <span class="n">surface</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
     <span class="n">head</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">surface</span> <span class="ow">and</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="n">surface</span><span class="p">)</span> <span class="ow">and</span> <span class="n">head</span> <span class="o">==</span> <span class="s2">&quot;minecraft:air&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">surface</span> <span class="ow">and</span> <span class="n">world</span><span class="o">.</span><span class="n">is_solid</span><span class="p">(</span><span class="n">surface</span><span class="p">)</span> <span class="ow">and</span> <span class="n">head</span> <span class="o">==</span> <span class="s2">"minecraft:air"</span><span class="p">:</span>
         <span class="n">spawnable</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">))</span>
-<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">spawnable</span><span class="p">)</span><span class="si">}</span><span class="s2"> spawnable locations&quot;</span><span class="p">)</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">spawnable</span><span class="p">)</span><span class="si">}</span><span class="s2"> spawnable locations"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="weather">Weather</h2>
@@ -3920,10 +4260,10 @@
 </table>
 <p><strong>Note:</strong> Weather only applies to the overworld. In the nether or end, values will show no rain since those dimensions have no weather system.</p>
 <div class="highlight"><pre><span></span><code><span class="n">weather</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_weather</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">weather</span> <span class="ow">and</span> <span class="n">weather</span><span class="p">[</span><span class="s1">&#39;is_raining&#39;</span><span class="p">]:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;It&#39;s raining (intensity: </span><span class="si">{</span><span class="n">weather</span><span class="p">[</span><span class="s1">&#39;rain_level&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">weather</span><span class="p">[</span><span class="s1">&#39;is_thundering&#39;</span><span class="p">]:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Thunderstorm!&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">weather</span> <span class="ow">and</span> <span class="n">weather</span><span class="p">[</span><span class="s1">'is_raining'</span><span class="p">]:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"It's raining (intensity: </span><span class="si">{</span><span class="n">weather</span><span class="p">[</span><span class="s1">'rain_level'</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">weather</span><span class="p">[</span><span class="s1">'is_thundering'</span><span class="p">]:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Thunderstorm!"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="notes">Notes</h2>
