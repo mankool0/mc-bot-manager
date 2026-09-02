@@ -42,12 +42,15 @@ def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None)
 
     if t == 'void': return 'Any' if is_param else 'None'
     if t == 'bool': return 'bool'
-    if t in ('int', 'int32_t', 'int64_t', 'long long', 'size_t', 'uint32_t', 'uint64_t'): return 'int'
+    if t in ('int', 'int32_t', 'int64_t', 'long long', 'unsigned long long',
+             'size_t', 'uint32_t', 'uint64_t'): return 'int'
     if t in ('float', 'double'): return 'float'
     if t == 'std::string': return 'str'
     if t == 'py::dict': return 'dict[str, Any]'
     if t == 'py::list': return 'list[Any]'
     if t == 'py::sequence': return 'Sequence[Any]'
+    if t == 'py::tuple': return 'tuple[Any, ...]'
+    if t == 'py::bytes': return 'bytes'
     if t == 'py::object': return 'Any'
 
     # Resolve C++ enum/class types using the global enum map.
@@ -70,6 +73,8 @@ def to_py_default(raw):
     raw = raw.strip().rstrip(',').strip()
     # The py::arg regex may truncate at the '(' of "py::none()", so match by prefix.
     if raw.startswith('py::none'): return 'None'
+    # Same truncation applies to py::bytes(...); only empty defaults are used.
+    if raw.startswith('py::bytes'): return 'b""'
     if raw in ('false', 'False'): return 'False'
     if raw in ('true', 'True'): return 'True'
     if re.match(r'^-?\d+$', raw): return raw
@@ -282,7 +287,41 @@ def extract_class_field_ref(stmt):
 
 def extract_property_names(stmt):
     """Names exposed via .def_property(...), which have no C++ field to read a type from."""
-    return [m.group(1) for m in re.finditer(r'\.def_property\s*\(\s*"([^"]+)"', stmt)]
+    return [m.group(1) for m in
+            re.finditer(r'\.def_property(?:_readonly)?\s*\(\s*"([^"]+)"', stmt)]
+
+
+# Dunders are bound as .def("__len__", lambda...), which carries no recoverable C++ type.
+# Their signatures are fixed by the protocol, so emit them from a table instead: without
+# this, a type checker rejects len()/iteration over a class that supports it at runtime.
+DUNDER_SIGNATURES = {
+    '__len__': 'def __len__(self) -> int: ...',
+    '__repr__': 'def __repr__(self) -> str: ...',
+    '__str__': 'def __str__(self) -> str: ...',
+    '__hash__': 'def __hash__(self) -> int: ...',
+    '__eq__': 'def __eq__(self, other: object) -> bool: ...',
+}
+
+
+def extract_dunders(stmt, iter_element_type):
+    """Stub lines for dunders bound on this class, in a stable order."""
+    bound = set(re.findall(r'\.def\s*\(\s*"(__\w+__)"', stmt))
+    lines = []
+    for name, sig in DUNDER_SIGNATURES.items():
+        if name in bound:
+            lines.append(sig)
+    if '__iter__' in bound:
+        lines.append(f'def __iter__(self) -> Iterator[{iter_element_type}]: ...')
+    return lines
+
+
+def infer_iter_element_type(attrs):
+    """__iter__ on these classes always walks the single list attribute, so reuse its type."""
+    for (_, attr_type) in attrs:
+        m = re.match(r'list\[(.+)\]$', attr_type)
+        if m:
+            return m.group(1)
+    return 'Any'
 
 
 def extract_init_args(stmt):
@@ -330,7 +369,9 @@ def parse_class(stmt, struct_map):
     if init_args:
         init_params = [(name, cpp_fields.get(name, 'Any'), default) for (name, default) in init_args]
 
-    return {'name': py_name, 'attrs': attrs, 'init_params': init_params}
+    dunders = extract_dunders(stmt, infer_iter_element_type(attrs))
+
+    return {'name': py_name, 'attrs': attrs, 'init_params': init_params, 'dunders': dunders}
 
 
 def parse_enum(stmt):
@@ -345,7 +386,7 @@ def parse_enum(stmt):
 
 def format_pyi(doc, classes, enums, functions):
     lines = ['from __future__ import annotations']
-    lines.append('from typing import Any, ClassVar, Sequence, overload')
+    lines.append('from typing import Any, ClassVar, Iterator, Sequence, overload')
     lines.append('')
     if doc:
         lines.append(f'"""{doc}"""')
@@ -371,6 +412,9 @@ def format_pyi(doc, classes, enums, functions):
                 else:
                     params.append(f'{py_name}: {py_type}')
             lines.append(f'    def __init__(self, {", ".join(params)}) -> None: ...')
+            body = True
+        for dunder in cls.get('dunders', []):
+            lines.append(f'    {dunder}')
             body = True
         if not body:
             lines.append('    ...')
