@@ -370,7 +370,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_query("get_block", &PythonAPI::getBlock,
               "Get block state at position. Returns block ID string or None if not found. "
               "If use_disk=True, reads saved world data when chunk not loaded. "
-              "dimension requires use_disk=True.",
+              "dimension reads memory only when the loaded chunk is that dimension.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
@@ -378,7 +378,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_query("get_light", &PythonAPI::getLight,
               "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if not found. "
               "If use_disk=True, reads saved world data when chunk not loaded. "
-              "dimension requires use_disk=True.",
+              "dimension reads memory only when the loaded chunk is that dimension.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
@@ -386,7 +386,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_query("get_block_entity", &PythonAPI::getBlockEntity,
               "Get block entity at position. Returns dict {type, x, y, z, items?} or None. "
               "If use_disk=True, falls back to saved world when not in memory. "
-              "dimension requires use_disk=True.",
+              "dimension defaults to the bot's current one.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("use_disk") = false,
               py::arg("dimension") = "",

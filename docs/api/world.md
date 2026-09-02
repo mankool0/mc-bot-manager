@@ -16,12 +16,12 @@ Get the block state at the specified coordinates.
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read the block from the saved `.mca` region file on disk (default: `False`)
-- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with `use_disk=True`, the saved world is read instead.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `str` - Block state string (e.g., `"minecraft:stone"`, `"minecraft:chest[facing=north]"`), or `None` if chunk is not loaded (and not on disk when `use_disk=True`) or bot is offline
 
-**Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
+**Raises:** `RuntimeError` if bot not found or not online
 
 **Note:** Disk reads require world saving to be enabled. Returns `None` if the world save path is not available or the chunk has never been saved.
 
@@ -188,7 +188,7 @@ Get the block entity at the specified position.
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and no in-memory data exists, read from the saved `.mca` file (default: `False`)
-- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it.
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. Block entities are stored per dimension, so an explicit dimension reads memory directly.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `BlockEntity` or `None` if no block entity exists at that position
@@ -287,7 +287,7 @@ Get all block entities in a chunk.
 - `chunk_x` (`int`) - Chunk X coordinate (block X divided by 16, rounded down)
 - `chunk_z` (`int`) - Chunk Z coordinate (block Z divided by 16, rounded down)
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded, read from the saved `.mca` file (default: `False`)
-- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. If a different dimension is specified, **requires `use_disk=True`** - raises `ValueError` otherwise.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with `use_disk=True`, the saved world is read instead.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `list[BlockEntity]` - same objects as `get_block_entity` returns
@@ -1278,10 +1278,10 @@ Get the light levels at the specified block position.
 - `y` (`float`) - Y coordinate
 - `z` (`float`) - Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read light data from the saved `.mca` region file on disk (default: `False`)
-- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with `use_disk=True`, the saved world is read instead.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
+**Raises:** `RuntimeError` if bot not found or not online
 
 **Returns:** `dict` or `None` if the chunk is not loaded (and not on disk when `use_disk=True`)
 

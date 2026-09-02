@@ -2119,11 +2119,16 @@ std::string PythonAPI::blockEntityRepr(const PyBlockEntity &be)
 // getBlock / getLight
 // ---------------------------------------------------------------------------
 
+// Chunks are keyed by (x, z) only, but each carries the dimension it was loaded from, so an
+// in-memory read is valid whenever the loaded column is the dimension being asked for. An empty
+// `dim` means the caller named none and the bot has not reported one yet: take whatever is loaded.
+static bool chunkIsDimension(const ChunkData *chunk, const QString &dim)
+{
+    return chunk && (dim.isEmpty() || chunk->dimension == dim);
+}
+
 py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
-    if (!dimension.empty() && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
-
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -2133,16 +2138,16 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    // Read from memory only when querying the current dimension (chunks carry no dimension key)
-    if (dim == botInstance->dimension) {
-        std::optional<QString> blockOpt;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
+    std::optional<QString> blockOpt;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        const ChunkData *chunk = botInstance->worldData.getChunk(ix >> 4, iz >> 4);
+        if (chunkIsDimension(chunk, dim)) {
+            blockOpt = chunk->getBlock(ix & 15, iy, iz & 15);
         }
-        if (blockOpt.has_value()) {
-            return py::str(blockOpt.value().toStdString());
-        }
+    }
+    if (blockOpt.has_value()) {
+        return py::str(blockOpt.value().toStdString());
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
@@ -2168,9 +2173,6 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
 
 py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
-    if (!dimension.empty() && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
-
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -2180,19 +2182,19 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    // Read from memory only when querying the current dimension (chunks carry no dimension key)
-    if (dim == botInstance->dimension) {
-        std::optional<ChunkSection::LightLevels> light;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            light = botInstance->worldData.getLight(ix, iy, iz);
+    std::optional<ChunkSection::LightLevels> light;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        const ChunkData *chunk = botInstance->worldData.getChunk(ix >> 4, iz >> 4);
+        if (chunkIsDimension(chunk, dim)) {
+            light = chunk->getLight(ix & 15, iy, iz & 15);
         }
-        if (light.has_value()) {
-            py::dict result;
-            result["block"] = light->block;
-            result["sky"] = light->sky;
-            return result;
-        }
+    }
+    if (light.has_value()) {
+        py::dict result;
+        result["block"] = light->block;
+        result["sky"] = light->sky;
+        return result;
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
@@ -2222,9 +2224,6 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
 
 std::optional<PyBlockEntity> PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
-    if (!dimension.empty() && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True for get_block_entity");
-
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -2292,13 +2291,10 @@ std::vector<PyBlockEntity> PythonAPI::getBlockEntitiesInChunk(int chunkX, int ch
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    if (dim != botInstance->dimension && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True when querying a different dimension");
-
     bool chunkLoaded;
     {
         QReadLocker locker(botInstance->worldDataLock.get());
-        chunkLoaded = botInstance->worldData.isChunkLoaded(chunkX, chunkZ);
+        chunkLoaded = chunkIsDimension(botInstance->worldData.getChunk(chunkX, chunkZ), dim);
     }
 
     if (chunkLoaded) {
