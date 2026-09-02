@@ -14,6 +14,7 @@
 #include "world/SectionCodec.h"
 #include <QDebug>
 #include <QDeadlineTimer>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QCoreApplication>
