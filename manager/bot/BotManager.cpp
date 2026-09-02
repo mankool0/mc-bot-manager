@@ -2833,16 +2833,27 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
                        .arg(bot->name).arg(stateId), LogManager::Warning);
     }
 
+    bool chunkLoaded = false;
     {
         QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.setBlock(x, y, z, blockStr);
-        if (isAirState(blockStr)) {
-            bot->worldData.removeBlockEntity(x, y, z, bot->dimension);
+        // Without a loaded column there is nothing to update: setBlock would invent a chunk that
+        // is one real block over 4095 air, which then reads back as terrain and, if saving is on,
+        // overwrites the real chunk on disk.
+        chunkLoaded = bot->worldData.isChunkLoaded(x >> 4, z >> 4);
+        if (chunkLoaded) {
+            bot->worldData.setBlock(x, y, z, blockStr);
+            if (isAirState(blockStr)) {
+                bot->worldData.removeBlockEntity(x, y, z, bot->dimension);
+            }
         }
     }
 
-    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
-        bot->worldAutoSaver->markBlockChunkDirty(x >> 4, z >> 4, bot->dimension);
+    if (!chunkLoaded) {
+        if (bot->debugLogging) {
+            LogManager::log(QString("[%1] Ignoring block update at (%2, %3, %4): chunk not loaded")
+                           .arg(bot->name).arg(x).arg(y).arg(z), LogManager::Debug);
+        }
+        return;
     }
 
     if (bot->debugLogging) {
@@ -2940,6 +2951,10 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
         QWriteLocker locker(bot->worldDataLock.get());
         for (int i = 0; i < updateCount; ++i) {
             const auto &pos = multiBlockUpdate.positions()[i];
+            // See handleBlockUpdateImpl: an update outside a loaded column would fabricate terrain.
+            if (!bot->worldData.isChunkLoaded(pos.x() >> 4, pos.z() >> 4)) {
+                continue;
+            }
             uint32_t stateId = multiBlockUpdate.stateIds()[i];
             auto blockState = bot->blockRegistry->getBlockState(stateId);
 
