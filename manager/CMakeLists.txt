@@ -176,7 +176,7 @@ target_compile_options(mc-bot-manager-proto PRIVATE ${PROJECT_WARNING_FLAGS})
 
 set(PROJECT_MAIN_SOURCE "main.cpp")
 
-file(GLOB_RECURSE PROJECT_SOURCES
+file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "ui/*.cpp"
     "ui/*.h"
     "ui/*.ui"
