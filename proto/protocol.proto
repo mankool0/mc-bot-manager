@@ -79,6 +79,7 @@ message ClientToManagerMessage {
     // World interaction responses
     CanReachBlocksResponse can_reach_blocks_response = 29;
     HoldAttackStatusResponse hold_attack_status_response = 34;
+    HoldUseStatusResponse hold_use_status_response = 43;
 
     // Entity tracking
     EntityUpdate entity_update = 30;
@@ -113,6 +114,8 @@ message ManagerToClientMessage {
   string message_id = 1;        // Unique ID for tracking
   int64 timestamp = 2;          // Unix timestamp in milliseconds
 
+  reserved 7; // was MoveToCommand move_to
+
   oneof payload {
     // Connection & status messages
     HeartbeatMessage heartbeat = 3;
@@ -128,7 +131,6 @@ message ManagerToClientMessage {
     SendChatCommand send_chat = 6;
 
     // Movement/actions
-    MoveToCommand move_to = 7;
     LookAtCommand look_at = 8;
     SetRotationCommand set_rotation = 9;
 
@@ -180,6 +182,10 @@ message ManagerToClientMessage {
     // In-game attack (left-click) hold toggle and status query
     HoldAttackCommand hold_attack = 33;
     GetHoldAttackStatusCommand get_hold_attack_status = 34;
+
+    // In-game use (right-click) hold toggle and status query
+    HoldUseCommand hold_use = 40;
+    GetHoldUseStatusCommand get_hold_use_status = 41;
 
     // Force a full inventory resync from the server
     RequestInventoryResyncCommand request_inventory_resync = 35;

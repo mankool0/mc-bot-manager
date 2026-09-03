@@ -181,6 +181,11 @@ public:
         MIDDLE = 2
     };
 
+    enum class Hand {
+        MAIN = 0,
+        OFF = 1
+    };
+
     enum class ContainerClickType {
         PICKUP = 0,
         QUICK_MOVE = 1,
@@ -221,6 +226,10 @@ public:
     static std::optional<float> getExperienceProgress(const std::string &botName = "");
     static std::optional<int> getSelectedSlot(const std::string &botName = "");
     static void selectSlot(int slot, const std::string &botName = "");
+    static py::object getRotation(const std::string &botName = "");
+    static void rotate(float yaw, float pitch, const std::string &botName = "");
+    static void useItem(Hand hand = Hand::MAIN, const std::string &botName = "");
+    static void dropItem(bool dropAll = false, const std::string &botName = "");
     static std::optional<std::string> getServer(const std::string &botName = "");
     static std::optional<std::string> getSingleplayerWorld(const std::string &botName = "");
     static bool getIsSingleplayer(const std::string &botName = "");
@@ -272,6 +281,8 @@ public:
 
     static void sendChat(const std::string &message, const std::string &botName = "");
     static void sendCommand(const std::string &command, const std::string &botName = "");
+    static void connectServer(const std::string &address, const std::string &botName = "");
+    static void disconnectServer(const std::string &reason = "", const std::string &botName = "");
 
     static void startBot(const std::string &botName = "");
     static void stopBot(const std::string &reason = "", const std::string &botName = "");
@@ -340,7 +351,10 @@ public:
     // World interaction
     static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
     static bool getHoldAttack(const std::string &botName = "");
+    static void holdUse(bool enabled, int durationTicks = 0, const std::string &botName = "");
+    static bool getHoldUse(const std::string &botName = "");
     static void lookAt(double x, double y, double z, BlockFace face = BlockFace::AUTO, bool sneak = false, const std::string &botName = "");
+    static void lookAtEntity(int entityId, bool sneak = false, const std::string &botName = "");
     static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
     static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
     static py::list canReachBlocks(const py::sequence &queries, bool sneak = false, BlockFace face = BlockFace::AUTO,

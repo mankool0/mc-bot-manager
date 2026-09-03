@@ -488,6 +488,9 @@ public:
     static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    static void sendHoldUse(const QString &botName, bool enabled, int durationTicks = 0);
+    static bool getHoldUseStatus(const QString &botName, int timeoutMs = 3000);
+    static void handleHoldUseStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response);
     static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
     static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
 
@@ -524,6 +527,14 @@ public:
     static void sendLookAt(const QString &botName, double x, double y, double z,
                            mankool::mcbot::protocol::BlockFaceGadget::BlockFace face = mankool::mcbot::protocol::BlockFaceGadget::BlockFace::FACE_AUTO,
                            bool sneak = false);
+    static void sendLookAtEntity(const QString &botName, int entityId, bool sneak = false, bool silent = false);
+    static void sendSetRotation(const QString &botName, float yaw, float pitch, bool silent = false);
+    static void sendUseItem(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent = false);
+    static void sendDropItem(const QString &botName, bool dropAll, bool silent = false);
+    // Returns false without sending when the bot is unknown, not connected, or its proxy is dead.
+    static bool sendConnectToServer(const QString &botName, const QString &address, bool silent = false);
+    static void sendDisconnect(const QString &botName, const QString &reason = QString(), bool silent = false);
+    static void sendChat(const QString &botName, const QString &message, bool silent = false);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -623,6 +634,9 @@ private:
     void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    void sendHoldUseImpl(const QString &botName, bool enabled, int durationTicks);
+    bool getHoldUseStatusImpl(const QString &botName, int timeoutMs);
+    void handleHoldUseStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response);
     std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
     void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     std::optional<mankool::mcbot::protocol::WindowStateResponse> requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs);
@@ -644,6 +658,15 @@ private:
     void sendSwitchHotbarSlotImpl(const QString &botName, int slot);
     void sendLookAtImpl(const QString &botName, double x, double y, double z,
                         mankool::mcbot::protocol::BlockFaceGadget::BlockFace face, bool sneak);
+    void sendLookAtEntityImpl(const QString &botName, int entityId, bool sneak, bool silent);
+    void sendSetRotationImpl(const QString &botName, float yaw, float pitch, bool silent);
+    void sendUseItemImpl(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent);
+    void sendDropItemImpl(const QString &botName, bool dropAll, bool silent);
+    bool sendConnectToServerImpl(const QString &botName, const QString &address, bool silent);
+    void sendDisconnectImpl(const QString &botName, const QString &reason, bool silent);
+    void sendChatImpl(const QString &botName, const QString &message, bool silent);
+    // Bot lookup for a command: logs and returns nullptr when unknown or not connected.
+    BotInstance *connectedBotForCommand(const QString &botName, const QString &action);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);
@@ -662,6 +685,7 @@ private:
     QSet<QString> silentMessageIds;
     PendingRequestMap<QList<bool>> m_pendingCanReachBlocks;
     PendingRequestMap<bool> m_pendingHoldAttackStatus;
+    PendingRequestMap<bool> m_pendingHoldUseStatus;
     // Payload is unused: the reply is merged into m_statsCache by the handler before the wake.
     PendingRequestMap<bool> m_pendingStatistics;
     QMutex m_statsCacheMutex;

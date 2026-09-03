@@ -1723,55 +1723,28 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
             LogManager::log("Usage: connect <server_address>", LogManager::Warning);
             return;
         }
-        if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
-            LogManager::log(QString("Cannot connect bot '%1': proxy is unreachable").arg(botName), LogManager::Error);
-            return;
-        }
-        mankool::mcbot::protocol::ConnectToServerCommand connectCmd;
-        connectCmd.setServerAddress(parts.mid(1).join(' '));
-        msg.setConnectServer(connectCmd);
+        sendConnectToServerImpl(botName, parts.mid(1).join(' '), silent);
+        return;
     }
     else if (cmd == "disconnect") {
-        mankool::mcbot::protocol::DisconnectCommand disconnectCmd;
-        disconnectCmd.setReason(parts.size() > 1 ? parts.mid(1).join(' ') : "");
-        msg.setDisconnect(disconnectCmd);
+        sendDisconnectImpl(botName, parts.size() > 1 ? parts.mid(1).join(' ') : QString(), silent);
+        return;
     }
     else if (cmd == "chat") {
         if (parts.size() < 2) {
             LogManager::log("Usage: chat <message>", LogManager::Warning);
             return;
         }
-        mankool::mcbot::protocol::SendChatCommand chatCmd;
-        chatCmd.setMessage(parts.mid(1).join(' '));
-        msg.setSendChat(chatCmd);
-    }
-    else if (cmd == "move") {
-        if (parts.size() < 4) {
-            LogManager::log("Usage: move <x> <y> <z>", LogManager::Warning);
-            return;
-        }
-        bool okX, okY, okZ;
-        double x = parts[1].toDouble(&okX);
-        double y = parts[2].toDouble(&okY);
-        double z = parts[3].toDouble(&okZ);
-        if (!okX || !okY || !okZ) {
-            LogManager::log("Invalid coordinates", LogManager::Warning);
-            return;
-        }
-        mankool::mcbot::protocol::MoveToCommand moveCmd;
-        mankool::mcbot::protocol::Vec3d pos;
-        pos.setX(x);
-        pos.setY(y);
-        pos.setZ(z);
-        moveCmd.setTargetPosition(pos);
-        msg.setMoveTo(moveCmd);
+        // Raw remainder of the line, so quotes and spacing reach the server as typed
+        QString trimmed = commandText.trimmed();
+        sendChatImpl(botName, trimmed.mid(trimmed.indexOf(' ') + 1).trimmed(), silent);
+        return;
     }
     else if (cmd == "lookat") {
         if (parts.size() < 2) {
             LogManager::log("Usage: lookat <x> <y> <z> | lookat entity <id>", LogManager::Warning);
             return;
         }
-        mankool::mcbot::protocol::LookAtCommand lookAtCmd;
         if (parts[1].toLower() == "entity") {
             if (parts.size() < 3) {
                 LogManager::log("Usage: lookat entity <id>", LogManager::Warning);
@@ -1783,26 +1756,27 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
                 LogManager::log("Invalid entity ID", LogManager::Warning);
                 return;
             }
-            lookAtCmd.setEntityId(entityId);
-        } else {
-            if (parts.size() < 4) {
-                LogManager::log("Usage: lookat <x> <y> <z>", LogManager::Warning);
-                return;
-            }
-            bool okX, okY, okZ;
-            double x = parts[1].toDouble(&okX);
-            double y = parts[2].toDouble(&okY);
-            double z = parts[3].toDouble(&okZ);
-            if (!okX || !okY || !okZ) {
-                LogManager::log("Invalid coordinates", LogManager::Warning);
-                return;
-            }
-            mankool::mcbot::protocol::Vec3d pos;
-            pos.setX(x);
-            pos.setY(y);
-            pos.setZ(z);
-            lookAtCmd.setPosition(pos);
+            sendLookAtEntityImpl(botName, entityId, false, silent);
+            return;
         }
+        if (parts.size() < 4) {
+            LogManager::log("Usage: lookat <x> <y> <z>", LogManager::Warning);
+            return;
+        }
+        bool okX, okY, okZ;
+        double x = parts[1].toDouble(&okX);
+        double y = parts[2].toDouble(&okY);
+        double z = parts[3].toDouble(&okZ);
+        if (!okX || !okY || !okZ) {
+            LogManager::log("Invalid coordinates", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::Vec3d pos;
+        pos.setX(x);
+        pos.setY(y);
+        pos.setZ(z);
+        mankool::mcbot::protocol::LookAtCommand lookAtCmd;
+        lookAtCmd.setPosition(pos);
         msg.setLookAt(lookAtCmd);
     }
     else if (cmd == "rotate") {
@@ -1817,10 +1791,8 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
             LogManager::log("Invalid rotation values", LogManager::Warning);
             return;
         }
-        mankool::mcbot::protocol::SetRotationCommand rotateCmd;
-        rotateCmd.setYaw(yaw);
-        rotateCmd.setPitch(pitch);
-        msg.setSetRotation(rotateCmd);
+        sendSetRotationImpl(botName, yaw, pitch, silent);
+        return;
     }
     else if (cmd == "hotbar") {
         if (parts.size() < 2) {
@@ -1838,18 +1810,14 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
         msg.setSwitchHotbar(hotbarCmd);
     }
     else if (cmd == "use") {
-        mankool::mcbot::protocol::UseItemCommand useCmd;
-        if (parts.size() > 1 && parts[1].toLower() == "offhand") {
-            useCmd.setHand(mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND);
-        } else {
-            useCmd.setHand(mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND);
-        }
-        msg.setUseItem(useCmd);
+        bool offhand = parts.size() > 1 && parts[1].toLower() == "offhand";
+        sendUseItemImpl(botName, offhand ? mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND
+                                         : mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, silent);
+        return;
     }
     else if (cmd == "drop") {
-        mankool::mcbot::protocol::DropItemCommand dropCmd;
-        dropCmd.setDropAll(parts.size() > 1 && parts[1].toLower() == "all");
-        msg.setDropItem(dropCmd);
+        sendDropItemImpl(botName, parts.size() > 1 && parts[1].toLower() == "all", silent);
+        return;
     }
     else if (cmd == "shutdown") {
         mankool::mcbot::protocol::ShutdownCommand shutdownCmd;
@@ -3631,6 +3599,60 @@ void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mank
     });
 }
 
+void BotManager::sendHoldUse(const QString &botName, bool enabled, int durationTicks)
+{
+    instance().sendHoldUseImpl(botName, enabled, durationTicks);
+}
+
+void BotManager::sendHoldUseImpl(const QString &botName, bool enabled, int durationTicks)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "hold_use");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::HoldUseCommand cmd;
+    cmd.setEnabled(enabled);
+    cmd.setDurationTicks(durationTicks);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setHoldUse(cmd);
+    sendOutboundMessage(bot->connectionId, msg);
+}
+
+bool BotManager::getHoldUseStatus(const QString &botName, int timeoutMs)
+{
+    return instance().getHoldUseStatusImpl(botName, timeoutMs);
+}
+
+bool BotManager::getHoldUseStatusImpl(const QString &botName, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return false;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<bool>::Request pending(m_pendingHoldUseStatus, msgId);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setGetHoldUseStatus(mankool::mcbot::protocol::GetHoldUseStatusCommand{});
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
+        return false;
+
+    return pending.wait(timeoutMs) && pending.value();
+}
+
+void BotManager::handleHoldUseStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response)
+{
+    instance().handleHoldUseStatusResponseImpl(connectionId, response);
+}
+
+void BotManager::handleHoldUseStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response)
+{
+    Q_UNUSED(connectionId);
+    m_pendingHoldUseStatus.complete(response.requestId(), [&](bool &enabled) {
+        enabled = response.enabled();
+    });
+}
+
 std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatistics(const QString &botName, int timeoutMs)
 {
     return instance().getStatisticsImpl(botName, timeoutMs);
@@ -4181,6 +4203,153 @@ void BotManager::sendLookAtImpl(const QString &botName, double x, double y, doub
     mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setLookAt(command);
     sendOutboundMessage(bot->connectionId, message);
+}
+
+BotInstance *BotManager::connectedBotForCommand(const QString &botName, const QString &action)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("[%1] Bot not found for %2").arg(botName, action), LogManager::Error);
+        return nullptr;
+    }
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName), LogManager::Error);
+        return nullptr;
+    }
+    return bot;
+}
+
+void BotManager::sendLookAtEntity(const QString &botName, int entityId, bool sneak, bool silent)
+{
+    instance().sendLookAtEntityImpl(botName, entityId, sneak, silent);
+}
+
+void BotManager::sendLookAtEntityImpl(const QString &botName, int entityId, bool sneak, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "look_at_entity");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::LookAtCommand command;
+    command.setEntityId(entityId);
+    command.setSneak(sneak);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setLookAt(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendSetRotation(const QString &botName, float yaw, float pitch, bool silent)
+{
+    instance().sendSetRotationImpl(botName, yaw, pitch, silent);
+}
+
+void BotManager::sendSetRotationImpl(const QString &botName, float yaw, float pitch, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "rotate");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::SetRotationCommand command;
+    command.setYaw(yaw);
+    command.setPitch(pitch);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setSetRotation(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendUseItem(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent)
+{
+    instance().sendUseItemImpl(botName, hand, silent);
+}
+
+void BotManager::sendUseItemImpl(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "use_item");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::UseItemCommand command;
+    command.setHand(hand);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setUseItem(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendDropItem(const QString &botName, bool dropAll, bool silent)
+{
+    instance().sendDropItemImpl(botName, dropAll, silent);
+}
+
+void BotManager::sendDropItemImpl(const QString &botName, bool dropAll, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "drop_item");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::DropItemCommand command;
+    command.setDropAll(dropAll);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setDropItem(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+bool BotManager::sendConnectToServer(const QString &botName, const QString &address, bool silent)
+{
+    return instance().sendConnectToServerImpl(botName, address, silent);
+}
+
+bool BotManager::sendConnectToServerImpl(const QString &botName, const QString &address, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "connect");
+    if (!bot) return false;
+
+    if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
+        LogManager::log(QString("Cannot connect bot '%1': proxy is unreachable").arg(botName), LogManager::Error);
+        return false;
+    }
+
+    mankool::mcbot::protocol::ConnectToServerCommand command;
+    command.setServerAddress(address);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setConnectServer(command);
+    return sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendDisconnect(const QString &botName, const QString &reason, bool silent)
+{
+    instance().sendDisconnectImpl(botName, reason, silent);
+}
+
+void BotManager::sendDisconnectImpl(const QString &botName, const QString &reason, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "disconnect");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::DisconnectCommand command;
+    command.setReason(reason);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setDisconnect(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendChat(const QString &botName, const QString &message, bool silent)
+{
+    instance().sendChatImpl(botName, message, silent);
+}
+
+void BotManager::sendChatImpl(const QString &botName, const QString &message, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "chat");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::SendChatCommand command;
+    command.setMessage(message);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSendChat(command);
+    sendOutboundMessage(bot->connectionId, msg, silent);
 }
 
 void BotManager::handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather)

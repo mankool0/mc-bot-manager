@@ -125,7 +125,6 @@ void BotConsoleWidget::initializeCommands()
         {"connect", "Connect to a Minecraft server", "connect <server_address>"},
         {"disconnect", "Disconnect from current server", "disconnect [reason]"},
         {"chat", "Send a chat message", "chat <message>"},
-        {"move", "Move to coordinates", "move <x> <y> <z>"},
         {"lookat", "Look at position or entity", "lookat <x> <y> <z> | lookat entity <id>"},
         {"rotate", "Set rotation", "rotate <yaw> <pitch>"},
         {"hotbar", "Switch hotbar slot", "hotbar <slot>"},

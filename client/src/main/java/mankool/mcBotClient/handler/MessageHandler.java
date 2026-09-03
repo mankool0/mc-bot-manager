@@ -151,8 +151,6 @@ public class MessageHandler {
             msg -> connectionHandler.handleDisconnect(msg.getMessageId(), msg.getDisconnect()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SEND_CHAT,
             msg -> chatHandler.handleSendChat(msg.getMessageId(), msg.getSendChat()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.MOVE_TO,
-            msg -> playerActionHandler.handleMoveTo(msg.getMessageId(), msg.getMoveTo()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.LOOK_AT,
             msg -> playerActionHandler.handleLookAt(msg.getMessageId(), msg.getLookAt()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_ROTATION,
@@ -193,6 +191,10 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleHoldAttack(msg.getHoldAttack()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_ATTACK_STATUS,
             msg -> worldInteractionHandler.handleGetHoldAttackStatus(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HOLD_USE,
+            msg -> worldInteractionHandler.handleHoldUse(msg.getHoldUse()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_USE_STATUS,
+            msg -> worldInteractionHandler.handleGetHoldUseStatus(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_INVENTORY_RESYNC,
             msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_STATISTICS,

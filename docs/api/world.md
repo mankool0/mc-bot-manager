@@ -383,6 +383,26 @@ world.interact_block(bx, by, bz, sneak=True, look_at_block=False, face=world.Blo
 world.look_at(bx, by, bz)
 ```
 
+### `look_at_entity(entity_id, sneak=False, bot_name="")`
+
+Rotate the bot to look at an entity's eyes. Entity ids come from `world.entities()` and `world.find_entities_near()` (the `entity_id` field). There is no visibility check; the bot turns toward the entity even through walls.
+
+**Parameters:**
+
+- `entity_id` (`int`) - Entity id
+- `sneak` (`bool`, optional) - Aim from the crouching eye height (default: False)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online. An unknown entity id is reported by the client in the bot console (`Entity <id> not found`); nothing is raised.
+
+```python
+pos = bot.position()
+zombies = world.find_entities_near(pos["x"], pos["y"], pos["z"], 8, type="minecraft:zombie")
+if zombies:
+    world.look_at_entity(zombies[0]["entity_id"])
+    world.hold_attack(True, duration_ticks=10)
+```
+
 ### `interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")`
 
 Interact with (right-click) a block at the specified position.

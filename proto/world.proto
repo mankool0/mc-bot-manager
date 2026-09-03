@@ -145,6 +145,20 @@ message HoldAttackCommand {
   int32 duration_ticks = 2;
 }
 
+// Query the current hold-use state from the client
+message GetHoldUseStatusCommand {}
+
+message HoldUseStatusResponse {
+  string request_id = 1; // Echoes the request's message_id for correlation
+  bool enabled = 2;
+}
+
+// Hold or release the use (right-click) button in-game.
+message HoldUseCommand {
+  bool enabled = 1;
+  int32 duration_ticks = 2; // 0 = until an explicit release
+}
+
 // Weather state update (Client -> Manager)
 message WeatherUpdate {
   bool is_raining = 1;       // True if it is raining

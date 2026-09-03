@@ -33,6 +33,8 @@ public class WorldInteractionHandler extends BaseInboundHandler {
 
     private boolean holdingAttack = false;
     private int holdAttackTicksRemaining = 0;  // 0 = indefinite
+    private boolean holdingUse = false;
+    private int holdUseTicksRemaining = 0;  // 0 = indefinite
 
     public static boolean isHoldingAttack() {
         return instance != null && instance.holdingAttack;
@@ -64,7 +66,56 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         }
     }
 
+    public void handleGetHoldUseStatus(String messageId) {
+        World.HoldUseStatusResponse response = World.HoldUseStatusResponse.newBuilder()
+            .setRequestId(messageId)
+            .setEnabled(holdingUse)
+            .build();
+        Protocol.ClientToManagerMessage msg = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setHoldUseStatusResponse(response)
+            .build();
+        connection.sendMessage(msg);
+    }
+
+    public void handleHoldUse(World.HoldUseCommand command) {
+        holdingUse = command.getEnabled();
+        holdUseTicksRemaining = command.getDurationTicks();
+        if (!holdingUse) {
+            releaseUse();
+        }
+    }
+
+    private void releaseUse() {
+        client.options.keyUse.setDown(false);
+        if (client.player != null && client.gameMode != null && client.player.isUsingItem()) {
+            client.gameMode.releaseUsingItem(client.player);
+        }
+    }
+
     public void tick() {
+        tickHoldAttack();
+        tickHoldUse();
+    }
+
+    // Drives the real use key. With it down, vanilla's handleKeybinds starts the use, keeps it
+    // going and never releases it; without it, the next tick releases whatever is in progress.
+    // Re-asserted every tick because opening a screen calls KeyMapping.releaseAll().
+    private void tickHoldUse() {
+        if (holdUseTicksRemaining > 0) {
+            holdUseTicksRemaining--;
+            if (holdUseTicksRemaining == 0) {
+                holdingUse = false;
+                releaseUse();
+                return;
+            }
+        }
+        if (!holdingUse || client.player == null) return;
+        client.options.keyUse.setDown(true);
+    }
+
+    private void tickHoldAttack() {
         if (holdAttackTicksRemaining > 0) {
             holdAttackTicksRemaining--;
             if (holdAttackTicksRemaining == 0) {

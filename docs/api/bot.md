@@ -10,6 +10,24 @@ Get bot position.
 
 **Returns:** `dict` with keys `x`, `y`, `z`, or `None` if bot is offline
 
+### `rotation(bot_name="")`
+
+Get the bot's view rotation in degrees.
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `dict` with `yaw` and `pitch` (`float`), or `None` if bot is offline
+
+Yaw: `0` south, `90` west, `180`/`-180` north, `-90` east. Pitch: `-90` straight up, `0` level, `90` straight down.
+
+```python
+rot = bot.rotation()
+if rot:
+    utils.log(f"yaw={rot['yaw']:.1f} pitch={rot['pitch']:.1f}")
+```
+
 ### `health(bot_name="")`
 
 Get bot health.
@@ -66,6 +84,107 @@ Select a hotbar slot.
 ```python
 bot.select_slot(0)  # Select first hotbar slot
 bot.select_slot(8)  # Select last hotbar slot
+```
+
+### `rotate(yaw, pitch, bot_name="")`
+
+Set the bot's view rotation. Same convention as `rotation()`: yaw `0` south, `90` west, `180` north, `-90` east; pitch `-90` up, `0` level, `90` down.
+
+**Parameters:**
+
+- `yaw` (`float`) - Horizontal rotation in degrees
+- `pitch` (`float`) - Vertical rotation in degrees
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+bot.rotate(90, 0)  # Face west, level
+bot.rotate(0, 90)  # Look straight down
+
+# Turn 45 degrees to the right of the current heading
+rot = bot.rotation()
+bot.rotate(rot["yaw"] + 45, rot["pitch"])
+```
+
+### `use_item(hand=bot.Hand.MAIN, bot_name="")`
+
+Use the item held in a hand once, like a single tap of right-click with nothing targeted: throw an ender pearl or snowball, cast a fishing rod, splash a potion, empty a bucket. Aim first with `bot.rotate()` or `world.look_at()`.
+
+This does not work for items that must be held. Eating, drinking, drawing a bow or crossbow, and raising a shield all start on the tap and are released again on the next tick, so use `hold_use()` for those. To right-click a block use `world.interact_block()`.
+
+**Parameters:**
+
+- `hand` (`bot.Hand`, optional) - `bot.Hand.MAIN` (default) or `bot.Hand.OFF`
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+bot.select_slot(3)
+bot.use_item()  # Right-click with the main hand
+bot.use_item(bot.Hand.OFF)  # Right-click with the offhand
+```
+
+### `hold_use(enabled, duration_ticks=0, bot_name="")`
+
+Hold or release the right-click use button in-game. While enabled the client keeps the use key pressed every tick, so the game itself starts, continues and completes the use exactly as for a player holding the button: eating and drinking finish, a bow charges until release, a shield stays up. Main hand is tried first, then the offhand, as in-game.
+
+With nothing in progress the game re-triggers the use every four ticks, so holding past the end of an eat starts on the next item in the stack. That second use is cancelled by the release without consuming anything as long as it has not run to completion, which is why the example below holds for 40 ticks to eat exactly one item (eating takes 32).
+
+**Parameters:**
+
+- `enabled` (`bool`) - `True` to start holding use, `False` to release
+- `duration_ticks` (`int`, optional) - Auto-release after this many game ticks. `0` holds until an explicit `False` call (default: `0`)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+# Eat one item from the selected hotbar slot
+bot.select_slot(food_slot)
+bot.hold_use(True, duration_ticks=40)
+
+# Draw a bow for a second, then release the arrow
+world.look_at_entity(target["entity_id"])
+bot.hold_use(True, duration_ticks=20)
+
+# Keep a shield up until told otherwise
+bot.hold_use(True)
+# ... later:
+bot.hold_use(False)
+```
+
+### `get_hold_use(bot_name="")`
+
+Query whether the client is currently holding the use button.
+
+**Returns:** `bool` - `True` if use is being held, `False` otherwise
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+```python
+if bot.get_hold_use():
+    utils.log("Still eating")
+```
+
+### `drop_item(drop_all=False, bot_name="")`
+
+Drop the item in the selected hotbar slot: one item, or the whole stack with `drop_all=True`. Same as pressing Q (or Ctrl+Q) in-game. When the slot is empty the client replies `No item to drop` in the bot console; nothing is raised.
+
+**Parameters:**
+
+- `drop_all` (`bool`, optional) - Drop the entire stack instead of a single item (default: False)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+bot.select_slot(0)
+bot.drop_item()  # Drop one item
+bot.drop_item(drop_all=True)  # Drop the whole stack
 ```
 
 ### `server(bot_name="")`
@@ -509,20 +628,50 @@ bot.chat("#goto 100 64 100")  # Baritone commands work
 bot.chat("Hello from bot2!", "bot2")  # Send from specific bot
 ```
 
-### `manager_command(command, bot_name="")`
+### `connect(address, bot_name="")`
 
-Send raw manager protocol command (advanced).
+Connect the bot to a Minecraft server. If the bot is already on a server it leaves that one first.
 
 **Parameters:**
 
-- `command` (`str`) - Manager command to execute
+- `address` (`str`) - Server address, `host` or `host:port`
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online, if `address` is empty, or if the bot's proxy is unreachable
+
+```python
+bot.connect("play.example.com")
+bot.connect("127.0.0.1:25565", "bot2")
+```
+
+### `disconnect(reason="", bot_name="")`
+
+Disconnect the bot from its current server. The bot process keeps running and can `connect()` again. When the bot is not on a server the client replies `Not connected to any server` in the bot console; nothing is raised.
+
+**Parameters:**
+
+- `reason` (`str`, optional) - Shown on the client's disconnect screen
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Raises:** `RuntimeError` if bot not found or not online
 
 ```python
-# Advanced usage - prefer using bot.chat() or specific APIs
-bot.manager_command("chat Hello")
-bot.manager_command("baritone goto 100 64 100")
-bot.manager_command("chat Hello", "bot2")  # Send to specific bot
+bot.disconnect()
+bot.disconnect("Done for today")
+```
+
+### `manager_command(command, bot_name="")`
+
+Send a raw manager console command. Every console command has a typed function, so prefer those: `chat`, `connect`, `disconnect`, `rotate`, `select_slot`, `use_item`, `drop_item`, `stop`, `world.look_at`, `world.look_at_entity` and the `meteor` module. Typed functions validate their arguments and raise on a bad call; this one only logs a warning. The command line is split on spaces with shell-style quoting, so quotes in the text are consumed.
+
+**Parameters:**
+
+- `command` (`str`) - Manager command line, as typed in the bot console
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+bot.manager_command("hotbar 3")  # Same as bot.select_slot(3)
+bot.manager_command("meteor list", "bot2")  # Send to specific bot
 ```

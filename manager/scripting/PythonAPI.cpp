@@ -689,6 +689,53 @@ void PythonAPI::selectSlot(int slot, const std::string &botName)
     BotManager::sendSwitchHotbarSlot(name, slot);
 }
 
+py::object PythonAPI::getRotation(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    py::gil_scoped_release release;
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        py::gil_scoped_acquire acquire;
+        return py::none();
+    }
+
+    QMutexLocker locker(bot->dataMutex.get());
+    float yaw = bot->yaw;
+    float pitch = bot->pitch;
+    locker.unlock();
+
+    py::gil_scoped_acquire acquire;
+    py::dict result;
+    result["yaw"] = yaw;
+    result["pitch"] = pitch;
+    return result;
+}
+
+void PythonAPI::rotate(float yaw, float pitch, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendSetRotation(name, yaw, pitch);
+}
+
+void PythonAPI::useItem(Hand hand, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendUseItem(name, hand == Hand::OFF
+                                      ? mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND
+                                      : mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND);
+}
+
+void PythonAPI::dropItem(bool dropAll, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendDropItem(name, dropAll);
+}
+
 std::optional<std::string> PythonAPI::getServer(const std::string &botName)
 {
     QString name = resolveBotName(botName);
@@ -1028,7 +1075,7 @@ void PythonAPI::sendChat(const std::string &message, const std::string &botName)
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
 
-    BotManager::sendCommand(name, QString("chat %1").arg(QString::fromStdString(message)), true);
+    BotManager::sendChat(name, QString::fromStdString(message), true);
 }
 
 void PythonAPI::sendCommand(const std::string &command, const std::string &botName)
@@ -1037,6 +1084,27 @@ void PythonAPI::sendCommand(const std::string &command, const std::string &botNa
     ensureBotOnline(name);
 
     BotManager::sendCommand(name, QString::fromStdString(command), true);
+}
+
+void PythonAPI::connectServer(const std::string &address, const std::string &botName)
+{
+    if (address.empty()) {
+        throw std::runtime_error("Server address must not be empty");
+    }
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    if (!BotManager::sendConnectToServer(name, QString::fromStdString(address))) {
+        throw std::runtime_error("Cannot connect: proxy is unreachable");
+    }
+}
+
+void PythonAPI::disconnectServer(const std::string &reason, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    BotManager::sendDisconnect(name, QString::fromStdString(reason));
 }
 
 void PythonAPI::startBot(const std::string &botName)
@@ -3057,12 +3125,39 @@ bool PythonAPI::getHoldAttack(const std::string &botName)
     return result;
 }
 
+void PythonAPI::holdUse(bool enabled, int durationTicks, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendHoldUse(name, enabled, durationTicks);
+}
+
+bool PythonAPI::getHoldUse(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::getHoldUseStatus(name);
+    }
+    return result;
+}
+
 void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak, const std::string &botName)
 {
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
     auto protoFace = static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(static_cast<int>(face));
     BotManager::sendLookAt(name, x, y, z, protoFace, sneak);
+}
+
+void PythonAPI::lookAtEntity(int entityId, bool sneak, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendLookAtEntity(name, entityId, sneak);
 }
 
 void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, BlockFace face, const std::string &bot)

@@ -81,8 +81,16 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .def_readonly("focused", &PyWindowState::focused)
         .def_readonly("monitors", &PyWindowState::monitors);
 
+    py::enum_<PythonAPI::Hand>(m, "Hand")
+        .value("MAIN", PythonAPI::Hand::MAIN)
+        .value("OFF", PythonAPI::Hand::OFF)
+        .export_values();
+
     def_state("position", &PythonAPI::getPosition,
               "Get position as dict {x, y, z}",
+              py::arg("bot_name") = "");
+    def_state("rotation", &PythonAPI::getRotation,
+              "Get view rotation as dict {yaw, pitch} in degrees, or None if the bot is offline",
               py::arg("bot_name") = "");
     def_state("dimension", &PythonAPI::getDimension,
               "Get dimension name",
@@ -111,6 +119,31 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     def_action("select_slot", &PythonAPI::selectSlot,
                "Select hotbar slot (0-8)",
                py::arg("slot"),
+               py::arg("bot_name") = "");
+    def_action("rotate", &PythonAPI::rotate,
+               "Set view rotation in degrees",
+               py::arg("yaw"), py::arg("pitch"),
+               py::arg("bot_name") = "");
+    def_action("use_item", &PythonAPI::useItem,
+               "Use the item in the given hand once, like a single tap of right-click: throw, cast, "
+               "splash, empty a bucket. Items that must be held (food, drinks, bows, shields) need "
+               "bot.hold_use() instead.",
+               py::arg("hand") = PythonAPI::Hand::MAIN,
+               py::arg("bot_name") = "");
+    def_action("hold_use", &PythonAPI::holdUse,
+               "Hold or release right-click use in-game. The client keeps the use key pressed, so "
+               "held uses (eating, drinking, bows, shields) run to completion like a player holding "
+               "the button. duration_ticks=0 holds until an explicit release.",
+               py::arg("enabled"),
+               py::arg("duration_ticks") = 0,
+               py::arg("bot_name") = "");
+    def_action("get_hold_use", &PythonAPI::getHoldUse,
+               "Query the current hold-use state from the client. Returns True if use is "
+               "currently being held, False otherwise. Blocks until the client responds.",
+               py::arg("bot_name") = "");
+    def_action("drop_item", &PythonAPI::dropItem,
+               "Drop the selected hotbar item: one item, or the whole stack with drop_all=True",
+               py::arg("drop_all") = false,
                py::arg("bot_name") = "");
     def_state("server", &PythonAPI::getServer,
               "Get server address",
@@ -183,6 +216,15 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     def_action("chat", &PythonAPI::sendChat,
                "Send chat message",
                py::arg("message"),
+               py::arg("bot_name") = "");
+    def_action("connect", &PythonAPI::connectServer,
+               "Connect to a Minecraft server (host or host:port), leaving the current one first. "
+               "Raises if the bot's proxy is unreachable.",
+               py::arg("address"),
+               py::arg("bot_name") = "");
+    def_action("disconnect", &PythonAPI::disconnectServer,
+               "Disconnect from the current server",
+               py::arg("reason") = "",
                py::arg("bot_name") = "");
     def_action("manager_command", &PythonAPI::sendCommand,
                "Send raw manager command",
@@ -538,6 +580,12 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                "sneak=False tries standing first, falls back to crouching eye height if nothing is visible.",
                py::arg("x"), py::arg("y"), py::arg("z"),
                py::arg("face") = PythonAPI::BlockFace::AUTO,
+               py::arg("sneak") = false,
+               py::arg("bot_name") = "");
+    def_action("look_at_entity", &PythonAPI::lookAtEntity,
+               "Look at an entity by id (entity_id from world.entities()), aiming at its eyes. "
+               "sneak=True aims from the crouching eye height.",
+               py::arg("entity_id"),
                py::arg("sneak") = false,
                py::arg("bot_name") = "");
     def_query("can_reach_block", &PythonAPI::canReachBlock,
