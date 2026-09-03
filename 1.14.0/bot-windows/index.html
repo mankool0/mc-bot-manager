@@ -1,0 +1,1212 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python API documentation for mc-bot-manager scripting system">
+      
+      
+        <meta name="author" content="mc-bot-manager contributors">
+      
+      
+        <link rel="canonical" href="https://mankool0.github.io/mc-bot-manager/1.14.0/bot-windows/">
+      
+      
+        <link rel="prev" href="../event-handlers/">
+      
+      
+        <link rel="next" href="../api/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Bot Windows - MC Bot Manager - Python Scripting API</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bot-windows" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MC Bot Manager - Python Scripting API" class="md-header__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MC Bot Manager - Python Scripting API
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Bot Windows
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mankool0/mc-bot-manager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mankool0/mc-bot-manager
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MC Bot Manager - Python Scripting API" class="md-nav__button md-logo" aria-label="MC Bot Manager - Python Scripting API" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MC Bot Manager - Python Scripting API
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mankool0/mc-bot-manager" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mankool0/mc-bot-manager
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-script/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Script
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../event-handlers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Handlers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-mod-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the mod does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prism-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prism Launcher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-tiling-from-the-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-tiling from the manager
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kde-plasma-on-wayland" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        KDE Plasma on Wayland
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-compositors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other compositors
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/bot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/baritone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    baritone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/meteor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    meteor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    world
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/comms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    comms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-mod-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the mod does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prism-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prism Launcher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-tiling-from-the-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-tiling from the manager
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kde-plasma-on-wayland" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        KDE Plasma on Wayland
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-compositors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other compositors
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bot-windows">Bot Windows</h1>
+<p>The client mod changes how each bot's game window is created so that launching bots does not
+interrupt whatever you are doing, and so that the windows can be told apart. The manager can then
+tile them (see below). The Prism hook does the same for Prism Launcher's own windows.</p>
+<h2 id="what-the-mod-does">What the mod does</h2>
+<ul>
+<li><strong>Window class</strong>: every bot window is created with the window class <code>mcbot-&lt;account&gt;</code>
+  (lower-cased account name). This is the <code>app_id</code> on Wayland and the <code>WM_CLASS</code> on X11, and is
+  what window rules and tiling tools match on. Windows and macOS have no equivalent; there the
+  window is identified by its process id.</li>
+<li><strong>Title</strong>: the account name is appended to the title, e.g.
+  <code>Minecraft 1.21.11 - Multiplayer (3rd-party) [BotName]</code>.</li>
+<li><strong>No focus on create</strong>: the window is created with GLFW's <code>FOCUSED</code> and <code>FOCUS_ON_SHOW</code> hints
+  off, so the game never asks for focus itself. Windows honours that outright. On X11 and XWayland
+  the window manager has the final say over freshly mapped windows, and some (KWin at its default
+  focus-stealing level) still activate them - see the KDE rule below. Native Wayland compositors
+  ignore the hints entirely.</li>
+<li><strong>Shown in place</strong>: the window is created hidden and stays that way until the manager has sent
+  its placement, which is what maps it. A new bot therefore appears straight in its cell on the
+  bot monitor (or, with tiling off, wherever the window manager puts it) instead of landing on the
+  main screen first and being moved a moment later. The game loads behind the scenes meanwhile;
+  the manager still shows the bot starting. Should the manager never answer, the window shows
+  itself after 10 seconds.</li>
+<li><strong>X11 over Wayland</strong>: on a Wayland desktop the game runs under XWayland rather than as a native
+  Wayland client, because Wayland does not let applications position their own windows and the
+  manager's tiling would be a no-op. Minecraft 26.1+ already prefers X11 on its own; the mod extends
+  that to 1.21.x.</li>
+</ul>
+<p>JVM arguments (Prism Launcher -&gt; instance -&gt; Settings -&gt; Java arguments) to change the defaults:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-Dmcbot.window.focus=true</code></td>
+<td>Keep GLFW's default behaviour where a new window takes focus</td>
+</tr>
+<tr>
+<td><code>-Dmcbot.window.deferShow=false</code></td>
+<td>Map the window as soon as the game creates it instead of waiting for the manager's placement</td>
+</tr>
+<tr>
+<td><code>-Dmcbot.window.nativeWayland=true</code></td>
+<td>Let GLFW pick native Wayland on 1.21.x. Window placement will not work</td>
+</tr>
+</tbody>
+</table>
+<p>The window class and title are always applied.</p>
+<h2 id="prism-launcher">Prism Launcher</h2>
+<p>Prism opens windows of its own: the main window when the manager starts it, and on every bot
+launch a progress dialog plus, if Prism's <em>Show console while the game is running</em> option is on,
+the instance console. With the Prism hook enabled (Settings -&gt; Prism Launcher -&gt; <strong>Enable Prism
+hook</strong>) the hook library marks every top-level Prism window as <em>show without activating</em> before
+it appears. Qt turns that into <code>_NET_WM_USER_TIME = 0</code> on X11, a no-activate show on Windows and
+no activation request on Wayland, so Prism does not ask for focus when it opens a window.</p>
+<p>The same limits as for the game windows apply: the window manager decides in the end. KWin on
+Wayland at its default focus-stealing level activates every new window regardless, and on X11 Qt
+asks the window manager to activate a modal dialog (the launch progress dialog) once it is
+mapped, which KWin at its default level grants. See the KDE section below for what helps where.</p>
+<p>Prism's windows carry the application id <code>org.prismlauncher.PrismLauncher</code> (the <code>app_id</code> on
+Wayland; the X11 class is <code>prismlauncher</code>).</p>
+<p>To keep Prism off the screen altogether, enable <strong>Keep Prism windows minimized</strong> next to the hook
+setting (takes effect the next time the manager starts Prism). Every window Prism opens then
+starts minimized: the main window, the launch progress dialog, the instance console, and also any
+error or login prompt, so check the taskbar if a launch seems stuck. Bring Prism up from the
+taskbar when you need it; on X11 and Windows the manager's <em>Launch Prism Launcher</em> action restores
+it as well, on Wayland the compositor only lets it flag the taskbar entry. Prism's output is in the
+manager's log either way.</p>
+<p>Set <code>MCBM_PRISM_FOCUS=1</code> in the manager's environment to keep Qt's default behaviour. Prism
+inherits it from the manager, Flatpak included. Without the hook Prism is left alone entirely.</p>
+<h2 id="auto-tiling-from-the-manager">Auto-tiling from the manager</h2>
+<p>Settings -&gt; Bots -&gt; <strong>Game Windows</strong>:</p>
+<ul>
+<li><strong>Tile bot windows on connect</strong> - when a bot connects, the manager moves and resizes its window
+  into its cell of a grid on the chosen monitor. The window is still hidden at that point and
+  appears directly in the cell. A bot's cell is its position in the bot list
+  (first bot = top-left, then row by row), so every bot has a fixed slot: a crashed bot leaves
+  its cell empty and takes it back when it relaunches, and nothing else moves. With more bots
+  than cells the numbering wraps and windows overlap.</li>
+<li><strong>Monitor</strong> - a monitor name as the game reports it. The list holds the names reported by online
+  bots plus the desktop's own screen names; "Primary monitor" works without knowing any.</li>
+<li><strong>Columns / Rows</strong> - the grid. 3 x 2 on a 1920x1080 work area gives 640x540 windows.</li>
+<li><strong>Minimize after placing</strong> - iconify each window once it is in its cell.</li>
+</ul>
+<p>Changing the settings re-tiles every online bot immediately, as does removing a bot from the list
+(the bots after it move up a cell). Scripts get the same control through
+<a href="../api/bot/#game-window"><code>bot.window()</code> and <code>bot.set_window()</code></a>.</p>
+<p>Placement needs a platform where applications may move their own windows: Windows, X11 and
+XWayland. On native Wayland (1.21.x with <code>-Dmcbot.window.nativeWayland=true</code>, or GNOME without
+XWayland) the manager can still resize and minimize, and logs a warning about the rest.</p>
+<h2 id="kde-plasma-on-wayland">KDE Plasma on Wayland</h2>
+<p>KWin decides whether a newly mapped window is activated, for XWayland windows too. If bot windows
+still grab focus, add a window rule once and it applies to every bot:</p>
+<ol>
+<li>System Settings -&gt; Window Management -&gt; Window Rules -&gt; Add New.</li>
+<li>Window class (application): <strong>Regular Expression</strong> <code>^mcbot-</code>.
+   Match whole window class: No.</li>
+<li>Add Property -&gt; <strong>Focus stealing prevention</strong> -&gt; Force -&gt; <strong>Extreme</strong>.</li>
+<li>Apply.</li>
+</ol>
+<p>Bot windows now open behind whatever you are working in. The game runs under XWayland, so the
+manager's auto-tiling works as on any X11 desktop; KWin rules with <strong>Screen</strong>, <strong>Size</strong>, or
+<strong>Position</strong> properties (<em>Apply Initially</em>) are an alternative for static layouts, one rule per bot
+matching the exact class <code>mcbot-&lt;account&gt;</code>.</p>
+<p>Prism is a different case, because it runs as a native Wayland client, and for those KWin only
+consults the per-window rule once the <em>global</em> level (System Settings -&gt; Window Management -&gt;
+Window Behavior -&gt; <strong>Focus stealing prevention</strong>) is at least <strong>Medium</strong>. At the default <strong>Low</strong> it
+activates every new Wayland window before looking at rules, so a Prism rule alone changes nothing
+there (the game windows are XWayland windows, which take the X11 path where the rule does work).
+The options:</p>
+<ul>
+<li><strong>Keep Prism windows minimized</strong> in the manager (see above) sidesteps activation entirely: a
+  window that asks to start minimized is never activated. This works at any level.</li>
+<li>Or raise the global level to <strong>Medium</strong>, which only affects windows that open without a fresh
+  activation token (applications you start yourself still get focus), and add a rule for Prism:
+  window class <strong>Regular Expression</strong> <code>(?i)prismlauncher</code>, <strong>Focus stealing prevention</strong> -&gt; Force
+  -&gt; <strong>High</strong>. Prism's windows then open under whatever you are working in, on the screen KWin
+  picks. Give the same rule a <strong>Screen</strong> property (<em>Apply Initially</em>) pointing at the bot monitor
+  to keep them off the main screen.</li>
+</ul>
+<h2 id="other-compositors">Other compositors</h2>
+<ul>
+<li><strong>GNOME (Wayland)</strong>: no window rules and no public placement API; GNOME applies its own
+  focus-stealing heuristics and may show a "window is ready" notification instead of raising the
+  window.</li>
+<li><strong>Sway / i3</strong>: <code>no_focus [app_id="^mcbot-"]</code> keeps focus where it is;
+  <code>for_window [app_id="^mcbot-"] move to output DP-1</code> and friends handle placement
+  (<code>class</code> instead of <code>app_id</code> on i3). <code>no_focus [app_id="^org.prismlauncher.PrismLauncher$"]</code>
+  does the same for Prism.</li>
+<li><strong>X11 window managers</strong>: match <code>WM_CLASS</code> <code>mcbot-&lt;account&gt;</code> (and <code>prismlauncher</code>) in the WM's
+  rules; tools like <code>xdotool search --class mcbot-</code> and <code>wmctrl</code> also see the windows.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
