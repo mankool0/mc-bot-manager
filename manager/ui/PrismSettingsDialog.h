@@ -27,6 +27,8 @@ public:
 
     void setUseHook(bool enabled);
     bool getUseHook() const;
+    void setMinimizeWindows(bool enabled);
+    bool getMinimizeWindows() const;
 
     QStringList getInstances() const { return instances; }
     QStringList getAccounts() const;

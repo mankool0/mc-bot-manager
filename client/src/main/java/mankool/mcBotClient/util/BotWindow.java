@@ -17,6 +17,11 @@ import java.util.Locale;
  * stealing focus on Windows and X11; Wayland compositors decide focus themselves, so there a window
  * rule keyed on the class is needed as well.
  *
+ * <p>The window is created hidden and stays unmapped until the manager has said where it goes (see
+ * {@code WindowOutbound}), so it appears straight in its cell on the bot monitor instead of being
+ * dropped on the main screen first and moved a moment later. Positions set while the window is
+ * hidden are honoured when it is mapped, on X11 via the PPosition size hint GLFW sets for that case.
+ *
  * <p>Called from {@code Minecraft}'s constructor before the mod's entrypoint runs, so this may only
  * read state that exists by then: {@code Minecraft.instance} and its user.
  */
@@ -27,6 +32,8 @@ public final class BotWindow {
     private static final String FOCUS_PROPERTY = "mcbot.window.focus";
     /** Set {@code -Dmcbot.window.nativeWayland=true} to let GLFW pick Wayland over X11 on Linux. */
     private static final String NATIVE_WAYLAND_PROPERTY = "mcbot.window.nativeWayland";
+    /** Set {@code -Dmcbot.window.deferShow=false} to map the window as soon as the game creates it. */
+    private static final String DEFER_SHOW_PROPERTY = "mcbot.window.deferShow";
     private static final String APP_ID_PREFIX = "mcbot-";
     private static final String FALLBACK_NAME = "bot";
 
@@ -75,8 +82,32 @@ public final class BotWindow {
             GLFW.glfwWindowHint(GLFW.GLFW_FOCUSED, GLFW.GLFW_FALSE);
             GLFW.glfwWindowHint(GLFW.GLFW_FOCUS_ON_SHOW, GLFW.GLFW_FALSE);
         }
-        LOGGER.info("Bot window class '{}', focus on create {}", appId,
-            keepFocus ? "kept (" + FOCUS_PROPERTY + ")" : "disabled");
+        boolean deferShow = deferShow();
+        if (deferShow) {
+            GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
+        }
+        LOGGER.info("Bot window class '{}', focus on create {}, shown {}", appId,
+            keepFocus ? "kept (" + FOCUS_PROPERTY + ")" : "disabled",
+            deferShow ? "once the manager has placed it" : "immediately (" + DEFER_SHOW_PROPERTY + ")");
+    }
+
+    /** Whether the window is created hidden and shown on the manager's first placement. */
+    public static boolean deferShow() {
+        return !"false".equalsIgnoreCase(System.getProperty(DEFER_SHOW_PROPERTY));
+    }
+
+    /** Whether the window is mapped. A hidden window is not iconified; the game keeps rendering into it. */
+    public static boolean isVisible(long handle) {
+        return GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_VISIBLE) == GLFW.GLFW_TRUE;
+    }
+
+    /** Maps or unmaps the window. Must run on the render thread. */
+    public static void setVisible(long handle, boolean visible) {
+        if (visible) {
+            GLFW.glfwShowWindow(handle);
+        } else {
+            GLFW.glfwHideWindow(handle);
+        }
     }
 
     /** Appends the account name to the game's window title. */

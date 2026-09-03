@@ -80,7 +80,7 @@
       <item>
        <widget class="QCheckBox" name="useHookCheckBox">
         <property name="text">
-         <string>Enable Prism hook (allows automatic token refresh)</string>
+         <string>Enable Prism hook (token refresh, no focus stealing)</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -88,9 +88,19 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="minimizeWindowsCheckBox">
+        <property name="toolTip">
+         <string>Every window Prism opens (its main window, the launch progress dialog, the instance console) starts minimized, so nothing appears on screen when bots launch. Bring Prism up from the taskbar, or with Launch Prism Launcher on X11 and Windows.</string>
+        </property>
+        <property name="text">
+         <string>Keep Prism windows minimized</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QTextEdit" name="hookNoteLabel">
         <property name="plainText">
-         <string>When enabled, a shared library is injected into the PrismLauncher process to enable account token refresh without waiting until Prism does a refresh.</string>
+         <string>When enabled, a shared library is injected into the PrismLauncher process. It refreshes account tokens on demand instead of waiting for Prism's own schedule, and keeps Prism's windows from taking focus when bots launch.</string>
         </property>
         <property name="readOnly">
          <bool>true</bool>

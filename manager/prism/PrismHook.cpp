@@ -6,6 +6,9 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QPointer>
+#include <QEvent>
+#include <QThread>
+#include <QWindow>
 
 #include "minecraft/auth/AccountList.h"
 #include "minecraft/auth/AccountData.h"
@@ -302,17 +305,101 @@ static void initializeHookServer()
     });
 }
 
+// ---- Window guard ----
+//
+// Prism opens its main window at startup and a progress dialog (plus the
+// instance console, if enabled) on every launch, each of which takes focus
+// away from whatever the user is doing. Marking every top-level window with
+// Qt's show-without-activating property before it is shown turns that into
+// _NET_WM_USER_TIME=0 on X11, SW_SHOWNOACTIVATE on Windows and no
+// xdg-activation request on Wayland; the window manager has the final say.
+// Set MCBM_PRISM_FOCUS=1 to keep Qt's default behaviour.
+//
+// With MCBM_PRISM_WINDOWS=minimized (the manager's "Keep Prism windows
+// minimized" setting) every such window also starts minimized: WM_HINTS
+// IconicState before the map on X11, SW_SHOWMINNOACTIVE on Windows and
+// xdg_toplevel.set_minimized on Wayland, where KWin keeps a window that asks
+// for it before its first commit out of sight. Qt cannot tell a Wayland window
+// is minimized afterwards, so un-minimizing is left to the taskbar there.
+
+class NoActivateFilter : public QObject {
+    Q_OBJECT
+public:
+    explicit NoActivateFilter(bool minimize) : m_minimize(minimize) {}
+
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        if (event->type() != QEvent::Show) return false;
+        auto* window = qobject_cast<QWindow*>(obj);
+        if (!window || !window->isTopLevel()) return false;
+        // Menus, combo popups and tooltips grab input on their own and keep
+        // Qt's handling; tool windows follow their parent.
+        const Qt::WindowType type = window->type();
+        if (type == Qt::Window || type == Qt::Dialog) {
+            window->setProperty("_q_showWithoutActivating", true);
+            if (m_minimize && !(window->windowStates() & Qt::WindowMinimized)) {
+                window->setWindowStates(window->windowStates() | Qt::WindowMinimized);
+            }
+        }
+        return false;
+    }
+
+private:
+    bool m_minimize;
+};
+
+static bool keepPrismFocus()
+{
+    const QByteArray value = qgetenv("MCBM_PRISM_FOCUS");
+    return value == "1" || value.compare("true", Qt::CaseInsensitive) == 0;
+}
+
+static bool minimizePrismWindows()
+{
+    return qgetenv("MCBM_PRISM_WINDOWS") == "minimized";
+}
+
+// Must run on the main thread, and before Prism's Application constructor
+// body: that is where the main window is shown. Registered with
+// qAddPreRoutine ahead of the QApplication it is called from inside the
+// constructor; the queued fallback from the hook thread only covers windows
+// opened after the event loop starts.
+static void installFocusGuard()
+{
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app) return;
+    if (QThread::currentThread() != app->thread()) {
+        QMetaObject::invokeMethod(app, []() { installFocusGuard(); }, Qt::QueuedConnection);
+        return;
+    }
+    static bool installed = false;
+    if (installed) return;
+    installed = true;
+    if (keepPrismFocus()) return;
+    // Unparented on purpose: the application object is still being
+    // constructed when this runs from the pre-routine. Lives for the process.
+    app->installEventFilter(new NoActivateFilter(minimizePrismWindows()));
+}
+
 // ---- Platform entry points ----
 
 #ifdef _WIN32
 
 static DWORD WINAPI hookWaiterThread(LPVOID)
 {
+    // The DLL is injected while Prism may still be starting up. Registered
+    // before its QApplication exists this runs inside the constructor; after
+    // that qAddPreRoutine calls it right away and it queues itself over.
+    qAddPreRoutine(installFocusGuard);
     while (!QCoreApplication::instance()) {
         Sleep(50);
     }
     QMetaObject::invokeMethod(QCoreApplication::instance(),
-        []() { initializeHookServer(); },
+        []() {
+            installFocusGuard();
+            initializeHookServer();
+        },
         Qt::QueuedConnection);
     return 0;
 }
@@ -334,12 +421,19 @@ static void hookInit()
         return;
     }
 
+    // Preloaded, so this runs before main(): Qt calls the routine from inside
+    // Prism's QApplication constructor, ahead of the main window.
+    qAddPreRoutine(installFocusGuard);
+
     pthread_t t;
     pthread_create(&t, nullptr, [](void*) -> void* {
         while (!QCoreApplication::instance())
             usleep(50000);
         QMetaObject::invokeMethod(QCoreApplication::instance(),
-                                  []() { initializeHookServer(); },
+                                  []() {
+                                      installFocusGuard();
+                                      initializeHookServer();
+                                  },
                                   Qt::QueuedConnection);
         return nullptr;
     }, nullptr);

@@ -531,6 +531,7 @@ static PyWindowState windowStateToPy(const mankool::mcbot::protocol::WindowState
     result.height = state.height();
     result.minimized = state.minimized();
     result.focused = state.focused();
+    result.visible = state.visible();
     const auto monitors = state.monitors();
     for (const auto &m : monitors) {
         PyMonitor pm;
@@ -569,7 +570,8 @@ py::object PythonAPI::getWindow(const std::string &botName)
 }
 
 py::object PythonAPI::setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
-                                const std::string &monitor, const py::object &minimized, const std::string &botName)
+                                const std::string &monitor, const py::object &minimized, const py::object &visible,
+                                const std::string &botName)
 {
     QString name = resolveBotName(botName);
     BotInstance *bot = BotManager::getBotByName(name);
@@ -584,6 +586,7 @@ py::object PythonAPI::setWindow(const py::object &x, const py::object &y, const 
     if (!width.is_none()) cmd.setWidth(width.cast<int>());
     if (!height.is_none()) cmd.setHeight(height.cast<int>());
     if (!minimized.is_none()) cmd.setMinimized(minimized.cast<bool>());
+    if (!visible.is_none()) cmd.setVisible(visible.cast<bool>());
 
     std::optional<mankool::mcbot::protocol::WindowStateResponse> state;
     {

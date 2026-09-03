@@ -44,6 +44,7 @@ struct PrismConfig {
     QStringList accounts;
     QMap<QString, QString> accountIdToNameMap;
     bool useHook = true;
+    bool minimizeWindows = false;
 };
 
 class ManagerMainWindow : public QMainWindow

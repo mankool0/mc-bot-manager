@@ -352,6 +352,7 @@ Get the game window's placement.
 | `width`, `height` | `int` | Frame size |
 | `minimized` | `bool` | Iconified |
 | `focused` | `bool` | Has keyboard focus |
+| `visible` | `bool` | Mapped. `False` while the mod is still holding a new window back for the manager's placement, or after `set_window(visible=False)` |
 | `monitors` | `list[Monitor]` | All monitors the game sees |
 
 **`Monitor` attributes:**
@@ -371,14 +372,16 @@ if w:
         utils.log(f"  {m.name}{' (primary)' if m.primary else ''}: work area {m.work_width}x{m.work_height}")
 ```
 
-### `set_window(x=None, y=None, width=None, height=None, monitor="", minimized=None, bot_name="")`
+### `set_window(x=None, y=None, width=None, height=None, monitor="", minimized=None, visible=None, bot_name="")`
 
-Move, resize or (un)minimize the game window. Arguments left as `None` keep their current value.
+Move, resize, (un)minimize or show/hide the game window. Arguments left as `None` keep their
+current value; changes are applied in the order hide, move/resize, show, minimize.
 
 - `x`, `y` (`int`) - Frame position relative to the work area of `monitor`
 - `width`, `height` (`int`) - Frame size
 - `monitor` (`str`) - Target monitor name from `window().monitors`. Empty keeps the current monitor; with no `x`/`y` the window keeps its offset within the work area when moved to another monitor
 - `minimized` (`bool`) - `True` iconifies, `False` restores
+- `visible` (`bool`) - `False` unmaps the window entirely (no taskbar entry on most desktops; the game keeps running), `True` maps it again
 
 **Returns:** the resulting `WindowState`, or `None` on timeout. Raises if the bot is not online.
 

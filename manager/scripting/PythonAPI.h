@@ -99,6 +99,7 @@ struct PyWindowState {
     int x = 0, y = 0, width = 0, height = 0;
     bool minimized = false;
     bool focused = false;
+    bool visible = true;
     std::vector<PyMonitor> monitors;
 };
 
@@ -367,7 +368,8 @@ public:
     // Game window. Optional ints/bools default to None in the module registration.
     static py::object getWindow(const std::string &botName = "");
     static py::object setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
-                                const std::string &monitor, const py::object &minimized, const std::string &botName);
+                                const std::string &monitor, const py::object &minimized, const py::object &visible,
+                                const std::string &botName);
 
     // Server info and tab list
     static py::object getServerInfo(const std::string &botName = "");

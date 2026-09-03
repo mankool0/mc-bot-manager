@@ -228,7 +228,14 @@ void PrismLauncherManager::openPrismGUIImpl()
         return;
     }
     if (prismGUIProcess != nullptr && prismGUIProcess->state() != QProcess::NotRunning) {
-        LogManager::log("PrismLauncher GUI is already running", LogManager::Info);
+        // A second Prism process with no arguments hands an "activate" message to the running
+        // one, which restores and raises its main window (needed once windows start minimized).
+        // On Wayland the compositor only lets it flag the taskbar entry.
+        QString prismExe;
+        QStringList arguments;
+        parsePrismCommand(prismConfig->prismExecutable, prismExe, arguments);
+        LogManager::log("PrismLauncher GUI is already running, asking it to show its window", LogManager::Info);
+        QProcess::startDetached(prismExe, arguments);
         return;
     }
     launchPrismGUIImpl(nullptr);
@@ -588,6 +595,16 @@ void PrismLauncherManager::launchPrismGUIImpl(BotInstance *bot)
         });
     }
 #endif
+
+    if (prismConfig->useHook && prismConfig->minimizeWindows) {
+        // Read by the hook. Plain variables reach Prism inside a Flatpak sandbox too (only
+        // LD_PRELOAD and friends are filtered, hence the --env above for those).
+        QProcessEnvironment env = prismGUIProcess->processEnvironment();
+        if (env.isEmpty())
+            env = QProcessEnvironment::systemEnvironment();
+        env.insert("MCBM_PRISM_WINDOWS", "minimized");
+        prismGUIProcess->setProcessEnvironment(env);
+    }
 
     LogManager::log(QString("Starting PrismLauncher GUI: %1 %2").arg(prismExe, arguments.join(" ")),
                     LogManager::Info);

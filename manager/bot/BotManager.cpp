@@ -3742,34 +3742,52 @@ void BotManager::handleWindowStateImpl(int connectionId, const mankool::mcbot::p
 
 void BotManager::applyWindowLayoutImpl(BotInstance *bot)
 {
-    if (!m_windowLayoutSettings.enabled || !bot || bot->connectionId <= 0 || !bot->windowStateKnown)
+    if (!bot || bot->connectionId <= 0 || !bot->windowStateKnown)
         return;
 
     int cell = botInstances.indexOf(bot);
     if (cell < 0)
         return;
     std::optional<mankool::mcbot::protocol::SetWindowCommand> cmd;
+    bool hidden = false;
     bool canMove = false;
     QString platform;
     {
         QMutexLocker locker(bot->dataMutex.get());
-        cmd = WindowLayout::commandForCell(m_windowLayoutSettings, bot->windowState, cell);
+        hidden = !bot->windowState.visible();
         canMove = bot->windowState.canMove();
         platform = bot->windowState.platform();
+        if (m_windowLayoutSettings.enabled)
+            cmd = WindowLayout::commandForCell(m_windowLayoutSettings, bot->windowState, cell);
     }
-    if (!cmd) {
+    if (m_windowLayoutSettings.enabled && !cmd) {
         LogManager::log(QString("[%1] No monitors reported, cannot place the window").arg(bot->name), LogManager::Warning);
-        return;
     }
-    if (!canMove) {
-        LogManager::log(QString("[%1] Window placement unavailable on %2 (native Wayland); only resizing")
-                            .arg(bot->name, platform), LogManager::Warning);
+
+    // The mod keeps a new window unmapped until it has been told where it goes, so that it
+    // appears in its cell rather than wherever the window manager drops it. With no placement
+    // to give there is nothing to wait for: show it where it is.
+    if (!cmd) {
+        if (!hidden)
+            return;
+        cmd.emplace();
+        cmd->setVisible(true);
+        if (bot->debugLogging)
+            LogManager::log(QString("[%1] Window shown").arg(bot->name), LogManager::Debug);
+    } else {
+        if (!canMove) {
+            LogManager::log(QString("[%1] Window placement unavailable on %2 (native Wayland); only resizing")
+                                .arg(bot->name, platform), LogManager::Warning);
+        }
+        if (hidden)
+            cmd->setVisible(true);
+        if (bot->debugLogging)
+            LogManager::log(QString("[%1] Window -> cell %2 on '%3'").arg(bot->name).arg(cell).arg(cmd->monitor()), LogManager::Debug);
     }
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setSetWindow(*cmd);
     sendOutboundMessage(bot->connectionId, msg, true);
-    LogManager::log(QString("[%1] Window -> cell %2 on '%3'").arg(bot->name).arg(cell).arg(cmd->monitor()), LogManager::Debug);
 }
 
 void BotManager::reloadWindowLayout()

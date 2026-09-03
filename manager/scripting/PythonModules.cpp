@@ -77,6 +77,7 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .def_readonly("width", &PyWindowState::width)
         .def_readonly("height", &PyWindowState::height)
         .def_readonly("minimized", &PyWindowState::minimized)
+        .def_readonly("visible", &PyWindowState::visible)
         .def_readonly("focused", &PyWindowState::focused)
         .def_readonly("monitors", &PyWindowState::monitors);
 
@@ -162,20 +163,21 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
 
     def_action("window", &PythonAPI::getWindow,
                "Get window placement as a WindowState (frame rect relative to the monitor work area, "
-               "minimized/focused flags, monitor list), or None if the bot is offline or does not answer",
+               "minimized/focused/visible flags, monitor list), or None if the bot is offline or does not answer",
                py::arg("bot_name") = "");
     def_action("set_window", &PythonAPI::setWindow,
-               "Move, resize or (un)minimize the window. x/y/width/height are the outer frame relative "
-               "to the work area of `monitor` (a name from window().monitors, empty keeps the current "
-               "one); arguments left as None keep their current value. Returns the resulting WindowState, "
-               "or None on timeout. Positioning is unavailable on native Wayland (can_move is False "
-               "there). Raises if bot is not online.",
+               "Move, resize, (un)minimize or show/hide the window. x/y/width/height are the outer frame "
+               "relative to the work area of `monitor` (a name from window().monitors, empty keeps the "
+               "current one); arguments left as None keep their current value. Returns the resulting "
+               "WindowState, or None on timeout. Positioning is unavailable on native Wayland (can_move "
+               "is False there). Raises if bot is not online.",
                py::arg("x") = py::none(),
                py::arg("y") = py::none(),
                py::arg("width") = py::none(),
                py::arg("height") = py::none(),
                py::arg("monitor") = "",
                py::arg("minimized") = py::none(),
+               py::arg("visible") = py::none(),
                py::arg("bot_name") = "");
 
     def_action("chat", &PythonAPI::sendChat,

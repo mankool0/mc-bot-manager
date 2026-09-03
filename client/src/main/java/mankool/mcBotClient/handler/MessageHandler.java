@@ -215,8 +215,10 @@ public class MessageHandler {
         // Send initial connection info
         serverOutbound.sendConnectionInfo();
 
-        // Window geometry and monitors, so the manager can place the window right away
+        // Window geometry and monitors, so the manager can place the window right away. The
+        // window is still hidden at this point and the placement is what shows it.
         windowOutbound.scheduleReport("");
+        windowOutbound.armShowFallback();
 
         // Send block registry query
         worldOutbound.sendRegistryQuery();

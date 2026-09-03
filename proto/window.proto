@@ -22,8 +22,8 @@ message MonitorInfo {
   int32 work_height = 10;
 }
 
-// Manager -> Client: move, resize, or (un)minimize the game window. Every field is optional;
-// unset fields keep their current value. The client answers with a WindowStateResponse.
+// Manager -> Client: move, resize, (un)minimize, or show/hide the game window. Every field is
+// optional; unset fields keep their current value. The client answers with a WindowStateResponse.
 message SetWindowCommand {
   string monitor = 1;         // Target monitor name; empty = the monitor the window is on now
   optional int32 x = 2;       // Frame position relative to the monitor's work area
@@ -31,6 +31,7 @@ message SetWindowCommand {
   optional int32 width = 4;   // Frame size
   optional int32 height = 5;
   optional bool minimized = 6;
+  optional bool visible = 7;
 }
 
 // Manager -> Client: report the window state without changing it.
@@ -50,4 +51,5 @@ message WindowStateResponse {
   bool minimized = 9;
   bool focused = 10;
   repeated MonitorInfo monitors = 11;
+  bool visible = 12;          // false while the mod is still holding the new window back, or after visible = false
 }
