@@ -180,7 +180,10 @@ manager.remove_column("Ping")
 - `utils.log()` and `utils.error()` from a global script go to the Global
   Scripts output console.
 - Global scripts receive the cross-script events - `script_message`,
-  `bot_connected`, and `bot_disconnected` (see [Events](../events.md)) - and a
-  script that registers handlers for them stays running after its body
-  finishes, like a column script. Per-bot game events (`chat_message`,
-  `player_state`, ...) are still routed only to that bot's own scripts.
+  `bot_connected`, and `bot_disconnected` - plus the per-bot events that are
+  broadcast to every scope: `chat_message`, `baritone_status_update` and
+  `baritone_log` (see [Events](../events.md)). Those three carry a `bot_name`
+  field saying which bot they came from. A script that registers handlers for
+  any of them stays running after its body finishes, like a column script. The
+  remaining per-bot game events (`player_state`, `inventory_update`, ...) are
+  still routed only to that bot's own scripts.

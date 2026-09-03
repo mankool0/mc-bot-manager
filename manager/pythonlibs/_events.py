@@ -6,6 +6,7 @@ class ChatMessage:
     type: str
     timestamp: int
     is_signed: bool
+    bot_name: str
     sender_uuid: str
     minecraft_chat_type: str
 

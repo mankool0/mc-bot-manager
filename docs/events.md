@@ -25,6 +25,7 @@ Fired when a chat message is received.
   - `type` (`str`) - Message type: `"PLAYER_CHAT"` or `"SYSTEM_MESSAGE"`
   - `timestamp` (`int`) - Unix timestamp in milliseconds
   - `is_signed` (`bool`) - Whether the message was signed
+  - `bot_name` (`str`) - Which bot received the message
   - `sender_uuid` (`str`, optional) - Player UUID (present for PLAYER_CHAT, absent for SYSTEM_MESSAGE)
   - `minecraft_chat_type` (`str`, optional) - Minecraft chat type (only for PLAYER_CHAT), one of:
     - `"CHAT"` - Normal player chat
@@ -35,6 +36,9 @@ Fired when a chat message is received.
     - `"TEAM_MSG_COMMAND_INCOMING"` - Received team message
     - `"TEAM_MSG_COMMAND_OUTGOING"` - Sent team message
     - `"UNKNOWN"` - Unknown chat type
+
+This event is also delivered to **global scripts**, which coordinate multiple
+bots; use `bot_name` to tell which bot received the message.
 
 ```python
 @on("chat_message")
