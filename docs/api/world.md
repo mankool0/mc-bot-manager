@@ -4,6 +4,23 @@ World data queries and block interaction.
 
 The world module provides access to chunk data collected from the Minecraft client, enabling block queries and world interaction. Chunks are automatically synchronized and cached in memory.
 
+## Saved world
+
+Every query that takes `use_disk` can also read the world the manager saves to disk (the `.mca`
+autosave under the world save directory, one save per server). Memory comes first: a chunk that is
+loaded in memory for the requested dimension is answered from memory only, and disk is consulted
+for the chunks that are not. Nothing is reported twice. When the save path does not exist, saving
+is disabled, or a chunk was never saved, the disk side contributes nothing - no error is raised.
+
+The area searches (`find_blocks`, `find_nearest`, `find_block_entities`) scan by region rather
+than by chunk: the region files covering the search disc are opened once each, split across worker
+threads, and only the saved chunks inside the disc that are not in memory are decoded. Only the
+parts of a chunk the query needs are parsed (the palette of a section is checked before its block
+data), so a search over a few hundred regions takes well under a second to a few seconds,
+depending on disk and cores, and never runs on the manager's UI thread. `dimension` follows `get_block`: it defaults to the bot's current dimension, memory is read
+when the loaded chunk belongs to that dimension, and the save's `region`, `DIM-1/region`,
+`DIM1/region` (or `dimensions/...` on 26.1+) directory is read for the rest.
+
 ## Block Queries
 
 ### `get_block(x, y, z, use_disk=False, dimension="", bot_name="")`
@@ -16,12 +33,12 @@ Get the block state at the specified coordinates.
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read the block from the saved `.mca` region file on disk (default: `False`)
-- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with `use_disk=True`, the saved world is read instead.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `str` - Block state string (e.g., `"minecraft:stone"`, `"minecraft:chest[facing=north]"`), or `None` if chunk is not loaded (and not on disk when `use_disk=True`) or bot is offline
 
-**Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
+**Raises:** `RuntimeError` if bot not found or not online
 
 **Note:** Disk reads require world saving to be enabled. Returns `None` if the world save path is not available or the chunk has never been saved.
 
@@ -44,15 +61,16 @@ if block:
 block = world.get_block(100, 64, 100, use_disk=True, dimension="minecraft:the_nether")
 ```
 
-### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")`
+### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, dimension="", use_disk=False, bot_name="")`
 
 Find all blocks of a specific type within a spherical radius, with optional light level filters.
 
-This function only searches loaded chunks. Blocks in unloaded chunks will not be found.
+By default only loaded chunks are searched. With `use_disk=True`, chunks inside the radius that are
+not loaded in memory are read from the [saved world](#saved-world).
 
 **Parameters:**
 
-- `block_type` (`str`) - Block type to search for (e.g., `"minecraft:diamond_ore"`)
+- `block_type` (`str`) - Block type to search for (e.g., `"minecraft:diamond_ore"`). A `[state]` suffix is ignored; every state of the block matches
 - `center_x` (`float`) - Search center X coordinate
 - `center_y` (`float`) - Search center Y coordinate
 - `center_z` (`float`) - Search center Z coordinate
@@ -61,9 +79,11 @@ This function only searches loaded chunks. Blocks in unloaded chunks will not be
 - `max_block_light` (`int`, optional) - Maximum block light level, inclusive (default: 15)
 - `min_sky_light` (`int`, optional) - Minimum sky light level, inclusive (default: 0)
 - `max_sky_light` (`int`, optional) - Maximum sky light level, inclusive (default: 15)
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as `get_block`
+- `use_disk` (`bool`, optional) - Also search saved chunks that are not loaded (default: `False`)
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `list[tuple]` - List of block positions as `(x, y, z)` tuples of floats
+**Returns:** `list[tuple]` - Block positions as `(x, y, z)` tuples of floats, nearest to the center first
 
 **Note:** Returns float coordinates. Convert to int for block operations: `int(x), int(y), int(z)`
 
@@ -90,18 +110,26 @@ dark_air = world.find_blocks("minecraft:air",
                              radius=128,
                              max_block_light=0,
                              max_sky_light=0)
+
+# Every obsidian block within 2000 blocks of the nether origin, loaded or saved
+obsidian = world.find_blocks("minecraft:obsidian", 0, 64, 0, radius=2000,
+                             dimension="minecraft:the_nether", use_disk=True)
 ```
 
-### `find_nearest(block_types, max_distance=128, bot_name="")`
+### `find_nearest(block_types, max_distance=128, dimension="", use_disk=False, bot_name="")`
 
 Find the nearest block matching any of the specified types.
 
-This function searches from the bot's current position and only searches loaded chunks.
+This function searches from the bot's current position. By default only loaded chunks are
+searched; with `use_disk=True`, chunks within `max_distance` that are not loaded are read from the
+[saved world](#saved-world) as well.
 
 **Parameters:**
 
-- `block_types` (`list[str]`) - List of block types to search for
+- `block_types` (`list[str]`) - List of block types to search for (a `[state]` suffix is ignored)
 - `max_distance` (`int`, optional) - Maximum search distance in blocks (default: 128)
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as `get_block`
+- `use_disk` (`bool`, optional) - Also search saved chunks that are not loaded (default: `False`)
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `tuple` - Position as `(x, y, z)` tuple of floats, or `None` if no matching block found
@@ -172,6 +200,9 @@ if ore:
     print(f"Ore type: {block}")
 else:
     print("No ore found within 50 blocks")
+
+# Nearest saved ender chest, even if the chunk is not loaded
+echest = world.find_nearest(["minecraft:ender_chest"], max_distance=2000, use_disk=True)
 ```
 
 ## Block Entities
@@ -188,38 +219,92 @@ Get the block entity at the specified position.
 - `y` (`int`) - Block Y coordinate
 - `z` (`int`) - Block Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and no in-memory data exists, read from the saved `.mca` file (default: `False`)
-- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it.
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. Block entities are stored per dimension, so an explicit dimension reads memory directly.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `dict` or `None` if no block entity exists at that position
+**Returns:** `BlockEntity` or `None` if no block entity exists at that position
 
-| Key | Type | Present when |
-|-----|------|-------------|
-| `type` | `str` | always (e.g. `"minecraft:chest"`) |
-| `x` | `int` | always |
-| `y` | `int` | always |
-| `z` | `int` | always |
-| `items` | `list` | container was opened this session (memory) or in a previous session that was saved to disk |
+**`BlockEntity` attributes:**
 
-**Note on `items`:** The Minecraft server only sends container contents when a container is opened, so `items` is only present if the container was opened at some point. Memory always takes priority: if items are already in memory (opened this session), they are returned even when `use_disk=True`. Disk is only consulted when items are absent from memory - in that case, items may be present on disk if the container was opened in a previous session that was saved.
+| Attribute | Type | Description |
+|---|---|---|
+| `type` | `str` | Block entity id, e.g. `"minecraft:chest"` |
+| `x`, `y`, `z` | `int` | Block position |
+| `items` | `list` | Container contents ([item dicts](bot.md#item-dict)); empty when the container has never been opened |
+| `front_text` | `list[str]` | Signs: the four lines of the front face, in order. Empty for anything else |
+| `back_text` | `list[str]` | Signs: the four lines of the back face, in order. Empty for anything else |
+| `is_waxed` | `bool` | Signs: `True` when the sign has been waxed with honeycomb |
+| `nbt` | `dict` or `None` | The whole NBT compound, parsed on first access. See below |
+
+This used to be a plain `dict` and still behaves like one - `be["type"]`, `be.get("items", [])` and
+`"front_text" in be` all work, with the same keys the dict had, so existing scripts keep running.
+New code should use the attributes: they are typed in the editor and always present, so
+`be.front_text` on a chest is `[]` rather than a `KeyError`.
+
+**Note on `items`:** The Minecraft server only sends container contents when a container is opened,
+so `items` is empty unless the container was opened at some point. Memory always takes priority: if
+items are already in memory (opened this session), they are returned even when `use_disk=True`. Disk
+is only consulted when items are absent from memory - in that case, items may be present on disk if
+the container was opened in a previous session that was saved.
+
+**Note on `nbt`:** the block entity's full NBT compound, exactly as the server sent it with the
+chunk, converted to plain Python. Use it for anything this API does not expose directly - spawner
+mob, beacon effects, banner patterns, lectern books, skull owners, decorated pot sherds, modded
+block entities. It is parsed on first access and cached, so a chunk scan that never touches `nbt`
+costs nothing, and it is `None` when there is no NBT for that block entity.
+
+Two things to know about it:
+
+- **`items` wins over `nbt["Items"]`.** Container contents in `nbt` are the chunk-load snapshot and
+  are never refreshed afterwards, while `items` comes from the container packet and is current.
+- **The conversion is lossy**, because it is meant for reading: `byte`, `short`, `int` and `long`
+  all become `int`; `float` and `double` become `float`; `byte_array`, `int_array` and `long_array`
+  all become `list[int]`; compounds become `dict` and lists become `list`.
 
 ```python
-# items only present if container was opened this session
+# items is empty unless the container was opened
 be = world.get_block_entity(cx, cy, cz)
-if be and 'items' in be:
-    for item in be['items']:
+if be and be.items:
+    for item in be.items:
         if item['item_id'] != 'minecraft:air':
             utils.log(f"  {item['count']}x {item['item_id']}")
 
-# also check saved data from previous sessions where container was opened
-be = world.get_block_entity(cx, cy, cz, use_disk=True)
-if be and 'items' in be:
-    utils.log(f"Chest contents from disk: {len(be['items'])} stacks")
-
 # check a saved but unloaded chunk
 be = world.get_block_entity(5000, 64, 5000, use_disk=True)
-if be and be['type'] == 'minecraft:chest':
+if be and be.type == 'minecraft:chest':
     utils.log("Found a chest in saved data")
+
+# anything not exposed as an attribute is in nbt
+be = world.get_block_entity(sx, sy, sz)
+if be and be.type == 'minecraft:trial_spawner':
+    utils.log(be.nbt.get('normal_config'))
+```
+
+**Note on sign text:** `front_text` / `back_text` come from the block entity data the server sends
+with the chunk, so they are available for any sign in a chunk the bot has loaded (or from disk with
+`use_disk=True`).
+They are normalized here rather than left to `nbt` because the encoding differs by Minecraft
+version. Text components are flattened to plain strings, so styling and colour are dropped and an
+empty line is `""`.
+
+**Freshness:** block entity data arrives with the chunk and is then kept current incrementally. The
+client forwards every block entity update packet the server sends, plus any block entity that shows
+up on a block update, and drops one whose block is broken - so a sign edited or a banner re-dyed
+next to the bot is reflected immediately. The block entities that push updates are signs, banners,
+skulls, spawners, trial spawners, vaults, beacons, campfires, decorated pots, conduits, beds,
+brushable blocks, end gateways, creaking hearts, jigsaws and structure blocks.
+
+**Chests, barrels, furnaces, hoppers, brewing stands, lecterns and beehives send no update packet at
+all** - Minecraft has none for them - so their contents and state still only arrive by opening the
+container (`items`, or the [`container_update`](../events.md#container_update) event, which also
+carries furnace burn and cook progress) or when the chunk is loaded again.
+
+```python
+# Find the chest under the sign that says "eChests"
+for be in world.get_block_entities_in_chunk(cx, cz):
+    if "eChests" in be.front_text:
+        world.interact_block(be.x, be.y - 1, be.z)
+        break
 ```
 
 ---
@@ -233,12 +318,12 @@ Get all block entities in a chunk.
 - `chunk_x` (`int`) - Chunk X coordinate (block X divided by 16, rounded down)
 - `chunk_z` (`int`) - Chunk Z coordinate (block Z divided by 16, rounded down)
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded, read from the saved `.mca` file (default: `False`)
-- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. If a different dimension is specified, **requires `use_disk=True`** - raises `ValueError` otherwise.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with `use_disk=True`, the saved world is read instead.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `list[dict]` - List of block entity dicts (same schema as `get_block_entity`)
+**Returns:** `list[BlockEntity]` - same objects as `get_block_entity` returns
 
-Memory always takes priority: if the chunk is loaded, memory data is returned regardless of `use_disk`. Disk is only read when the chunk is not loaded. `items` is present on any container that was opened (either this session from memory, or a previous session from disk).
+Memory always takes priority: if the chunk is loaded, memory data is returned regardless of `use_disk`. Disk is only read when the chunk is not loaded. `items` is filled for any container that was opened (either this session from memory, or a previous session from disk).
 
 ```python
 import math
@@ -250,11 +335,11 @@ cz = math.floor(pos['z'] / 16)
 
 entities = world.get_block_entities_in_chunk(cx, cz)
 for be in entities:
-    utils.log(f"{be['type']} at ({be['x']}, {be['y']}, {be['z']})")
+    utils.log(f"{be.type} at ({be.x}, {be.y}, {be.z})")
 
 # Scan a saved chunk for chests
 entities = world.get_block_entities_in_chunk(312, -5, use_disk=True)
-chests = [be for be in entities if be['type'] == 'minecraft:chest']
+chests = [be for be in entities if be.type == 'minecraft:chest']
 utils.log(f"Found {len(chests)} chests in saved chunk (312, -5)")
 
 # Scan a chunk in the nether from disk
@@ -264,46 +349,52 @@ nether_ents = world.get_block_entities_in_chunk(10, 10,
 
 ---
 
+### `find_block_entities(types, center_x, center_z, radius, dimension="", use_disk=False, limit=0, bot_name="")`
+
+Find block entities of the given types within a horizontal radius of a point, at any y.
+
+By default only loaded chunks are searched. With `use_disk=True`, chunks inside the radius that are
+not loaded in memory are read from the [saved world](#saved-world), so one call answers "every ender
+chest within 5000 blocks of here" without loading anything.
+
+**Parameters:**
+
+- `types` (`list[str]`) - Block entity ids to look for, e.g. `["minecraft:ender_chest"]` or `["minecraft:chest", "minecraft:barrel"]`. An empty list matches every block entity
+- `center_x` (`float`) - Search center X coordinate
+- `center_z` (`float`) - Search center Z coordinate
+- `radius` (`float`) - Horizontal search radius in blocks; the search is a disc, every y is included
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as `get_block`
+- `use_disk` (`bool`, optional) - Also search saved chunks that are not loaded (default: `False`)
+- `limit` (`int`, optional) - Return at most this many, nearest first. `0` means no limit (default)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `list[BlockEntity]` - the same objects `get_block_entity` returns, sorted by horizontal distance from `(center_x, center_z)` ascending. `items` is filled where it is known (opened this session from memory, or saved with the chunk)
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+import math
+
+# Ender chests in the saved overworld within 5000 blocks of spawn, farthest first
+hits = world.find_block_entities(["minecraft:ender_chest"], 0, 0, 5000,
+                                 dimension="minecraft:overworld", use_disk=True)
+hits.sort(key=lambda be: -math.hypot(be.x, be.z))
+for be in hits[:10]:
+    utils.log(f"ender chest at {be.x} {be.y} {be.z}")
+
+# The five nearest containers of any kind, loaded or saved
+pos = bot.position()
+nearby = world.find_block_entities(["minecraft:chest", "minecraft:trapped_chest", "minecraft:barrel"],
+                                   pos["x"], pos["z"], 500, use_disk=True, limit=5)
+
+# Everything with a block entity in the loaded nether chunks around the bot
+everything = world.find_block_entities([], pos["x"], pos["z"], 200,
+                                       dimension="minecraft:the_nether")
+```
+
+---
+
 ## Block Interaction
-
-### `hold_attack(enabled, duration_ticks=0, bot_name="")`
-
-Hold or release the left-click attack button in-game. While enabled, the client drives `continueDestroyBlock` every game tick against whatever block the crosshair is currently targeting.
-
-**Parameters:**
-
-- `enabled` (`bool`) - `True` to start holding attack, `False` to release
-- `duration_ticks` (`int`, optional) - Auto-release after this many game ticks. `0` holds indefinitely until an explicit `False` call (default: `0`)
-- `bot_name` (`str`, optional) - Bot name, defaults to current bot
-
-```python
-# Hold for 100 ticks (5 seconds), then auto-release
-world.hold_attack(True, duration_ticks=100)
-
-# Hold indefinitely
-world.hold_attack(True)
-# ... later:
-world.hold_attack(False)
-```
-
----
-
-### `get_hold_attack(bot_name="")`
-
-Query whether the client is currently holding the attack button.
-
-**Returns:** `bool` - `True` if attack is being held, `False` otherwise
-
-**Parameters:**
-
-- `bot_name` (`str`, optional) - Bot name, defaults to current bot
-
-```python
-if world.get_hold_attack():
-    utils.log("Currently mining")
-```
-
----
 
 ### `look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")`
 
@@ -327,6 +418,26 @@ world.interact_block(bx, by, bz, sneak=True, look_at_block=False, face=world.Blo
 
 # Auto-find best visible face
 world.look_at(bx, by, bz)
+```
+
+### `look_at_entity(entity_id, sneak=False, bot_name="")`
+
+Rotate the bot to look at an entity's eyes. Entity ids come from `world.entities()` and `world.find_entities_near()` (the `entity_id` field). There is no visibility check; the bot turns toward the entity even through walls.
+
+**Parameters:**
+
+- `entity_id` (`int`) - Entity id
+- `sneak` (`bool`, optional) - Aim from the crouching eye height (default: False)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online. An unknown entity id is reported by the client in the bot console (`Entity <id> not found`); nothing is raised.
+
+```python
+pos = bot.position()
+zombies = world.find_entities_near(pos["x"], pos["y"], pos["z"], 8, type="minecraft:zombie")
+if zombies:
+    world.look_at_entity(zombies[0]["entity_id"])
+    bot.hold_attack(True, duration_ticks=10)
 ```
 
 ### `interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")`
@@ -364,17 +475,25 @@ if pos:
     world.interact_block(int(x), int(y), int(z))
 ```
 
-### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")`
+### `can_reach_block(x, y, z, sneak=False, face=world.BlockFace.AUTO, timeout=3.0, bot_name="")`
 
 Check if a block is reachable (visible via raytrace) from the bot's current eye position.
 
 **Parameters:**
+
 - `x, y, z` (`int`) - Block coordinates
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `timeout` (`float`, optional) - Seconds to wait for the client's reply (default: 3.0)
 - `bot_name` (`str`, optional) - Bot name (default: active bot)
 
 **Returns:** `bool` - True if the block (or specified face) is reachable
+
+**Raises:**
+
+- `ValueError` if `timeout` is not positive
+- `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
+- `TimeoutError` if the client did not answer within `timeout`
 
 ```python
 if world.can_reach_block(x, y, z):
@@ -387,18 +506,26 @@ if world.can_reach_block(x, y, z, face=world.BlockFace.UP):
 
 ---
 
-### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, bot_name="")`
+### `can_reach_block_from(from_x, from_y, from_z, x, y, z, sneak=False, face=world.BlockFace.AUTO, timeout=3.0, bot_name="")`
 
 Check if a block is reachable from a hypothetical standing position without moving the bot. Useful for pre-validating candidate positions before navigating.
 
 **Parameters:**
+
 - `from_x, from_y, from_z` (`int`) - Hypothetical foot position (eye height is added automatically)
 - `x, y, z` (`int`) - Block coordinates to check
 - `sneak` (`bool`, optional) - Use crouching eye height (default: False)
 - `face` (`world.BlockFace`, optional) - Check reachability of a specific face only. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `timeout` (`float`, optional) - Seconds to wait for the client's reply (default: 3.0)
 - `bot_name` (`str`, optional) - Bot name (default: active bot)
 
 **Returns:** `bool` - True if the block (or specified face) would be reachable from that position
+
+**Raises:**
+
+- `ValueError` if `timeout` is not positive
+- `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the query (e.g. bot not in a world)
+- `TimeoutError` if the client did not answer within `timeout`
 
 ```python
 # Find a standable position from which the UP face is reachable
@@ -408,9 +535,84 @@ if world.can_reach_block_from(cx, cy, cz, bx, by, bz, face=world.BlockFace.UP):
 
 ---
 
+### `can_reach_blocks(queries, sneak=False, face=world.BlockFace.AUTO, timeout=5.0, bot_name="")`
+
+Check many positions in a single round trip. Equivalent to calling `can_reach_block` once per query, except the whole list goes to the client as one message, so a scan costs one game tick instead of one tick per query.
+
+**Parameters:**
+
+- `queries` (`list` or any sequence) - Each entry is either an `(x, y, z)` tuple or a [`world.ReachQuery`](#reachquery)
+- `sneak` (`bool`, optional) - Crouching eye height, for every entry that does not override it (default: False)
+- `face` (`world.BlockFace`, optional) - Face to check, for every entry that does not override it. `AUTO` checks all faces (default: `world.BlockFace.AUTO`)
+- `timeout` (`float`, optional) - Seconds to wait for the client's reply (default: 5.0)
+- `bot_name` (`str`, optional) - Bot name (default: active bot)
+
+**Returns:** `list[bool]` - One entry per query, in the same order
+
+**Raises:**
+
+- `ValueError` if an entry is neither a 3-tuple nor a `ReachQuery`, if a coordinate is not a number, if `timeout` is not positive, or if the batch is too large to fit in a single request (roughly 210,000 queries)
+- `RuntimeError` if the bot is not found or not online, if the message cannot be sent, or if the client could not evaluate the batch (e.g. bot not in a world)
+- `TimeoutError` if the client did not answer within `timeout`
+
+**Note:** The client does the whole batch within one game tick, so every query is evaluated against the same bot position and the results are consistent with each other even if the bot is moving. The flip side is that a very large batch may briefly freeze the client.
+
+```python
+# Which of these chests can the bot reach right now?
+chests = world.find_blocks("minecraft:chest", px, py, pz, 8)
+positions = [(int(x), int(y), int(z)) for x, y, z in chests]
+for (x, y, z), ok in zip(positions, world.can_reach_blocks(positions)):
+    if ok:
+        world.interact_block(x, y, z)
+        break
+
+# Score candidate standing positions against a target, one round trip for the whole scan
+queries = [world.ReachQuery(bx, by, bz, from_pos=(cx, cy, cz)) for cx, cy, cz in candidates]
+for (cx, cy, cz), ok in zip(candidates, world.can_reach_blocks(queries)):
+    if ok:
+        baritone.goto(cx, cy, cz)
+        break
+
+# Which faces of a block are exposed?
+faces = [world.BlockFace.UP, world.BlockFace.DOWN, world.BlockFace.NORTH,
+         world.BlockFace.SOUTH, world.BlockFace.WEST, world.BlockFace.EAST]
+reachable = world.can_reach_blocks([world.ReachQuery(x, y, z, face=f) for f in faces])
+usable = [f for f, ok in zip(faces, reachable) if ok]
+```
+
+---
+
+### `ReachQuery`
+
+One entry of a `can_reach_blocks` batch, for when a query needs its own `sneak`, `face`, or standing position rather than the batch-wide defaults. Plain `(x, y, z)` tuples are accepted in the same list, so only the entries that need overrides have to use this.
+
+`world.ReachQuery(x, y, z, from_pos=None, sneak=None, face=None)`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `x`, `y`, `z` | `int` | Coordinates of the block to check |
+| `from_pos` | `tuple[int, int, int]` or `None` | Foot position to trace from, eye height added automatically. `None` uses the bot's current position |
+| `sneak` | `bool` or `None` | `None` inherits the `sneak` passed to `can_reach_blocks` |
+| `face` | `world.BlockFace` or `None` | `None` inherits the `face` passed to `can_reach_blocks` |
+
+All three optional fields default to `None`, meaning "inherit from the call". That is what makes mixing tuples and `ReachQuery` objects predictable: with `can_reach_blocks([...], sneak=True)`, a bare `ReachQuery(x, y, z)` crouches just like a bare tuple would, and only an explicit `sneak=False` opts out.
+
+Fields are readable and writable after construction.
+
+```python
+world.can_reach_blocks([
+    (x1, y1, z1),                                          # batch defaults
+    world.ReachQuery(x2, y2, z2, sneak=True),              # this one crouches
+    world.ReachQuery(x3, y3, z3, face=world.BlockFace.UP), # top face only
+    world.ReachQuery(x4, y4, z4, from_pos=(cx, cy, cz)),   # from a hypothetical position
+])
+```
+
+---
+
 ### `BlockFace` enum
 
-Used with `look_at`, `interact_block`, `can_reach_block`, and `can_reach_block_from` to specify a block face.
+Used with `look_at`, `interact_block`, `can_reach_block`, `can_reach_block_from`, `can_reach_blocks`, and `world.ReachQuery` to specify a block face.
 
 | Value | Direction |
 |-------|-----------|
@@ -742,6 +944,157 @@ Get the total memory used by world data storage.
 ```python
 memory = world.memory_usage()
 print(f"World data memory usage: {memory / 1024 / 1024:.2f} MB")
+```
+
+## Section Observation
+
+Bulk primitives for scripts that need to know *what part of the world changed*
+without walking every block themselves - incremental mirroring to an external
+service, minimap or render invalidation, re-scanning only what moved.
+
+A *section* is a 16x16x16 block cube, addressed by
+`(chunk_x, chunk_z, section_y)` where `section_y` is the absolute section index
+(`block_y >> 4`, so y=118 is section 7 and y=-56 is section -4).
+
+### `changed_sections(bot_name="", since=None, dimension="", digest=False, limit=0, digest_prefix=b"")`
+
+Get the chunk sections whose content changed since a previous call.
+
+Change tracking is fed by chunk loads, block updates and chunk unloads. A
+freshly loaded chunk counts as changed in all its sections; light, biome and
+block entity changes do not count.
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `since` (`int | None`, optional) - `token` from a previous call. `None`
+  returns every currently tracked section
+- `dimension` (`str`, optional) - Only report chunks of this dimension (e.g.
+  `"minecraft:the_nether"`). Empty string reports all dimensions
+- `digest` (`bool`, optional) - Also compute a content digest per section. This
+  hashes every returned section, so leave it off when you only need to know
+  *which* sections moved
+- `limit` (`int`, optional) - Cap on how many sections to return. `0` is
+  unlimited. Use it to page: the returned `token` resumes exactly where the call
+  stopped
+- `digest_prefix` (`bytes`, optional) - Domain-separation tag hashed ahead of
+  the section content. Defaults to `b""`, the bare content hash. Digests only
+  compare equal when computed with the same prefix, so pass one value
+  consistently - and give each distinct consumer or format its own tag if their
+  encodings could ever share a content-addressed store
+
+**Returns:** `SectionChanges` with:
+
+- `.token` (`int`) - Pass as `since` next time
+- `.truncated` (`bool`) - `limit` was hit and more sections are pending
+- `.sections` (`list[SectionChange]`) - Iterating the `SectionChanges` directly
+  iterates these
+
+Each `SectionChange` has `.chunk_x`, `.chunk_z`, `.section_y`, `.key` (the three
+as a tuple, ready to pass to `export_sections`) and `.digest` - 32 `bytes` when
+`digest=True`, otherwise `None`.
+
+The digest is BLAKE2b-256 over `digest_prefix` followed by the section's
+canonical palette+indices encoding, covering block states only (light, biomes
+and block entities are excluded). No
+coordinate goes into it, so byte-identical terrain digests identically wherever
+it occurs - same content at a different height, column or dimension is the same
+digest, and palette ordering never matters. That is what lets a content-addressed
+store keep one copy, and what makes the digest usable as a cache key for content
+rather than for a place.
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+token = None
+while True:
+    changes = world.changed_sections("MyBot", since=token, limit=512)
+    token = changes.token
+    for section in changes:
+        rescan(section.chunk_x, section.chunk_z, section.section_y)
+    if not changes.truncated:
+        time.sleep(1)
+```
+
+#### Token semantics
+
+Tokens are per-bot. Passing one bot's token to another bot returns a full
+snapshot rather than a wrong delta, and so does a token from a bot that was
+removed and re-added. Tokens stay valid across a reconnect: the world clears,
+and the sections re-report as chunks load again.
+
+Reading never consumes, so any number of independent pollers can each hold their
+own token without affecting each other.
+
+The report is deliberately conservative in one direction only: it can tell you a
+section changed when the content happens to be identical (a chunk reload
+re-reports every section), so compare digests if that matters. It will not miss
+a change to a section that is still loaded. A section whose chunk unloads before
+you poll is dropped rather than reported - its content is gone from memory
+anyway - and reloading that chunk marks all of it again.
+
+### `get_section(chunk_x, chunk_z, section_y, bot_name="", dimension="", digest_prefix=b"")`
+
+Get one section's blocks in canonical form.
+
+**Parameters:**
+
+- `chunk_x`, `chunk_z`, `section_y` (`int`) - Section to read
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `dimension` (`str`, optional) - Only read if the chunk is in this dimension
+- `digest_prefix` (`bytes`, optional) - Domain-separation tag for `.digest`,
+  as in `changed_sections`
+
+**Returns:** `Section | None` - `None` when the section is not loaded (or fails
+the dimension filter). Fields:
+
+- `.palette` (`list[str]`) - Block state strings, sorted and containing exactly
+  the states the indices reference
+- `.indices` (`bytes`) - 4096 unsigned 16-bit little-endian palette indices in
+  YZX order (`index = y*256 + z*16 + x`)
+- `.dimension` (`str`), `.chunk_x`, `.chunk_z`, `.section_y` (`int`)
+- `.digest` (`bytes`) - The same 32-byte content digest `changed_sections`
+  reports when called with the same `digest_prefix`
+
+```python
+section = world.get_section(10, -3, 4)
+if section:
+    indices = struct.unpack("<4096H", section.indices)
+    block = section.palette[indices[y * 256 + z * 16 + x]]
+```
+
+### `export_sections(keys, bot_name="", dimension="")`
+
+Serialize chunk sections into a single upload payload.
+
+The payload is the manager's bulk section framing: a little-endian frame count
+followed by one frame per section (dimension string, section key, and the
+section's canonical palette+indices blob). It is uncompressed and
+self-describing; a receiver that hashes a frame's blob under its own
+`digest_prefix` gets exactly what `changed_sections` reported for the same
+content and prefix.
+
+`get_section()` gives you the same content without the framing.
+
+**Parameters:**
+
+- `keys` (`list[tuple]`) - Sections to export, as `(chunk_x, chunk_z, section_y)`
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `dimension` (`str`, optional) - Only export chunks of this dimension. Empty
+  string exports all
+
+**Returns:** `bytes` - The framed payload. Sections that are no longer loaded
+(or fail the dimension filter) are silently omitted, so the frame count can be
+lower than `len(keys)`; callers that need exactness should compare counts
+
+**Raises:** `RuntimeError` if bot not found or not online, if a key is not a
+3-tuple, or if more than 4096 keys are passed in one call (batch instead - one
+section is about 8.3 KB, so the cap is roughly a 34 MB payload)
+
+```python
+changes = world.changed_sections("MyBot", digest=True, limit=4096)
+payload = world.export_sections([s.key for s in changes], bot_name="MyBot")
+# POST payload wherever it needs to go
 ```
 
 ## Usage Examples
@@ -1133,10 +1486,10 @@ Get the light levels at the specified block position.
 - `y` (`float`) - Y coordinate
 - `z` (`float`) - Z coordinate
 - `use_disk` (`bool`, optional) - If `True` and the chunk is not loaded in memory, read light data from the saved `.mca` region file on disk (default: `False`)
-- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension. **Requires `use_disk=True`** - raises `ValueError` if set without it. If the specified dimension differs from the bot's current one, memory is skipped and disk is read directly.
+- `dimension` (`str`, optional) - Dimension string (e.g. `"minecraft:overworld"`, `"minecraft:the_nether"`). Defaults to the bot's current dimension. Memory is read when the loaded chunk at that position belongs to this dimension; otherwise, with `use_disk=True`, the saved world is read instead.
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Raises:** `RuntimeError` if bot not found or not online; `ValueError` if `dimension` is set without `use_disk=True`
+**Raises:** `RuntimeError` if bot not found or not online
 
 **Returns:** `dict` or `None` if the chunk is not loaded (and not on disk when `use_disk=True`)
 
@@ -1252,4 +1605,5 @@ if weather and weather['is_raining']:
 
 - **Chunk Loading**: Blocks can only be queried in loaded chunks. The client automatically loads chunks as the bot moves around.
 - **Performance**: Block queries are O(1) for `get_block()`. Searches like `find_blocks()` are optimized but still need to scan blocks, so prefer smaller radii when possible.
+- **Round trips**: `get_block()` and the other block queries read the manager's own world copy and are cheap. Reach checks are not: they ask the game client, which only processes messages once per tick, so each `can_reach_block()` / `can_reach_block_from()` costs at least ~50 ms. Scanning hundreds of positions one at a time takes tens of seconds; use `can_reach_blocks()` to send the whole set at once and get it back in a few ticks.
 - **Block State Format**: Block states are returned as strings in the format `"minecraft:block_name[property=value,...]"`. Use Python string operations to check block types.

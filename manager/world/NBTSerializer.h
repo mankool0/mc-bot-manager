@@ -21,6 +21,8 @@ public:
     static nbt::tag_compound sectionToNBT(const ChunkSection& section);
     static nbt::tag_compound createHeightmaps(const ChunkData& chunk);
 
+    static int blockStateBitsPerEntry(int paletteSize);
+
     // Deserializers - read from NBT back into data structures
     static ChunkSection nbtToChunkSection(const nbt::tag_compound& section);
     static ChunkData nbtToChunk(const nbt::tag_compound& root);

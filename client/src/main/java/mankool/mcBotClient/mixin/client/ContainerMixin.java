@@ -1,7 +1,6 @@
 package mankool.mcBotClient.mixin.client;
 
 import mankool.mcBotClient.handler.outbound.ContainerOutbound;
-import mankool.mcBotClient.handler.outbound.InventoryOutbound;
 import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.BlockPos;

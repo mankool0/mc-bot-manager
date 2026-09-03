@@ -11,14 +11,22 @@
 #include <cstring>
 #include <ctime>
 
-RegionFile::RegionFile(const QString& filepath) : filepath(filepath) {
+RegionFile::RegionFile(const QString& filepath, Mode mode)
+    : filepath(filepath), readOnly(mode == Mode::ReadOnly) {
+    file.setFileName(filepath);
+
+    if (readOnly) {
+        if (file.exists() && file.open(QIODevice::ReadOnly)) {
+            loadHeaders();
+        }
+        return;
+    }
+
     // Create directory if it doesn't exist
     QDir dir = QFileInfo(filepath).dir();
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-
-    file.setFileName(filepath);
 
     // Open or create the file
     if (file.exists()) {
@@ -33,7 +41,9 @@ RegionFile::RegionFile(const QString& filepath) : filepath(filepath) {
 }
 
 RegionFile::~RegionFile() {
-    flush();
+    if (!readOnly) {
+        flush();
+    }
     if (file.isOpen()) {
         file.close();
     }
@@ -209,7 +219,7 @@ void RegionFile::markSectorsFree(uint32_t offset, size_t count) {
 }
 
 bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chunkNBT) {
-    if (!isValid() || !headersLoaded) {
+    if (readOnly || !isValid() || !headersLoaded) {
         return false;
     }
 
@@ -273,62 +283,62 @@ bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chu
     return saveHeaders();
 }
 
+bool RegionFile::hasChunk(int localX, int localZ) const {
+    if (!headersLoaded) {
+        return false;
+    }
+    uint32_t location = locations[getHeaderIndex(localX, localZ)];
+    return ((location >> 8) & 0xFFFFFF) >= 2 && (location & 0xFF) != 0;
+}
+
 nbt::tag_compound RegionFile::readChunk(int localX, int localZ) {
-    if (!isValid() || !headersLoaded) {
+    std::vector<uint8_t> decompressed = readChunkRaw(localX, localZ);
+    if (decompressed.empty()) {
         return nbt::tag_compound();
     }
+    return deserializeNBT(decompressed);
+}
 
-    int index = getHeaderIndex(localX, localZ);
-    uint32_t location = locations[index];
-
-    if (location == 0) {
-        // Chunk doesn't exist
-        return nbt::tag_compound();
+std::vector<uint8_t> RegionFile::readChunkRaw(int localX, int localZ) {
+    if (!isValid() || !hasChunk(localX, localZ)) {
+        return {};
     }
 
+    uint32_t location = locations[getHeaderIndex(localX, localZ)];
     uint32_t offset = (location >> 8) & 0xFFFFFF;
-    uint32_t sectors = location & 0xFF;
-
-    if (offset < 2 || sectors == 0) {
-        return nbt::tag_compound();
-    }
 
     // Read chunk data
     file.seek(offset * 4096LL);
 
     QByteArray lengthBytes = file.read(4);
     if (lengthBytes.size() != 4) {
-        return nbt::tag_compound();
+        return {};
     }
 
     uint32_t length = qFromBigEndian<uint32_t>(reinterpret_cast<const uint8_t*>(lengthBytes.data()));
+    if (length == 0) {
+        return {};
+    }
 
     QByteArray compressionByte = file.read(1);
     if (compressionByte.size() != 1) {
-        return nbt::tag_compound();
+        return {};
     }
 
     uint8_t compression = static_cast<uint8_t>(compressionByte[0]);
 
     QByteArray compressedData = file.read(length - 1);
     if (compressedData.size() != static_cast<int>(length - 1)) {
-        return nbt::tag_compound();
+        return {};
     }
 
-    // Decompress
+    if (compression != 2) {
+        // Unsupported compression (only zlib is written)
+        return {};
+    }
+
     std::vector<uint8_t> compressed(compressedData.begin(), compressedData.end());
-    std::vector<uint8_t> decompressed;
-
-    if (compression == 2) {
-        // Zlib
-        decompressed = zlibDecompress(compressed);
-    } else {
-        // Unsupported compression
-        return nbt::tag_compound();
-    }
-
-    // Deserialize NBT
-    return deserializeNBT(decompressed);
+    return zlibDecompress(compressed);
 }
 
 void RegionFile::flush() {

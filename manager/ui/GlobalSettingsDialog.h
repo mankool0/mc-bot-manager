@@ -51,6 +51,12 @@ private:
     QSpinBox *crashMaxCrashesSpinBox;
     QSpinBox *crashWindowMinutesSpinBox;
 
+    QCheckBox *windowLayoutEnabledCheckBox;
+    QComboBox *windowMonitorComboBox;
+    QSpinBox *windowColumnsSpinBox;
+    QSpinBox *windowRowsSpinBox;
+    QCheckBox *windowMinimizedCheckBox;
+
     QDialogButtonBox *buttonBox;
 
     struct ColorEntry {

@@ -1,7 +1,6 @@
 package mankool.mcBotClient.handler.outbound;
 
 import mankool.mcBotClient.connection.PipeConnection;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 
 public abstract class BaseOutbound {
@@ -11,9 +10,11 @@ public abstract class BaseOutbound {
     public BaseOutbound(Minecraft client, PipeConnection connection) {
         this.client = client;
         this.connection = connection;
+    }
 
-        // Auto-register tick event
-        ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+    // Driven by MessageHandler for as long as its connection is live
+    public final void tick(Minecraft client) {
+        onClientTick(client);
     }
 
     /**

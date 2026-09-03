@@ -2,6 +2,7 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.handler.outbound.ScreenOutbound;
+import mankool.mcBotClient.util.GuiClassNames;
 import mankool.mcBotClient.util.VersionCompat;
 import mankool.mcbot.protocol.Commands;
 import net.minecraft.client.Minecraft;
@@ -112,7 +113,7 @@ public class ScreenInteractionHandler extends BaseInboundHandler {
     public void handleOpenGameMenu(String messageId) {
         client.execute(() -> {
             if (client.screen != null) {
-                sendFailure(messageId, "A screen is already open: " + client.screen.getClass().getSimpleName());
+                sendFailure(messageId, "A screen is already open: " + GuiClassNames.simpleOf(client.screen.getClass()));
                 return;
             }
             if (client.level == null) {

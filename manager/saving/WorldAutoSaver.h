@@ -47,6 +47,8 @@ public:
     void saveChunkAsync(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities = {});
     void setChunkProvider(ChunkProvider provider);
     void markBlockChunkDirty(int chunkX, int chunkZ, const QString& dimension);
+
+    void flushBlockChunk(int chunkX, int chunkZ, const QString& dimension);
     void onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
                            const QString& dimension);
     void setPlayerData(const PlayerSaveData& data);

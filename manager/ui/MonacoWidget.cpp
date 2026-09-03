@@ -2,7 +2,6 @@
 #include <QWebEngineView>
 #include <QWebChannel>
 #include <QVBoxLayout>
-#include <QEventLoop>
 #include <QFutureWatcher>
 #include <QJsonDocument>
 #include <QtConcurrent/QtConcurrent>
@@ -15,7 +14,7 @@ public:
     explicit Bridge(MonacoWidget *parent = nullptr) : QObject(parent), m_widget(parent) {}
 
     Q_INVOKABLE void editorReady()                  { emit editorReadySignal(); }
-    Q_INVOKABLE void onTextChanged(const QString &) { emit textChangedSignal(); }
+    Q_INVOKABLE void onTextChanged(const QString &text) { emit textChangedSignal(text); }
 
     Q_INVOKABLE void requestCompletion(const QString &code, int line, int col, int requestId)
     {
@@ -64,7 +63,7 @@ public:
 
 signals:
     void editorReadySignal();
-    void textChangedSignal();
+    void textChangedSignal(const QString &text);
     void eventDataChanged(const QString &json);
     void completionResult(int requestId, const QString &json);
     void signatureResult(int requestId, const QString &json);
@@ -96,7 +95,7 @@ MonacoWidget::MonacoWidget(QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     connect(m_bridge, &Bridge::editorReadySignal, this, &MonacoWidget::onEditorReady);
-    connect(m_bridge, &Bridge::textChangedSignal, this, &MonacoWidget::textChanged);
+    connect(m_bridge, &Bridge::textChangedSignal, this, &MonacoWidget::onEditorTextChanged);
 }
 
 void MonacoWidget::onEditorReady()
@@ -111,10 +110,16 @@ void MonacoWidget::onEditorReady()
     emit m_bridge->setThemeRequested(m_pendingDark);
     emit m_bridge->setReadOnlyRequested(m_pendingReadOnly);
 
-    if (!m_pendingText.isEmpty()) {
-        emit m_bridge->setTextRequested(m_pendingText);
-        m_pendingText.clear();
+    if (m_textPendingPush) {
+        emit m_bridge->setTextRequested(m_text);
+        m_textPendingPush = false;
     }
+}
+
+void MonacoWidget::onEditorTextChanged(const QString &text)
+{
+    m_text = text;
+    emit textChanged();
 }
 
 void MonacoWidget::loadEventData(const QString &eventJson)
@@ -150,27 +155,16 @@ void MonacoWidget::setDiagnostics(const QJsonArray &diagnostics)
 
 void MonacoWidget::setText(const QString &text)
 {
+    m_text = text;
     if (m_pageReady)
         emit m_bridge->setTextRequested(text);
     else
-        m_pendingText = text;
+        m_textPendingPush = true;
 }
 
 QString MonacoWidget::getText() const
 {
-    if (!m_pageReady)
-        return m_pendingText;
-
-    QString result;
-    QEventLoop loop;
-    m_view->page()->runJavaScript(
-        "window.editorAPI ? window.editorAPI.getText() : ''",
-        [&result, &loop](const QVariant &v) {
-            result = v.toString();
-            loop.quit();
-        });
-    loop.exec();
-    return result;
+    return m_text;
 }
 
 void MonacoWidget::clear()

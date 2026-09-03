@@ -15,6 +15,7 @@ import "screen.proto";
 import "registry.proto";
 import "entities.proto";
 import "stats.proto";
+import "window.proto";
 
 // Main protocol definition that ties everything together
 
@@ -35,6 +36,7 @@ message ClientToManagerMessage {
 
     // Inventory updates
     InventoryUpdate inventory = 7;
+    InventoryDeltaUpdate inventory_delta = 40;
     ContainerUpdate container = 24;
 
     // Chat messages from game
@@ -61,6 +63,7 @@ message ClientToManagerMessage {
     BlockUpdateMessage block_update = 19;
     MultiBlockUpdateMessage multi_block_update = 20;
     ChunkUnloadMessage chunk_unload = 21;
+    BlockEntityUpdateMessage block_entity_update = 42;
 
     // Block registry
     QueryBlockRegistryMessage query_registry = 22;
@@ -74,8 +77,9 @@ message ClientToManagerMessage {
     ItemRegistryMessage item_registry = 28;
 
     // World interaction responses
-    CanReachBlockResponse can_reach_block_response = 29;
+    CanReachBlocksResponse can_reach_blocks_response = 29;
     HoldAttackStatusResponse hold_attack_status_response = 34;
+    HoldUseStatusResponse hold_use_status_response = 43;
 
     // Entity tracking
     EntityUpdate entity_update = 30;
@@ -98,6 +102,9 @@ message ClientToManagerMessage {
 
     // Baritone log output (chat log lines, toasts, notifications)
     BaritoneLogMessage baritone_log = 39;
+
+    // Game window geometry (post-handshake report and replies to window commands)
+    WindowStateResponse window_state = 41;
   }
 }
 
@@ -106,6 +113,8 @@ message ManagerToClientMessage {
   // Message identification
   string message_id = 1;        // Unique ID for tracking
   int64 timestamp = 2;          // Unix timestamp in milliseconds
+
+  reserved 7; // was MoveToCommand move_to
 
   oneof payload {
     // Connection & status messages
@@ -122,7 +131,6 @@ message ManagerToClientMessage {
     SendChatCommand send_chat = 6;
 
     // Movement/actions
-    MoveToCommand move_to = 7;
     LookAtCommand look_at = 8;
     SetRotationCommand set_rotation = 9;
 
@@ -146,7 +154,7 @@ message ManagerToClientMessage {
 
     // World interaction
     InteractWithBlockCommand interact_with_block = 20;
-    CanReachBlockCommand can_reach_block = 26;
+    CanReachBlocksCommand can_reach_blocks = 26;
 
     // Block registry response
     BlockRegistryResponse registry_response = 21;
@@ -175,10 +183,18 @@ message ManagerToClientMessage {
     HoldAttackCommand hold_attack = 33;
     GetHoldAttackStatusCommand get_hold_attack_status = 34;
 
+    // In-game use (right-click) hold toggle and status query
+    HoldUseCommand hold_use = 40;
+    GetHoldUseStatusCommand get_hold_use_status = 41;
+
     // Force a full inventory resync from the server
     RequestInventoryResyncCommand request_inventory_resync = 35;
 
     // Request the player's statistics for the current server/world
     RequestStatisticsCommand request_statistics = 37;
+
+    // Game window placement
+    SetWindowCommand set_window = 38;
+    GetWindowStateCommand get_window_state = 39;
   }
 }

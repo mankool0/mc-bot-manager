@@ -42,6 +42,8 @@ public:
     static qint64 getPrismGUIPid();
     static QString hookSocketPath();
     static bool isHookAvailable();
+    static int launchQueuePosition(const QString &botName);
+    static void dropLaunchProcess(BotInstance *bot);
 
 signals:
     void minecraftLaunching(const QString &botName);
@@ -55,6 +57,7 @@ signals:
     void accountRefreshFailed(const QString &accountName);
     void accountsUpdated(QVector<PrismAccountInfo> accounts);
     void instancesUpdated(QVector<PrismInstanceInfo> instances);
+    void launchQueueChanged();
 
 private:
     explicit PrismLauncherManager(QObject *parent = nullptr);
@@ -67,10 +70,17 @@ private:
     void stopPrismGUIImpl();
     void launchPrismGUIImpl(BotInstance *bot);
     void sendLaunchCommandImpl(BotInstance *bot);
+    static void launchProcessDone(BotInstance *bot, QProcess *process);
+    void queueLaunch(BotInstance *bot);
+    void pumpLaunchQueue();
+    bool inFlightStillStarting() const;
+    void failLaunch(BotInstance *bot, const QString &reason);
+    void clearGUIState();
     void processOutput(const QString &output, bool isStderr = false);
     void parsePrismCommand(const QString &command, QString &executable, QStringList &arguments);
     void pingHook();
     void connectSubscriber();
+    void dropSubscriberSocket();
     void handleSubscriberData();
 #ifdef Q_OS_WIN
     void injectHookDLL();
@@ -79,6 +89,13 @@ private:
     PrismConfig *prismConfig = nullptr;
     QProcess *prismGUIProcess = nullptr;
     QTimer *hookHeartbeatTimer = nullptr;
+    // The GUI process being up does not mean it can take a launch command yet
+    bool m_guiReady = false;
+    // Launches go out one at a time: Prism refreshes the account token on every
+    // launch and concurrent refreshes fail
+    QStringList m_launchQueue;
+    QString m_inFlightLaunch;
+    QTimer *m_launchQueueTimer = nullptr;
     bool m_hookAvailable = false;
     QString m_currentlyRefreshingAccount;
 

@@ -16,6 +16,7 @@
 #include <QPointer>
 #include <memory>
 #include <optional>
+#include "PendingRequestMap.h"
 #include "protocol.qpb.h"
 #include "connection.qpb.h"
 #include "player.qpb.h"
@@ -30,7 +31,10 @@
 #include "registry.qpb.h"
 #include "entities.qpb.h"
 #include "stats.qpb.h"
+#include "window.qpb.h"
+#include "WindowLayout.h"
 #include "WorldData.h"
+#include "SectionDirtyTracker.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
@@ -345,6 +349,9 @@ struct BotInstance : public BotConfig {
     // Only meaningful while Online - the mod reports these in its handshake.
     QSet<QString> capabilities;
     bool hasCapability(const QString &cap) const { return capabilities.contains(cap); }
+    // Game window geometry and monitor list as last reported by the mod (guarded by dataMutex).
+    mankool::mcbot::protocol::WindowStateResponse windowState;
+    bool windowStateKnown = false;
     bool isSingleplayer = false;
     QString singleplayerWorld;
     QString serverMotd;
@@ -357,6 +364,11 @@ struct BotInstance : public BotConfig {
     std::shared_ptr<WorldAutoSaver> worldAutoSaver;
     QString worldAutoSaverServerIp;
     QVector<ChunkData> earlyChunkQueue;
+
+    // Which chunk sections changed, for world.changed_sections(). Fed by
+    // BotManager::markWorldDirty, never marked from handlers directly. shared_ptr so a
+    // script thread can copy it out and keep polling safely after dropping the GIL.
+    std::shared_ptr<SectionDirtyTracker> sectionDirty = std::make_shared<SectionDirtyTracker>();
 
     // Recipe registry
     RecipeRegistry recipeRegistry;
@@ -392,6 +404,7 @@ public:
     static void handleServerStatus(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     static void handlePlayerState(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);
     static void handleInventoryUpdate(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory);
+    static void handleInventoryDeltaUpdate(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta);
     static void handleChatMessage(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     static void handleCommandResponse(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     static void handleHeartbeat(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
@@ -433,20 +446,65 @@ public:
     static void handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     static void handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
     static void handleMultiBlockUpdate(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
+    static void handleBlockEntityUpdate(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update);
     static void handleChunkUnload(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
     static void handleLightUpdate(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     static void handleContainerUpdate(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     static void handleScreenUpdate(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
 
     // World interaction commands
-    static bool sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak = false, int timeoutMs = 3000, int face = 0);
-    static bool sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, int timeoutMs = 3000, int face = 0);
-    static void handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
+
+    struct ReachQuery {
+        int x = 0;
+        int y = 0;
+        int z = 0;
+        bool sneak = false;
+        bool hasFrom = false;
+        int fromX = 0;
+        int fromY = 0;
+        int fromZ = 0;
+        int face = 0;
+    };
+
+    static int maxReachQueriesPerCall();
+
+    struct ReachBatchResult {
+        enum class Status {
+            Ok,             // result is fully populated and every entry is meaningful
+            NotConnected,   // bot vanished between the caller's check and the send
+            SendFailed,
+            TimedOut,
+            Partial,        // client answered fewer queries than asked (bot not in a world)
+            TooLarge        // request would not fit in one message the client can receive
+        };
+        Status status = Status::Ok;
+        QList<bool> results;
+        int evaluated = 0;  // Partial: how many queries the client actually answered
+        int maxQueries = 0; // TooLarge: how many would have fit
+    };
+
+    static ReachBatchResult sendCanReachBlocks(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs = 5000);
+    static void handleCanReachBlocksResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response);
     static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    static void sendHoldUse(const QString &botName, bool enabled, int durationTicks = 0);
+    static bool getHoldUseStatus(const QString &botName, int timeoutMs = 3000);
+    static void handleHoldUseStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response);
     static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
     static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
+
+    // Game window placement. Both calls block for the mod's reply; nullopt on timeout/offline.
+    static std::optional<mankool::mcbot::protocol::WindowStateResponse> getWindowState(const QString &botName, int timeoutMs = 3000);
+    static std::optional<mankool::mcbot::protocol::WindowStateResponse> setWindow(const QString &botName, const mankool::mcbot::protocol::SetWindowCommand &cmd, int timeoutMs = 3000);
+    static void handleWindowState(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response);
+    // Re-reads the BotWindows settings and re-tiles every online bot.
+    static void reloadWindowLayout();
+    // Forgets the bot's window state (on disconnect). Its grid cell is its list index, so
+    // nothing moves until it reconnects and takes the same cell again.
+    static void clearWindowState(const QString &botName);
+    // Monitor names reported by online bots, for the settings UI.
+    static QStringList knownMonitorNames();
     static void sendInteractWithBlock(const QString &botName, int x, int y, int z,
                                       mankool::mcbot::protocol::HandGadget::Hand hand = mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND,
                                       bool sneak = false,
@@ -469,6 +527,14 @@ public:
     static void sendLookAt(const QString &botName, double x, double y, double z,
                            mankool::mcbot::protocol::BlockFaceGadget::BlockFace face = mankool::mcbot::protocol::BlockFaceGadget::BlockFace::FACE_AUTO,
                            bool sneak = false);
+    static void sendLookAtEntity(const QString &botName, int entityId, bool sneak = false, bool silent = false);
+    static void sendSetRotation(const QString &botName, float yaw, float pitch, bool silent = false);
+    static void sendUseItem(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent = false);
+    static void sendDropItem(const QString &botName, bool dropAll, bool silent = false);
+    // Returns false without sending when the bot is unknown, not connected, or its proxy is dead.
+    static bool sendConnectToServer(const QString &botName, const QString &address, bool silent = false);
+    static void sendDisconnect(const QString &botName, const QString &reason = QString(), bool silent = false);
+    static void sendChat(const QString &botName, const QString &message, bool silent = false);
 
     static void sendCommand(const QString &botName, const QString &commandText, bool silent = false);
     static void sendShutdownCommand(const QString &botName, const QString &reason = "");
@@ -507,9 +573,12 @@ private:
     void updateBotImpl(const QString &name, const BotConfig &config);
     bool verifyModVersionImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
     void handleConnectionInfoImpl(int connectionId, const mankool::mcbot::protocol::ConnectionInfo &info);
+    void loadRecipesFor(BotInstance *bot, const QString &version);
     void handleServerStatusImpl(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status);
     void handlePlayerStateImpl(int connectionId, const mankool::mcbot::protocol::PlayerStateUpdate &state);
     void handleInventoryUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory);
+    void handleInventoryDeltaUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta);
+    void notifyInventoryChanged(BotInstance *bot);
     void handleChatMessageImpl(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat);
     void handleCommandResponseImpl(int connectionId, const mankool::mcbot::protocol::CommandResponse &response);
     void handleHeartbeatImpl(int connectionId, const mankool::mcbot::protocol::HeartbeatMessage &heartbeat);
@@ -530,23 +599,50 @@ private:
     void handleChunkDataImpl(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData);
     void handleBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate);
     void handleMultiBlockUpdateImpl(int connectionId, const mankool::mcbot::protocol::MultiBlockUpdateMessage &multiBlockUpdate);
+    void handleBlockEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update);
     void handleChunkUnloadImpl(int connectionId, const mankool::mcbot::protocol::ChunkUnloadMessage &chunkUnload);
+
     void handleLightUpdateImpl(int connectionId, const mankool::mcbot::protocol::LightUpdateMessage &lightUpdate);
     void handleContainerUpdateImpl(int connectionId, const mankool::mcbot::protocol::ContainerUpdate &containerUpdate);
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
+
+    // What a world mutation invalidates. Block entities are not part of the section
+    // digest, and a chunk load hands the saver the whole column directly instead of
+    // going through its dirty set, so the two trackers do not always both apply.
+    enum class WorldChange {
+        Blocks,       // block states changed: section digests and the on-disk column both go stale
+        BlockEntity,  // block entity NBT only: resave the column, digests are unaffected
+        ChunkLoad,    // column (re)loaded: every section is stale, the saver got the chunk directly
+    };
+
+    // Single funnel for world mutations. Every dirty-tracking consumer is marked here so
+    // adding one is a change in this function rather than an edit in each handler, and so
+    // handlers cannot half-update the set of trackers. Call it after releasing worldDataLock:
+    // the trackers take their own locks and must not nest inside it.
+    void markWorldDirty(BotInstance *bot, WorldChange kind, const QVector<SectionKey> &sections);
+
+    // Drops a column from world data and from every tracker, flushing pending saves first.
+    void unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ);
+
     void handleEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::EntityUpdate &batch);
     void handleWeatherUpdateImpl(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather);
     void handleMapDataImpl(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData);
     void handleTabListUpdateImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerUpdate &update);
     void handleTabListRemoveImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove);
-    bool sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
-                               bool hasFrom = false, int fromX = 0, int fromY = 0, int fromZ = 0, int face = 0);
-    void handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response);
+    ReachBatchResult sendCanReachBlocksImpl(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs);
+    void handleCanReachBlocksResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response);
     void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
+    void sendHoldUseImpl(const QString &botName, bool enabled, int durationTicks);
+    bool getHoldUseStatusImpl(const QString &botName, int timeoutMs);
+    void handleHoldUseStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response);
     std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
     void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
+    std::optional<mankool::mcbot::protocol::WindowStateResponse> requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs);
+    void handleWindowStateImpl(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response);
+    void applyWindowLayoutImpl(BotInstance *bot);
+    void reloadWindowLayoutImpl();
     void sendInteractWithBlockImpl(const QString &botName, int x, int y, int z,
                                    mankool::mcbot::protocol::HandGadget::Hand hand, bool sneak, bool lookAtBlock,
                                    mankool::mcbot::protocol::BlockFaceGadget::BlockFace face);
@@ -562,6 +658,15 @@ private:
     void sendSwitchHotbarSlotImpl(const QString &botName, int slot);
     void sendLookAtImpl(const QString &botName, double x, double y, double z,
                         mankool::mcbot::protocol::BlockFaceGadget::BlockFace face, bool sneak);
+    void sendLookAtEntityImpl(const QString &botName, int entityId, bool sneak, bool silent);
+    void sendSetRotationImpl(const QString &botName, float yaw, float pitch, bool silent);
+    void sendUseItemImpl(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent);
+    void sendDropItemImpl(const QString &botName, bool dropAll, bool silent);
+    bool sendConnectToServerImpl(const QString &botName, const QString &address, bool silent);
+    void sendDisconnectImpl(const QString &botName, const QString &reason, bool silent);
+    void sendChatImpl(const QString &botName, const QString &message, bool silent);
+    // Bot lookup for a command: logs and returns nullptr when unknown or not connected.
+    BotInstance *connectedBotForCommand(const QString &botName, const QString &action);
     void sendCommandImpl(const QString &botName, const QString &commandText, bool silent);
     void sendShutdownCommandImpl(const QString &botName, const QString &reason);
     void requestBaritoneSettingsImpl(const QString &botName);
@@ -575,32 +680,19 @@ private:
 
     bool sendOutboundMessage(int connectionId, mankool::mcbot::protocol::ManagerToClientMessage &msg, bool silent = false, const QString &messageId = {});
 
-    struct PendingCanReachBlockEntry {
-        QSemaphore sem{0};
-        bool reachable = false;
-    };
-
-    struct PendingHoldAttackStatusEntry {
-        QSemaphore sem{0};
-        bool enabled = false;
-    };
-
-    struct PendingStatisticsEntry {
-        QSemaphore sem{0};
-        bool received = false;
-    };
-
     QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
-    QMutex m_pendingCanReachBlockMutex;
-    QHash<QString, PendingCanReachBlockEntry*> m_pendingCanReachBlockRequests;
-    QMutex m_pendingHoldAttackStatusMutex;
-    QHash<QString, PendingHoldAttackStatusEntry*> m_pendingHoldAttackStatusRequests;
-    QMutex m_pendingStatisticsMutex;
-    QHash<QString, PendingStatisticsEntry*> m_pendingStatisticsRequests;
+    PendingRequestMap<QList<bool>> m_pendingCanReachBlocks;
+    PendingRequestMap<bool> m_pendingHoldAttackStatus;
+    PendingRequestMap<bool> m_pendingHoldUseStatus;
+    // Payload is unused: the reply is merged into m_statsCache by the handler before the wake.
+    PendingRequestMap<bool> m_pendingStatistics;
     QMutex m_statsCacheMutex;
     QHash<QString, QMap<QString, QMap<QString, qint64>>> m_statsCache;
+    PendingRequestMap<mankool::mcbot::protocol::WindowStateResponse> m_pendingWindowState;
+    // Main thread only: the settings dialog and the inbound handler both run there.
+    WindowLayoutSettings m_windowLayoutSettings = WindowLayoutSettings::load();
 
     // Block state registry cache: data_version -> (state_id -> block_state_string)
     QMap<int, QMap<quint32, QString>> blockRegistryCache;

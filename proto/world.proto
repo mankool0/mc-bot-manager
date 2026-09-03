@@ -39,7 +39,9 @@ message InteractWithBlockCommand {
   BlockFace face = 5;             // If non-zero, bypasses raytrace and clicks the specified face directly
 }
 
-// Command to check if a block is reachable from the current player position
+// One reach query: is the block visible via raytrace from the player's eye position. Only ever
+// sent as an element of CanReachBlocksCommand; the manager expresses a single check as a batch
+// of one.
 message CanReachBlockCommand {
   BlockPos position = 1;
   bool sneak = 2;
@@ -47,9 +49,16 @@ message CanReachBlockCommand {
   BlockFace face = 4;                   // If non-AUTO, only check the specific face (default AUTO checks all faces)
 }
 
-message CanReachBlockResponse {
-  bool reachable = 1;
-  string request_id = 2;          // Echoes the request's message_id for correlation
+message CanReachBlocksCommand {
+  repeated CanReachBlockCommand queries = 1;
+}
+
+message CanReachBlocksResponse {
+  string request_id = 1;          // Echoes the request's message_id for correlation
+  // One entry per query actually evaluated, in request order. A list shorter than the request
+  // (in practice: empty) means the client could not evaluate the batch, e.g. the bot is not in
+  // a world; the manager treats that as an error rather than guessing at the remainder.
+  repeated bool reachable = 2;
 }
 
 // Chunk data synchronization (Client -> Manager)
@@ -98,6 +107,16 @@ message BlockUpdateMessage {
   string dimension = 3;           // Dimension ID
 }
 
+// One block entity changed (Client -> Manager). Chunk data carries every block entity in a chunk,
+// but only at load; this is how an edited sign, a re-dyed banner or a newly placed chest reaches the
+// manager without waiting for the chunk to cycle. `nbt` is the same saveWithFullMetadata payload
+// ChunkDataMessage.block_entity_nbt carries, so both paths store the same shape.
+message BlockEntityUpdateMessage {
+  BlockPos position = 1;
+  string dimension = 2;
+  bytes nbt = 3;
+}
+
 // Multi-block update (Client -> Manager)
 message MultiBlockUpdateMessage {
   repeated BlockPos positions = 1;
@@ -124,6 +143,20 @@ message HoldAttackStatusResponse {
 message HoldAttackCommand {
   bool enabled = 1;
   int32 duration_ticks = 2;
+}
+
+// Query the current hold-use state from the client
+message GetHoldUseStatusCommand {}
+
+message HoldUseStatusResponse {
+  string request_id = 1; // Echoes the request's message_id for correlation
+  bool enabled = 2;
+}
+
+// Hold or release the use (right-click) button in-game.
+message HoldUseCommand {
+  bool enabled = 1;
+  int32 duration_ticks = 2; // 0 = until an explicit release
 }
 
 // Weather state update (Client -> Manager)

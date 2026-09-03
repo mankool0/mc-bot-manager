@@ -17,10 +17,12 @@ Each bot has its own script directory created automatically.
 ## Running Scripts
 
 **Auto-run (Event-driven):**
+
 - Check the checkbox next to the script name
 - Script loads and registers event handlers automatically
 
 **Manual run (Imperative):**
+
 - Select the script
 - Click "Run"
 - Script executes until completion or manual stop

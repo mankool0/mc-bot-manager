@@ -16,6 +16,7 @@ PrismSettingsDialog::PrismSettingsDialog(QWidget *parent)
 
     connect(ui->browseButton, &QPushButton::clicked, this, &PrismSettingsDialog::onBrowseClicked);
     connect(ui->browseExeButton, &QPushButton::clicked, this, &PrismSettingsDialog::onBrowseExeClicked);
+    connect(ui->useHookCheckBox, &QCheckBox::toggled, ui->minimizeWindowsCheckBox, &QWidget::setEnabled);
 
     // Set initial labels for lists
     ui->instancesList->addItem("Instances:");
@@ -100,11 +101,22 @@ QStringList PrismSettingsDialog::getAccounts() const
 void PrismSettingsDialog::setUseHook(bool enabled)
 {
     ui->useHookCheckBox->setChecked(enabled);
+    ui->minimizeWindowsCheckBox->setEnabled(enabled);
 }
 
 bool PrismSettingsDialog::getUseHook() const
 {
     return ui->useHookCheckBox->isChecked();
+}
+
+void PrismSettingsDialog::setMinimizeWindows(bool enabled)
+{
+    ui->minimizeWindowsCheckBox->setChecked(enabled);
+}
+
+bool PrismSettingsDialog::getMinimizeWindows() const
+{
+    return ui->minimizeWindowsCheckBox->isChecked();
 }
 
 void PrismSettingsDialog::onBrowseClicked()

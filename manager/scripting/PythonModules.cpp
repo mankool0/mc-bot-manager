@@ -56,8 +56,41 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .def_readonly("widgets", &PyScreenState::widgets)
         .def_readonly("slots", &PyScreenState::guiSlots);
 
+    py::class_<PyMonitor>(m, "Monitor")
+        .def_readonly("name", &PyMonitor::name)
+        .def_readonly("primary", &PyMonitor::primary)
+        .def_readonly("x", &PyMonitor::x)
+        .def_readonly("y", &PyMonitor::y)
+        .def_readonly("width", &PyMonitor::width)
+        .def_readonly("height", &PyMonitor::height)
+        .def_readonly("work_x", &PyMonitor::work_x)
+        .def_readonly("work_y", &PyMonitor::work_y)
+        .def_readonly("work_width", &PyMonitor::work_width)
+        .def_readonly("work_height", &PyMonitor::work_height);
+
+    py::class_<PyWindowState>(m, "WindowState")
+        .def_readonly("platform", &PyWindowState::platform)
+        .def_readonly("can_move", &PyWindowState::can_move)
+        .def_readonly("monitor", &PyWindowState::monitor)
+        .def_readonly("x", &PyWindowState::x)
+        .def_readonly("y", &PyWindowState::y)
+        .def_readonly("width", &PyWindowState::width)
+        .def_readonly("height", &PyWindowState::height)
+        .def_readonly("minimized", &PyWindowState::minimized)
+        .def_readonly("visible", &PyWindowState::visible)
+        .def_readonly("focused", &PyWindowState::focused)
+        .def_readonly("monitors", &PyWindowState::monitors);
+
+    py::enum_<PythonAPI::Hand>(m, "Hand")
+        .value("MAIN", PythonAPI::Hand::MAIN)
+        .value("OFF", PythonAPI::Hand::OFF)
+        .export_values();
+
     def_state("position", &PythonAPI::getPosition,
               "Get position as dict {x, y, z}",
+              py::arg("bot_name") = "");
+    def_state("rotation", &PythonAPI::getRotation,
+              "Get view rotation as dict {yaw, pitch} in degrees, or None if the bot is offline",
               py::arg("bot_name") = "");
     def_state("dimension", &PythonAPI::getDimension,
               "Get dimension name",
@@ -87,6 +120,40 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                "Select hotbar slot (0-8)",
                py::arg("slot"),
                py::arg("bot_name") = "");
+    def_action("rotate", &PythonAPI::rotate,
+               "Set view rotation in degrees",
+               py::arg("yaw"), py::arg("pitch"),
+               py::arg("bot_name") = "");
+    def_action("use_item", &PythonAPI::useItem,
+               "Use the item in the given hand once, like a single tap of right-click: throw, cast, "
+               "splash, empty a bucket. Items that must be held (food, drinks, bows, shields) need "
+               "bot.hold_use() instead.",
+               py::arg("hand") = PythonAPI::Hand::MAIN,
+               py::arg("bot_name") = "");
+    def_action("hold_use", &PythonAPI::holdUse,
+               "Hold or release right-click use in-game. The client keeps the use key pressed, so "
+               "held uses (eating, drinking, bows, shields) run to completion like a player holding "
+               "the button. duration_ticks=0 holds until an explicit release.",
+               py::arg("enabled"),
+               py::arg("duration_ticks") = 0,
+               py::arg("bot_name") = "");
+    def_action("get_hold_use", &PythonAPI::getHoldUse,
+               "Query the current hold-use state from the client. Returns True if use is "
+               "currently being held, False otherwise. Blocks until the client responds.",
+               py::arg("bot_name") = "");
+    def_action("hold_attack", &PythonAPI::holdAttack,
+               "Hold or release left-click attack in-game.",
+               py::arg("enabled"),
+               py::arg("duration_ticks") = 0,
+               py::arg("bot_name") = "");
+    def_action("get_hold_attack", &PythonAPI::getHoldAttack,
+               "Query the current hold-attack state from the client. Returns True if attack is "
+               "currently being held, False otherwise. Blocks until the client responds.",
+               py::arg("bot_name") = "");
+    def_action("drop_item", &PythonAPI::dropItem,
+               "Drop the selected hotbar item: one item, or the whole stack with drop_all=True",
+               py::arg("drop_all") = false,
+               py::arg("bot_name") = "");
     def_state("server", &PythonAPI::getServer,
               "Get server address",
               py::arg("bot_name") = "");
@@ -98,6 +165,10 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
               py::arg("bot_name") = "");
     def_state("account", &PythonAPI::getAccount,
               "Get account username",
+              py::arg("bot_name") = "");
+    def_state("data_version", &PythonAPI::getDataVersion,
+              "Get the client's Minecraft data version (e.g. 4189 for 1.21.4), or None if the "
+              "bot is offline. This is the client's version, not the server's behind a proxy.",
               py::arg("bot_name") = "");
     def_state("uptime", &PythonAPI::getUptime,
               "Get bot uptime in seconds",
@@ -132,9 +203,37 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     def_action("list_all", &PythonAPI::listAllBots,
                "List all bot names");
 
+    def_action("window", &PythonAPI::getWindow,
+               "Get window placement as a WindowState (frame rect relative to the monitor work area, "
+               "minimized/focused/visible flags, monitor list), or None if the bot is offline or does not answer",
+               py::arg("bot_name") = "");
+    def_action("set_window", &PythonAPI::setWindow,
+               "Move, resize, (un)minimize or show/hide the window. x/y/width/height are the outer frame "
+               "relative to the work area of `monitor` (a name from window().monitors, empty keeps the "
+               "current one); arguments left as None keep their current value. Returns the resulting "
+               "WindowState, or None on timeout. Positioning is unavailable on native Wayland (can_move "
+               "is False there). Raises if bot is not online.",
+               py::arg("x") = py::none(),
+               py::arg("y") = py::none(),
+               py::arg("width") = py::none(),
+               py::arg("height") = py::none(),
+               py::arg("monitor") = "",
+               py::arg("minimized") = py::none(),
+               py::arg("visible") = py::none(),
+               py::arg("bot_name") = "");
+
     def_action("chat", &PythonAPI::sendChat,
                "Send chat message",
                py::arg("message"),
+               py::arg("bot_name") = "");
+    def_action("connect", &PythonAPI::connectServer,
+               "Connect to a Minecraft server (host or host:port), leaving the current one first. "
+               "Raises if the bot's proxy is unreachable.",
+               py::arg("address"),
+               py::arg("bot_name") = "");
+    def_action("disconnect", &PythonAPI::disconnectServer,
+               "Disconnect from the current server",
+               py::arg("reason") = "",
                py::arg("bot_name") = "");
     def_action("manager_command", &PythonAPI::sendCommand,
                "Send raw manager command",
@@ -142,7 +241,8 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                py::arg("bot_name") = "");
 
     def_action("start", &PythonAPI::startBot,
-               "Start bot",
+               "Start bot. Launches are queued one at a time: the next is sent once this bot "
+               "has connected or failed.",
                py::arg("bot_name") = "");
     def_action("stop", &PythonAPI::stopBot,
                "Stop bot",
@@ -316,6 +416,48 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
         .value("EAST",  BlockRegistry::Direction::EAST)
         .export_values();
 
+    py::class_<PySectionChange>(m, "SectionChange")
+        .def_readonly("chunk_x", &PySectionChange::chunkX)
+        .def_readonly("chunk_z", &PySectionChange::chunkZ)
+        .def_readonly("section_y", &PySectionChange::sectionY)
+        .def_property_readonly("digest", [](const PySectionChange &c) -> py::object {
+            if (!c.hasDigest) return py::none();
+            return py::bytes(c.digestBytes);
+        })
+        .def_property_readonly("key", [](const PySectionChange &c) {
+            return py::make_tuple(c.chunkX, c.chunkZ, c.sectionY);
+        })
+        .def("__repr__", [](const PySectionChange &c) {
+            return "<SectionChange (" + std::to_string(c.chunkX) + ", " + std::to_string(c.chunkZ)
+                   + ", " + std::to_string(c.sectionY) + ")>";
+        });
+
+    py::class_<PySectionChanges>(m, "SectionChanges")
+        .def_readonly("token", &PySectionChanges::token)
+        .def_readonly("truncated", &PySectionChanges::truncated)
+        .def_readonly("sections", &PySectionChanges::sections)
+        .def("__len__", [](const PySectionChanges &c) { return c.sections.size(); })
+        .def("__iter__", [](py::object self) {
+            return py::iter(self.attr("sections"));
+        }, py::keep_alive<0, 1>());
+
+    py::class_<PySection>(m, "Section")
+        .def_readonly("chunk_x", &PySection::chunkX)
+        .def_readonly("chunk_z", &PySection::chunkZ)
+        .def_readonly("section_y", &PySection::sectionY)
+        .def_readonly("dimension", &PySection::dimension)
+        .def_readonly("palette", &PySection::palette)
+        .def_property_readonly("indices", [](const PySection &s) {
+            return py::bytes(s.indicesBytes);
+        })
+        .def_property_readonly("digest", [](const PySection &s) {
+            return py::bytes(s.digestBytes);
+        })
+        .def("__repr__", [](const PySection &s) {
+            return "<Section (" + std::to_string(s.chunkX) + ", " + std::to_string(s.chunkZ)
+                   + ", " + std::to_string(s.sectionY) + ") palette=" + std::to_string(s.palette.size()) + ">";
+        });
+
     // World queries
     def_state("get_weather", &PythonAPI::getWeather,
               "Get current weather state as dict with is_raining, is_thundering, rain_level, thunder_level. Returns None if bot offline.",
@@ -323,7 +465,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_query("get_block", &PythonAPI::getBlock,
               "Get block state at position. Returns block ID string or None if not found. "
               "If use_disk=True, reads saved world data when chunk not loaded. "
-              "dimension requires use_disk=True.",
+              "dimension reads memory only when the loaded chunk is that dimension.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
@@ -331,7 +473,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_query("get_light", &PythonAPI::getLight,
               "Get light levels at position as dict with block (0-15) and sky (0-15). Returns None if not found. "
               "If use_disk=True, reads saved world data when chunk not loaded. "
-              "dimension requires use_disk=True.",
+              "dimension reads memory only when the loaded chunk is that dimension.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
@@ -339,7 +481,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_query("get_block_entity", &PythonAPI::getBlockEntity,
               "Get block entity at position. Returns dict {type, x, y, z, items?} or None. "
               "If use_disk=True, falls back to saved world when not in memory. "
-              "dimension requires use_disk=True.",
+              "dimension defaults to the bot's current one.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
@@ -351,6 +493,16 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
               py::arg("bot_name") = "");
+    def_query("find_block_entities", &PythonAPI::findBlockEntities,
+              "Find block entities whose id is in types (all when the list is empty) within a horizontal "
+              "radius of (center_x, center_z) at any y, nearest first, as a list of BlockEntity. "
+              "If use_disk=True, chunks not loaded in memory are read from the saved world. "
+              "limit > 0 caps the number returned.",
+              py::arg("types"), py::arg("center_x"), py::arg("center_z"), py::arg("radius"),
+              py::arg("dimension") = "",
+              py::arg("use_disk") = false,
+              py::arg("limit") = 0,
+              py::arg("bot_name") = "");
     def_query("is_solid", &PythonAPI::isBlockSolid,
               "Check if a block state string has a solid face in the given direction. "
               "Returns True/False, or None if block registry not loaded.",
@@ -358,12 +510,15 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("face") = BlockRegistry::Direction::UP,
               py::arg("bot_name") = "");
     def_query("find_blocks", &PythonAPI::findBlocks,
-              "Find all blocks of type within radius of center, returns list of (x,y,z) tuples. "
-              "Optionally filter by block/sky light range (0-15).",
+              "Find all blocks of type within radius of center, nearest first, returns list of (x,y,z) tuples. "
+              "Optionally filter by block/sky light range (0-15). "
+              "If use_disk=True, chunks not loaded in memory are read from the saved world.",
               py::arg("block_type"), py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
               py::arg("radius"),
               py::arg("min_block_light") = 0, py::arg("max_block_light") = 15,
               py::arg("min_sky_light") = 0, py::arg("max_sky_light") = 15,
+              py::arg("dimension") = "",
+              py::arg("use_disk") = false,
               py::arg("bot_name") = "");
     def_state("entities", &PythonAPI::getEntities,
               "Get all tracked entities as list of dicts",
@@ -375,8 +530,11 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("type") = "",
               py::arg("bot_name") = "");
     def_query("find_nearest", &PythonAPI::findNearestBlock,
-              "Find nearest block matching any type in list, returns (x,y,z) tuple or None",
+              "Find nearest block matching any type in list, returns (x,y,z) tuple or None. "
+              "If use_disk=True, chunks not loaded in memory are read from the saved world.",
               py::arg("block_types"), py::arg("max_distance") = 128,
+              py::arg("dimension") = "",
+              py::arg("use_disk") = false,
               py::arg("bot_name") = "");
     def_state("loaded_chunk_count", &PythonAPI::getLoadedChunkCount,
               "Get number of loaded chunks",
@@ -387,17 +545,39 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
     def_state("loaded_chunks", &PythonAPI::getLoadedChunks,
               "Get list of loaded chunk positions as (x,z) tuples",
               py::arg("bot_name") = "");
-
-    // World interaction
-    def_action("hold_attack", &PythonAPI::holdAttack,
-               "Hold or release left-click attack in-game.",
-               py::arg("enabled"),
-               py::arg("duration_ticks") = 0,
-               py::arg("bot_name") = "");
-    def_action("get_hold_attack", &PythonAPI::getHoldAttack,
-               "Query the current hold-attack state from the client. Returns True if attack is "
-               "currently being held, False otherwise. Blocks until the client responds.",
-               py::arg("bot_name") = "");
+    def_action("changed_sections", &PythonAPI::changedSections,
+               "Chunk sections changed since `since` (a token from a previous call; None means "
+               "everything loaded). Returns a SectionChanges with .token, .truncated and "
+               ".sections, each a SectionChange with .chunk_x/.chunk_z/.section_y/.key. Pass "
+               "digest=True to also compute .digest, a 32-byte BLAKE2b-256 hash of "
+               "digest_prefix + the blocks alone. digest_prefix is your domain-separation tag "
+               "(empty = bare content hash); digests only compare equal when computed with the "
+               "same prefix. limit caps how many sections come back; .truncated says more are "
+               "pending and .token resumes where this call stopped.",
+               py::arg("bot_name") = "",
+               py::arg("since") = py::none(),
+               py::arg("dimension") = "",
+               py::arg("digest") = false,
+               py::arg("limit") = 0,
+               py::arg("digest_prefix") = py::bytes());
+    def_query("get_section", &PythonAPI::getSection,
+              "Get one chunk section's blocks in canonical form: .palette (sorted block state "
+              "strings) and .indices (4096 u16 little-endian in YZX order, index = y*256 + z*16 "
+              "+ x), plus .dimension and .digest (BLAKE2b-256 of digest_prefix + the canonical "
+              "encoding, matching changed_sections digests made with the same prefix). Returns "
+              "None if the section is not loaded.",
+              py::arg("chunk_x"), py::arg("chunk_z"), py::arg("section_y"),
+              py::arg("bot_name") = "",
+              py::arg("dimension") = "",
+              py::arg("digest_prefix") = py::bytes());
+    def_action("export_sections", &PythonAPI::exportSections,
+               "Serialize chunk sections into one uncompressed export payload: u32 frame "
+               "count, then per section its dimension, key and canonical blob. keys is a "
+               "list of (chunk_x, chunk_z, section_y); sections that are not loaded (or fail the "
+               "dimension filter) are omitted. At most 4096 keys per call.",
+               py::arg("keys"),
+               py::arg("bot_name") = "",
+               py::arg("dimension") = "");
 
     py::enum_<PythonAPI::BlockFace>(m, "BlockFace")
         .value("AUTO",  PythonAPI::BlockFace::AUTO)
@@ -416,20 +596,124 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                py::arg("face") = PythonAPI::BlockFace::AUTO,
                py::arg("sneak") = false,
                py::arg("bot_name") = "");
+    def_action("look_at_entity", &PythonAPI::lookAtEntity,
+               "Look at an entity by id (entity_id from world.entities()), aiming at its eyes. "
+               "sneak=True aims from the crouching eye height.",
+               py::arg("entity_id"),
+               py::arg("sneak") = false,
+               py::arg("bot_name") = "");
     def_query("can_reach_block", &PythonAPI::canReachBlock,
               "Check if a block is reachable from the bot's current position. "
-              "face=AUTO checks any face; pass a specific face to check only that face.",
+              "face=AUTO checks any face; pass a specific face to check only that face. "
+              "Raises TimeoutError if the client does not answer in time.",
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("sneak") = false,
               py::arg("face") = PythonAPI::BlockFace::AUTO,
+              py::arg("timeout") = 3.0,
               py::arg("bot_name") = "");
     def_query("can_reach_block_from", &PythonAPI::canReachBlockFrom,
               "Check if a block (x,y,z) is reachable when standing at (from_x,from_y,from_z). "
-              "face=AUTO checks any face; pass a specific face to check only that face.",
+              "face=AUTO checks any face; pass a specific face to check only that face. "
+              "Raises TimeoutError if the client does not answer in time.",
               py::arg("from_x"), py::arg("from_y"), py::arg("from_z"),
               py::arg("x"), py::arg("y"), py::arg("z"),
               py::arg("sneak") = false,
               py::arg("face") = PythonAPI::BlockFace::AUTO,
+              py::arg("timeout") = 3.0,
+              py::arg("bot_name") = "");
+
+    py::class_<PyBlockEntity>(m, "BlockEntity")
+        .def_readonly("type", &PyBlockEntity::type)
+        .def_readonly("x", &PyBlockEntity::x)
+        .def_readonly("y", &PyBlockEntity::y)
+        .def_readonly("z", &PyBlockEntity::z)
+        .def_readonly("items", &PyBlockEntity::items)
+        .def_readonly("front_text", &PyBlockEntity::frontText)
+        .def_readonly("back_text", &PyBlockEntity::backText)
+        .def_readonly("is_waxed", &PyBlockEntity::isWaxed)
+        .def_property_readonly("nbt", &PythonAPI::blockEntityNbt)
+        .def("__getitem__", &PythonAPI::blockEntityGetItem)
+        .def("get", &PythonAPI::blockEntityGet, py::arg("key"), py::arg("default") = py::none())
+        .def("__contains__", &PythonAPI::blockEntityContains)
+        .def("keys", &PythonAPI::blockEntityKeys)
+        .def("__repr__", &PythonAPI::blockEntityRepr);
+
+    py::class_<PyReachQuery>(m, "ReachQuery")
+        .def(py::init([](int x, int y, int z, py::object fromPos, py::object sneak, py::object face) {
+                 PyReachQuery q;
+                 q.x = x;
+                 q.y = y;
+                 q.z = z;
+                 if (!fromPos.is_none()) {
+                     py::sequence seq = fromPos.cast<py::sequence>();
+                     if (py::len(seq) != 3)
+                         throw std::invalid_argument("from_pos must be an (x, y, z) tuple");
+                     q.hasFrom = true;
+                     q.fromX = seq[0].cast<int>();
+                     q.fromY = seq[1].cast<int>();
+                     q.fromZ = seq[2].cast<int>();
+                 }
+                 if (!sneak.is_none())
+                     q.sneak = sneak.cast<bool>();
+                 if (!face.is_none())
+                     q.face = face.cast<PythonAPI::BlockFace>();
+                 return q;
+             }),
+             "One entry of a world.can_reach_blocks batch. sneak and face default to None, which "
+             "means \"use whatever the can_reach_blocks call passed\"; set either to override it "
+             "for this query only. from_pos traces from that standing position instead of the "
+             "bot's current one.",
+             py::arg("x"), py::arg("y"), py::arg("z"),
+             py::arg("from_pos") = py::none(),
+             py::arg("sneak") = py::none(),
+             py::arg("face") = py::none())
+        .def_readwrite("x", &PyReachQuery::x)
+        .def_readwrite("y", &PyReachQuery::y)
+        .def_readwrite("z", &PyReachQuery::z)
+        .def_readwrite("sneak", &PyReachQuery::sneak)
+        .def_readwrite("face", &PyReachQuery::face)
+        .def_property("from_pos",
+                      [](const PyReachQuery &q) -> py::object {
+                          if (!q.hasFrom)
+                              return py::none();
+                          return py::make_tuple(q.fromX, q.fromY, q.fromZ);
+                      },
+                      [](PyReachQuery &q, py::object value) {
+                          if (value.is_none()) {
+                              q.hasFrom = false;
+                              q.fromX = q.fromY = q.fromZ = 0;
+                              return;
+                          }
+                          py::sequence seq = value.cast<py::sequence>();
+                          if (py::len(seq) != 3)
+                              throw std::invalid_argument("from_pos must be an (x, y, z) tuple");
+                          q.hasFrom = true;
+                          q.fromX = seq[0].cast<int>();
+                          q.fromY = seq[1].cast<int>();
+                          q.fromZ = seq[2].cast<int>();
+                      })
+        .def("__repr__", [](const PyReachQuery &q) {
+            std::string s = "ReachQuery(" + std::to_string(q.x) + ", " + std::to_string(q.y) + ", " + std::to_string(q.z);
+            if (q.hasFrom)
+                s += ", from_pos=(" + std::to_string(q.fromX) + ", " + std::to_string(q.fromY) + ", " + std::to_string(q.fromZ) + ")";
+            if (q.sneak.has_value())
+                s += std::string(", sneak=") + (q.sneak.value() ? "True" : "False");
+            if (q.face.has_value())
+                s += ", face=" + std::to_string(static_cast<int>(q.face.value()));
+            return s + ")";
+        });
+
+    def_query("can_reach_blocks", &PythonAPI::canReachBlocks,
+              "Check many blocks in one round trip. queries holds (x, y, z) tuples or "
+              "world.ReachQuery objects; returns bools in the same order. sneak and face apply "
+              "to every element that does not override them. The whole batch is evaluated in a "
+              "single client tick against one bot position, so results are consistent with each "
+              "other, but a very large batch may briefly freeze the game client. Raises ValueError "
+              "if the batch is too large to fit in one message.",
+              py::arg("queries"),
+              py::arg("sneak") = false,
+              py::arg("face") = PythonAPI::BlockFace::AUTO,
+              py::arg("timeout") = 5.0,
               py::arg("bot_name") = "");
     def_action("interact_block", &PythonAPI::interactBlock,
                "Right-click/interact with block at position",

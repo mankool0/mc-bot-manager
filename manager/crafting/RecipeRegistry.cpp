@@ -7,7 +7,11 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
-#include <QEventLoop>
+#include <QUrl>
+#include <QCoreApplication>
+#include <QPointer>
+#include <QHash>
+#include <memory>
 
 RecipeRegistry::RecipeRegistry()
 {
@@ -55,19 +59,9 @@ bool RecipeRegistry::loadFromCache(const QString &version)
     QString recipeCachePath = getRecipeCachePath(version);
     QString tagCachePath = getTagCachePath(version);
 
-    // Download if not cached
-    if (!QFile::exists(recipeCachePath)) {
-        if (!downloadRecipes(version, recipeCachePath)) {
-            qWarning() << "Failed to download recipes for version" << version;
-            return false;
-        }
-    }
-
-    if (!QFile::exists(tagCachePath)) {
-        if (!downloadTags(version, tagCachePath)) {
-            qWarning() << "Failed to download tags for version" << version;
-            return false;
-        }
+    if (!QFile::exists(recipeCachePath) || !QFile::exists(tagCachePath)) {
+        qWarning() << "Recipe data for version" << version << "is not cached";
+        return false;
     }
 
     // Load recipes
@@ -501,90 +495,116 @@ QString RecipeRegistry::getTagCachePath(const QString &version)
     return QDir(AppPaths::cacheDir()).filePath(QString("tags_%1.json").arg(versionFormatted));
 }
 
-bool RecipeRegistry::downloadRecipes(const QString &version, const QString &cachePath)
+bool RecipeRegistry::isCached(const QString &version)
 {
-    QString versionFormatted = version;
-    versionFormatted.replace('.', '_');
+    return QFile::exists(getRecipeCachePath(version)) && QFile::exists(getTagCachePath(version));
+}
 
-    QString url = QString("https://raw.githubusercontent.com/mankool0/mc-bot-manager/refs/heads/recipe-data/recipes/%1.json")
-                     .arg(versionFormatted);
+namespace {
 
-    qDebug() << "Downloading recipes for version" << version << "from GitHub...";
+QString versionPathPart(const QString &version)
+{
+    QString formatted = version;
+    formatted.replace('.', '_');
+    return formatted;
+}
 
-    QNetworkAccessManager networkManager;
-    QNetworkRequest request(url);
-    QNetworkReply *reply = networkManager.get(request);
-
-    // Use event loop to wait for download
-    QEventLoop loop;
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-
-    if (reply->error() != QNetworkReply::NoError) {
-        qWarning() << "Failed to download recipes for version" << version << ":" << reply->errorString();
-        reply->deleteLater();
-        return false;
+QNetworkAccessManager *networkManager()
+{
+    // One shared manager, owned by the application so it goes away with it.
+    static QPointer<QNetworkAccessManager> manager;
+    if (!manager) {
+        manager = new QNetworkAccessManager(QCoreApplication::instance());
     }
+    return manager;
+}
 
-    QByteArray data = reply->readAll();
-    reply->deleteLater();
-
-    // Save to cache
+bool writeCacheFile(const QString &path, const QByteArray &data)
+{
     QDir().mkpath(AppPaths::cacheDir());
-
-    QFile cacheFile(cachePath);
+    QFile cacheFile(path);
     if (!cacheFile.open(QIODevice::WriteOnly)) {
-        qWarning() << "Failed to write recipe cache file:" << cachePath;
+        qWarning() << "Failed to write cache file:" << path;
         return false;
     }
-
     cacheFile.write(data);
     cacheFile.close();
-
-    qDebug() << "Downloaded recipes for version" << version;
     return true;
 }
 
-bool RecipeRegistry::downloadTags(const QString &version, const QString &cachePath)
+struct FetchState {
+    int remaining = 0;
+    bool ok = true;
+    // One entry per caller waiting on this version: a fleet coming up on a new
+    // version shares one download instead of starting one each.
+    QVector<std::pair<QPointer<QObject>, std::function<void(bool)>>> waiters;
+};
+
+QHash<QString, std::shared_ptr<FetchState>> &inFlightFetches()
 {
-    QString versionFormatted = version;
-    versionFormatted.replace('.', '_');
+    static QHash<QString, std::shared_ptr<FetchState>> fetches;
+    return fetches;
+}
 
-    QString url = QString("https://raw.githubusercontent.com/mankool0/mc-bot-manager/refs/heads/recipe-data/tags/item/%1.json")
-                     .arg(versionFormatted);
+} // namespace
 
-    qDebug() << "Downloading tags for version" << version << "from GitHub...";
-
-    QNetworkAccessManager networkManager;
-    QNetworkRequest request(url);
-    QNetworkReply *reply = networkManager.get(request);
-
-    // Use event loop to wait for download
-    QEventLoop loop;
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-
-    if (reply->error() != QNetworkReply::NoError) {
-        qWarning() << "Failed to download tags for version" << version << ":" << reply->errorString();
-        reply->deleteLater();
-        return false;
+void RecipeRegistry::fetchCache(const QString &version, QObject *context, std::function<void(bool)> done)
+{
+    struct Download {
+        QString what;
+        QString url;
+        QString path;
+    };
+    const QString part = versionPathPart(version);
+    const QString base = QStringLiteral("https://raw.githubusercontent.com/mankool0/mc-bot-manager/refs/heads/recipe-data/");
+    QVector<Download> downloads;
+    if (!QFile::exists(getRecipeCachePath(version))) {
+        downloads.append({QStringLiteral("recipes"), base + "recipes/" + part + ".json", getRecipeCachePath(version)});
+    }
+    if (!QFile::exists(getTagCachePath(version))) {
+        downloads.append({QStringLiteral("tags"), base + "tags/item/" + part + ".json", getTagCachePath(version)});
     }
 
-    QByteArray data = reply->readAll();
-    reply->deleteLater();
-
-    // Save to cache
-    QDir().mkpath(AppPaths::cacheDir());
-
-    QFile cacheFile(cachePath);
-    if (!cacheFile.open(QIODevice::WriteOnly)) {
-        qWarning() << "Failed to write tag cache file:" << cachePath;
-        return false;
+    if (downloads.isEmpty()) {
+        // Still asynchronous so the caller sees one completion path.
+        QMetaObject::invokeMethod(context, [done]() { done(true); }, Qt::QueuedConnection);
+        return;
     }
 
-    cacheFile.write(data);
-    cacheFile.close();
+    auto &fetches = inFlightFetches();
+    if (auto existing = fetches.value(version)) {
+        existing->waiters.append({QPointer<QObject>(context), std::move(done)});
+        return;
+    }
 
-    qDebug() << "Downloaded tags for version" << version;
-    return true;
+    auto state = std::make_shared<FetchState>();
+    state->remaining = downloads.size();
+    state->waiters.append({QPointer<QObject>(context), std::move(done)});
+    fetches.insert(version, state);
+
+    for (const Download &dl : std::as_const(downloads)) {
+        qDebug() << "Downloading" << dl.what << "for version" << version << "from GitHub...";
+        QNetworkReply *reply = networkManager()->get(QNetworkRequest(QUrl(dl.url)));
+        // Receiver is the manager, not one caller's context: the fetch is shared,
+        // and each waiter's liveness is checked where the result is handed out.
+        QObject::connect(reply, &QNetworkReply::finished, networkManager(), [reply, state, dl, version]() {
+            reply->deleteLater();
+            if (reply->error() != QNetworkReply::NoError) {
+                qWarning() << "Failed to download" << dl.what << "for version" << version << ":" << reply->errorString();
+                state->ok = false;
+            } else if (!writeCacheFile(dl.path, reply->readAll())) {
+                state->ok = false;
+            } else {
+                qDebug() << "Downloaded" << dl.what << "for version" << version;
+            }
+            if (--state->remaining != 0) return;
+
+            inFlightFetches().remove(version);
+            // Moved out first: a waiter may start a new fetch for this version.
+            const auto waiters = std::move(state->waiters);
+            for (const auto &[ctx, callback] : waiters) {
+                if (ctx) callback(state->ok);
+            }
+        });
+    }
 }

@@ -85,6 +85,21 @@ Get module setting value.
 health = meteor.get_setting("auto-totem", "health")
 ```
 
+### Packet list settings
+
+Packet list settings (e.g. Packet Canceller's `s2c-packets`) hold packet names whose format
+depends on the Meteor build the bot is running:
+
+- Older Meteor builds (1.21.x): class names like `HandSwingC2SPacket` or
+  `PlayerMoveC2SPacket.PositionAndOnGround`
+- Newer Meteor builds (PacketType-based, 26.1.2+): flow-prefixed ids like
+  `serverbound/minecraft:swing`
+
+Treat the names as opaque strings: read the current list, modify it, and write it back
+unchanged. There is no cross-version translation - names from one Meteor generation
+silently resolve to nothing on the other (unknown names are dropped without error), so
+scripts that hardcode packet names are tied to the Meteor generation they were written for.
+
 ## Module Info
 
 ### `list_modules(bot_name="")`

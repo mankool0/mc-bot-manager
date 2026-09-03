@@ -1,6 +1,7 @@
 #include "BotManager.h"
 #include "logging/LogManager.h"
 #include "network/PipeServer.h"
+#include "prism/PrismLauncherManager.h"
 #include "ui/BotConsoleWidget.h"
 #include "ui/MeteorModulesWidget.h"
 #include "ui/BaritoneWidget.h"
@@ -26,7 +27,6 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QDir>
-#include <QEventLoop>
 
 static QVariant baritoneProtoToVariant(
     const mankool::mcbot::protocol::BaritoneSettingValue &value,
@@ -798,6 +798,10 @@ void BotManager::removeBotImpl(const QString &name)
                 botInstances[i]->debugWidget = nullptr;
             }
 
+            // The QProcess is owned by the launcher manager and would
+            // otherwise outlive the bot it was started for.
+            PrismLauncherManager::dropLaunchProcess(botInstances[i]);
+
             QString serverKey = botInstances[i]->worldAutoSaverServerIp;
             delete botInstances[i];
             botInstances.removeAt(i);
@@ -817,6 +821,10 @@ void BotManager::removeBotImpl(const QString &name)
             }
 
             emit botRemoved(name);
+
+            // Cells are list indices, so every bot after the removed one just moved up a slot.
+            if (i < botInstances.size())
+                reloadWindowLayoutImpl();
             return;
         }
     }
@@ -824,8 +832,11 @@ void BotManager::removeBotImpl(const QString &name)
 
 void BotManager::clearAllBots()
 {
-    while (!instance().botInstances.isEmpty())
-        instance().removeBotImpl(instance().botInstances.first()->name);
+    while (!instance().botInstances.isEmpty()) {
+        // Copied: removeBotImpl deletes the bot before emitting botRemoved(name)
+        const QString name = instance().botInstances.first()->name;
+        instance().removeBotImpl(name);
+    }
 }
 
 void BotManager::updateBot(const QString &name, const BotConfig &config)
@@ -945,10 +956,7 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
         const QStringList caps = info.capabilities();
         bot->capabilities = QSet<QString>(caps.begin(), caps.end());
 
-        // Load recipes and tags for this version
-        if (!bot->recipeRegistry.loadFromCache(clientVersion)) {
-            LogManager::log(QString("Failed to load recipes for version %1").arg(clientVersion), LogManager::Error);
-        }
+        loadRecipesFor(bot, clientVersion);
 
         emit botUpdated(bot->name);
 
@@ -973,6 +981,40 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     if (bot && bot->debugLogging) {
         LogManager::log(QString("[%1] ConnectionInfo received").arg(bot->name), LogManager::Debug);
     }
+}
+
+void BotManager::loadRecipesFor(BotInstance *bot, const QString &version)
+{
+    if (RecipeRegistry::isCached(version)) {
+        if (!bot->recipeRegistry.loadFromCache(version)) {
+            LogManager::log(QString("[%1] Failed to load recipes for version %2").arg(bot->name, version),
+                            LogManager::Error);
+        }
+        return;
+    }
+
+    // First time this version is seen. Fetched in the background rather than
+    // waited for: this runs inside PipeServer's read loop, where spinning an
+    // event loop lets a disconnect delete the socket that loop is still using.
+    LogManager::log(QString("[%1] Downloading recipe data for version %2").arg(bot->name, version),
+                    LogManager::Info);
+    const QString name = bot->name;
+    const int connectionId = bot->connectionId;
+    RecipeRegistry::fetchCache(version, this, [this, name, version, connectionId](bool ok) {
+        BotInstance *bot = getBotByNameImpl(name);
+        // Gone, reconnected since, or back on another version.
+        if (!bot || bot->status != BotStatus::Online || bot->connectionId != connectionId
+            || bot->versionName != version) {
+            return;
+        }
+        if (!ok || !bot->recipeRegistry.loadFromCache(version)) {
+            LogManager::log(QString("[%1] Failed to load recipes for version %2").arg(name, version),
+                            LogManager::Error);
+            return;
+        }
+        LogManager::log(QString("[%1] Recipe data for version %2 ready").arg(name, version), LogManager::Info);
+        emit botUpdated(name);
+    });
 }
 
 void BotManager::handleServerStatus(int connectionId, const mankool::mcbot::protocol::ServerConnectionStatus &status)
@@ -1034,6 +1076,8 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
                 QWriteLocker locker(bot->worldDataLock.get());
                 bot->worldData.clearWorldState();
             }
+
+            bot->sectionDirty->clear();
 
             {
                 QMutexLocker statsLocker(&m_statsCacheMutex);
@@ -1148,6 +1192,26 @@ void BotManager::handleInventoryUpdate(int connectionId, const mankool::mcbot::p
     instance().handleInventoryUpdateImpl(connectionId, inventory);
 }
 
+void BotManager::handleInventoryDeltaUpdate(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta)
+{
+    instance().handleInventoryDeltaUpdateImpl(connectionId, delta);
+}
+
+static void applyInventorySlots(BotInstance *bot,
+                                const QList<mankool::mcbot::protocol::ItemStack> &items)
+{
+    if (bot->inventory.isEmpty()) {
+        bot->inventory.resize(41);
+    }
+
+    for (const auto &item : items) {
+        int slot = item.slot();
+        if (slot >= 0 && slot < bot->inventory.size()) {
+            bot->inventory[slot] = item;
+        }
+    }
+}
+
 void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryUpdate &inventory)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
@@ -1157,40 +1221,10 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
         QMutexLocker locker(bot->dataMutex.get());
         bot->selectedSlot = inventory.selectedSlot();
         bot->cursorItem = inventory.cursorItem();
-
-        if (bot->inventory.isEmpty()) {
-            bot->inventory.resize(41);
-        }
-
-        for (const auto &item : inventory.items()) {
-            int slot = item.slot();
-            if (slot >= 0 && slot < bot->inventory.size()) {
-                bot->inventory[slot] = item;
-            }
-        }
+        applyInventorySlots(bot, inventory.items());
     }
 
-    if (bot->scriptEngine) {
-        QVariantList inventoryList;
-        for (const auto &item : std::as_const(bot->inventory)) {
-            if (!item.itemId().isEmpty()) {
-                QVariantMap itemMap;
-                itemMap["slot"] = static_cast<int>(item.slot());
-                itemMap["item_id"] = item.itemId();
-                itemMap["count"] = static_cast<int>(item.count());
-                itemMap["display_name"] = item.displayName();
-                QVariantMap enchMap;
-                for (const auto &[k, v] : item.enchantments().asKeyValueRange())
-                    enchMap[k] = static_cast<int>(v);
-                itemMap["enchantments"] = enchMap;
-                inventoryList.append(itemMap);
-            }
-        }
-
-        QVariantList args;
-        args << static_cast<int>(inventory.selectedSlot()) << QVariant(inventoryList);
-        bot->scriptEngine->fireEvent("inventory_update", args);
-    }
+    notifyInventoryChanged(bot);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] InventoryUpdate received: %2 items, selected slot %3")
@@ -1199,6 +1233,71 @@ void BotManager::handleInventoryUpdateImpl(int connectionId, const mankool::mcbo
                             .arg(static_cast<int>(inventory.selectedSlot())),
                         LogManager::Debug);
     }
+}
+
+void BotManager::handleInventoryDeltaUpdateImpl(int connectionId, const mankool::mcbot::protocol::InventoryDeltaUpdate &delta)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        if (delta.hasSelectedSlot()) {
+            bot->selectedSlot = delta.selectedSlot();
+        }
+        if (delta.hasCursorItem()) {
+            bot->cursorItem = delta.cursorItem();
+        }
+        applyInventorySlots(bot, delta.changedItems());
+    }
+
+    notifyInventoryChanged(bot);
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] InventoryDeltaUpdate received: %2 changed slots%3%4")
+                            .arg(bot->name)
+                            .arg(delta.changedItems().size())
+                            .arg(delta.hasSelectedSlot()
+                                     ? QString(", selected slot %1").arg(static_cast<int>(delta.selectedSlot()))
+                                     : QString())
+                            .arg(delta.hasCursorItem() ? QString(", cursor item") : QString()),
+                        LogManager::Debug);
+    }
+}
+
+// Fires inventory_update from the bot's merged inventory, so scripts see the same full state
+// whether the message that triggered it was a full snapshot or a delta.
+void BotManager::notifyInventoryChanged(BotInstance *bot)
+{
+    if (!bot->scriptEngine) return;
+
+    QVector<mankool::mcbot::protocol::ItemStack> items;
+    int selectedSlot = 0;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        items = bot->inventory;
+        selectedSlot = bot->selectedSlot;
+    }
+
+    QVariantList inventoryList;
+    for (const auto &item : std::as_const(items)) {
+        if (!item.itemId().isEmpty()) {
+            QVariantMap itemMap;
+            itemMap["slot"] = static_cast<int>(item.slot());
+            itemMap["item_id"] = item.itemId();
+            itemMap["count"] = static_cast<int>(item.count());
+            itemMap["display_name"] = item.displayName();
+            QVariantMap enchMap;
+            for (const auto &[k, v] : item.enchantments().asKeyValueRange())
+                enchMap[k] = static_cast<int>(v);
+            itemMap["enchantments"] = enchMap;
+            inventoryList.append(itemMap);
+        }
+    }
+
+    QVariantList args;
+    args << selectedSlot << QVariant(inventoryList);
+    bot->scriptEngine->fireEvent("inventory_update", args);
 }
 
 void BotManager::handleChatMessage(int connectionId, const mankool::mcbot::protocol::ChatMessage &chat)
@@ -1624,55 +1723,28 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
             LogManager::log("Usage: connect <server_address>", LogManager::Warning);
             return;
         }
-        if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
-            LogManager::log(QString("Cannot connect bot '%1': proxy is unreachable").arg(botName), LogManager::Error);
-            return;
-        }
-        mankool::mcbot::protocol::ConnectToServerCommand connectCmd;
-        connectCmd.setServerAddress(parts.mid(1).join(' '));
-        msg.setConnectServer(connectCmd);
+        sendConnectToServerImpl(botName, parts.mid(1).join(' '), silent);
+        return;
     }
     else if (cmd == "disconnect") {
-        mankool::mcbot::protocol::DisconnectCommand disconnectCmd;
-        disconnectCmd.setReason(parts.size() > 1 ? parts.mid(1).join(' ') : "");
-        msg.setDisconnect(disconnectCmd);
+        sendDisconnectImpl(botName, parts.size() > 1 ? parts.mid(1).join(' ') : QString(), silent);
+        return;
     }
     else if (cmd == "chat") {
         if (parts.size() < 2) {
             LogManager::log("Usage: chat <message>", LogManager::Warning);
             return;
         }
-        mankool::mcbot::protocol::SendChatCommand chatCmd;
-        chatCmd.setMessage(parts.mid(1).join(' '));
-        msg.setSendChat(chatCmd);
-    }
-    else if (cmd == "move") {
-        if (parts.size() < 4) {
-            LogManager::log("Usage: move <x> <y> <z>", LogManager::Warning);
-            return;
-        }
-        bool okX, okY, okZ;
-        double x = parts[1].toDouble(&okX);
-        double y = parts[2].toDouble(&okY);
-        double z = parts[3].toDouble(&okZ);
-        if (!okX || !okY || !okZ) {
-            LogManager::log("Invalid coordinates", LogManager::Warning);
-            return;
-        }
-        mankool::mcbot::protocol::MoveToCommand moveCmd;
-        mankool::mcbot::protocol::Vec3d pos;
-        pos.setX(x);
-        pos.setY(y);
-        pos.setZ(z);
-        moveCmd.setTargetPosition(pos);
-        msg.setMoveTo(moveCmd);
+        // Raw remainder of the line, so quotes and spacing reach the server as typed
+        QString trimmed = commandText.trimmed();
+        sendChatImpl(botName, trimmed.mid(trimmed.indexOf(' ') + 1).trimmed(), silent);
+        return;
     }
     else if (cmd == "lookat") {
         if (parts.size() < 2) {
             LogManager::log("Usage: lookat <x> <y> <z> | lookat entity <id>", LogManager::Warning);
             return;
         }
-        mankool::mcbot::protocol::LookAtCommand lookAtCmd;
         if (parts[1].toLower() == "entity") {
             if (parts.size() < 3) {
                 LogManager::log("Usage: lookat entity <id>", LogManager::Warning);
@@ -1684,26 +1756,27 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
                 LogManager::log("Invalid entity ID", LogManager::Warning);
                 return;
             }
-            lookAtCmd.setEntityId(entityId);
-        } else {
-            if (parts.size() < 4) {
-                LogManager::log("Usage: lookat <x> <y> <z>", LogManager::Warning);
-                return;
-            }
-            bool okX, okY, okZ;
-            double x = parts[1].toDouble(&okX);
-            double y = parts[2].toDouble(&okY);
-            double z = parts[3].toDouble(&okZ);
-            if (!okX || !okY || !okZ) {
-                LogManager::log("Invalid coordinates", LogManager::Warning);
-                return;
-            }
-            mankool::mcbot::protocol::Vec3d pos;
-            pos.setX(x);
-            pos.setY(y);
-            pos.setZ(z);
-            lookAtCmd.setPosition(pos);
+            sendLookAtEntityImpl(botName, entityId, false, silent);
+            return;
         }
+        if (parts.size() < 4) {
+            LogManager::log("Usage: lookat <x> <y> <z>", LogManager::Warning);
+            return;
+        }
+        bool okX, okY, okZ;
+        double x = parts[1].toDouble(&okX);
+        double y = parts[2].toDouble(&okY);
+        double z = parts[3].toDouble(&okZ);
+        if (!okX || !okY || !okZ) {
+            LogManager::log("Invalid coordinates", LogManager::Warning);
+            return;
+        }
+        mankool::mcbot::protocol::Vec3d pos;
+        pos.setX(x);
+        pos.setY(y);
+        pos.setZ(z);
+        mankool::mcbot::protocol::LookAtCommand lookAtCmd;
+        lookAtCmd.setPosition(pos);
         msg.setLookAt(lookAtCmd);
     }
     else if (cmd == "rotate") {
@@ -1718,10 +1791,8 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
             LogManager::log("Invalid rotation values", LogManager::Warning);
             return;
         }
-        mankool::mcbot::protocol::SetRotationCommand rotateCmd;
-        rotateCmd.setYaw(yaw);
-        rotateCmd.setPitch(pitch);
-        msg.setSetRotation(rotateCmd);
+        sendSetRotationImpl(botName, yaw, pitch, silent);
+        return;
     }
     else if (cmd == "hotbar") {
         if (parts.size() < 2) {
@@ -1739,18 +1810,14 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
         msg.setSwitchHotbar(hotbarCmd);
     }
     else if (cmd == "use") {
-        mankool::mcbot::protocol::UseItemCommand useCmd;
-        if (parts.size() > 1 && parts[1].toLower() == "offhand") {
-            useCmd.setHand(mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND);
-        } else {
-            useCmd.setHand(mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND);
-        }
-        msg.setUseItem(useCmd);
+        bool offhand = parts.size() > 1 && parts[1].toLower() == "offhand";
+        sendUseItemImpl(botName, offhand ? mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND
+                                         : mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND, silent);
+        return;
     }
     else if (cmd == "drop") {
-        mankool::mcbot::protocol::DropItemCommand dropCmd;
-        dropCmd.setDropAll(parts.size() > 1 && parts[1].toLower() == "all");
-        msg.setDropItem(dropCmd);
+        sendDropItemImpl(botName, parts.size() > 1 && parts[1].toLower() == "all", silent);
+        return;
     }
     else if (cmd == "shutdown") {
         mankool::mcbot::protocol::ShutdownCommand shutdownCmd;
@@ -2072,6 +2139,8 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
         QVariantMap statusData;
         statusData["is_pathing"] = bot->baritoneProcessStatus.isPathing;
         statusData["event_type"] = static_cast<int>(bot->baritoneProcessStatus.eventType);
+        // Redundant for per-bot scripts, essential for the global-scope copy.
+        statusData["bot_name"] = bot->name;
 
         if (!bot->baritoneProcessStatus.goalDescription.isEmpty()) {
             statusData["goal_description"] = bot->baritoneProcessStatus.goalDescription;
@@ -2098,6 +2167,9 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
         QVariantList args;
         args << statusData;
         bot->scriptEngine->fireEvent("baritone_status_update", args);
+        // Global scripts need AT_GOAL / CALC_FAILED as they happen too.
+        ScriptMessageBus::instance().fireEventForScope(
+            QStringLiteral("_global"), QStringLiteral("baritone_status_update"), args);
     }
 
     emit baritoneProcessStatusUpdated(bot->name);
@@ -2147,6 +2219,8 @@ void BotManager::handleBaritoneLogImpl(int connectionId, const mankool::mcbot::p
         logData["kind"] = kindStr;
         logData["is_error"] = log.isError();
         logData["timestamp"] = static_cast<long long>(log.timestamp());
+        // Redundant for per-bot scripts, essential for the global-scope copy.
+        logData["bot_name"] = bot->name;
 
         if (log.hasTitle()) {
             logData["title"] = log.title();
@@ -2155,6 +2229,10 @@ void BotManager::handleBaritoneLogImpl(int connectionId, const mankool::mcbot::p
         QVariantList args;
         args << logData;
         bot->scriptEngine->fireEvent("baritone_log", args);
+        // Global scripts need Baritone's chat output too - for some processes
+        // it is the only completion signal.
+        ScriptMessageBus::instance().fireEventForScope(
+            QStringLiteral("_global"), QStringLiteral("baritone_log"), args);
     }
 
     if (bot->debugLogging) {
@@ -2524,6 +2602,43 @@ void BotManager::sendProxyConfig(const QString &botName)
 // World Data Handlers
 // ============================================================================
 
+void BotManager::markWorldDirty(BotInstance *bot, WorldChange kind, const QVector<SectionKey> &sections)
+{
+    if (sections.isEmpty()) {
+        return;
+    }
+
+    // Block entity NBT is excluded from the section encoding, so it never invalidates a digest.
+    if (kind != WorldChange::BlockEntity) {
+        bot->sectionDirty->markAll(sections);
+    }
+
+    // A chunk load hands the saver the full column directly (saveChunkAsync), so routing it
+    // through the deferred dirty set as well would only save the same data twice.
+    if (kind != WorldChange::ChunkLoad && bot->saveWorldToDisk && bot->worldAutoSaver) {
+        for (const SectionKey &key : sections) {
+            bot->worldAutoSaver->markBlockChunkDirty(key.chunkX, key.chunkZ, bot->dimension);
+        }
+    }
+}
+
+void BotManager::unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ)
+{
+    // The saver's dirty entry is only a coordinate; it reads the blocks back out of worldData at
+    // flush time. Anything still pending has to be written while the column is here, otherwise the
+    // flush finds no chunk and drops the edits silently.
+    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
+        bot->worldAutoSaver->flushBlockChunk(chunkX, chunkZ, bot->dimension);
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.unloadChunk(chunkX, chunkZ);
+    }
+
+    bot->sectionDirty->dropColumn(chunkX, chunkZ);
+}
+
 void BotManager::handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData)
 {
     instance().handleChunkDataImpl(connectionId, chunkData);
@@ -2663,6 +2778,17 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         }
     }
 
+    // Every section of a (re)loaded chunk counts as changed; the consumer's
+    // hash cache is what keeps an unchanged reload from re-uploading.
+    {
+        QVector<SectionKey> keys;
+        keys.reserve(chunk.sections.size());
+        for (auto it = chunk.sections.cbegin(); it != chunk.sections.cend(); ++it) {
+            keys.append({chunk.chunkX, chunk.chunkZ, it.key()});
+        }
+        markWorldDirty(bot, WorldChange::ChunkLoad, keys);
+    }
+
     // Save the chunk to disk or queue it if the saver isn't ready (only if saving is enabled)
     if (bot->saveWorldToDisk) {
         if (bot->worldAutoSaver) {
@@ -2687,6 +2813,13 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
         args << chunk.chunkX << chunk.chunkZ << chunk.dimension;
         bot->scriptEngine->fireEvent("chunk_loaded", args);
     }
+}
+
+static bool isAirState(const QString &blockState)
+{
+    return blockState == QLatin1String("minecraft:air")
+        || blockState == QLatin1String("minecraft:cave_air")
+        || blockState == QLatin1String("minecraft:void_air");
 }
 
 void BotManager::handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate)
@@ -2718,14 +2851,30 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
                        .arg(bot->name).arg(stateId), LogManager::Warning);
     }
 
+    bool chunkLoaded = false;
     {
         QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.setBlock(x, y, z, blockStr);
+        // Without a loaded column there is nothing to update: setBlock would invent a chunk that
+        // is one real block over 4095 air, which then reads back as terrain and, if saving is on,
+        // overwrites the real chunk on disk.
+        chunkLoaded = bot->worldData.isChunkLoaded(x >> 4, z >> 4);
+        if (chunkLoaded) {
+            bot->worldData.setBlock(x, y, z, blockStr);
+            if (isAirState(blockStr)) {
+                bot->worldData.removeBlockEntity(x, y, z, bot->dimension);
+            }
+        }
     }
 
-    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
-        bot->worldAutoSaver->markBlockChunkDirty(x >> 4, z >> 4, bot->dimension);
+    if (!chunkLoaded) {
+        if (bot->debugLogging) {
+            LogManager::log(QString("[%1] Ignoring block update at (%2, %3, %4): chunk not loaded")
+                           .arg(bot->name).arg(x).arg(y).arg(z), LogManager::Debug);
+        }
+        return;
     }
+
+    markWorldDirty(bot, WorldChange::Blocks, {{x >> 4, z >> 4, y >> 4}});
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Block update at (%2, %3, %4): %5")
@@ -2740,6 +2889,60 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
         QVariantList args;
         args << x << y << z << blockStr;
         bot->scriptEngine->fireEvent("block_update", args);
+    }
+}
+
+void BotManager::handleBlockEntityUpdate(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update)
+{
+    instance().handleBlockEntityUpdateImpl(connectionId, update);
+}
+
+void BotManager::handleBlockEntityUpdateImpl(int connectionId, const mankool::mcbot::protocol::BlockEntityUpdateMessage &update)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    const QByteArray beBytes = update.nbt();
+    if (beBytes.isEmpty()) return;
+
+    BlockEntityData be;
+    be.x = update.position().x();
+    be.y = update.position().y();
+    be.z = update.position().z();
+    be.dimension = update.dimension().isEmpty() ? bot->dimension : update.dimension();
+    be.rawNbt = beBytes;
+
+    try {
+        std::istringstream ss(std::string(beBytes.constData(), beBytes.size()), std::ios::binary);
+        nbt::io::stream_reader reader(ss);
+        auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+        auto& compound = static_cast<nbt::tag_compound&>(*tagPtr);
+        if (compound.has_key("id")) {
+            be.type = QString::fromStdString(static_cast<nbt::tag_string&>(compound.at("id").get()).get());
+        }
+    } catch (...) {
+        return;  // unreadable payload: keep whatever is stored rather than replacing it with nothing
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        // Items known from a container open stay: they come from the container packet and are
+        // fresher than anything in this snapshot.
+        auto existing = bot->worldData.getBlockEntity(be.x, be.y, be.z, be.dimension);
+        if (existing.has_value() && !existing->items.isEmpty()) {
+            be.items = existing->items;
+        }
+        bot->worldData.updateBlockEntity(be);
+    }
+
+    markWorldDirty(bot, WorldChange::BlockEntity, {{be.x >> 4, be.z >> 4, be.y >> 4}});
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] Block entity update at (%2, %3, %4): %5")
+                       .arg(bot->name)
+                       .arg(be.x).arg(be.y).arg(be.z)
+                       .arg(be.type.isEmpty() ? QStringLiteral("?") : be.type),
+                       LogManager::Debug);
     }
 }
 
@@ -2762,10 +2965,16 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
 
     int updateCount = qMin(multiBlockUpdate.positions().size(), multiBlockUpdate.stateIds().size());
 
+    QVector<SectionKey> changed;
+    changed.reserve(updateCount);
     {
         QWriteLocker locker(bot->worldDataLock.get());
         for (int i = 0; i < updateCount; ++i) {
             const auto &pos = multiBlockUpdate.positions()[i];
+            // See handleBlockUpdateImpl: an update outside a loaded column would fabricate terrain.
+            if (!bot->worldData.isChunkLoaded(pos.x() >> 4, pos.z() >> 4)) {
+                continue;
+            }
             uint32_t stateId = multiBlockUpdate.stateIds()[i];
             auto blockState = bot->blockRegistry->getBlockState(stateId);
 
@@ -2776,15 +2985,14 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
             } else {
                 bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), *blockState);
             }
+            if (!blockState || isAirState(*blockState)) {
+                bot->worldData.removeBlockEntity(pos.x(), pos.y(), pos.z(), bot->dimension);
+            }
+            changed.append({pos.x() >> 4, pos.z() >> 4, pos.y() >> 4});
         }
     }
 
-    if (bot->saveWorldToDisk && bot->worldAutoSaver) {
-        for (int i = 0; i < updateCount; ++i) {
-            const auto &pos = multiBlockUpdate.positions()[i];
-            bot->worldAutoSaver->markBlockChunkDirty(pos.x() >> 4, pos.z() >> 4, bot->dimension);
-        }
-    }
+    markWorldDirty(bot, WorldChange::Blocks, changed);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Multi-block update: %2 blocks")
@@ -2814,10 +3022,7 @@ void BotManager::handleChunkUnloadImpl(int connectionId, const mankool::mcbot::p
     int chunkX = chunkUnload.chunkX();
     int chunkZ = chunkUnload.chunkZ();
 
-    {
-        QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.unloadChunk(chunkX, chunkZ);
-    }
+    unloadColumn(bot, chunkX, chunkZ);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Unloaded chunk (%2, %3)")
@@ -3223,81 +3428,118 @@ void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::
 // World Interaction Commands
 // ============================================================================
 
-bool BotManager::sendCanReachBlock(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs, int face)
+// Expresses one reach query on the wire.
+static mankool::mcbot::protocol::CanReachBlockCommand buildCanReachBlockCommand(const BotManager::ReachQuery &q)
 {
-    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, false, 0, 0, 0, face);
-}
-
-bool BotManager::sendCanReachBlockFrom(const QString &botName, int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, int timeoutMs, int face)
-{
-    return instance().sendCanReachBlockImpl(botName, x, y, z, sneak, timeoutMs, true, fromX, fromY, fromZ, face);
-}
-
-bool BotManager::sendCanReachBlockImpl(const QString &botName, int x, int y, int z, bool sneak, int timeoutMs,
-                                        bool hasFrom, int fromX, int fromY, int fromZ, int face)
-{
-    BotInstance *bot = getBotByNameImpl(botName);
-    if (!bot || bot->connectionId <= 0)
-        return false;
-
-    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-    PendingCanReachBlockEntry entry;
-    {
-        QMutexLocker lock(&m_pendingCanReachBlockMutex);
-        m_pendingCanReachBlockRequests[msgId] = &entry;
-    }
-
     mankool::mcbot::protocol::BlockPos pos;
-    pos.setX(x);
-    pos.setY(y);
-    pos.setZ(z);
+    pos.setX(q.x);
+    pos.setY(q.y);
+    pos.setZ(q.z);
 
     mankool::mcbot::protocol::CanReachBlockCommand cmd;
     cmd.setPosition(pos);
-    cmd.setSneak(sneak);
-    if (face != 0)
-        cmd.setFace(static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(face));
-    if (hasFrom) {
+    cmd.setSneak(q.sneak);
+    if (q.face != 0)
+        cmd.setFace(static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(q.face));
+    if (q.hasFrom) {
         mankool::mcbot::protocol::BlockPos fromPos;
-        fromPos.setX(fromX);
-        fromPos.setY(fromY);
-        fromPos.setZ(fromZ);
+        fromPos.setX(q.fromX);
+        fromPos.setY(q.fromY);
+        fromPos.setZ(q.fromZ);
         cmd.setFromPosition(fromPos);
     }
+    return cmd;
+}
+
+// Must match PipeConnection.MAX_MESSAGE_BYTES on the mod side.
+static constexpr int kMaxReachMessageBytes = 16 * 1024 * 1024;
+
+// Upper bound on one query's wire size, so anything that passes the check below always fits and
+// can never drop the connection. Two BlockPos of three int32, where a negative int32 is a 10-byte
+// varint in proto3, plus sneak, face and framing.
+static constexpr int kReachQueryMaxBytes = 80;
+static constexpr int kReachEnvelopeMaxBytes = 128;
+
+int BotManager::maxReachQueriesPerCall()
+{
+    return (kMaxReachMessageBytes - kReachEnvelopeMaxBytes) / kReachQueryMaxBytes;
+}
+
+BotManager::ReachBatchResult BotManager::sendCanReachBlocks(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs)
+{
+    return instance().sendCanReachBlocksImpl(botName, queries, timeoutMs);
+}
+
+BotManager::ReachBatchResult BotManager::sendCanReachBlocksImpl(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs)
+{
+    ReachBatchResult out;
+    if (queries.isEmpty())
+        return out;
+
+    const int total = queries.size();
+    if (total > maxReachQueriesPerCall()) {
+        out.status = ReachBatchResult::Status::TooLarge;
+        out.maxQueries = maxReachQueriesPerCall();
+        return out;
+    }
+
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0) {
+        out.status = ReachBatchResult::Status::NotConnected;
+        return out;
+    }
+
+    QList<mankool::mcbot::protocol::CanReachBlockCommand> protoQueries;
+    protoQueries.reserve(total);
+    for (const ReachQuery &q : queries)
+        protoQueries.append(buildCanReachBlockCommand(q));
+
+    mankool::mcbot::protocol::CanReachBlocksCommand cmd;
+    cmd.setQueries(protoQueries);
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<QList<bool>>::Request pending(m_pendingCanReachBlocks, msgId);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
-    msg.setCanReachBlock(cmd);
+    msg.setCanReachBlocks(cmd);
     if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
-        QMutexLocker lock(&m_pendingCanReachBlockMutex);
-        m_pendingCanReachBlockRequests.remove(msgId);
-        return false;
+        out.status = ReachBatchResult::Status::SendFailed;
+        return out;
     }
 
-    bool acquired = entry.sem.tryAcquire(1, timeoutMs);
-
-    {
-        QMutexLocker lock(&m_pendingCanReachBlockMutex);
-        m_pendingCanReachBlockRequests.remove(msgId);
+    if (!pending.wait(timeoutMs)) {
+        out.status = ReachBatchResult::Status::TimedOut;
+        return out;
     }
 
-    return acquired && entry.reachable;
+    // Never let the reply grow results past what was asked for: callers zip the result against
+    // their own query list, so a length mismatch would silently misalign every entry.
+    const QList<bool> &reply = pending.value();
+    const int usable = qMin(static_cast<int>(reply.size()), total);
+    out.results.reserve(usable);
+    for (int i = 0; i < usable; ++i)
+        out.results.append(reply.at(i));
+
+    // A short reply means the client stopped part way. Report the shortfall instead of padding,
+    // so the caller cannot read an unevaluated query as "not reachable".
+    if (usable < total) {
+        out.status = ReachBatchResult::Status::Partial;
+        out.evaluated = usable;
+    }
+    return out;
 }
 
-void BotManager::handleCanReachBlockResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response)
+void BotManager::handleCanReachBlocksResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response)
 {
-    instance().handleCanReachBlockResponseImpl(connectionId, response);
+    instance().handleCanReachBlocksResponseImpl(connectionId, response);
 }
 
-void BotManager::handleCanReachBlockResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlockResponse &response)
+void BotManager::handleCanReachBlocksResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response)
 {
     Q_UNUSED(connectionId);
-    QMutexLocker lock(&m_pendingCanReachBlockMutex);
-    auto it = m_pendingCanReachBlockRequests.find(response.requestId());
-    if (it != m_pendingCanReachBlockRequests.end()) {
-        it.value()->reachable = response.reachable();
-        it.value()->sem.release();
-    }
+    m_pendingCanReachBlocks.complete(response.requestId(), [&](QList<bool> &out) {
+        out = response.reachable();
+    });
 }
 
 void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks)
@@ -3334,27 +3576,14 @@ bool BotManager::getHoldAttackStatusImpl(const QString &botName, int timeoutMs)
         return false;
 
     QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-    PendingHoldAttackStatusEntry entry;
-    {
-        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-        m_pendingHoldAttackStatusRequests[msgId] = &entry;
-    }
+    PendingRequestMap<bool>::Request pending(m_pendingHoldAttackStatus, msgId);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setGetHoldAttackStatus(mankool::mcbot::protocol::GetHoldAttackStatusCommand{});
-    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
-        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-        m_pendingHoldAttackStatusRequests.remove(msgId);
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
         return false;
-    }
 
-    bool acquired = entry.sem.tryAcquire(1, timeoutMs);
-    {
-        QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-        m_pendingHoldAttackStatusRequests.remove(msgId);
-    }
-    return acquired && entry.enabled;
+    return pending.wait(timeoutMs) && pending.value();
 }
 
 void BotManager::handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response)
@@ -3365,12 +3594,63 @@ void BotManager::handleHoldAttackStatusResponse(int connectionId, const mankool:
 void BotManager::handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response)
 {
     Q_UNUSED(connectionId);
-    QMutexLocker lock(&m_pendingHoldAttackStatusMutex);
-    auto it = m_pendingHoldAttackStatusRequests.find(response.requestId());
-    if (it != m_pendingHoldAttackStatusRequests.end()) {
-        it.value()->enabled = response.enabled();
-        it.value()->sem.release();
-    }
+    m_pendingHoldAttackStatus.complete(response.requestId(), [&](bool &enabled) {
+        enabled = response.enabled();
+    });
+}
+
+void BotManager::sendHoldUse(const QString &botName, bool enabled, int durationTicks)
+{
+    instance().sendHoldUseImpl(botName, enabled, durationTicks);
+}
+
+void BotManager::sendHoldUseImpl(const QString &botName, bool enabled, int durationTicks)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "hold_use");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::HoldUseCommand cmd;
+    cmd.setEnabled(enabled);
+    cmd.setDurationTicks(durationTicks);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setHoldUse(cmd);
+    sendOutboundMessage(bot->connectionId, msg);
+}
+
+bool BotManager::getHoldUseStatus(const QString &botName, int timeoutMs)
+{
+    return instance().getHoldUseStatusImpl(botName, timeoutMs);
+}
+
+bool BotManager::getHoldUseStatusImpl(const QString &botName, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return false;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<bool>::Request pending(m_pendingHoldUseStatus, msgId);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setGetHoldUseStatus(mankool::mcbot::protocol::GetHoldUseStatusCommand{});
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
+        return false;
+
+    return pending.wait(timeoutMs) && pending.value();
+}
+
+void BotManager::handleHoldUseStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response)
+{
+    instance().handleHoldUseStatusResponseImpl(connectionId, response);
+}
+
+void BotManager::handleHoldUseStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response)
+{
+    Q_UNUSED(connectionId);
+    m_pendingHoldUseStatus.complete(response.requestId(), [&](bool &enabled) {
+        enabled = response.enabled();
+    });
 }
 
 std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatistics(const QString &botName, int timeoutMs)
@@ -3387,29 +3667,17 @@ std::optional<QMap<QString, QMap<QString, qint64>>> BotManager::getStatisticsImp
     QString name = bot->name;
     QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
 
-    PendingStatisticsEntry entry;
-    {
-        QMutexLocker lock(&m_pendingStatisticsMutex);
-        m_pendingStatisticsRequests[msgId] = &entry;
-    }
+    PendingRequestMap<bool>::Request pending(m_pendingStatistics, msgId);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setRequestStatistics(mankool::mcbot::protocol::RequestStatisticsCommand{});
-    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId)) {
-        QMutexLocker lock(&m_pendingStatisticsMutex);
-        m_pendingStatisticsRequests.remove(msgId);
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
         return std::nullopt;
-    }
 
     // The client replies with a delta that the response handler merges into m_statsCache
-    // before releasing this semaphore. On timeout, fall back to the last cached snapshot;
-    // either way we read m_statsCache below, so the acquire result is intentionally ignored.
-    (void)entry.sem.tryAcquire(1, timeoutMs);
-
-    {
-        QMutexLocker lock(&m_pendingStatisticsMutex);
-        m_pendingStatisticsRequests.remove(msgId);
-    }
+    // before releasing this waiter. On timeout, fall back to the last cached snapshot;
+    // either way we read m_statsCache below, so the wait result is intentionally ignored.
+    (void)pending.wait(timeoutMs);
 
     QMutexLocker cacheLock(&m_statsCacheMutex);
     auto it = m_statsCache.constFind(name);
@@ -3438,12 +3706,154 @@ void BotManager::handlePlayerStatisticsResponseImpl(int connectionId, const mank
         }
     }
 
-    QMutexLocker lock(&m_pendingStatisticsMutex);
-    auto it = m_pendingStatisticsRequests.find(response.requestId());
-    if (it != m_pendingStatisticsRequests.end()) {
-        it.value()->received = true;
-        it.value()->sem.release();
+    m_pendingStatistics.complete(response.requestId());
+}
+
+std::optional<mankool::mcbot::protocol::WindowStateResponse> BotManager::getWindowState(const QString &botName, int timeoutMs)
+{
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setGetWindowState(mankool::mcbot::protocol::GetWindowStateCommand{});
+    return instance().requestWindowStateImpl(botName, msg, timeoutMs);
+}
+
+std::optional<mankool::mcbot::protocol::WindowStateResponse> BotManager::setWindow(const QString &botName, const mankool::mcbot::protocol::SetWindowCommand &cmd, int timeoutMs)
+{
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSetWindow(cmd);
+    return instance().requestWindowStateImpl(botName, msg, timeoutMs);
+}
+
+std::optional<mankool::mcbot::protocol::WindowStateResponse> BotManager::requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<mankool::mcbot::protocol::WindowStateResponse>::Request pending(m_pendingWindowState, msgId);
+
+    if (!sendOutboundMessage(bot->connectionId, msg, true, msgId))
+        return std::nullopt;
+    if (!pending.wait(timeoutMs))
+        return std::nullopt;
+    return pending.value();
+}
+
+void BotManager::handleWindowState(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response)
+{
+    instance().handleWindowStateImpl(connectionId, response);
+}
+
+void BotManager::handleWindowStateImpl(int connectionId, const mankool::mcbot::protocol::WindowStateResponse &response)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (bot) {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->windowState = response;
+        bot->windowStateKnown = true;
     }
+
+    m_pendingWindowState.complete(response.requestId(), [&](mankool::mcbot::protocol::WindowStateResponse &value) {
+        value = response;
+    });
+
+    // The unsolicited post-handshake report is the cue to tile the new window.
+    if (bot && response.requestId().isEmpty())
+        applyWindowLayoutImpl(bot);
+}
+
+void BotManager::applyWindowLayoutImpl(BotInstance *bot)
+{
+    if (!bot || bot->connectionId <= 0 || !bot->windowStateKnown)
+        return;
+
+    int cell = botInstances.indexOf(bot);
+    if (cell < 0)
+        return;
+    std::optional<mankool::mcbot::protocol::SetWindowCommand> cmd;
+    bool hidden = false;
+    bool canMove = false;
+    QString platform;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        hidden = !bot->windowState.visible();
+        canMove = bot->windowState.canMove();
+        platform = bot->windowState.platform();
+        if (m_windowLayoutSettings.enabled)
+            cmd = WindowLayout::commandForCell(m_windowLayoutSettings, bot->windowState, cell);
+    }
+    if (m_windowLayoutSettings.enabled && !cmd) {
+        LogManager::log(QString("[%1] No monitors reported, cannot place the window").arg(bot->name), LogManager::Warning);
+    }
+
+    // The mod keeps a new window unmapped until it has been told where it goes, so that it
+    // appears in its cell rather than wherever the window manager drops it. With no placement
+    // to give there is nothing to wait for: show it where it is.
+    if (!cmd) {
+        if (!hidden)
+            return;
+        cmd.emplace();
+        cmd->setVisible(true);
+        if (bot->debugLogging)
+            LogManager::log(QString("[%1] Window shown").arg(bot->name), LogManager::Debug);
+    } else {
+        if (!canMove) {
+            LogManager::log(QString("[%1] Window placement unavailable on %2 (native Wayland); only resizing")
+                                .arg(bot->name, platform), LogManager::Warning);
+        }
+        if (hidden)
+            cmd->setVisible(true);
+        if (bot->debugLogging)
+            LogManager::log(QString("[%1] Window -> cell %2 on '%3'").arg(bot->name).arg(cell).arg(cmd->monitor()), LogManager::Debug);
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSetWindow(*cmd);
+    sendOutboundMessage(bot->connectionId, msg, true);
+}
+
+void BotManager::reloadWindowLayout()
+{
+    // Queued when called off the main thread; the layout state lives there.
+    QMetaObject::invokeMethod(&instance(), []() { instance().reloadWindowLayoutImpl(); }, Qt::AutoConnection);
+}
+
+void BotManager::reloadWindowLayoutImpl()
+{
+    m_windowLayoutSettings = WindowLayoutSettings::load();
+    if (!m_windowLayoutSettings.enabled)
+        return;
+    for (BotInstance *bot : std::as_const(botInstances)) {
+        if (bot->status == BotStatus::Online)
+            applyWindowLayoutImpl(bot);
+    }
+}
+
+void BotManager::clearWindowState(const QString &botName)
+{
+    if (BotInstance *bot = instance().getBotByNameImpl(botName)) {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->windowStateKnown = false;
+        bot->windowState = {};
+    }
+}
+
+QStringList BotManager::knownMonitorNames()
+{
+    QStringList names;
+    for (BotInstance *bot : std::as_const(instance().botInstances)) {
+        if (bot->status != BotStatus::Online)
+            continue;
+        QMutexLocker locker(bot->dataMutex.get());
+        if (!bot->windowStateKnown)
+            continue;
+        const auto monitors = bot->windowState.monitors();
+        for (const auto &m : monitors) {
+            if (!names.contains(m.name()))
+                names.append(m.name());
+        }
+    }
+    return names;
 }
 
 void BotManager::sendInteractWithBlock(const QString &botName, int x, int y, int z,
@@ -3793,6 +4203,153 @@ void BotManager::sendLookAtImpl(const QString &botName, double x, double y, doub
     mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setLookAt(command);
     sendOutboundMessage(bot->connectionId, message);
+}
+
+BotInstance *BotManager::connectedBotForCommand(const QString &botName, const QString &action)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("[%1] Bot not found for %2").arg(botName, action), LogManager::Error);
+        return nullptr;
+    }
+    if (bot->connectionId < 0) {
+        LogManager::log(QString("[%1] Bot not connected").arg(botName), LogManager::Error);
+        return nullptr;
+    }
+    return bot;
+}
+
+void BotManager::sendLookAtEntity(const QString &botName, int entityId, bool sneak, bool silent)
+{
+    instance().sendLookAtEntityImpl(botName, entityId, sneak, silent);
+}
+
+void BotManager::sendLookAtEntityImpl(const QString &botName, int entityId, bool sneak, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "look_at_entity");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::LookAtCommand command;
+    command.setEntityId(entityId);
+    command.setSneak(sneak);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setLookAt(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendSetRotation(const QString &botName, float yaw, float pitch, bool silent)
+{
+    instance().sendSetRotationImpl(botName, yaw, pitch, silent);
+}
+
+void BotManager::sendSetRotationImpl(const QString &botName, float yaw, float pitch, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "rotate");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::SetRotationCommand command;
+    command.setYaw(yaw);
+    command.setPitch(pitch);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setSetRotation(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendUseItem(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent)
+{
+    instance().sendUseItemImpl(botName, hand, silent);
+}
+
+void BotManager::sendUseItemImpl(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "use_item");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::UseItemCommand command;
+    command.setHand(hand);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setUseItem(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendDropItem(const QString &botName, bool dropAll, bool silent)
+{
+    instance().sendDropItemImpl(botName, dropAll, silent);
+}
+
+void BotManager::sendDropItemImpl(const QString &botName, bool dropAll, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "drop_item");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::DropItemCommand command;
+    command.setDropAll(dropAll);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setDropItem(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+bool BotManager::sendConnectToServer(const QString &botName, const QString &address, bool silent)
+{
+    return instance().sendConnectToServerImpl(botName, address, silent);
+}
+
+bool BotManager::sendConnectToServerImpl(const QString &botName, const QString &address, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "connect");
+    if (!bot) return false;
+
+    if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
+        LogManager::log(QString("Cannot connect bot '%1': proxy is unreachable").arg(botName), LogManager::Error);
+        return false;
+    }
+
+    mankool::mcbot::protocol::ConnectToServerCommand command;
+    command.setServerAddress(address);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setConnectServer(command);
+    return sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendDisconnect(const QString &botName, const QString &reason, bool silent)
+{
+    instance().sendDisconnectImpl(botName, reason, silent);
+}
+
+void BotManager::sendDisconnectImpl(const QString &botName, const QString &reason, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "disconnect");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::DisconnectCommand command;
+    command.setReason(reason);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setDisconnect(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendChat(const QString &botName, const QString &message, bool silent)
+{
+    instance().sendChatImpl(botName, message, silent);
+}
+
+void BotManager::sendChatImpl(const QString &botName, const QString &message, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "chat");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::SendChatCommand command;
+    command.setMessage(message);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSendChat(command);
+    sendOutboundMessage(bot->connectionId, msg, silent);
 }
 
 void BotManager::handleWeatherUpdate(int connectionId, const mankool::mcbot::protocol::WeatherUpdate &weather)

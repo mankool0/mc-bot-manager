@@ -10,6 +10,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QEvent>
+#include <QScopeGuard>
 #include <algorithm>
 #include <functional>
 
@@ -64,6 +65,11 @@ void MeteorModulesWidget::setupUI()
 
 void MeteorModulesWidget::updateModules(const QMap<QString, MeteorModuleData> &modules)
 {
+    if (editorOpen) {
+        pendingModules = modules;
+        return;
+    }
+
     updatingFromCode = true;
     allModules = modules;
 
@@ -92,8 +98,17 @@ void MeteorModulesWidget::updateModules(const QMap<QString, MeteorModuleData> &m
     updatingFromCode = false;
 }
 
+void MeteorModulesWidget::flushPendingModules()
+{
+    if (!pendingModules) return;
+    const QMap<QString, MeteorModuleData> modules = std::move(*pendingModules);
+    pendingModules.reset();
+    updateModules(modules);
+}
+
 void MeteorModulesWidget::clear()
 {
+    pendingModules.reset();
     moduleTree->clear();
     moduleItems.clear();
     allModules.clear();
@@ -379,7 +394,15 @@ void MeteorModulesWidget::applyFilters()
     for (auto it = moduleItems.constBegin(); it != moduleItems.constEnd(); ++it) {
         const QString &moduleName = it.key();
         QTreeWidgetItem *item = it.value();
-        const MeteorModuleData &module = allModules[moduleName];
+        // constFind, not operator[]: this also runs while updateModules is
+        // rebuilding, when the items are the old tree and allModules the new
+        // map - indexing would insert phantom entries for modules that went away.
+        const auto moduleIt = allModules.constFind(moduleName);
+        if (moduleIt == allModules.constEnd()) {
+            item->setHidden(true);
+            continue;
+        }
+        const MeteorModuleData &module = moduleIt.value();
 
         bool matchesText = filterText.isEmpty() || module.name.contains(filterText, Qt::CaseInsensitive);
         bool matchesCategory = selectedCategory == "All" || module.category == selectedCategory;
@@ -429,8 +452,16 @@ QLabel* MeteorModulesWidget::createColorLabel(const RGBAColor &color, QWidget *p
 bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonPress) {
-        QLabel *label = qobject_cast<QLabel*>(obj);
+        // QPointer: every branch below runs a modal dialog, and a disconnect
+        // arriving meanwhile clears the tree and deletes this label with it.
+        QPointer<QLabel> label = qobject_cast<QLabel*>(obj);
         if (label) {
+            editorOpen = true;
+            const auto editorScope = qScopeGuard([this]() {
+                editorOpen = false;
+                flushPendingModules();
+            });
+
             // Check if this is a list with possible values (uses ListEditorDialog)
             if (label->property("isListWithPossibleValues").toBool()) {
                 QString moduleName = label->property("moduleName").toString();
@@ -463,7 +494,9 @@ bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
 
                         // Update the label
                         QString newText = newItems.join(", ");
-                        if (newText.length() > MAX_DISPLAY_LENGTH) {
+                        if (!label) {
+                            // Tree was rebuilt under the dialog; the edit still goes out.
+                        } else if (newText.length() > MAX_DISPLAY_LENGTH) {
                             label->setText(newText.left(TRUNCATE_LENGTH) + "...");
                             label->setToolTip(newText + "\n\nClick to edit");
                         } else {
@@ -542,7 +575,9 @@ bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
 
                     // Update the label
                     QString newText = newItems.join(", ");
-                    if (newText.length() > MAX_DISPLAY_LENGTH) {
+                    if (!label) {
+                        // Tree was rebuilt under the dialog; the edit still goes out.
+                    } else if (newText.length() > MAX_DISPLAY_LENGTH) {
                         label->setText(newText.left(TRUNCATE_LENGTH) + "...");
                         label->setToolTip(newText + "\n\nClick to edit");
                     } else {
@@ -565,10 +600,30 @@ bool MeteorModulesWidget::eventFilter(QObject *obj, QEvent *event)
                 int a = label->property("colorA").toInt();
 
                 QColor currentColor(r, g, b, a);
+                // Read before the dialog: the ESP branch below walks up from the
+                // label, which may be gone by the time the dialog returns.
+                const bool standalone = label->property("moduleName").isValid();
+                const QString standaloneModule = label->property("moduleName").toString();
+                const QString standalonePath = label->property("settingPath").toString();
+
                 QColor newColor = QColorDialog::getColor(currentColor, this, "Select Color",
                                                          QColorDialog::ShowAlphaChannel);
 
                 if (newColor.isValid()) {
+                    if (!label) {
+                        // Tree was rebuilt under the dialog. A standalone colour can
+                        // still be sent; an ESP colour needs its sibling widgets.
+                        if (standalone) {
+                            RGBAColor rgbaColor;
+                            rgbaColor.red = newColor.red();
+                            rgbaColor.green = newColor.green();
+                            rgbaColor.blue = newColor.blue();
+                            rgbaColor.alpha = newColor.alpha();
+                            emit settingChanged(standaloneModule, standalonePath, QVariant::fromValue(rgbaColor));
+                        }
+                        return true;
+                    }
+
                     // Update the pixmap with new color
                     QPixmap colorPixmap(60, 25);
                     QPainter painter(&colorPixmap);

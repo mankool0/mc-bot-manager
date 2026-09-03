@@ -11,8 +11,13 @@
 #include "world/ItemRegistry.h"
 #include "world/NBTSerializer.h"
 #include "world/RegionFile.h"
+#include "world/WorldExporter.h"
+#include "world/SavedWorldScan.h"
+#include "world/SectionCodec.h"
 #include <QDebug>
+#include <QFile>
 #include <QDeadlineTimer>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QCoreApplication>
@@ -20,6 +25,8 @@
 #include <QReadWriteLock>
 #include <QDateTime>
 #include <pybind11/stl.h>
+#include <io/stream_reader.h>
+#include <sstream>
 #include <cmath>
 #include <limits>
 
@@ -515,6 +522,86 @@ py::object PythonAPI::getServerStats(const std::string &botName)
     return result;
 }
 
+static PyWindowState windowStateToPy(const mankool::mcbot::protocol::WindowStateResponse &state)
+{
+    PyWindowState result;
+    result.platform = state.platform().toStdString();
+    result.can_move = state.canMove();
+    result.monitor = state.monitor().toStdString();
+    result.x = state.x();
+    result.y = state.y();
+    result.width = state.width();
+    result.height = state.height();
+    result.minimized = state.minimized();
+    result.focused = state.focused();
+    result.visible = state.visible();
+    const auto monitors = state.monitors();
+    for (const auto &m : monitors) {
+        PyMonitor pm;
+        pm.name = m.name().toStdString();
+        pm.primary = m.primary();
+        pm.x = m.x();
+        pm.y = m.y();
+        pm.width = m.width();
+        pm.height = m.height();
+        pm.work_x = m.workX();
+        pm.work_y = m.workY();
+        pm.work_width = m.workWidth();
+        pm.work_height = m.workHeight();
+        result.monitors.push_back(pm);
+    }
+    return result;
+}
+
+py::object PythonAPI::getWindow(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return py::none();
+    }
+
+    std::optional<mankool::mcbot::protocol::WindowStateResponse> state;
+    {
+        py::gil_scoped_release release;
+        state = BotManager::getWindowState(name);
+    }
+    if (!state.has_value()) {
+        return py::none();
+    }
+    return py::cast(windowStateToPy(*state));
+}
+
+py::object PythonAPI::setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
+                                const std::string &monitor, const py::object &minimized, const py::object &visible,
+                                const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        throw std::runtime_error("Bot '" + name.toStdString() + "' is not online");
+    }
+
+    mankool::mcbot::protocol::SetWindowCommand cmd;
+    cmd.setMonitor(QString::fromStdString(monitor));
+    if (!x.is_none()) cmd.setX(x.cast<int>());
+    if (!y.is_none()) cmd.setY(y.cast<int>());
+    if (!width.is_none()) cmd.setWidth(width.cast<int>());
+    if (!height.is_none()) cmd.setHeight(height.cast<int>());
+    if (!minimized.is_none()) cmd.setMinimized(minimized.cast<bool>());
+    if (!visible.is_none()) cmd.setVisible(visible.cast<bool>());
+
+    std::optional<mankool::mcbot::protocol::WindowStateResponse> state;
+    {
+        py::gil_scoped_release release;
+        state = BotManager::setWindow(name, cmd);
+    }
+    if (!state.has_value()) {
+        return py::none();
+    }
+    return py::cast(windowStateToPy(*state));
+}
+
 std::optional<float> PythonAPI::getHealth(const std::string &botName)
 {
     QString name = resolveBotName(botName);
@@ -605,6 +692,53 @@ void PythonAPI::selectSlot(int slot, const std::string &botName)
     BotManager::sendSwitchHotbarSlot(name, slot);
 }
 
+py::object PythonAPI::getRotation(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    py::gil_scoped_release release;
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        py::gil_scoped_acquire acquire;
+        return py::none();
+    }
+
+    QMutexLocker locker(bot->dataMutex.get());
+    float yaw = bot->yaw;
+    float pitch = bot->pitch;
+    locker.unlock();
+
+    py::gil_scoped_acquire acquire;
+    py::dict result;
+    result["yaw"] = yaw;
+    result["pitch"] = pitch;
+    return result;
+}
+
+void PythonAPI::rotate(float yaw, float pitch, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendSetRotation(name, yaw, pitch);
+}
+
+void PythonAPI::useItem(Hand hand, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendUseItem(name, hand == Hand::OFF
+                                      ? mankool::mcbot::protocol::HandGadget::Hand::OFF_HAND
+                                      : mankool::mcbot::protocol::HandGadget::Hand::MAIN_HAND);
+}
+
+void PythonAPI::dropItem(bool dropAll, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendDropItem(name, dropAll);
+}
+
 std::optional<std::string> PythonAPI::getServer(const std::string &botName)
 {
     QString name = resolveBotName(botName);
@@ -641,6 +775,18 @@ std::optional<std::string> PythonAPI::getAccount(const std::string &botName)
         return std::nullopt;
 
     return bot->account.toStdString();
+}
+
+std::optional<int> PythonAPI::getDataVersion(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    // 0 is the unset sentinel: the mod reports this in its handshake
+    if (!bot || bot->dataVersion <= 0)
+        return std::nullopt;
+
+    return bot->dataVersion;
 }
 
 py::object PythonAPI::getProxy(const std::string &botName)
@@ -932,7 +1078,7 @@ void PythonAPI::sendChat(const std::string &message, const std::string &botName)
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
 
-    BotManager::sendCommand(name, QString("chat %1").arg(QString::fromStdString(message)), true);
+    BotManager::sendChat(name, QString::fromStdString(message), true);
 }
 
 void PythonAPI::sendCommand(const std::string &command, const std::string &botName)
@@ -941,6 +1087,27 @@ void PythonAPI::sendCommand(const std::string &command, const std::string &botNa
     ensureBotOnline(name);
 
     BotManager::sendCommand(name, QString::fromStdString(command), true);
+}
+
+void PythonAPI::connectServer(const std::string &address, const std::string &botName)
+{
+    if (address.empty()) {
+        throw std::runtime_error("Server address must not be empty");
+    }
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    if (!BotManager::sendConnectToServer(name, QString::fromStdString(address))) {
+        throw std::runtime_error("Cannot connect: proxy is unreachable");
+    }
+}
+
+void PythonAPI::disconnectServer(const std::string &reason, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    BotManager::sendDisconnect(name, QString::fromStdString(reason));
 }
 
 void PythonAPI::startBot(const std::string &botName)
@@ -967,13 +1134,8 @@ void PythonAPI::startBot(const std::string &botName)
     bot->status = BotStatus::Starting;
     bot->manualStop = false;
 
+    // Queued behind any launch still in flight; the startup timeout is armed there
     PrismLauncherManager::launchBot(bot);
-
-    // The UI launch path arms this itself; without it a failed launch would
-    // leave the bot Starting forever. Queued: timers must start on the main thread.
-    QMetaObject::invokeMethod(&BotManager::instance(), [name]() {
-        BotManager::armStartupTimeout(name);
-    }, Qt::QueuedConnection);
 }
 
 bool PythonAPI::waitForOnline(double timeout, const std::string &botName)
@@ -1639,29 +1801,17 @@ py::object PythonAPI::column(const std::string &name, double interval)
 // Private disk-read helpers
 // ---------------------------------------------------------------------------
 
-static QString dimensionRegionPath(const QString& worldPath, const QString& dimension)
-{
-    if (dimension == "minecraft:overworld" || dimension.isEmpty()) {
-        return worldPath + "/region";
-    } else if (dimension == "minecraft:the_nether") {
-        return worldPath + "/DIM-1/region";
-    } else if (dimension == "minecraft:the_end") {
-        return worldPath + "/DIM1/region";
-    }
-    return {};
-}
-
-static nbt::tag_compound readChunkNBT(const QString& worldPath, int chunkX, int chunkZ,
+// Reads a chunk from the saved world. The region directory depends on the save's data version
+// (pre-26.1: region/, DIM-1/region, DIM1/region; 26.1+: dimensions/minecraft/<dim>/region), so
+// the same path logic as the writer (WorldExporter::getDimensionPath) is used here.
+static nbt::tag_compound readChunkNBT(const WorldAutoSaver& saver, int chunkX, int chunkZ,
                                       const QString& dimension)
 {
-    QString regionDir = dimensionRegionPath(worldPath, dimension);
+    QString regionDir = SavedWorldScan::regionDir(saver.getWorldPath(), saver.getDataVersion(), dimension);
     if (regionDir.isEmpty()) return {};
 
-    int regionX = chunkX >> 5;
-    int regionZ = chunkZ >> 5;
-    QString regionPath = QString("%1/r.%2.%3.mca").arg(regionDir).arg(regionX).arg(regionZ);
-
-    RegionFile regionFile(regionPath);
+    QString regionPath = QString("%1/r.%2.%3.mca").arg(regionDir).arg(chunkX >> 5).arg(chunkZ >> 5);
+    RegionFile regionFile(regionPath, RegionFile::Mode::ReadOnly);
     if (!regionFile.isValid()) return {};
 
     return regionFile.readChunk(chunkX & 31, chunkZ & 31);
@@ -1803,21 +1953,114 @@ static py::dict diskItemToDict(const nbt::tag_compound& itemTag,
     return d;
 }
 
-// Converts a block_entity compound from a chunk's block_entities list into a Python dict,
-// including items parsed from the NBT Items list.
-static py::dict diskBlockEntityToDict(const nbt::tag_compound& be,
-                                      const std::shared_ptr<ItemRegistry>& registry)
+// Sign lines live only in the block entity NBT, and two encodings are in the wild: 1.21.4 writes
+// each line as a JSON string (ComponentSerialization.FLAT_CODEC), while 1.21.11 and 26.1 write the
+// component natively - a bare string when plain, a compound when it carries style.
+static std::string signJsonToText(const QJsonValue& value)
 {
-    py::dict d;
+    if (value.isString()) {
+        return value.toString().toStdString();
+    }
+    if (value.isArray()) {
+        std::string out;
+        for (const QJsonValue& element : value.toArray()) {
+            out += signJsonToText(element);
+        }
+        return out;
+    }
+    if (value.isObject()) {
+        const QJsonObject obj = value.toObject();
+        std::string out = obj.value("text").toString().toStdString();
+        // A translatable component has no literal text; its key beats an empty line.
+        if (out.empty()) {
+            out = obj.value("translate").toString().toStdString();
+        }
+        if (obj.contains("extra")) {
+            out += signJsonToText(obj.value("extra"));
+        }
+        return out;
+    }
+    return {};
+}
+
+static std::string signMessageToText(const nbt::value& message)
+{
+    if (message.get_type() == nbt::tag_type::String) {
+        const std::string raw = static_cast<const nbt::tag_string&>(message.get()).get();
+        // A 1.21.4 line is JSON, a newer one is literal text that parses as JSON only by accident.
+        // Wrapped in an array because QJsonDocument rejects a bare string at top level.
+        QJsonParseError err{};
+        const QJsonDocument doc = QJsonDocument::fromJson(
+            "[" + QByteArray::fromStdString(raw) + "]", &err);
+        if (err.error == QJsonParseError::NoError && doc.isArray()) {
+            const QJsonValue inner = doc.array().at(0);
+            if (inner.isString() || inner.isObject() || inner.isArray()) {
+                return signJsonToText(inner);
+            }
+        }
+        return raw;
+    }
+    if (message.get_type() == nbt::tag_type::Compound) {
+        const auto& comp = static_cast<const nbt::tag_compound&>(message.get());
+        std::string out;
+        if (comp.has_key("text")) {
+            out = static_cast<const nbt::tag_string&>(comp.at("text").get()).get();
+        }
+        if (out.empty() && comp.has_key("translate")) {
+            out = static_cast<const nbt::tag_string&>(comp.at("translate").get()).get();
+        }
+        if (comp.has_key("extra")) {
+            try {
+                const auto& extra = static_cast<const nbt::tag_list&>(comp.at("extra").get());
+                for (const nbt::value& element : extra) {
+                    out += signMessageToText(element);
+                }
+            } catch (...) {}
+        }
+        return out;
+    }
+    return {};
+}
+
+// front_text/back_text/is_waxed, present only on the block entities that carry them (signs).
+static void fillSignText(PyBlockEntity& e, const nbt::tag_compound& be)
+{
+    for (const char* key : {"front_text", "back_text"}) {
+        if (!be.has_key(key)) continue;
+        try {
+            const auto& side = static_cast<const nbt::tag_compound&>(be.at(key).get());
+            if (!side.has_key("messages")) continue;
+            const auto& messages = static_cast<const nbt::tag_list&>(side.at("messages").get());
+            auto& out = (std::string(key) == "front_text") ? e.frontText : e.backText;
+            for (const nbt::value& message : messages) {
+                out.push_back(signMessageToText(message));
+            }
+            e.isSign = true;
+        } catch (...) {}
+    }
+    if (be.has_key("is_waxed")) {
+        try {
+            e.isWaxed = static_cast<const nbt::tag_byte&>(be.at("is_waxed").get()).get() != 0;
+            e.isSign = true;
+        } catch (...) {}
+    }
+}
+
+// Converts a block_entity compound from a chunk's block_entities list read off disk. `root` owns the
+// chunk compound this one lives in; `nbt` aliases into it rather than copying, so a chunk scan that
+// never touches `nbt` pays nothing for it.
+static PyBlockEntity diskBlockEntityToPy(const nbt::tag_compound& be,
+                                         const std::shared_ptr<ItemRegistry>& registry,
+                                         const std::shared_ptr<const nbt::tag_compound>& root)
+{
+    PyBlockEntity e;
 
     if (be.has_key("id")) {
-        d["type"] = static_cast<const nbt::tag_string&>(be.at("id").get()).get();
-    } else {
-        d["type"] = std::string("");
+        e.type = static_cast<const nbt::tag_string&>(be.at("id").get()).get();
     }
-    d["x"] = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
-    d["y"] = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
-    d["z"] = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
+    e.x = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
+    e.y = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
+    e.z = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
 
     if (be.has_key("Items")) {
         try {
@@ -1827,39 +2070,131 @@ static py::dict diskBlockEntityToDict(const nbt::tag_compound& be,
                 const auto& itemTag = static_cast<const nbt::tag_compound&>(entry.get());
                 items.append(diskItemToDict(itemTag, registry));
             }
-            d["items"] = items;
+            e.items = items;
+            e.hasItems = true;
         } catch (...) {}
     }
 
-    return d;
+    fillSignText(e, be);
+
+    if (root) {
+        e.parsedNbt = std::shared_ptr<const nbt::tag_compound>(root, &be);
+    }
+    return e;
 }
 
-static py::dict buildBlockEntityDict(const BlockEntityData& be, bool includeItems)
+static PyBlockEntity buildBlockEntity(const BlockEntityData& be, bool includeItems)
 {
-    py::dict d;
-    d["type"] = be.type.toStdString();
-    d["x"] = be.x;
-    d["y"] = be.y;
-    d["z"] = be.z;
+    PyBlockEntity e;
+    e.type = be.type.toStdString();
+    e.x = be.x;
+    e.y = be.y;
+    e.z = be.z;
     if (includeItems && !be.items.isEmpty()) {
         py::list items;
         for (const auto& item : be.items) {
             items.append(buildItemDict(item));
         }
-        d["items"] = items;
+        e.items = items;
+        e.hasItems = true;
     }
-    return d;
+    e.rawNbt = std::string(be.rawNbt.constData(), static_cast<size_t>(be.rawNbt.size()));
+    // Sign lines are the one thing parsed up front (see PyBlockEntity), and only for signs, so a
+    // chunk scan does not read NBT for every chest it passes.
+    if (!e.rawNbt.empty() && be.type.endsWith(QLatin1String("sign"))) {
+        try {
+            std::istringstream ss(e.rawNbt, std::ios::binary);
+            nbt::io::stream_reader reader(ss);
+            auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+            fillSignText(e, static_cast<nbt::tag_compound&>(*tagPtr));
+        } catch (...) {}
+    }
+    return e;
 }
+
+// ---------------------------------------------------------------------------
+// BlockEntity accessors
+// ---------------------------------------------------------------------------
+
+py::object PythonAPI::blockEntityNbt(PyBlockEntity &be)
+{
+    if (be.nbtCache) return be.nbtCache;
+
+    py::object result = py::none();
+    if (be.parsedNbt) {
+        result = nbtCompoundToPy(*be.parsedNbt);
+    } else if (!be.rawNbt.empty()) {
+        try {
+            std::istringstream ss(be.rawNbt, std::ios::binary);
+            nbt::io::stream_reader reader(ss);
+            auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
+            result = nbtCompoundToPy(static_cast<nbt::tag_compound&>(*tagPtr));
+        } catch (...) {}
+    }
+    be.nbtCache = result;
+    return result;
+}
+
+bool PythonAPI::blockEntityContains(const PyBlockEntity &be, const std::string &key)
+{
+    if (key == "type" || key == "x" || key == "y" || key == "z") return true;
+    if (key == "items") return be.hasItems;
+    if (key == "front_text" || key == "back_text" || key == "is_waxed") return be.isSign;
+    if (key == "nbt") return be.parsedNbt != nullptr || !be.rawNbt.empty();
+    return false;
+}
+
+py::object PythonAPI::blockEntityGetItem(PyBlockEntity &be, const std::string &key)
+{
+    if (!blockEntityContains(be, key)) throw py::key_error(key);
+    if (key == "type") return py::cast(be.type);
+    if (key == "x") return py::cast(be.x);
+    if (key == "y") return py::cast(be.y);
+    if (key == "z") return py::cast(be.z);
+    if (key == "items") return be.items;
+    if (key == "front_text") return py::cast(be.frontText);
+    if (key == "back_text") return py::cast(be.backText);
+    if (key == "is_waxed") return py::cast(be.isWaxed);
+    return blockEntityNbt(be);
+}
+
+py::object PythonAPI::blockEntityGet(PyBlockEntity &be, const std::string &key, py::object fallback)
+{
+    if (!blockEntityContains(be, key)) return fallback;
+    return blockEntityGetItem(be, key);
+}
+
+py::list PythonAPI::blockEntityKeys(const PyBlockEntity &be)
+{
+    py::list keys;
+    for (const char *key : {"type", "x", "y", "z", "items", "front_text", "back_text",
+                            "is_waxed", "nbt"}) {
+        if (blockEntityContains(be, key)) keys.append(key);
+    }
+    return keys;
+}
+
+std::string PythonAPI::blockEntityRepr(const PyBlockEntity &be)
+{
+    return "<BlockEntity " + (be.type.empty() ? std::string("?") : be.type) + " at "
+           + std::to_string(be.x) + "," + std::to_string(be.y) + "," + std::to_string(be.z) + ">";
+}
+
 
 // ---------------------------------------------------------------------------
 // getBlock / getLight
 // ---------------------------------------------------------------------------
 
+// Chunks are keyed by (x, z) only, but each carries the dimension it was loaded from, so an
+// in-memory read is valid whenever the loaded column is the dimension being asked for. An empty
+// `dim` means the caller named none and the bot has not reported one yet: take whatever is loaded.
+static bool chunkIsDimension(const ChunkData *chunk, const QString &dim)
+{
+    return chunk && (dim.isEmpty() || chunk->dimension == dim);
+}
+
 py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
-    if (!dimension.empty() && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
-
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1869,27 +2204,26 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    // Read from memory only when querying the current dimension (chunks carry no dimension key)
-    if (dim == botInstance->dimension) {
-        std::optional<QString> blockOpt;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            blockOpt = botInstance->worldData.getBlock(ix, iy, iz);
+    std::optional<QString> blockOpt;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        const ChunkData *chunk = botInstance->worldData.getChunk(ix >> 4, iz >> 4);
+        if (chunkIsDimension(chunk, dim)) {
+            blockOpt = chunk->getBlock(ix & 15, iy, iz & 15);
         }
-        if (blockOpt.has_value()) {
-            return py::str(blockOpt.value().toStdString());
-        }
+    }
+    if (blockOpt.has_value()) {
+        return py::str(blockOpt.value().toStdString());
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
         return py::none();
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+        chunkNbt = readChunkNBT(*botInstance->worldAutoSaver, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("sections")) return py::none();
@@ -1904,9 +2238,6 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
 
 py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
-    if (!dimension.empty() && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True (chunk data in memory has no dimension key)");
-
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1916,30 +2247,29 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    // Read from memory only when querying the current dimension (chunks carry no dimension key)
-    if (dim == botInstance->dimension) {
-        std::optional<ChunkSection::LightLevels> light;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            light = botInstance->worldData.getLight(ix, iy, iz);
+    std::optional<ChunkSection::LightLevels> light;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        const ChunkData *chunk = botInstance->worldData.getChunk(ix >> 4, iz >> 4);
+        if (chunkIsDimension(chunk, dim)) {
+            light = chunk->getLight(ix & 15, iy, iz & 15);
         }
-        if (light.has_value()) {
-            py::dict result;
-            result["block"] = light->block;
-            result["sky"] = light->sky;
-            return result;
-        }
+    }
+    if (light.has_value()) {
+        py::dict result;
+        result["block"] = light->block;
+        result["sky"] = light->sky;
+        return result;
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
         return py::none();
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+        chunkNbt = readChunkNBT(*botInstance->worldAutoSaver, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("sections")) return py::none();
@@ -1956,11 +2286,8 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
 // getBlockEntity
 // ---------------------------------------------------------------------------
 
-py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
+std::optional<PyBlockEntity> PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk, const std::string &dimension, const std::string &bot)
 {
-    if (!dimension.empty() && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True for get_block_entity");
-
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
@@ -1977,63 +2304,60 @@ py::object PythonAPI::getBlockEntity(double x, double y, double z, bool useDisk,
 
     // Use memory if items are known; if use_disk and items are absent, fall through to disk
     if (beOpt.has_value() && (!useDisk || !beOpt->items.isEmpty())) {
-        return buildBlockEntityDict(beOpt.value(), true);
+        return buildBlockEntity(beOpt.value(), true);
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
-        if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
-        return py::none();
+        if (beOpt.has_value()) return buildBlockEntity(beOpt.value(), true);
+        return std::nullopt;
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
-    nbt::tag_compound chunkNbt;
+    // Held by shared_ptr because the block entity handed back aliases into it for `nbt`.
+    std::shared_ptr<const nbt::tag_compound> root;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(*botInstance->worldAutoSaver, ix >> 4, iz >> 4, dim));
     }
 
-    if (!chunkNbt.has_key("block_entities")) {
-        if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
-        return py::none();
+    if (!root->has_key("block_entities")) {
+        if (beOpt.has_value()) return buildBlockEntity(beOpt.value(), true);
+        return std::nullopt;
     }
 
     try {
-        const auto& beList = static_cast<const nbt::tag_list&>(chunkNbt.at("block_entities").get());
+        const auto& beList = static_cast<const nbt::tag_list&>(root->at("block_entities").get());
         for (const nbt::value& entry : beList) {
             const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
             int bex = be.has_key("x") ? static_cast<const nbt::tag_int&>(be.at("x").get()).get() : 0;
             int bey = be.has_key("y") ? static_cast<const nbt::tag_int&>(be.at("y").get()).get() : 0;
             int bez = be.has_key("z") ? static_cast<const nbt::tag_int&>(be.at("z").get()).get() : 0;
             if (bex == ix && bey == iy && bez == iz) {
-                return diskBlockEntityToDict(be, botInstance->itemRegistry);
+                return diskBlockEntityToPy(be, botInstance->itemRegistry, root);
             }
         }
     } catch (...) {}
 
     // Disk didn't find it - fall back to memory data if available
-    if (beOpt.has_value()) return buildBlockEntityDict(beOpt.value(), true);
-    return py::none();
+    if (beOpt.has_value()) return buildBlockEntity(beOpt.value(), true);
+    return std::nullopt;
 }
 
 // ---------------------------------------------------------------------------
 // getBlockEntitiesInChunk
 // ---------------------------------------------------------------------------
 
-py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk,
-                                            const std::string &dimension, const std::string &bot)
+std::vector<PyBlockEntity> PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk,
+                                                              const std::string &dimension, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
     QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
 
-    if (dim != botInstance->dimension && !useDisk)
-        throw std::invalid_argument("dimension parameter requires use_disk=True when querying a different dimension");
-
     bool chunkLoaded;
     {
         QReadLocker locker(botInstance->worldDataLock.get());
-        chunkLoaded = botInstance->worldData.isChunkLoaded(chunkX, chunkZ);
+        chunkLoaded = chunkIsDimension(botInstance->worldData.getChunk(chunkX, chunkZ), dim);
     }
 
     if (chunkLoaded) {
@@ -2042,32 +2366,31 @@ py::list PythonAPI::getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk
             QReadLocker locker(botInstance->worldDataLock.get());
             bees = botInstance->worldData.getBlockEntitiesInChunk(chunkX, chunkZ, dim);
         }
-        py::list result;
+        std::vector<PyBlockEntity> result;
         for (const auto& be : std::as_const(bees)) {
-            result.append(buildBlockEntityDict(be, true));
+            result.push_back(buildBlockEntity(be, true));
         }
         return result;
     }
 
     if (!useDisk || !botInstance->worldAutoSaver) {
-        return py::list();
+        return {};
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
-    nbt::tag_compound chunkNbt;
+    std::shared_ptr<const nbt::tag_compound> root;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, chunkX, chunkZ, dim);
+        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(*botInstance->worldAutoSaver, chunkX, chunkZ, dim));
     }
 
-    if (!chunkNbt.has_key("block_entities")) return py::list();
+    if (!root->has_key("block_entities")) return {};
 
-    py::list result;
+    std::vector<PyBlockEntity> result;
     try {
-        const auto& beList = static_cast<const nbt::tag_list&>(chunkNbt.at("block_entities").get());
+        const auto& beList = static_cast<const nbt::tag_list&>(root->at("block_entities").get());
         for (const nbt::value& entry : beList) {
             const auto& be = static_cast<const nbt::tag_compound&>(entry.get());
-            result.append(diskBlockEntityToDict(be, botInstance->itemRegistry));
+            result.push_back(diskBlockEntityToPy(be, botInstance->itemRegistry, root));
         }
     } catch (...) {}
     return result;
@@ -2085,226 +2408,237 @@ py::object PythonAPI::isBlockSolid(const std::string &blockState, BlockRegistry:
     return py::bool_(botInstance->blockRegistry->isFaceSolid(stateId.value(), face));
 }
 
+// ---------------------------------------------------------------------------
+// Block / block entity search: memory first, then the saved world
+// ---------------------------------------------------------------------------
+
+// Chunks held in memory for `dim` whose footprint reaches the disc: the memory half of a
+// search, and the set a disk scan leaves alone so nothing is reported twice.
+static QSet<ChunkPos> memoryChunksInDisc(BotInstance *botInstance, const QString &dim,
+                                         double centerX, double centerZ, double radius)
+{
+    QSet<ChunkPos> result;
+    double radiusSq = radius * radius;
+    QReadLocker locker(botInstance->worldDataLock.get());
+    const QVector<ChunkPos> loaded = botInstance->worldData.getLoadedChunks();
+    for (const ChunkPos &pos : loaded) {
+        if (!SavedWorldScan::chunkInDisc(pos.x, pos.z, centerX, centerZ, radiusSq)) continue;
+        if (!chunkIsDimension(botInstance->worldData.getChunk(pos.x, pos.z), dim)) continue;
+        result.insert(pos);
+    }
+    return result;
+}
+
+// Region directory to scan for `dim`, or empty when the bot has no save to read from.
+static QString savedRegionDir(BotInstance *botInstance, const QString &dim, bool useDisk)
+{
+    if (!useDisk) return {};
+    std::shared_ptr<WorldAutoSaver> saver = botInstance->worldAutoSaver;
+    if (!saver) return {};
+    return SavedWorldScan::regionDir(saver->getWorldPath(), saver->getDataVersion(), dim);
+}
+
+// A copy of one in-memory chunk, or nothing if it unloaded since the snapshot.
+static std::optional<ChunkData> copyChunk(BotInstance *botInstance, const ChunkPos &pos)
+{
+    QReadLocker locker(botInstance->worldDataLock.get());
+    const ChunkData *chunk = botInstance->worldData.getChunk(pos.x, pos.z);
+    if (!chunk) return std::nullopt;
+    return *chunk;
+}
+
+static SavedWorldScan::BlockQuery makeBlockQuery(double centerX, double centerY, double centerZ, int radius)
+{
+    radius = qMax(radius, 0);
+    SavedWorldScan::BlockQuery q;
+    q.centerX = centerX;
+    q.centerY = centerY;
+    q.centerZ = centerZ;
+    q.radiusSq = static_cast<double>(radius) * radius;
+    q.minY = qMax(static_cast<int>(centerY - radius), -64);
+    q.maxY = qMin(static_cast<int>(centerY + radius), 320);
+    return q;
+}
+
 py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius,
                                 int minBlockLight, int maxBlockLight,
                                 int minSkyLight, int maxSkyLight,
+                                const std::string &dimension, bool useDisk,
                                 const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    QVector3D center(centerX, centerY, centerZ);
-    QString blockTypeQ = QString::fromStdString(blockType);
+    SavedWorldScan::BlockQuery query = makeBlockQuery(centerX, centerY, centerZ, radius);
+    query.ids = {SavedWorldScan::stripState(blockType)};
+    query.minBlockLight = minBlockLight;
+    query.maxBlockLight = maxBlockLight;
+    query.minSkyLight = minSkyLight;
+    query.maxSkyLight = maxSkyLight;
 
-    // Extract search ID once (part before '[' for block states)
-    QString searchId = blockTypeQ.contains('[') ? blockTypeQ.left(blockTypeQ.indexOf('[')) : blockTypeQ;
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    QString regionDir = savedRegionDir(botInstance, dim, useDisk);
 
-    QVector<QVector3D> results;
-
-    // Release GIL for the entire search operation to avoid blocking main thread
+    std::vector<SavedWorldScan::BlockHit> hits;
     {
         py::gil_scoped_release release;
 
-        // Calculate chunk bounds
-        int minChunkX = static_cast<int>(qFloor((centerX - radius) / 16.0));
-        int maxChunkX = static_cast<int>(qFloor((centerX + radius) / 16.0));
-        int minChunkZ = static_cast<int>(qFloor((centerZ - radius) / 16.0));
-        int maxChunkZ = static_cast<int>(qFloor((centerZ + radius) / 16.0));
-
-        // Get list of chunks to search (brief lock)
-        QVector<ChunkPos> chunksToSearch;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
-                for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
-                    if (botInstance->worldData.isChunkLoaded(cx, cz)) {
-                        chunksToSearch.append(ChunkPos{cx, cz});
-                    }
-                }
+        QSet<ChunkPos> inMemory = memoryChunksInDisc(botInstance, dim, centerX, centerZ, radius);
+        for (const ChunkPos &pos : std::as_const(inMemory)) {
+            if (auto chunk = copyChunk(botInstance, pos)) {
+                SavedWorldScan::matchChunk(*chunk, query, hits);
             }
         }
 
-    // Now search each chunk with fine-grained locking
-    for (const ChunkPos &chunkPos : chunksToSearch) {
-        // Copy chunk data under lock
-        ChunkData chunkCopy;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            const ChunkData* chunk = botInstance->worldData.getChunk(chunkPos.x, chunkPos.z);
-            if (chunk) {
-                chunkCopy = *chunk;
-            } else {
-                continue;  // Chunk unloaded between checks
-            }
+        if (!regionDir.isEmpty()) {
+            std::vector<SavedWorldScan::BlockHit> saved = SavedWorldScan::findBlocks(regionDir, query, inMemory);
+            hits.insert(hits.end(), saved.begin(), saved.end());
         }
-        // Lock released - now search the copy without holding lock
 
-        // Search this chunk
-        int minY = qMax(static_cast<int>(centerY - radius), -64);
-        int maxY = qMin(static_cast<int>(centerY + radius), 320);
-        double radiusSq = static_cast<double>(radius) * radius;
-
-        for (int x = 0; x < 16; ++x) {
-            int worldX = chunkPos.x * 16 + x;
-            double dx = worldX - centerX;
-            double dxSq = dx * dx;
-
-            for (int z = 0; z < 16; ++z) {
-                int worldZ = chunkPos.z * 16 + z;
-                double dz = worldZ - centerZ;
-                double dzSq = dz * dz;
-                double horizDistSq = dxSq + dzSq;
-
-                if (horizDistSq > radiusSq) continue;
-
-                for (int y = minY; y <= maxY; ++y) {
-                    double dy = y - centerY;
-                    double distSq = horizDistSq + dy*dy;
-
-                    if (distSq > radiusSq) continue;
-
-                    auto block = chunkCopy.getBlock(x, y, z);
-                    if (block) {
-                        // Extract block ID (part before '[' for block states)
-                        QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
-                        if (blockId == searchId) {
-                            if (minBlockLight == 0 && maxBlockLight == 15 && minSkyLight == 0 && maxSkyLight == 15) {
-                                results.append(QVector3D(worldX, y, worldZ));
-                            } else {
-                                auto light = chunkCopy.getLight(x, y, z);
-                                if (light.block >= minBlockLight && light.block <= maxBlockLight &&
-                                    light.sky   >= minSkyLight   && light.sky   <= maxSkyLight) {
-                                    results.append(QVector3D(worldX, y, worldZ));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        std::stable_sort(hits.begin(), hits.end(), [](const auto &a, const auto &b) { return a.distSq < b.distSq; });
     }
-    } // Release GIL scope ends - reacquire for Python object creation
 
     py::list positions;
-    for (const QVector3D &pos : results) {
-        py::tuple coord = py::make_tuple(pos.x(), pos.y(), pos.z());
-        positions.append(coord);
+    for (const SavedWorldScan::BlockHit &hit : hits) {
+        positions.append(py::make_tuple(static_cast<double>(hit.x), static_cast<double>(hit.y), static_cast<double>(hit.z)));
     }
-
     return positions;
 }
 
-py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot)
+py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistance,
+                                       const std::string &dimension, bool useDisk, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    // Convert Python list to QStringList and extract block IDs
-    QStringList types;
-    QStringList searchIds;
+    std::vector<std::string> ids;
     for (const auto &item : blockTypes) {
-        QString type = QString::fromStdString(item.cast<std::string>());
-        types.append(type);
-        // Extract ID (part before '[' for block states)
-        searchIds.append(type.contains('[') ? type.left(type.indexOf('[')) : type);
+        ids.push_back(SavedWorldScan::stripState(item.cast<std::string>()));
     }
 
-    std::optional<QVector3D> nearest;
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    QString regionDir = savedRegionDir(botInstance, dim, useDisk);
 
-    // Release GIL for the entire search operation to avoid blocking main thread
+    std::optional<SavedWorldScan::BlockHit> nearest;
     {
         py::gil_scoped_release release;
 
-        // Get bot position (brief lock)
         QVector3D start;
         {
             QReadLocker locker(botInstance->worldDataLock.get());
             start = botInstance->position;
         }
 
-    // Calculate chunk bounds
-    int minChunkX = static_cast<int>(qFloor((start.x() - maxDistance) / 16.0));
-    int maxChunkX = static_cast<int>(qFloor((start.x() + maxDistance) / 16.0));
-    int minChunkZ = static_cast<int>(qFloor((start.z() - maxDistance) / 16.0));
-    int maxChunkZ = static_cast<int>(qFloor((start.z() + maxDistance) / 16.0));
+        SavedWorldScan::BlockQuery query = makeBlockQuery(start.x(), start.y(), start.z(), maxDistance);
+        query.ids = std::move(ids);
+        query.inclusive = false;
 
-    // Get list of chunks to search (brief lock)
-    QVector<ChunkPos> chunksToSearch;
-    {
-        QReadLocker locker(botInstance->worldDataLock.get());
-        for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
-            for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
-                if (botInstance->worldData.isChunkLoaded(cx, cz)) {
-                    chunksToSearch.append(ChunkPos{cx, cz});
+        // Nearest chunks first, so each one tightens the bound the rest are checked against.
+        QSet<ChunkPos> inMemory = memoryChunksInDisc(botInstance, dim, start.x(), start.z(), maxDistance);
+        QVector<ChunkPos> ordered(inMemory.begin(), inMemory.end());
+        auto chunkDistSq = [&](const ChunkPos &pos) {
+            double dx = qMax(0.0, qMax(pos.x * 16 - start.x(), start.x() - (pos.x * 16 + 15)));
+            double dz = qMax(0.0, qMax(pos.z * 16 - start.z(), start.z() - (pos.z * 16 + 15)));
+            return dx * dx + dz * dz;
+        };
+        std::sort(ordered.begin(), ordered.end(), [&](const ChunkPos &a, const ChunkPos &b) {
+            return chunkDistSq(a) < chunkDistSq(b);
+        });
+
+        std::vector<SavedWorldScan::BlockHit> hits;
+        for (const ChunkPos &pos : std::as_const(ordered)) {
+            if (chunkDistSq(pos) >= query.radiusSq) break;
+            auto chunk = copyChunk(botInstance, pos);
+            if (!chunk) continue;
+            hits.clear();
+            SavedWorldScan::matchChunk(*chunk, query, hits);
+            for (const SavedWorldScan::BlockHit &hit : hits) {
+                if (hit.distSq < query.radiusSq) {
+                    query.radiusSq = hit.distSq;
+                    nearest = hit;
                 }
+            }
+        }
+
+        if (!regionDir.isEmpty()) {
+            if (auto saved = SavedWorldScan::findNearestBlock(regionDir, query, inMemory)) {
+                nearest = saved;
             }
         }
     }
 
-    // Search each chunk with fine-grained locking
-    double nearestDistSq = static_cast<double>(maxDistance) * maxDistance;
+    if (nearest) {
+        return py::make_tuple(static_cast<double>(nearest->x), static_cast<double>(nearest->y), static_cast<double>(nearest->z));
+    }
+    return py::none();
+}
 
-    for (const ChunkPos &chunkPos : chunksToSearch) {
-        // Copy chunk data under lock
-        ChunkData chunkCopy;
+std::vector<PyBlockEntity> PythonAPI::findBlockEntities(const std::vector<std::string> &types,
+                                                        double centerX, double centerZ, double radius,
+                                                        const std::string &dimension, bool useDisk, int limit,
+                                                        const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    radius = qMax(radius, 0.0);
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    QString regionDir = savedRegionDir(botInstance, dim, useDisk);
+
+    // Nearest first across both sources, then converted; `limit` is applied before conversion.
+    struct Ranked {
+        double distSq;
+        bool fromDisk;
+        size_t index;
+    };
+    QVector<BlockEntityData> fromMemory;
+    std::vector<SavedWorldScan::BlockEntityHit> fromDisk;
+    std::vector<Ranked> ranked;
+    {
+        py::gil_scoped_release release;
+
+        double radiusSq = radius * radius;
+        QSet<ChunkPos> inMemory = memoryChunksInDisc(botInstance, dim, centerX, centerZ, radius);
         {
             QReadLocker locker(botInstance->worldDataLock.get());
-            const ChunkData* chunk = botInstance->worldData.getChunk(chunkPos.x, chunkPos.z);
-            if (chunk) {
-                chunkCopy = *chunk;
-            } else {
-                continue;
+            const QVector<BlockEntityData> all = botInstance->worldData.getBlockEntitiesInDimension(dim);
+            for (const BlockEntityData &be : all) {
+                if (!inMemory.contains(ChunkPos(be.x >> 4, be.z >> 4))) continue;
+                if (!types.empty() && std::find(types.begin(), types.end(), be.type.toStdString()) == types.end()) continue;
+                double dx = be.x - centerX;
+                double dz = be.z - centerZ;
+                double distSq = dx * dx + dz * dz;
+                if (distSq > radiusSq) continue;
+                ranked.push_back({distSq, false, static_cast<size_t>(fromMemory.size())});
+                fromMemory.append(be);
             }
         }
-        // Lock released
 
-        // Search this chunk
-        int minY = qMax(static_cast<int>(start.y() - maxDistance), -64);
-        int maxY = qMin(static_cast<int>(start.y() + maxDistance), 320);
-
-        for (int x = 0; x < 16; ++x) {
-            int worldX = chunkPos.x * 16 + x;
-            double dx = worldX - start.x();
-            double dxSq = dx * dx;
-
-            for (int z = 0; z < 16; ++z) {
-                int worldZ = chunkPos.z * 16 + z;
-                double dz = worldZ - start.z();
-                double dzSq = dz * dz;
-                double horizDistSq = dxSq + dzSq;
-
-                if (horizDistSq >= nearestDistSq) continue;
-
-                for (int y = minY; y <= maxY; ++y) {
-                    double dy = y - start.y();
-                    double distSq = horizDistSq + dy*dy;
-
-                    if (distSq >= nearestDistSq) continue;
-
-                    auto block = chunkCopy.getBlock(x, y, z);
-                    if (block) {
-                        // Extract block ID (part before '[' for block states)
-                        QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
-                        for (const QString& searchId : searchIds) {
-                            if (blockId == searchId) {
-                                nearest = QVector3D(worldX, y, worldZ);
-                                nearestDistSq = distSq;
-                                break;
-                            }
-                        }
-                    }
-                }
+        if (!regionDir.isEmpty()) {
+            fromDisk = SavedWorldScan::findBlockEntities(regionDir, types, centerX, centerZ, radius, inMemory);
+            for (size_t i = 0; i < fromDisk.size(); ++i) {
+                ranked.push_back({fromDisk[i].distSq, true, i});
             }
         }
-    }
-    } // Release GIL scope ends - reacquire for Python object creation
 
-    if (nearest.has_value()) {
-        return py::make_tuple(nearest.value().x(), nearest.value().y(), nearest.value().z());
+        std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked &a, const Ranked &b) { return a.distSq < b.distSq; });
+        if (limit > 0 && ranked.size() > static_cast<size_t>(limit)) {
+            ranked.resize(static_cast<size_t>(limit));
+        }
     }
 
-    return py::none();
+    std::vector<PyBlockEntity> result;
+    result.reserve(ranked.size());
+    for (const Ranked &r : ranked) {
+        if (r.fromDisk) {
+            const SavedWorldScan::BlockEntityHit &hit = fromDisk[r.index];
+            result.push_back(diskBlockEntityToPy(*hit.nbt, botInstance->itemRegistry, hit.nbt));
+        } else {
+            result.push_back(buildBlockEntity(fromMemory[r.index], true));
+        }
+    }
+    return result;
 }
 
 int PythonAPI::getLoadedChunkCount(const std::string &bot)
@@ -2343,6 +2677,194 @@ py::list PythonAPI::getLoadedChunks(const std::string &bot)
     }
 
     return chunkList;
+}
+
+namespace {
+
+// One section encodes to ~8.3 KB, so this caps a single export at roughly 34 MB. Without a
+// bound, handing a full first snapshot (~100k sections at render distance 32) straight to
+// export_sections builds a payload big enough to matter, twice over: once as per-section
+// blobs and again as the concatenated result.
+constexpr size_t kMaxExportSections = 4096;
+
+struct PendingSection {
+    SectionKey key;
+    QByteArray dimensionUtf8;
+    ChunkSection section;
+};
+
+// Shallow-copy the named sections under one read lock. Qt's implicit sharing makes each copy O(1);
+// hashing and encoding then run without the lock, so world writes are never blocked behind BLAKE2b.
+// Sections whose chunk unloaded (or that fail the dimension filter) are dropped, not reported empty.
+QVector<PendingSection> snapshotSections(BotInstance *botInstance, const QVector<SectionKey> &keys,
+                                         const QByteArray &dimensionFilter)
+{
+    QVector<PendingSection> pending;
+    pending.reserve(keys.size());
+    QReadLocker locker(botInstance->worldDataLock.get());
+    for (const SectionKey &key : keys) {
+        const ChunkData *chunk = botInstance->worldData.getChunk(key.chunkX, key.chunkZ);
+        if (!chunk) {
+            continue;
+        }
+        QByteArray dim = chunk->dimension.toUtf8();
+        if (!dimensionFilter.isEmpty() && dim != dimensionFilter) {
+            continue;
+        }
+        auto it = chunk->sections.constFind(key.sectionY);
+        if (it == chunk->sections.constEnd()) {
+            continue;
+        }
+        pending.append({key, dim, *it});
+    }
+    return pending;
+}
+
+std::string toStdBytes(const QByteArray &bytes)
+{
+    return std::string(bytes.constData(), static_cast<size_t>(bytes.size()));
+}
+
+}
+
+PySectionChanges PythonAPI::changedSections(const std::string &bot, const py::object &since,
+                                            const std::string &dimension, bool digest, int limit,
+                                            const py::bytes &digestPrefix)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    std::optional<quint64> sinceSeq;
+    if (!since.is_none()) {
+        sinceSeq = since.cast<quint64>();
+    }
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+    // Decoded while the GIL is still held; hashed ahead of each canonical blob below.
+    const QByteArray digestPrefixBytes = QByteArray::fromStdString(digestPrefix.cast<std::string>());
+    // Copied out so polling the tracker does not depend on the bot pointer once the GIL is gone.
+    // The world read below still goes through botInstance, under the same lifetime assumption the
+    // rest of PythonAPI makes.
+    const std::shared_ptr<SectionDirtyTracker> tracker = botInstance->sectionDirty;
+
+    PySectionChanges result;
+    {
+        py::gil_scoped_release release;
+
+        QVector<SectionKey> keys;
+        const SectionDirtyTracker::Snapshot snap = tracker->snapshot(sinceSeq, limit, keys);
+        result.token = snap.token;
+        result.truncated = snap.truncated;
+
+        const QVector<PendingSection> pending = snapshotSections(botInstance, keys, dimensionFilter);
+        result.sections.reserve(pending.size());
+        for (const PendingSection &p : pending) {
+            PySectionChange change;
+            change.chunkX = p.key.chunkX;
+            change.chunkZ = p.key.chunkZ;
+            change.sectionY = p.key.sectionY;
+            if (digest) {
+                auto canon = SectionCodec::canonicalize(p.section);
+                if (!canon) {
+                    continue;
+                }
+                change.digestBytes = toStdBytes(SectionCodec::digest(*canon, digestPrefixBytes));
+                change.hasDigest = true;
+            }
+            result.sections.push_back(std::move(change));
+        }
+    }
+
+    return result;
+}
+
+std::optional<PySection> PythonAPI::getSection(int chunkX, int chunkZ, int sectionY,
+                                               const std::string &bot, const std::string &dimension,
+                                               const py::bytes &digestPrefix)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+    const QByteArray digestPrefixBytes = QByteArray::fromStdString(digestPrefix.cast<std::string>());
+    const QVector<SectionKey> keys{{chunkX, chunkZ, sectionY}};
+
+    std::optional<PySection> result;
+    {
+        py::gil_scoped_release release;
+
+        const QVector<PendingSection> pending = snapshotSections(botInstance, keys, dimensionFilter);
+        if (pending.isEmpty()) {
+            return std::nullopt;
+        }
+        const PendingSection &p = pending.first();
+        auto canon = SectionCodec::canonicalize(p.section);
+        if (!canon) {
+            return std::nullopt;
+        }
+
+        PySection section;
+        section.chunkX = p.key.chunkX;
+        section.chunkZ = p.key.chunkZ;
+        section.sectionY = p.key.sectionY;
+        section.dimension = toStdBytes(p.dimensionUtf8);
+        section.palette.reserve(canon->palette.size());
+        for (const QByteArray &name : std::as_const(canon->palette)) {
+            section.palette.push_back(toStdBytes(name));
+        }
+        section.indicesBytes.reserve(static_cast<size_t>(canon->indices.size()) * 2);
+        for (quint16 idx : std::as_const(canon->indices)) {
+            section.indicesBytes.push_back(static_cast<char>(idx & 0xff));
+            section.indicesBytes.push_back(static_cast<char>((idx >> 8) & 0xff));
+        }
+        section.digestBytes = toStdBytes(SectionCodec::digest(*canon, digestPrefixBytes));
+        result = std::move(section);
+    }
+
+    return result;
+}
+
+py::bytes PythonAPI::exportSections(const py::sequence &keys, const std::string &bot, const std::string &dimension)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    const size_t keyCount = py::len(keys);
+    if (keyCount > kMaxExportSections) {
+        throw std::runtime_error("export_sections: " + std::to_string(keyCount)
+                                 + " keys exceeds the " + std::to_string(kMaxExportSections)
+                                 + " per-call limit; batch the upload");
+    }
+
+    QVector<SectionKey> parsed;
+    parsed.reserve(static_cast<int>(keyCount));
+    for (const auto &item : keys) {
+        auto entry = item.cast<py::sequence>();
+        if (py::len(entry) != 3) {
+            throw std::runtime_error("export_sections: each key must be (chunk_x, chunk_z, section_y)");
+        }
+        parsed.append({entry[0].cast<qint32>(), entry[1].cast<qint32>(), entry[2].cast<qint32>()});
+    }
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+
+    QByteArray payload;
+    {
+        py::gil_scoped_release release;
+
+        const QVector<PendingSection> pending = snapshotSections(botInstance, parsed, dimensionFilter);
+        QVector<SectionCodec::SectionFrame> frames;
+        frames.reserve(pending.size());
+        for (const PendingSection &p : pending) {
+            auto canon = SectionCodec::canonicalize(p.section);
+            if (!canon) {
+                continue;
+            }
+            frames.append({p.dimensionUtf8, p.key.chunkX, p.key.chunkZ, p.key.sectionY,
+                           SectionCodec::encodeBlob(*canon)});
+        }
+        payload = SectionCodec::encodeExport(frames);
+    }
+
+    return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));
 }
 
 static py::dict buildEntityDict(const EntityData &e)
@@ -2410,30 +2932,175 @@ py::list PythonAPI::findEntitiesNear(double x, double y, double z, double radius
     return result;
 }
 
-bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, BlockFace face, const std::string &bot)
+static void raiseOnReachFailure(const BotManager::ReachBatchResult &result, int total, double timeout)
 {
-    QString botName = resolveBotName(bot);
-    ensureBotOnline(botName);
-
-    bool result;
-    {
-        py::gil_scoped_release release;
-        result = BotManager::sendCanReachBlock(botName, x, y, z, sneak, 3000, static_cast<int>(face));
+    switch (result.status) {
+    case BotManager::ReachBatchResult::Status::Ok:
+        return;
+    case BotManager::ReachBatchResult::Status::NotConnected:
+        throw std::runtime_error("Bot went offline before the reach queries could be sent");
+    case BotManager::ReachBatchResult::Status::SendFailed:
+        throw std::runtime_error("Failed to send reach queries to the client");
+    case BotManager::ReachBatchResult::Status::TimedOut: {
+        std::string msg = "client did not answer " + std::to_string(total)
+                          + (total == 1 ? " reach query within " : " reach queries within ")
+                          + QString::number(timeout).toStdString() + "s";
+        PyErr_SetString(PyExc_TimeoutError, msg.c_str());
+        throw py::error_already_set();
     }
-    return result;
+    case BotManager::ReachBatchResult::Status::Partial:
+        if (result.evaluated == 0)
+            throw std::runtime_error("Client could not evaluate the reach "
+                                     + std::string(total == 1 ? "query" : "queries")
+                                     + " (bot is not in a world)");
+        throw std::runtime_error("Client evaluated only " + std::to_string(result.evaluated)
+                                 + " of " + std::to_string(total) + " reach queries");
+    case BotManager::ReachBatchResult::Status::TooLarge:
+        // Not a policy limit on batch size, just the largest request that fits in one message.
+        // The whole call must go in one message so every query sees the same player position.
+        throw std::invalid_argument(std::to_string(total) + " queries exceeds what fits in a single "
+                                    + "request to the client; at most " + std::to_string(result.maxQueries)
+                                    + " per call. Split the work across calls, noting that each call "
+                                    + "re-reads the bot's position.");
+    }
 }
 
-bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, BlockFace face, const std::string &bot)
+static bool runSingleReachQuery(const QString &botName, const BotManager::ReachQuery &q, double timeout)
 {
+    BotManager::ReachBatchResult result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::sendCanReachBlocks(botName, {q}, static_cast<int>(timeout * 1000.0));
+    }
+    raiseOnReachFailure(result, 1, timeout);
+    return result.results.at(0);
+}
+
+bool PythonAPI::canReachBlock(int x, int y, int z, bool sneak, BlockFace face, double timeout, const std::string &bot)
+{
+    if (timeout <= 0.0)
+        throw std::invalid_argument("timeout must be greater than 0");
+
     QString botName = resolveBotName(bot);
     ensureBotOnline(botName);
 
-    bool result;
+    BotManager::ReachQuery q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.sneak = sneak;
+    q.face = static_cast<int>(face);
+    return runSingleReachQuery(botName, q, timeout);
+}
+
+bool PythonAPI::canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak, BlockFace face, double timeout, const std::string &bot)
+{
+    if (timeout <= 0.0)
+        throw std::invalid_argument("timeout must be greater than 0");
+
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    BotManager::ReachQuery q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.sneak = sneak;
+    q.face = static_cast<int>(face);
+    q.hasFrom = true;
+    q.fromX = fromX;
+    q.fromY = fromY;
+    q.fromZ = fromZ;
+    return runSingleReachQuery(botName, q, timeout);
+}
+
+static BotManager::ReachQuery reachQueryFromItem(const py::handle &item, int index,
+                                                 bool callSneak, PythonAPI::BlockFace callFace)
+{
+    BotManager::ReachQuery q;
+    q.sneak = callSneak;
+    q.face = static_cast<int>(callFace);
+
+    if (py::isinstance<PyReachQuery>(item)) {
+        const PyReachQuery &rq = item.cast<const PyReachQuery &>();
+        q.x = rq.x;
+        q.y = rq.y;
+        q.z = rq.z;
+        q.hasFrom = rq.hasFrom;
+        q.fromX = rq.fromX;
+        q.fromY = rq.fromY;
+        q.fromZ = rq.fromZ;
+        if (rq.sneak.has_value())
+            q.sneak = rq.sneak.value();
+        if (rq.face.has_value())
+            q.face = static_cast<int>(rq.face.value());
+        return q;
+    }
+
+    // Reject strings and dicts up front: both are sequences, so without this a typo like
+    // "1,2,3" would fail with a confusing per-element message instead of a clear one.
+    if (py::isinstance<py::str>(item) || py::isinstance<py::dict>(item) || !py::isinstance<py::sequence>(item)) {
+        throw std::invalid_argument("queries[" + std::to_string(index)
+                                    + "] must be an (x, y, z) tuple or a world.ReachQuery");
+    }
+
+    py::sequence seq = item.cast<py::sequence>();
+    const int len = static_cast<int>(py::len(seq));
+    if (len != 3) {
+        throw std::invalid_argument("queries[" + std::to_string(index) + "] must have exactly 3 values (x, y, z), got "
+                                    + std::to_string(len)
+                                    + "; use world.ReachQuery(x, y, z, from_pos=(fx, fy, fz)) to trace from another position");
+    }
+
+    int v[3] = {0, 0, 0};
+    for (int i = 0; i < 3; ++i) {
+        try {
+            v[i] = seq[i].cast<int>();
+        } catch (const py::cast_error &) {
+            throw std::invalid_argument("queries[" + std::to_string(index) + "][" + std::to_string(i)
+                                        + "] is not a number");
+        }
+    }
+    q.x = v[0];
+    q.y = v[1];
+    q.z = v[2];
+    return q;
+}
+
+py::list PythonAPI::canReachBlocks(const py::sequence &queries, bool sneak, BlockFace face,
+                                   double timeout, const std::string &bot)
+{
+    if (timeout <= 0.0)
+        throw std::invalid_argument("timeout must be greater than 0");
+
+    if (py::isinstance<py::str>(queries) || py::isinstance<py::bytes>(queries))
+        throw std::invalid_argument("queries must be a list of (x, y, z) tuples or world.ReachQuery objects");
+
+    const int total = static_cast<int>(py::len(queries));
+    QList<BotManager::ReachQuery> resolved;
+    resolved.reserve(total);
+    int index = 0;
+    for (const auto &item : queries)
+        resolved.append(reachQueryFromItem(item, index++, sneak, face));
+
+    QString botName = resolveBotName(bot);
+    ensureBotOnline(botName);
+
+    if (resolved.isEmpty())
+        return py::list();
+
+    BotManager::ReachBatchResult result;
     {
         py::gil_scoped_release release;
-        result = BotManager::sendCanReachBlockFrom(botName, fromX, fromY, fromZ, x, y, z, sneak, 3000, static_cast<int>(face));
+        result = BotManager::sendCanReachBlocks(botName, resolved, static_cast<int>(timeout * 1000.0));
     }
-    return result;
+
+    raiseOnReachFailure(result, total, timeout);
+
+    py::list out;
+    for (bool r : result.results)
+        out.append(py::bool_(r));
+    return out;
 }
 
 void PythonAPI::holdAttack(bool enabled, int durationTicks, const std::string &botName)
@@ -2447,7 +3114,33 @@ bool PythonAPI::getHoldAttack(const std::string &botName)
 {
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
-    return BotManager::getHoldAttackStatus(name);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::getHoldAttackStatus(name);
+    }
+    return result;
+}
+
+void PythonAPI::holdUse(bool enabled, int durationTicks, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendHoldUse(name, enabled, durationTicks);
+}
+
+bool PythonAPI::getHoldUse(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    bool result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::getHoldUseStatus(name);
+    }
+    return result;
 }
 
 void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak, const std::string &botName)
@@ -2456,6 +3149,13 @@ void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak,
     ensureBotOnline(name);
     auto protoFace = static_cast<mankool::mcbot::protocol::BlockFaceGadget::BlockFace>(static_cast<int>(face));
     BotManager::sendLookAt(name, x, y, z, protoFace, sneak);
+}
+
+void PythonAPI::lookAtEntity(int entityId, bool sneak, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendLookAtEntity(name, entityId, sneak);
 }
 
 void PythonAPI::interactBlock(double x, double y, double z, bool sneak, bool lookAtBlock, BlockFace face, const std::string &bot)

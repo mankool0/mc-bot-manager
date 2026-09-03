@@ -113,6 +113,18 @@ void WorldAutoSaver::markBlockChunkDirty(int chunkX, int chunkZ, const QString& 
     m_dirtyBlockChunks.insert({dimension, chunkX, chunkZ});
 }
 
+void WorldAutoSaver::flushBlockChunk(int chunkX, int chunkZ, const QString& dimension) {
+    if (!m_chunkProvider) return;
+
+    DimChunkPos key{dimension, chunkX, chunkZ};
+    if (!m_dirtyBlockChunks.remove(key)) return;
+
+    auto result = m_chunkProvider(chunkX, chunkZ, dimension);
+    if (result) {
+        saveChunkAsync(result->first, result->second);
+    }
+}
+
 void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
                                        const QString& dimension) {
     if (!m_saveSettings.saveEntities) return;

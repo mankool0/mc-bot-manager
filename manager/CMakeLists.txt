@@ -176,7 +176,7 @@ target_compile_options(mc-bot-manager-proto PRIVATE ${PROJECT_WARNING_FLAGS})
 
 set(PROJECT_MAIN_SOURCE "main.cpp")
 
-file(GLOB_RECURSE PROJECT_SOURCES
+file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "ui/*.cpp"
     "ui/*.h"
     "ui/*.ui"
@@ -267,7 +267,7 @@ qt_finalize_executable(mc-bot-manager)
 FetchContent_Declare(
     prismlauncher
     GIT_REPOSITORY https://github.com/PrismLauncher/PrismLauncher.git
-    GIT_TAG        develop
+    GIT_TAG        11.1.0
     GIT_SHALLOW    TRUE
     SOURCE_SUBDIR  _no_build
 )

@@ -9,7 +9,9 @@
 #include <vector>
 #include <map>
 #include <optional>
+#include <memory>
 #include "world/BlockRegistry.h"
+#include <tag_compound.h>
 
 #undef slots
 #include <pybind11/pybind11.h>
@@ -55,6 +57,72 @@ struct PyScreenState {
     std::vector<PyGuiSlot> guiSlots;
 };
 
+// One chunk section reported by world.changed_sections(). hasDigest is false when the caller
+// did not ask for digests, which surfaces in Python as .digest being None rather than bytes.
+struct PySectionChange {
+    int chunkX = 0;
+    int chunkZ = 0;
+    int sectionY = 0;
+    std::string digestBytes;
+    bool hasDigest = false;
+};
+
+struct PySectionChanges {
+    unsigned long long token = 0;
+    bool truncated = false;
+    std::vector<PySectionChange> sections;
+};
+
+// Format-neutral view of one section's blocks, for scripts that want to work with the
+// content themselves rather than hand an opaque payload to a server.
+struct PySection {
+    int chunkX = 0;
+    int chunkZ = 0;
+    int sectionY = 0;
+    std::string dimension;
+    std::vector<std::string> palette;
+    std::string indicesBytes;  // 4096 u16 little-endian, YZX order (y*256 + z*16 + x)
+    std::string digestBytes;
+};
+
+struct PyMonitor {
+    std::string name;
+    bool primary = false;
+    int x = 0, y = 0, width = 0, height = 0;
+    int work_x = 0, work_y = 0, work_width = 0, work_height = 0;
+};
+
+struct PyWindowState {
+    std::string platform;
+    bool can_move = false;
+    std::string monitor;
+    int x = 0, y = 0, width = 0, height = 0;
+    bool minimized = false;
+    bool focused = false;
+    bool visible = true;
+    std::vector<PyMonitor> monitors;
+};
+
+// Suppress visibility warning: pybind11 types have hidden visibility
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+
+struct PyBlockEntity {
+    std::string type;
+    int x = 0, y = 0, z = 0;
+    py::list items;
+    bool hasItems = false;
+    std::vector<std::string> frontText;
+    std::vector<std::string> backText;
+    bool isSign = false;
+    bool isWaxed = false;
+    std::string rawNbt;
+    std::shared_ptr<const nbt::tag_compound> parsedNbt;
+    py::object nbtCache;
+};
+
+#pragma GCC diagnostic pop
+
 struct PyServerInfo {
     std::string address;
     std::string motd;
@@ -79,25 +147,43 @@ struct PyTabListPlayer {
     std::string display_name;
 };
 
+enum class BlockFace {
+    AUTO = 0,
+    DOWN = 1,
+    UP = 2,
+    NORTH = 3,
+    SOUTH = 4,
+    WEST = 5,
+    EAST = 6
+};
+
+struct PyReachQuery {
+    int x = 0;
+    int y = 0;
+    int z = 0;
+    bool hasFrom = false;
+    int fromX = 0;
+    int fromY = 0;
+    int fromZ = 0;
+    std::optional<bool> sneak;
+    std::optional<BlockFace> face;
+};
+
 class PythonAPI
 {
 public:
-    // Block face enum for interact_block face override
-    enum class BlockFace {
-        AUTO  = 0,
-        DOWN  = 1,
-        UP    = 2,
-        NORTH = 3,
-        SOUTH = 4,
-        WEST  = 5,
-        EAST  = 6
-    };
+    using BlockFace = ::BlockFace;
 
     // Enums for container interaction
     enum class MouseButton {
         LEFT = 0,
         RIGHT = 1,
         MIDDLE = 2
+    };
+
+    enum class Hand {
+        MAIN = 0,
+        OFF = 1
     };
 
     enum class ContainerClickType {
@@ -140,10 +226,15 @@ public:
     static std::optional<float> getExperienceProgress(const std::string &botName = "");
     static std::optional<int> getSelectedSlot(const std::string &botName = "");
     static void selectSlot(int slot, const std::string &botName = "");
+    static py::object getRotation(const std::string &botName = "");
+    static void rotate(float yaw, float pitch, const std::string &botName = "");
+    static void useItem(Hand hand = Hand::MAIN, const std::string &botName = "");
+    static void dropItem(bool dropAll = false, const std::string &botName = "");
     static std::optional<std::string> getServer(const std::string &botName = "");
     static std::optional<std::string> getSingleplayerWorld(const std::string &botName = "");
     static bool getIsSingleplayer(const std::string &botName = "");
     static std::optional<std::string> getAccount(const std::string &botName = "");
+    static std::optional<int> getDataVersion(const std::string &botName = "");
     static std::optional<int64_t> getUptime(const std::string &botName = "");
     static py::object getProxy(const std::string &botName = "");
     static bool isOnline(const std::string &botName = "");
@@ -190,6 +281,8 @@ public:
 
     static void sendChat(const std::string &message, const std::string &botName = "");
     static void sendCommand(const std::string &command, const std::string &botName = "");
+    static void connectServer(const std::string &address, const std::string &botName = "");
+    static void disconnectServer(const std::string &reason = "", const std::string &botName = "");
 
     static void startBot(const std::string &botName = "");
     static void stopBot(const std::string &reason = "", const std::string &botName = "");
@@ -227,25 +320,52 @@ public:
     static py::object getWeather(const std::string &bot = "");
     static py::object getBlock(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
     static py::object getLight(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
-    static py::object getBlockEntity(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
-    static py::list getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+    static std::optional<PyBlockEntity> getBlockEntity(double x, double y, double z, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+    static std::vector<PyBlockEntity> getBlockEntitiesInChunk(int chunkX, int chunkZ, bool useDisk = false, const std::string &dimension = "", const std::string &bot = "");
+
+    static py::object blockEntityNbt(PyBlockEntity &be);
+    static py::object blockEntityGetItem(PyBlockEntity &be, const std::string &key);
+    static py::object blockEntityGet(PyBlockEntity &be, const std::string &key, py::object fallback);
+    static bool blockEntityContains(const PyBlockEntity &be, const std::string &key);
+    static py::list blockEntityKeys(const PyBlockEntity &be);
+    static std::string blockEntityRepr(const PyBlockEntity &be);
     static py::object isBlockSolid(const std::string &blockState, BlockRegistry::Direction face = BlockRegistry::Direction::UP, const std::string &bot = "");
     static py::list findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius,
                                 int minBlockLight = 0, int maxBlockLight = 15,
                                 int minSkyLight = 0, int maxSkyLight = 15,
+                                const std::string &dimension = "", bool useDisk = false,
                                 const std::string &bot = "");
-    static py::object findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot = "");
+    static py::object findNearestBlock(const py::list &blockTypes, int maxDistance,
+                                       const std::string &dimension = "", bool useDisk = false,
+                                       const std::string &bot = "");
+    static std::vector<PyBlockEntity> findBlockEntities(const std::vector<std::string> &types,
+                                                        double centerX, double centerZ, double radius,
+                                                        const std::string &dimension = "", bool useDisk = false, int limit = 0,
+                                                        const std::string &bot = "");
     static int getLoadedChunkCount(const std::string &bot = "");
     static size_t getWorldMemoryUsage(const std::string &bot = "");
     static py::list getLoadedChunks(const std::string &bot = "");
 
+    static PySectionChanges changedSections(const std::string &bot, const py::object &since,
+                                            const std::string &dimension, bool digest, int limit,
+                                            const py::bytes &digestPrefix);
+    static std::optional<PySection> getSection(int chunkX, int chunkZ, int sectionY,
+                                               const std::string &bot, const std::string &dimension,
+                                               const py::bytes &digestPrefix);
+    static py::bytes exportSections(const py::sequence &keys, const std::string &bot = "", const std::string &dimension = "");
+
     // World interaction
     static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
     static bool getHoldAttack(const std::string &botName = "");
+    static void holdUse(bool enabled, int durationTicks = 0, const std::string &botName = "");
+    static bool getHoldUse(const std::string &botName = "");
     static void lookAt(double x, double y, double z, BlockFace face = BlockFace::AUTO, bool sneak = false, const std::string &botName = "");
-    static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
-    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
+    static void lookAtEntity(int entityId, bool sneak = false, const std::string &botName = "");
+    static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
+    static bool canReachBlockFrom(int fromX, int fromY, int fromZ, int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
+    static py::list canReachBlocks(const py::sequence &queries, bool sneak = false, BlockFace face = BlockFace::AUTO,
+                                   double timeout = 5.0, const std::string &bot = "");
     static void interactBlock(double x, double y, double z, bool sneak = false, bool lookAtBlock = true, BlockFace face = BlockFace::AUTO, const std::string &bot = "");
 
     // Container interaction
@@ -265,6 +385,12 @@ public:
     static py::object getItemInfo(const std::string &itemId, const std::string &bot = "");
     static py::list getAllRecipes(const std::string &bot = "");
     static py::dict planRecursiveCraft(const std::string &itemId, int count, const std::string &bot = "");
+
+    // Game window. Optional ints/bools default to None in the module registration.
+    static py::object getWindow(const std::string &botName = "");
+    static py::object setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
+                                const std::string &monitor, const py::object &minimized, const py::object &visible,
+                                const std::string &botName);
 
     // Server info and tab list
     static py::object getServerInfo(const std::string &botName = "");

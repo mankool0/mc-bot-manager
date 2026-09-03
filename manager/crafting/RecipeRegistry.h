@@ -6,6 +6,8 @@
 #include <QMap>
 #include <QVector>
 #include <QJsonObject>
+#include <QObject>
+#include <functional>
 
 // Recipe structures
 struct RecipeIngredient {
@@ -35,7 +37,8 @@ public:
 
     // Loading/saving
     bool loadFromJson(const QJsonObject &recipesJson, const QJsonObject &tagsJson);
-    bool loadFromCache(const QString &version);  // Load from cache, download if needed
+    // Disk only: false when this version's cache is missing (see fetchCache) or unreadable
+    bool loadFromCache(const QString &version);
     QJsonObject recipesToJson() const;
     QJsonObject tagsToJson() const;
 
@@ -60,8 +63,12 @@ public:
     // Static cache/download helpers
     static QString getRecipeCachePath(const QString &version);
     static QString getTagCachePath(const QString &version);
-    static bool downloadRecipes(const QString &version, const QString &cachePath);
-    static bool downloadTags(const QString &version, const QString &cachePath);
+    static bool isCached(const QString &version);
+    // Downloads whichever of the recipe and tag files for `version` are missing.
+    // `done(ok)` runs on `context`'s thread from the event loop, and not at all
+    // once `context` is destroyed. No blocking variant: the caller is the IPC
+    // read path.
+    static void fetchCache(const QString &version, QObject *context, std::function<void(bool)> done);
 
 private:
     QMap<QString, Recipe> recipes;

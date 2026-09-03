@@ -546,6 +546,15 @@ std::optional<BlockEntityData> BotWorldData::getBlockEntity(int x, int y, int z,
     return it.value();
 }
 
+QVector<BlockEntityData> BotWorldData::getBlockEntitiesInDimension(const QString& dimension) const
+{
+    QVector<BlockEntityData> result;
+    for (const auto& be : blockEntities) {
+        if (be.dimension == dimension) result.append(be);
+    }
+    return result;
+}
+
 QVector<BlockEntityData> BotWorldData::getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const
 {
     QVector<BlockEntityData> result;

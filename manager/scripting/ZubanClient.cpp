@@ -12,6 +12,7 @@
 #include <QCoreApplication>
 #include <QUrl>
 #include <chrono>
+#include <utility>
 
 ZubanClient::ZubanClient(QObject *parent)
     : QObject(parent)
@@ -95,11 +96,13 @@ void ZubanClient::stop()
     }
     m_pending.clear();
 
-    if (m_process) {
-        m_process->terminate();
-        m_process->waitForFinished(1000);
-        delete m_process;
-        m_process = nullptr;
+    // Taken out of the member first: waitForFinished() delivers signals
+    // synchronously, into handlers that must not see a process about to die.
+    if (QProcess *process = std::exchange(m_process, nullptr)) {
+        process->disconnect(this);
+        process->terminate();
+        process->waitForFinished(1000);
+        delete process;
     }
 }
 

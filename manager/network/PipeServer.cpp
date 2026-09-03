@@ -71,6 +71,10 @@ void PipeServer::stopImpl()
     for (auto it = connections.begin(); it != connections.end(); ++it) {
         QLocalSocket *socket = it.value();
         if (socket) {
+            // ~QLocalSocket would emit disconnected() into
+            // handleClientDisconnection mid-teardown; shutdown deliberately
+            // does not announce clientDisconnected.
+            socket->disconnect(this);
             socket->deleteLater();
         }
     }
@@ -201,6 +205,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handlePlayerState(connectionId, clientMsg.playerState());
         } else if (clientMsg.hasInventory()) {
             BotManager::handleInventoryUpdate(connectionId, clientMsg.inventory());
+        } else if (clientMsg.hasInventoryDelta()) {
+            BotManager::handleInventoryDeltaUpdate(connectionId, clientMsg.inventoryDelta());
         } else if (clientMsg.hasChat()) {
             BotManager::handleChatMessage(connectionId, clientMsg.chat());
         } else if (clientMsg.hasCommandResponse()) {
@@ -231,6 +237,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleBlockUpdate(connectionId, clientMsg.blockUpdate());
         } else if (clientMsg.hasMultiBlockUpdate()) {
             BotManager::handleMultiBlockUpdate(connectionId, clientMsg.multiBlockUpdate());
+        } else if (clientMsg.hasBlockEntityUpdate()) {
+            BotManager::handleBlockEntityUpdate(connectionId, clientMsg.blockEntityUpdate());
         } else if (clientMsg.hasChunkUnload()) {
             BotManager::handleChunkUnload(connectionId, clientMsg.chunkUnload());
         } else if (clientMsg.hasContainer()) {
@@ -245,10 +253,12 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleQueryItemRegistry(connectionId, clientMsg.queryItemRegistry());
         } else if (clientMsg.hasItemRegistry()) {
             BotManager::handleItemRegistry(connectionId, clientMsg.itemRegistry());
-        } else if (clientMsg.hasCanReachBlockResponse()) {
-            BotManager::handleCanReachBlockResponse(connectionId, clientMsg.canReachBlockResponse());
+        } else if (clientMsg.hasCanReachBlocksResponse()) {
+            BotManager::handleCanReachBlocksResponse(connectionId, clientMsg.canReachBlocksResponse());
         } else if (clientMsg.hasHoldAttackStatusResponse()) {
             BotManager::handleHoldAttackStatusResponse(connectionId, clientMsg.holdAttackStatusResponse());
+        } else if (clientMsg.hasHoldUseStatusResponse()) {
+            BotManager::handleHoldUseStatusResponse(connectionId, clientMsg.holdUseStatusResponse());
         } else if (clientMsg.hasEntityUpdate()) {
             BotManager::handleEntityUpdate(connectionId, clientMsg.entityUpdate());
         } else if (clientMsg.hasWeatherUpdate()) {
@@ -263,6 +273,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleMapData(connectionId, clientMsg.mapData());
         } else if (clientMsg.hasPlayerStatisticsResponse()) {
             BotManager::handlePlayerStatisticsResponse(connectionId, clientMsg.playerStatisticsResponse());
+        } else if (clientMsg.hasWindowState()) {
+            BotManager::handleWindowState(connectionId, clientMsg.windowState());
         }
         return true;
     }
@@ -280,23 +292,25 @@ void PipeServer::handleClientDisconnection()
         return;
     }
 
+    int connectionId = -1;
     for (auto it = connections.begin(); it != connections.end(); ++it) {
         if (it.value() == socket) {
-            int connectionId = it.key();
-
-            LogManager::log(QString("Client disconnected (Connection ID: %1)").arg(connectionId), LogManager::Warning);
-
-            emit clientDisconnected(connectionId);
-
-            connections.remove(connectionId);
-            connectionBotNames.remove(connectionId);
-
-            if (connectionStreams.contains(connectionId)) {
-                delete connectionStreams[connectionId];
-                connectionStreams.remove(connectionId);
-            }
+            connectionId = it.key();
             break;
         }
+    }
+
+    if (connectionId != -1) {
+        // Bookkeeping first, signal last: the slots run arbitrary code and must
+        // not find a half-gone connection or re-enter here mid-iteration.
+        connections.remove(connectionId);
+        connectionBotNames.remove(connectionId);
+        if (QDataStream *stream = connectionStreams.take(connectionId)) {
+            delete stream;
+        }
+
+        LogManager::log(QString("Client disconnected (Connection ID: %1)").arg(connectionId), LogManager::Warning);
+        emit clientDisconnected(connectionId);
     }
 
     socket->deleteLater();

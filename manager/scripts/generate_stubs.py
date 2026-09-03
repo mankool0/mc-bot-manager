@@ -42,11 +42,15 @@ def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None)
 
     if t == 'void': return 'Any' if is_param else 'None'
     if t == 'bool': return 'bool'
-    if t in ('int', 'int32_t', 'int64_t', 'long long', 'size_t', 'uint32_t', 'uint64_t'): return 'int'
+    if t in ('int', 'int32_t', 'int64_t', 'long long', 'unsigned long long',
+             'size_t', 'uint32_t', 'uint64_t'): return 'int'
     if t in ('float', 'double'): return 'float'
     if t == 'std::string': return 'str'
     if t == 'py::dict': return 'dict[str, Any]'
     if t == 'py::list': return 'list[Any]'
+    if t == 'py::sequence': return 'Sequence[Any]'
+    if t == 'py::tuple': return 'tuple[Any, ...]'
+    if t == 'py::bytes': return 'bytes'
     if t == 'py::object': return 'Any'
 
     # Resolve C++ enum/class types using the global enum map.
@@ -69,6 +73,8 @@ def to_py_default(raw):
     raw = raw.strip().rstrip(',').strip()
     # The py::arg regex may truncate at the '(' of "py::none()", so match by prefix.
     if raw.startswith('py::none'): return 'None'
+    # Same truncation applies to py::bytes(...); only empty defaults are used.
+    if raw.startswith('py::bytes'): return 'b""'
     if raw in ('false', 'False'): return 'False'
     if raw in ('true', 'True'): return 'True'
     if re.match(r'^-?\d+$', raw): return raw
@@ -234,8 +240,8 @@ def extract_cpp_method(stmt):
 
 def parse_function(stmt, method_map):
     # Functions are registered directly via m.def(...) or through the
-    # def_action(...)/def_state(...) lambda wrappers, which share m.def's signature.
-    m = re.match(r'\s*(?:m\.def|def_action|def_state)\s*\(\s*"([^"]+)"', stmt)
+    # def_action(...)/def_state(...)/def_query(...) lambda wrappers, which share m.def's signature.
+    m = re.match(r'\s*(?:m\.def|def_action|def_state|def_query)\s*\(\s*"([^"]+)"', stmt)
     if not m:
         return None
     name = m.group(1)
@@ -272,18 +278,73 @@ def parse_function(stmt, method_map):
 
 
 def extract_class_field_ref(stmt):
-    """Extract (StructName, field_name) pairs from .def_readonly(...)."""
+    """Extract (py_name, StructName, field_name) triples from .def_readonly/.def_readwrite(...)."""
     pairs = []
-    for m in re.finditer(r'\.def_readonly\s*\(\s*"([^"]+)"\s*,\s*&(\w+)::(\w+)', stmt):
+    for m in re.finditer(r'\.def_read(?:only|write)\s*\(\s*"([^"]+)"\s*,\s*&(\w+)::(\w+)', stmt):
         pairs.append((m.group(1), m.group(2), m.group(3)))
     return pairs
 
 
+def extract_property_names(stmt):
+    """Names exposed via .def_property(...), which have no C++ field to read a type from."""
+    return [m.group(1) for m in
+            re.finditer(r'\.def_property(?:_readonly)?\s*\(\s*"([^"]+)"', stmt)]
+
+
+# Dunders are bound as .def("__len__", lambda...), which carries no recoverable C++ type.
+# Their signatures are fixed by the protocol, so emit them from a table instead: without
+# this, a type checker rejects len()/iteration over a class that supports it at runtime.
+DUNDER_SIGNATURES = {
+    '__len__': 'def __len__(self) -> int: ...',
+    '__repr__': 'def __repr__(self) -> str: ...',
+    '__str__': 'def __str__(self) -> str: ...',
+    '__hash__': 'def __hash__(self) -> int: ...',
+    '__eq__': 'def __eq__(self, other: object) -> bool: ...',
+}
+
+
+def extract_dunders(stmt, iter_element_type):
+    """Stub lines for dunders bound on this class, in a stable order."""
+    bound = set(re.findall(r'\.def\s*\(\s*"(__\w+__)"', stmt))
+    lines = []
+    for name, sig in DUNDER_SIGNATURES.items():
+        if name in bound:
+            lines.append(sig)
+    if '__iter__' in bound:
+        lines.append(f'def __iter__(self) -> Iterator[{iter_element_type}]: ...')
+    return lines
+
+
+def infer_iter_element_type(attrs):
+    """__iter__ on these classes always walks the single list attribute, so reuse its type."""
+    for (_, attr_type) in attrs:
+        m = re.match(r'list\[(.+)\]$', attr_type)
+        if m:
+            return m.group(1)
+    return 'Any'
+
+
+def extract_init_args(stmt):
+    """py::arg entries belonging to the .def(py::init(...)) call, if the class has one.
+
+    Sliced to end at the next chained .def* so a later method's args cannot leak into the
+    constructor signature.
+    """
+    start = stmt.find('py::init')
+    if start < 0:
+        return None
+    tail = stmt[start:]
+    nxt = re.search(r'\.def(?:_readonly|_readwrite|_property|_static)?\s*\(', tail)
+    if nxt:
+        tail = tail[:nxt.start()]
+    return parse_args(tail)
+
+
 def parse_class(stmt, struct_map):
-    m = re.search(r'py::class_<(\w+)>', stmt)
+    m = re.search(r'py::class_<([\w:]+)>', stmt)
     if not m:
         return None
-    cpp_class_name = m.group(1)
+    cpp_class_name = m.group(1).split('::')[-1]
 
     nm = re.search(r'py::class_<[^>]*>\s*\(\s*\w+\s*,\s*"([^"]+)"', stmt)
     if not nm:
@@ -297,8 +358,20 @@ def parse_class(stmt, struct_map):
     for (py_attr, _, cpp_field) in field_refs:
         py_type = cpp_fields.get(cpp_field, 'Any')
         attrs.append((py_attr, py_type))
+    # Properties are lambda-backed, so there is no declared C++ type to recover.
+    for prop in extract_property_names(stmt):
+        attrs.append((prop, 'Any'))
 
-    return {'name': py_name, 'attrs': attrs}
+    # Constructor params reuse the struct field types where the names line up (x, y, z, sneak,
+    # face); anything without a matching field, such as a property-backed arg, stays Any.
+    init_args = extract_init_args(stmt)
+    init_params = None
+    if init_args:
+        init_params = [(name, cpp_fields.get(name, 'Any'), default) for (name, default) in init_args]
+
+    dunders = extract_dunders(stmt, infer_iter_element_type(attrs))
+
+    return {'name': py_name, 'attrs': attrs, 'init_params': init_params, 'dunders': dunders}
 
 
 def parse_enum(stmt):
@@ -313,7 +386,7 @@ def parse_enum(stmt):
 
 def format_pyi(doc, classes, enums, functions):
     lines = ['from __future__ import annotations']
-    lines.append('from typing import Any, ClassVar, overload')
+    lines.append('from typing import Any, ClassVar, Iterator, Sequence, overload')
     lines.append('')
     if doc:
         lines.append(f'"""{doc}"""')
@@ -327,10 +400,23 @@ def format_pyi(doc, classes, enums, functions):
 
     for cls in classes:
         lines.append(f'class {cls["name"]}:')
-        if cls['attrs']:
-            for (attr_name, attr_type) in cls['attrs']:
-                lines.append(f'    {attr_name}: {attr_type}')
-        else:
+        body = False
+        for (attr_name, attr_type) in cls['attrs']:
+            lines.append(f'    {attr_name}: {attr_type}')
+            body = True
+        if cls.get('init_params'):
+            params = []
+            for (py_name, py_type, default) in cls['init_params']:
+                if default is not None:
+                    params.append(f'{py_name}: {py_type} = {default}')
+                else:
+                    params.append(f'{py_name}: {py_type}')
+            lines.append(f'    def __init__(self, {", ".join(params)}) -> None: ...')
+            body = True
+        for dunder in cls.get('dunders', []):
+            lines.append(f'    {dunder}')
+            body = True
+        if not body:
             lines.append('    ...')
         lines.append('')
 
@@ -415,7 +501,7 @@ def main():
                 strings = extract_strings(s)
                 if strings:
                     doc = strings[0]
-            elif re.match(r'(?:m\.def|def_action|def_state)\s*\(\s*"', s):
+            elif re.match(r'(?:m\.def|def_action|def_state|def_query)\s*\(\s*"', s):
                 f = parse_function(s, method_map)
                 if f:
                     functions.append(f)

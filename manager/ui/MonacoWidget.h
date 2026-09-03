@@ -33,6 +33,7 @@ signals:
 
 private slots:
     void onEditorReady();
+    void onEditorTextChanged(const QString &text);
 
 private:
     class Bridge;
@@ -41,7 +42,11 @@ private:
     QWebChannel *m_channel;
     Bridge *m_bridge;
     bool m_pageReady = false;
-    QString m_pendingText;
+    // Mirror of the editor contents: the page reports every edit with the full
+    // text, and setText() records what it sent. getText() reads this instead of
+    // round-tripping through JavaScript, which needed a nested event loop.
+    QString m_text;
+    bool m_textPendingPush = false;
     QString m_pendingEventJson;
     bool m_pendingDark = true;
     bool m_pendingReadOnly = false;

@@ -2,6 +2,7 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Common;
+import mankool.mcBotClient.handler.outbound.InventoryOutbound;
 import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -156,6 +157,10 @@ public class InventoryHandler extends BaseInboundHandler {
 
         try {
             VersionCompat.requestInventoryResync(player);
+            InventoryOutbound outbound = InventoryOutbound.getInstance();
+            if (outbound != null) {
+                outbound.queueFullUpdate();
+            }
             sendSuccess(messageId, "Inventory resync requested");
         } catch (Exception e) {
             LOGGER.error("Failed to request inventory resync: {}", e.getMessage());

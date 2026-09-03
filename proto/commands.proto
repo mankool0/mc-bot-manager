@@ -43,10 +43,6 @@ message SendChatCommand {
 }
 
 // Movement commands
-message MoveToCommand {
-  Vec3d target_position = 1;
-}
-
 message LookAtCommand {
   oneof target {
     Vec3d position = 1;

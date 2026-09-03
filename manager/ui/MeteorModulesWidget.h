@@ -14,6 +14,8 @@
 #include <QDoubleSpinBox>
 #include <QScrollBar>
 #include <QMap>
+#include <QPointer>
+#include <optional>
 
 struct MeteorModuleData;
 struct MeteorSettingData;
@@ -72,6 +74,11 @@ private:
     QMap<QString, QTreeWidgetItem*> moduleItems;
 
     bool updatingFromCode; // Flag to prevent signal loops
+    // True while an item editor has a modal dialog up: a rebuild arriving then
+    // is parked in pendingModules instead of deleting the widget mid-edit.
+    bool editorOpen = false;
+    std::optional<QMap<QString, MeteorModuleData>> pendingModules;
+    void flushPendingModules();
 };
 
 #endif // METEORMODULESWIDGET_H

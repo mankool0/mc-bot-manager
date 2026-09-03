@@ -44,6 +44,7 @@ struct PrismConfig {
     QStringList accounts;
     QMap<QString, QString> accountIdToNameMap;
     bool useHook = true;
+    bool minimizeWindows = false;
 };
 
 class ManagerMainWindow : public QMainWindow
@@ -94,18 +95,10 @@ private:
     int m_proxyTestedPort = 0;
     bool loadingConfiguration;
     bool detailsPinned;
+    // Status of the selected bot the last time updateStatusDisplay() ran.
+    BotStatus m_displayedStatus = BotStatus::Offline;
     static QString worldSaveBasePath;
 
-    struct ScheduledLaunch {
-        QString botName;
-        QDateTime launchTime;
-
-        bool operator==(const ScheduledLaunch &other) const {
-            return botName == other.botName;
-        }
-    };
-    QList<ScheduledLaunch> scheduledLaunches;
-    QTimer *launchSchedulerTimer = nullptr;
     QTimer *uptimeCheckTimer = nullptr;
     QDockWidget *networkStatsDock = nullptr;
     QTimer *proxyHealthTimer = nullptr;
@@ -146,7 +139,6 @@ private:
     void refreshAccountThenLaunch(const QString &accountProfile, const QString &botName);
     void onAccountRefreshSucceeded(const QString &accountName);
 
-    void checkScheduledLaunches();
     void checkBotUptimes();
     void checkBotProxyHealth(const QString &botName);
 

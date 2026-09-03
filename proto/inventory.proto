@@ -16,6 +16,14 @@ message InventoryUpdate {
   ItemStack cursor_item = 3;
 }
 
+// Only the parts of the inventory that changed (Client -> Manager)
+message InventoryDeltaUpdate {
+  repeated ItemStack changed_items = 1;
+
+  optional int32 selected_slot = 2; // Present only when it changed
+  optional ItemStack cursor_item = 3; // Present only when it changed
+}
+
 // Container/GUI state (Client -> Manager)
 message ContainerUpdate {
   enum ContainerType {

@@ -14,7 +14,10 @@
     "EditBoxAccessor",
     "AbstractSignEditScreenAccessor",
     "ClientCommonDisconnectMixin",
-    "LoginDisconnectMixin"
+    "LoginDisconnectMixin",
+    "GlfwInitMixin",
+    "WindowMixin",
+    "MinecraftTitleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

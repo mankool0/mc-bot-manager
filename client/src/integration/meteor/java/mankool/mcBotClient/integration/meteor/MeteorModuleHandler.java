@@ -34,23 +34,39 @@ import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MeteorModuleHandler extends BaseInboundHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MeteorModuleHandler.class);
+
+    private static final AtomicBoolean joinHookInstalled = new AtomicBoolean(false);
+    private static volatile MeteorModuleHandler activeHandler;
+
     private boolean hooksInstalled = false;
     private boolean sentPartialModules = false;
 
     public MeteorModuleHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
         LOGGER.info("Initialized (hooks will be installed on first use)");
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> onWorldJoin());
+        activeHandler = this;
+        if (joinHookInstalled.compareAndSet(false, true)) {
+            ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
+                MeteorModuleHandler active = activeHandler;
+                if (active != null) {
+                    active.onWorldJoin();
+                }
+            });
+        }
     }
 
     private void onWorldJoin() {
         if (!sentPartialModules) return;
+        // A stale handler from a closed connection stays the active one until the next
+        // reconnect; sending would silently drop, so skip the work and the log line too.
+        if (!connection.isConnected()) return;
         LOGGER.info("World joined, re-sending module data with item components now available");
         if (sendAllModules()) {
             sentPartialModules = false;

@@ -14,6 +14,8 @@ def mcVersions = [
 def mcVer = project.findProperty('minecraft_version') ?: project.minecraft_version
 def mcDeps = mcVersions[mcVer]
 if (mcDeps == null) throw new GradleException("Unknown minecraft_version: $mcVer. Valid: ${mcVersions.keySet()}")
+// 26.1+ ships unobfuscated, so it needs no mappings and no Loom remapping.
+def isUnobfuscated = !mcVer.startsWith('1.')
 
 // Optional client integrations, keyed by the name used in the `integrations` property. Each is a
 // source set under src/integration/<name>/ that is only compiled and bundled when enabled:
@@ -231,7 +233,6 @@ repositories {
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    def isUnobfuscated = !mcVer.startsWith('1.')
     if (!isUnobfuscated) mappings loom.officialMojangMappings()
 
     // Unobfuscated builds (26.1+) disable loom remapping, so use plain implementation.
@@ -246,6 +247,58 @@ dependencies {
     include "com.google.protobuf:protobuf-java:${project.protobuf_version}"
 
 }
+
+// Fabric runtime remaps Minecraft to intermediary, so Class#getName() there reports
+// net.minecraft.class_419 instead of net.minecraft.client.gui.screens.DisconnectedScreen. Loom's
+// mappings only exist at build time, so bake the GUI slice of them into a resource that
+// GuiClassNames reads back at runtime; screen/widget class names then match the Mojang names an
+// unobfuscated 26.1+ build reports on its own (those get an empty table).
+def guiClassPrefixes = ['net/minecraft/client/gui/', 'com/mojang/realmsclient/']
+def guiClassNamesDir = layout.buildDirectory.dir('generated/mapping-resources')
+// Resolved lazily: loom.mappingsFile is only available once Loom's afterEvaluate has run.
+def tinyMappings = providers.provider { isUnobfuscated ? null : loom.mappingsFile }
+
+def generateGuiClassNames = tasks.register('generateGuiClassNames') {
+    group = 'build'
+    description = 'Bakes the intermediary -> Mojang GUI class name table into a mod resource.'
+    inputs.files(tinyMappings).withPropertyName('mappings').optional()
+    outputs.dir(guiClassNamesDir)
+    doLast {
+        def outFile = guiClassNamesDir.get().file('assets/mc-bot-client/gui-class-names.properties').asFile
+        outFile.parentFile.mkdirs()
+        def mappingsFile = tinyMappings.getOrNull()
+        if (mappingsFile == null) {
+            outFile.text = "# $mcVer is unobfuscated: runtime class names are already readable\n"
+            return
+        }
+        def names = new TreeMap<String, String>()
+        mappingsFile.withReader('UTF-8') { reader ->
+            // tiny v2 header: "tiny<TAB>2<TAB>0<TAB><ns...>", class line: "c<TAB><name per ns...>"
+            def namespaces = (reader.readLine() ?: '').split('\t').drop(3)
+            def interCol = namespaces.findIndexOf { it == 'intermediary' } + 1
+            def namedCol = namespaces.findIndexOf { it == 'named' } + 1
+            if (interCol < 1 || namedCol < 1) throw new GradleException(
+                "No intermediary/named namespace in $mappingsFile (has: ${namespaces.join(', ')})")
+            def line
+            while ((line = reader.readLine()) != null) {
+                if (!line.startsWith('c\t')) continue
+                def cols = line.split('\t', -1)
+                if (cols.size() <= Math.max(interCol, namedCol)) continue
+                def named = cols[namedCol]
+                if (!guiClassPrefixes.any { named.startsWith(it) }) continue
+                names[cols[interCol].replace('/', '.')] = named.replace('/', '.')
+            }
+        }
+        // Silently shipping an empty table would just bring the class_419 names back.
+        if (names.isEmpty()) throw new GradleException("No GUI classes found in $mappingsFile")
+        outFile.withWriter('UTF-8') { writer ->
+            writer.write("# generated from ${mappingsFile.name} - do not edit\n")
+            names.each { intermediary, named -> writer.write("$intermediary=$named\n") }
+        }
+        logger.lifecycle("GUI class names: ${names.size()} entries for $mcVer")
+    }
+}
+sourceSets.main.resources.srcDir(generateGuiClassNames)
 
 processResources {
     inputs.property "version", project.version

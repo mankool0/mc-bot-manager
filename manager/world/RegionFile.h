@@ -16,12 +16,20 @@
  */
 class RegionFile {
 public:
-    explicit RegionFile(const QString& filepath);
+    // ReadWrite creates the directory and file when missing (the writer's mode). ReadOnly opens
+    // only what exists and leaves nothing behind, so a scan of a save cannot litter it with
+    // empty regions; isValid() is false when the file is absent.
+    enum class Mode { ReadWrite, ReadOnly };
+
+    explicit RegionFile(const QString& filepath, Mode mode = Mode::ReadWrite);
     ~RegionFile();
 
     // localX, localZ must be in range [0, 31]
     bool writeChunk(int localX, int localZ, const nbt::tag_compound& chunkNBT);
     nbt::tag_compound readChunk(int localX, int localZ);
+    // The chunk's NBT bytes, decompressed but not parsed; empty when absent or unreadable.
+    std::vector<uint8_t> readChunkRaw(int localX, int localZ);
+    bool hasChunk(int localX, int localZ) const;
 
     bool isValid() const { return file.isOpen(); }
     void flush();
@@ -29,6 +37,7 @@ public:
 private:
     QFile file;
     QString filepath;
+    bool readOnly = false;
 
     // Headers (loaded into memory for fast access)
     std::array<uint32_t, 1024> locations;   // Location table

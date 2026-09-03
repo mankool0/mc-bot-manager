@@ -177,7 +177,7 @@ def _wait_for_arrival(bot_name="", timeout=30):
     start_time = time.time()
     pathing_started = False
     while time.time() - start_time < 5:
-        status = baritone.get_process_status(bot=bot_name)
+        status = baritone.get_process_status(bot_name=bot_name)
         if status.get("is_pathing", False):
             pathing_started = True
             break
@@ -189,7 +189,7 @@ def _wait_for_arrival(bot_name="", timeout=30):
     # Wait for pathing to complete
     deadline = time.time() + timeout
     while time.time() < deadline:
-        status = baritone.get_process_status(bot=bot_name)
+        status = baritone.get_process_status(bot_name=bot_name)
         if not status.get("is_pathing", False):
             return True
         time.sleep(0.5)
@@ -198,7 +198,7 @@ def _wait_for_arrival(bot_name="", timeout=30):
 
 def _get_chest_type_and_facing(bx, by, bz, bot_name=""):
     """Parse chest block state to get type (single/left/right) and facing."""
-    state = world.get_block(bx, by, bz, bot=bot_name)
+    state = world.get_block(bx, by, bz, bot_name=bot_name)
     if not state or "chest" not in state:
         return None, None
     
@@ -275,11 +275,11 @@ def _is_compatible(ench_id, target_enchantments):
 
 def _is_chest_blocked(bx, by, bz, bot_name=""):
     """Check if a chest is blocked by a solid block above it."""
-    state = world.get_block(bx, by, bz, bot=bot_name)
+    state = world.get_block(bx, by, bz, bot_name=bot_name)
     if not state or "chest" not in state or "barrel" in state:
         return False
     
-    above = world.get_block(bx, by + 1, bz, bot=bot_name)
+    above = world.get_block(bx, by + 1, bz, bot_name=bot_name)
     if not above: return False
     
     # Standard transparent/non-full blocks that allow chests to open
@@ -304,28 +304,28 @@ def _find_standing_pos(targets, bot_name="", reach=4.5):
     if not valid_targets:
         return None
 
-    # Scan outward by horizontal distance (Manhattan-ish)
+    # Collect every standable candidate outward by horizontal distance (Manhattan-ish), using
+    # local block lookups only, then resolve line of sight for all of them in one batched round
+    # trip. One call per candidate costs a game tick each, which adds up to tens of seconds.
+    candidates = []
     for h_dist in range(1, 5):
-        best_pos = None
-        best_player_dist = float('inf')
-        
         # Square perimeter at h_dist
         for dx in range(-h_dist, h_dist + 1):
             for dz in range(-h_dist, h_dist + 1):
                 if max(abs(dx), abs(dz)) != h_dist:
                     continue
-                
+
                 # Use the first target block as a reference for horizontal offset
                 ref_x, ref_y, ref_z = valid_targets[0]
                 check_x, check_z = ref_x + dx, ref_z + dz
-                
+
                 # Scan Y range from block Y down
                 for dy_off in range(1, -6, -1):
                     check_y = ref_y + dy_off
-                    
-                    block_below = world.get_block(check_x, check_y - 1, check_z, bot=bot_name)
-                    block_at_feet = world.get_block(check_x, check_y, check_z, bot=bot_name)
-                    block_at_head = world.get_block(check_x, check_y + 1, check_z, bot=bot_name)
+
+                    block_below = world.get_block(check_x, check_y - 1, check_z, bot_name=bot_name)
+                    block_at_feet = world.get_block(check_x, check_y, check_z, bot_name=bot_name)
+                    block_at_head = world.get_block(check_x, check_y + 1, check_z, bot_name=bot_name)
 
                     if not (block_below and block_at_feet and block_at_head):
                         continue
@@ -334,20 +334,33 @@ def _find_standing_pos(targets, bot_name="", reach=4.5):
                     if "air" in block_below:
                         continue
 
-                    # Use Java raytrace to verify this position can see at least one target half
-                    if not any(world.can_reach_block_from(check_x, check_y, check_z, tx, ty, tz, bot=bot_name)
-                               for tx, ty, tz in valid_targets):
-                        continue
+                    candidates.append((h_dist, check_x, check_y, check_z))
 
-                    dist = (check_x+0.5-bp['x'])**2 + (check_y-bp['y'])**2 + (check_z+0.5-bp['z'])**2
-                    if dist < best_player_dist:
-                        best_player_dist = dist
-                        best_pos = (check_x, check_y, check_z)
-        
-        if best_pos:
-            return best_pos
-            
-    return None
+    if not candidates:
+        return None
+
+    # Java raytrace for every (candidate, target half) pair at once. Losing any()'s short circuit
+    # at most doubles the query count for a double chest, which is irrelevant at these sizes.
+    queries = [world.ReachQuery(tx, ty, tz, from_pos=(cx, cy, cz))
+               for (_, cx, cy, cz) in candidates
+               for tx, ty, tz in valid_targets]
+    flags = world.can_reach_blocks(queries, bot_name=bot_name)
+
+    # Nearest ring wins; within that ring, the candidate closest to the player wins. A candidate
+    # counts as reachable if it can see at least one target half.
+    n = len(valid_targets)
+    best_pos = None
+    best_key = None
+    for i, (h_dist, check_x, check_y, check_z) in enumerate(candidates):
+        if not any(flags[i * n:(i + 1) * n]):
+            continue
+        dist = (check_x+0.5-bp['x'])**2 + (check_y-bp['y'])**2 + (check_z+0.5-bp['z'])**2
+        key = (h_dist, dist)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_pos = (check_x, check_y, check_z)
+
+    return best_pos
 
 
 def _navigate_to_block(targets, bot_name="", reach=3.8):
@@ -364,12 +377,13 @@ def _navigate_to_block(targets, bot_name="", reach=3.8):
                      and abs(bp["y"] - stand_pos[1]) < 0.1
                      and abs(bp["z"] - (stand_pos[2] + 0.5)) < 0.2)
     if not already_there:
-        baritone.goto(stand_pos[0], stand_pos[1], stand_pos[2], bot=bot_name)
+        baritone.goto(stand_pos[0], stand_pos[1], stand_pos[2], bot_name=bot_name)
         if not _wait_for_arrival(bot_name):
             return False
         time.sleep(0.3)  # let player fully stop before raytrace
 
-    return any(world.can_reach_block(tx, ty, tz, bot=bot_name) for tx, ty, tz in targets)
+    # One round trip for all halves rather than one per half
+    return any(world.can_reach_blocks([(tx, ty, tz) for tx, ty, tz in targets], bot_name=bot_name))
 
 
 def scan_chests(radius=48, bot_name=""):
@@ -382,9 +396,9 @@ def scan_chests(radius=48, bot_name=""):
 
     # Find all chest-type blocks
     cx, cy, cz = pos["x"], pos["y"], pos["z"]
-    positions = world.find_blocks("minecraft:chest", cx, cy, cz, radius, bot=bot_name)
-    positions += world.find_blocks("minecraft:trapped_chest", cx, cy, cz, radius, bot=bot_name)
-    positions += world.find_blocks("minecraft:barrel", cx, cy, cz, radius, bot=bot_name)
+    positions = world.find_blocks("minecraft:chest", cx, cy, cz, radius, bot_name=bot_name)
+    positions += world.find_blocks("minecraft:trapped_chest", cx, cy, cz, radius, bot_name=bot_name)
+    positions += world.find_blocks("minecraft:barrel", cx, cy, cz, radius, bot_name=bot_name)
 
     unique_positions = sorted(list(set((int(x), int(y), int(z)) for x, y, z in positions)))
 
@@ -418,12 +432,12 @@ def scan_chests(radius=48, bot_name=""):
             for attempt in range(2):
                 if attempt > 0:
                     time.sleep(0.5)
-                world.interact_block(hx, hy, hz, bot=bot_name)
+                world.interact_block(hx, hy, hz, bot_name=bot_name)
 
                 first_open_time = None
                 deadline = time.time() + 2.0
                 while time.time() < deadline:
-                    c = world.get_container(bot=bot_name)
+                    c = world.get_container(bot_name=bot_name)
                     if c is not None:
                         if first_open_time is None:
                             first_open_time = time.time()
@@ -445,7 +459,7 @@ def scan_chests(radius=48, bot_name=""):
 
         container_id = container.get("id")
         if container_id is not None and container_id in scanned_container_ids:
-            world.close_container(bot=bot_name)
+            world.close_container(bot_name=bot_name)
             time.sleep(0.2)
             continue
         if container_id is not None:
@@ -463,7 +477,7 @@ def scan_chests(radius=48, bot_name=""):
                         "display_name": item.get("display_name", ""),
                     })
 
-        world.close_container(bot=bot_name)
+        world.close_container(bot_name=bot_name)
         time.sleep(0.2)
 
     utils.log(f"Scan complete: found {len(found_books)} enchanted book(s)")
@@ -832,12 +846,12 @@ def collect_books(selected_books, bot_name=""):
             for attempt in range(2):
                 if attempt > 0:
                     time.sleep(0.5)
-                world.interact_block(hx, hy, hz, bot=bot_name)
+                world.interact_block(hx, hy, hz, bot_name=bot_name)
 
                 first_open_time = None
                 deadline = time.time() + 2.0
                 while time.time() < deadline:
-                    c = world.get_container(bot=bot_name)
+                    c = world.get_container(bot_name=bot_name)
                     if c is not None:
                         if first_open_time is None:
                             first_open_time = time.time()
@@ -868,10 +882,10 @@ def collect_books(selected_books, bot_name=""):
                 continue
 
             world.click_slot(slot, button=world.MouseButton.LEFT,
-                             click_type=world.ClickType.QUICK_MOVE, bot=bot_name)
+                             click_type=world.ClickType.QUICK_MOVE, bot_name=bot_name)
             time.sleep(0.1)
 
-        world.close_container(bot=bot_name)
+        world.close_container(bot_name=bot_name)
         time.sleep(0.3)
 
     utils.log("Book collection complete")

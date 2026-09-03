@@ -15,10 +15,15 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class MessageHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandler.class);
+
+    private static final AtomicBoolean tickHookInstalled = new AtomicBoolean(false);
+    private static volatile MessageHandler activeHandler;
+
     private final PipeConnection connection;
     private final Minecraft client;
     private volatile boolean running = false;
@@ -27,6 +32,7 @@ public class MessageHandler {
     private final Map<Protocol.ManagerToClientMessage.PayloadCase, Consumer<Protocol.ManagerToClientMessage>> handlers;
 
     private final List<Runnable> integrationTicks = new ArrayList<>();
+    private final List<BaseOutbound> outbounds;
 
     // Inbound handlers (handle incoming commands)
     private final ConnectionHandler connectionHandler;
@@ -47,6 +53,7 @@ public class MessageHandler {
     private final EntityOutbound entityOutbound;
     private final TabListOutbound tabListOutbound;
     private final StatsOutbound statsOutbound;
+    private final WindowOutbound windowOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -70,7 +77,13 @@ public class MessageHandler {
         this.entityOutbound = new EntityOutbound(this.client, connection);
         this.tabListOutbound = new TabListOutbound(this.client, connection);
         this.statsOutbound = new StatsOutbound(this.client, connection);
+        this.windowOutbound = new WindowOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
+
+        // Ticked from onClientTick below, in construction order
+        this.outbounds = List.of(serverOutbound, playerOutbound, inventoryOutbound,
+                                 worldOutbound, containerOutbound, screenOutbound, entityOutbound,
+                                 tabListOutbound, statsOutbound, windowOutbound);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
@@ -78,8 +91,22 @@ public class MessageHandler {
 
         setupIntegrations(connection);
 
-        // Register tick handler for protocol-level updates
-        ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+        installTickHook();
+    }
+
+    // Installs the single shared tick hook the first time a handler is built. The lambda holds no
+    // reference to any instance, so a handler becomes collectable as soon as it stops being the
+    // active one.
+    private static void installTickHook() {
+        if (!tickHookInstalled.compareAndSet(false, true)) {
+            return;
+        }
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            MessageHandler handler = activeHandler;
+            if (handler != null) {
+                handler.onClientTick(client);
+            }
+        });
     }
 
     private void setupIntegrations(PipeConnection connection) {
@@ -124,8 +151,6 @@ public class MessageHandler {
             msg -> connectionHandler.handleDisconnect(msg.getMessageId(), msg.getDisconnect()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SEND_CHAT,
             msg -> chatHandler.handleSendChat(msg.getMessageId(), msg.getSendChat()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.MOVE_TO,
-            msg -> playerActionHandler.handleMoveTo(msg.getMessageId(), msg.getMoveTo()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.LOOK_AT,
             msg -> playerActionHandler.handleLookAt(msg.getMessageId(), msg.getLookAt()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_ROTATION,
@@ -140,8 +165,8 @@ public class MessageHandler {
             msg -> connectionHandler.handleShutdown(msg.getMessageId(), msg.getShutdown()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.INTERACT_WITH_BLOCK,
             msg -> worldInteractionHandler.handleInteractWithBlock(msg.getMessageId(), msg.getInteractWithBlock()));
-        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CAN_REACH_BLOCK,
-            msg -> worldInteractionHandler.handleCanReachBlock(msg.getMessageId(), msg.getCanReachBlock()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CAN_REACH_BLOCKS,
+            msg -> worldInteractionHandler.handleCanReachBlocks(msg.getMessageId(), msg.getCanReachBlocks()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REGISTRY_RESPONSE,
             msg -> worldOutbound.handleRegistryResponse(msg.getRegistryResponse()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.ITEM_REGISTRY_RESPONSE,
@@ -166,10 +191,18 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleHoldAttack(msg.getHoldAttack()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_ATTACK_STATUS,
             msg -> worldInteractionHandler.handleGetHoldAttackStatus(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HOLD_USE,
+            msg -> worldInteractionHandler.handleHoldUse(msg.getHoldUse()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_USE_STATUS,
+            msg -> worldInteractionHandler.handleGetHoldUseStatus(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_INVENTORY_RESYNC,
             msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_STATISTICS,
             msg -> statsOutbound.handleRequestStatistics(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_WINDOW,
+            msg -> windowOutbound.handleSetWindow(msg.getMessageId(), msg.getSetWindow()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_WINDOW_STATE,
+            msg -> windowOutbound.handleGetWindowState(msg.getMessageId()));
     }
 
     public void start() {
@@ -178,9 +211,16 @@ public class MessageHandler {
         }
 
         running = true;
+        // Takes over the shared tick hook, which drops the previous handler's last reference.
+        activeHandler = this;
 
         // Send initial connection info
         serverOutbound.sendConnectionInfo();
+
+        // Window geometry and monitors, so the manager can place the window right away. The
+        // window is still hidden at this point and the placement is what shows it.
+        windowOutbound.scheduleReport("");
+        windowOutbound.armShowFallback();
 
         // Send block registry query
         worldOutbound.sendRegistryQuery();
@@ -188,11 +228,19 @@ public class MessageHandler {
         // Send item registry query
         worldOutbound.sendItemRegistryQuery();
 
+        // Seed the manager with a full inventory snapshot. Later updates are deltas against
+        // it, so a fresh connection must not have to wait for the next inventory change.
+        inventoryOutbound.queueFullUpdate();
+
         LOGGER.info("MessageHandler started, processing messages on game tick");
     }
 
     public void stop() {
         running = false;
+        // Only clear the hook if a newer handler has not already taken it over.
+        if (activeHandler == this) {
+            activeHandler = null;
+        }
     }
 
     public ServerOutbound getServerOutbound() {
@@ -213,6 +261,10 @@ public class MessageHandler {
             return;
         }
         tick++;
+
+        for (BaseOutbound outbound : outbounds) {
+            outbound.tick(client);
+        }
 
         // Process all pending messages from manager
         Protocol.ManagerToClientMessage message;

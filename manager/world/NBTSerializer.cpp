@@ -287,11 +287,7 @@ nbt::tag_compound NBTSerializer::sectionToNBT(const ChunkSection& section) {
     // Convert indices if not uniform
     if (!section.uniform && !section.blockIndices.isEmpty()) {
         // Pack indices into long array using Minecraft's variable-width format
-        // Uses 4-8 bits per entry for indirect palette, or 15 bits for direct palette
-        int bitsPerEntry = std::max(4, static_cast<int>(std::ceil(std::log2(section.palette.size()))));
-        if (bitsPerEntry > 8) {
-            bitsPerEntry = 15;  // Direct palette
-        }
+        int bitsPerEntry = blockStateBitsPerEntry(section.palette.size());
 
         int entriesPerLong = 64 / bitsPerEntry;
         int longCount = (4096 + entriesPerLong - 1) / entriesPerLong;
@@ -450,6 +446,11 @@ std::vector<nbt::tag_compound> NBTSerializer::convertPalette(const QVector<QStri
     return result;
 }
 
+int NBTSerializer::blockStateBitsPerEntry(int paletteSize) {
+    int bits = std::max(4, static_cast<int>(std::ceil(std::log2(std::max(paletteSize, 2)))));
+    return bits > 8 ? 15 : bits;
+}
+
 ChunkSection NBTSerializer::nbtToChunkSection(const nbt::tag_compound& section) {
     ChunkSection result;
 
@@ -495,9 +496,7 @@ ChunkSection NBTSerializer::nbtToChunkSection(const nbt::tag_compound& section) 
             // Parse packed block data
             if (blockStates.has_key("data")) {
                 const auto& dataArr = static_cast<const nbt::tag_long_array&>(blockStates.at("data").get());
-                int paletteSize = result.palette.size();
-                int bitsPerEntry = std::max(4, static_cast<int>(std::ceil(std::log2(std::max(paletteSize, 2)))));
-                if (bitsPerEntry > 8) bitsPerEntry = 15;
+                int bitsPerEntry = blockStateBitsPerEntry(result.palette.size());
                 int entriesPerLong = 64 / bitsPerEntry;
                 uint64_t mask = (1ULL << bitsPerEntry) - 1;
 
