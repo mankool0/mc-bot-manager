@@ -141,6 +141,15 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                "Query the current hold-use state from the client. Returns True if use is "
                "currently being held, False otherwise. Blocks until the client responds.",
                py::arg("bot_name") = "");
+    def_action("hold_attack", &PythonAPI::holdAttack,
+               "Hold or release left-click attack in-game.",
+               py::arg("enabled"),
+               py::arg("duration_ticks") = 0,
+               py::arg("bot_name") = "");
+    def_action("get_hold_attack", &PythonAPI::getHoldAttack,
+               "Query the current hold-attack state from the client. Returns True if attack is "
+               "currently being held, False otherwise. Blocks until the client responds.",
+               py::arg("bot_name") = "");
     def_action("drop_item", &PythonAPI::dropItem,
                "Drop the selected hotbar item: one item, or the whole stack with drop_all=True",
                py::arg("drop_all") = false,
@@ -553,17 +562,6 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                py::arg("keys"),
                py::arg("bot_name") = "",
                py::arg("dimension") = "");
-
-    // World interaction
-    def_action("hold_attack", &PythonAPI::holdAttack,
-               "Hold or release left-click attack in-game.",
-               py::arg("enabled"),
-               py::arg("duration_ticks") = 0,
-               py::arg("bot_name") = "");
-    def_action("get_hold_attack", &PythonAPI::getHoldAttack,
-               "Query the current hold-attack state from the client. Returns True if attack is "
-               "currently being held, False otherwise. Blocks until the client responds.",
-               py::arg("bot_name") = "");
 
     py::enum_<PythonAPI::BlockFace>(m, "BlockFace")
         .value("AUTO",  PythonAPI::BlockFace::AUTO)

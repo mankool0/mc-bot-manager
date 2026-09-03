@@ -170,6 +170,41 @@ if bot.get_hold_use():
     utils.log("Still eating")
 ```
 
+### `hold_attack(enabled, duration_ticks=0, bot_name="")`
+
+Hold or release the left-click attack button in-game. While enabled, the client drives `continueDestroyBlock` every game tick against whatever block the crosshair is currently targeting.
+
+**Parameters:**
+
+- `enabled` (`bool`) - `True` to start holding attack, `False` to release
+- `duration_ticks` (`int`, optional) - Auto-release after this many game ticks. `0` holds indefinitely until an explicit `False` call (default: `0`)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+```python
+# Hold for 100 ticks (5 seconds), then auto-release
+bot.hold_attack(True, duration_ticks=100)
+
+# Hold indefinitely
+bot.hold_attack(True)
+# ... later:
+bot.hold_attack(False)
+```
+
+### `get_hold_attack(bot_name="")`
+
+Query whether the client is currently holding the attack button.
+
+**Returns:** `bool` - `True` if attack is being held, `False` otherwise
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+```python
+if bot.get_hold_attack():
+    utils.log("Currently mining")
+```
+
 ### `drop_item(drop_all=False, bot_name="")`
 
 Drop the item in the selected hotbar slot: one item, or the whole stack with `drop_all=True`. Same as pressing Q (or Ctrl+Q) in-game. When the slot is empty the client replies `No item to drop` in the bot console; nothing is raised.
