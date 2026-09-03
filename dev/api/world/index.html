@@ -680,6 +680,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#saved-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saved world
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#block-queries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -703,10 +714,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name" class="md-nav__link">
+  <a href="#find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-dimension-use_diskfalse-bot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
-        find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")
+        find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, dimension="", use_disk=False, bot_name="")
       
     </span>
   </a>
@@ -714,10 +725,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#find_nearestblock_types-max_distance128-bot_name" class="md-nav__link">
+  <a href="#find_nearestblock_types-max_distance128-dimension-use_diskfalse-bot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
-        find_nearest(block_types, max_distance=128, bot_name="")
+        find_nearest(block_types, max_distance=128, dimension="", use_disk=False, bot_name="")
       
     </span>
   </a>
@@ -757,6 +768,17 @@
     <span class="md-ellipsis">
       
         get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_block_entitiestypes-center_x-center_z-radius-dimension-use_diskfalse-limit0-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_block_entities(types, center_x, center_z, radius, dimension="", use_disk=False, limit=0, bot_name="")
       
     </span>
   </a>
@@ -1671,6 +1693,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#saved-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saved world
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#block-queries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1694,10 +1727,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name" class="md-nav__link">
+  <a href="#find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-dimension-use_diskfalse-bot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
-        find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")
+        find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, dimension="", use_disk=False, bot_name="")
       
     </span>
   </a>
@@ -1705,10 +1738,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#find_nearestblock_types-max_distance128-bot_name" class="md-nav__link">
+  <a href="#find_nearestblock_types-max_distance128-dimension-use_diskfalse-bot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
-        find_nearest(block_types, max_distance=128, bot_name="")
+        find_nearest(block_types, max_distance=128, dimension="", use_disk=False, bot_name="")
       
     </span>
   </a>
@@ -1748,6 +1781,17 @@
     <span class="md-ellipsis">
       
         get_block_entities_in_chunk(chunk_x, chunk_z, use_disk=False, dimension="", bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find_block_entitiestypes-center_x-center_z-radius-dimension-use_diskfalse-limit0-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find_block_entities(types, center_x, center_z, radius, dimension="", use_disk=False, limit=0, bot_name="")
       
     </span>
   </a>
@@ -2476,6 +2520,20 @@
 <h1 id="world-module">world module</h1>
 <p>World data queries and block interaction.</p>
 <p>The world module provides access to chunk data collected from the Minecraft client, enabling block queries and world interaction. Chunks are automatically synchronized and cached in memory.</p>
+<h2 id="saved-world">Saved world</h2>
+<p>Every query that takes <code>use_disk</code> can also read the world the manager saves to disk (the <code>.mca</code>
+autosave under the world save directory, one save per server). Memory comes first: a chunk that is
+loaded in memory for the requested dimension is answered from memory only, and disk is consulted
+for the chunks that are not. Nothing is reported twice. When the save path does not exist, saving
+is disabled, or a chunk was never saved, the disk side contributes nothing - no error is raised.</p>
+<p>The area searches (<code>find_blocks</code>, <code>find_nearest</code>, <code>find_block_entities</code>) scan by region rather
+than by chunk: the region files covering the search disc are opened once each, split across worker
+threads, and only the saved chunks inside the disc that are not in memory are decoded. Only the
+parts of a chunk the query needs are parsed (the palette of a section is checked before its block
+data), so a search over a few hundred regions takes well under a second to a few seconds,
+depending on disk and cores, and never runs on the manager's UI thread. <code>dimension</code> follows <code>get_block</code>: it defaults to the bot's current dimension, memory is read
+when the loaded chunk belongs to that dimension, and the save's <code>region</code>, <code>DIM-1/region</code>,
+<code>DIM1/region</code> (or <code>dimensions/...</code> on 26.1+) directory is read for the rest.</p>
 <h2 id="block-queries">Block Queries</h2>
 <h3 id="get_blockx-y-z-use_diskfalse-dimension-bot_name"><code>get_block(x, y, z, use_disk=False, dimension="", bot_name="")</code></h3>
 <p>Get the block state at the specified coordinates.</p>
@@ -2508,12 +2566,13 @@
 <span class="c1"># Read a block from a different dimension</span>
 <span class="n">block</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-bot_name"><code>find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")</code></h3>
+<h3 id="find_blocksblock_type-center_x-center_y-center_z-radius-min_block_light0-max_block_light15-min_sky_light0-max_sky_light15-dimension-use_diskfalse-bot_name"><code>find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, dimension="", use_disk=False, bot_name="")</code></h3>
 <p>Find all blocks of a specific type within a spherical radius, with optional light level filters.</p>
-<p>This function only searches loaded chunks. Blocks in unloaded chunks will not be found.</p>
+<p>By default only loaded chunks are searched. With <code>use_disk=True</code>, chunks inside the radius that are
+not loaded in memory are read from the <a href="#saved-world">saved world</a>.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>block_type</code> (<code>str</code>) - Block type to search for (e.g., <code>"minecraft:diamond_ore"</code>)</li>
+<li><code>block_type</code> (<code>str</code>) - Block type to search for (e.g., <code>"minecraft:diamond_ore"</code>). A <code>[state]</code> suffix is ignored; every state of the block matches</li>
 <li><code>center_x</code> (<code>float</code>) - Search center X coordinate</li>
 <li><code>center_y</code> (<code>float</code>) - Search center Y coordinate</li>
 <li><code>center_z</code> (<code>float</code>) - Search center Z coordinate</li>
@@ -2522,9 +2581,11 @@
 <li><code>max_block_light</code> (<code>int</code>, optional) - Maximum block light level, inclusive (default: 15)</li>
 <li><code>min_sky_light</code> (<code>int</code>, optional) - Minimum sky light level, inclusive (default: 0)</li>
 <li><code>max_sky_light</code> (<code>int</code>, optional) - Maximum sky light level, inclusive (default: 15)</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as <code>get_block</code></li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - Also search saved chunks that are not loaded (default: <code>False</code>)</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
-<p><strong>Returns:</strong> <code>list[tuple]</code> - List of block positions as <code>(x, y, z)</code> tuples of floats</p>
+<p><strong>Returns:</strong> <code>list[tuple]</code> - Block positions as <code>(x, y, z)</code> tuples of floats, nearest to the center first</p>
 <p><strong>Note:</strong> Returns float coordinates. Convert to int for block operations: <code>int(x), int(y), int(z)</code></p>
 <p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find all diamond ore within 64 blocks of bot</span>
@@ -2547,14 +2608,22 @@
                              <span class="n">radius</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
                              <span class="n">max_block_light</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                              <span class="n">max_sky_light</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Every obsidian block within 2000 blocks of the nether origin, loaded or saved</span>
+<span class="n">obsidian</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:obsidian"</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>
+                             <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="find_nearestblock_types-max_distance128-bot_name"><code>find_nearest(block_types, max_distance=128, bot_name="")</code></h3>
+<h3 id="find_nearestblock_types-max_distance128-dimension-use_diskfalse-bot_name"><code>find_nearest(block_types, max_distance=128, dimension="", use_disk=False, bot_name="")</code></h3>
 <p>Find the nearest block matching any of the specified types.</p>
-<p>This function searches from the bot's current position and only searches loaded chunks.</p>
+<p>This function searches from the bot's current position. By default only loaded chunks are
+searched; with <code>use_disk=True</code>, chunks within <code>max_distance</code> that are not loaded are read from the
+<a href="#saved-world">saved world</a> as well.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>block_types</code> (<code>list[str]</code>) - List of block types to search for</li>
+<li><code>block_types</code> (<code>list[str]</code>) - List of block types to search for (a <code>[state]</code> suffix is ignored)</li>
 <li><code>max_distance</code> (<code>int</code>, optional) - Maximum search distance in blocks (default: 128)</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as <code>get_block</code></li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - Also search saved chunks that are not loaded (default: <code>False</code>)</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
 </ul>
 <p><strong>Returns:</strong> <code>tuple</code> - Position as <code>(x, y, z)</code> tuple of floats, or <code>None</code> if no matching block found</p>
@@ -2621,6 +2690,9 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Ore type: </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"No ore found within 50 blocks"</span><span class="p">)</span>
+
+<span class="c1"># Nearest saved ender chest, even if the chunk is not loaded</span>
+<span class="n">echest</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_nearest</span><span class="p">([</span><span class="s2">"minecraft:ender_chest"</span><span class="p">],</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="block-entities">Block Entities</h2>
 <p>Block entities are blocks with attached data: chests, furnaces, signs, shulker boxes, etc. The bot tracks block entities for chunks it has loaded this session. With <code>use_disk=True</code>, entities from saved but currently unloaded chunks can also be queried.</p>
@@ -2776,6 +2848,43 @@ carries furnace burn and cook progress) or when the chunk is loaded again.</p>
 <span class="c1"># Scan a chunk in the nether from disk</span>
 <span class="n">nether_ents</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block_entities_in_chunk</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span>
     <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="find_block_entitiestypes-center_x-center_z-radius-dimension-use_diskfalse-limit0-bot_name"><code>find_block_entities(types, center_x, center_z, radius, dimension="", use_disk=False, limit=0, bot_name="")</code></h3>
+<p>Find block entities of the given types within a horizontal radius of a point, at any y.</p>
+<p>By default only loaded chunks are searched. With <code>use_disk=True</code>, chunks inside the radius that are
+not loaded in memory are read from the <a href="#saved-world">saved world</a>, so one call answers "every ender
+chest within 5000 blocks of here" without loading anything.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>types</code> (<code>list[str]</code>) - Block entity ids to look for, e.g. <code>["minecraft:ender_chest"]</code> or <code>["minecraft:chest", "minecraft:barrel"]</code>. An empty list matches every block entity</li>
+<li><code>center_x</code> (<code>float</code>) - Search center X coordinate</li>
+<li><code>center_z</code> (<code>float</code>) - Search center Z coordinate</li>
+<li><code>radius</code> (<code>float</code>) - Horizontal search radius in blocks; the search is a disc, every y is included</li>
+<li><code>dimension</code> (<code>str</code>, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as <code>get_block</code></li>
+<li><code>use_disk</code> (<code>bool</code>, optional) - Also search saved chunks that are not loaded (default: <code>False</code>)</li>
+<li><code>limit</code> (<code>int</code>, optional) - Return at most this many, nearest first. <code>0</code> means no limit (default)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Returns:</strong> <code>list[BlockEntity]</code> - the same objects <code>get_block_entity</code> returns, sorted by horizontal distance from <code>(center_x, center_z)</code> ascending. <code>items</code> is filled where it is known (opened this session from memory, or saved with the chunk)</p>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="c1"># Ender chests in the saved overworld within 5000 blocks of spawn, farthest first</span>
+<span class="n">hits</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_block_entities</span><span class="p">([</span><span class="s2">"minecraft:ender_chest"</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span>
+                                 <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:overworld"</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">hits</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">be</span><span class="p">:</span> <span class="o">-</span><span class="n">math</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">be</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">be</span><span class="o">.</span><span class="n">z</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">[:</span><span class="mi">10</span><span class="p">]:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ender chest at </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">z</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># The five nearest containers of any kind, loaded or saved</span>
+<span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">nearby</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_block_entities</span><span class="p">([</span><span class="s2">"minecraft:chest"</span><span class="p">,</span> <span class="s2">"minecraft:trapped_chest"</span><span class="p">,</span> <span class="s2">"minecraft:barrel"</span><span class="p">],</span>
+                                   <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span> <span class="mi">500</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># Everything with a block entity in the loaded nether chunks around the bot</span>
+<span class="n">everything</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_block_entities</span><span class="p">([],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span> <span class="mi">200</span><span class="p">,</span>
+                                       <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="block-interaction">Block Interaction</h2>
