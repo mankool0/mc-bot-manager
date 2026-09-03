@@ -1357,53 +1357,59 @@ void BotManager::handleChatMessageImpl(int connectionId, const mankool::mcbot::p
         bot->consoleWidget->appendResponse(true, output);
     }
 
-    if (bot->scriptEngine) {
-        QVariantMap chatData;
-        chatData["sender"] = chat.sender();
-        chatData["content"] = chat.content();
-        chatData["type"] = chatTypeStr;
-        chatData["timestamp"] = static_cast<long long>(chat.timestamp());
-        chatData["is_signed"] = chat.isSigned();
+    QVariantMap chatData;
+    chatData["sender"] = chat.sender();
+    chatData["content"] = chat.content();
+    chatData["type"] = chatTypeStr;
+    chatData["timestamp"] = static_cast<long long>(chat.timestamp());
+    chatData["is_signed"] = chat.isSigned();
+    // Redundant for per-bot scripts, essential for the global-scope copy.
+    chatData["bot_name"] = bot->name;
 
-        if (chat.hasSenderUuid()) {
-            chatData["sender_uuid"] = chat.senderUuid();
-        }
-
-        if (chat.hasMinecraftChatType()) {
-            QString minecraftType;
-            switch (chat.minecraftChatType()) {
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::CHAT:
-                minecraftType = "CHAT";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_INCOMING:
-                minecraftType = "MSG_COMMAND_INCOMING";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_OUTGOING:
-                minecraftType = "MSG_COMMAND_OUTGOING";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::EMOTE_COMMAND:
-                minecraftType = "EMOTE_COMMAND";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::SAY_COMMAND:
-                minecraftType = "SAY_COMMAND";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_INCOMING:
-                minecraftType = "TEAM_MSG_COMMAND_INCOMING";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_OUTGOING:
-                minecraftType = "TEAM_MSG_COMMAND_OUTGOING";
-                break;
-            case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::UNKNOWN:
-                minecraftType = "UNKNOWN";
-                break;
-            }
-            chatData["minecraft_chat_type"] = minecraftType;
-        }
-
-        QVariantList args;
-        args << chatData;
-        bot->scriptEngine->fireEvent("chat_message", args);
+    if (chat.hasSenderUuid()) {
+        chatData["sender_uuid"] = chat.senderUuid();
     }
+
+    if (chat.hasMinecraftChatType()) {
+        QString minecraftType;
+        switch (chat.minecraftChatType()) {
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::CHAT:
+            minecraftType = "CHAT";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_INCOMING:
+            minecraftType = "MSG_COMMAND_INCOMING";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::MSG_COMMAND_OUTGOING:
+            minecraftType = "MSG_COMMAND_OUTGOING";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::EMOTE_COMMAND:
+            minecraftType = "EMOTE_COMMAND";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::SAY_COMMAND:
+            minecraftType = "SAY_COMMAND";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_INCOMING:
+            minecraftType = "TEAM_MSG_COMMAND_INCOMING";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::TEAM_MSG_COMMAND_OUTGOING:
+            minecraftType = "TEAM_MSG_COMMAND_OUTGOING";
+            break;
+        case mankool::mcbot::protocol::ChatMessage::MinecraftChatType::UNKNOWN:
+            minecraftType = "UNKNOWN";
+            break;
+        }
+        chatData["minecraft_chat_type"] = minecraftType;
+    }
+
+    QVariantList args;
+    args << chatData;
+
+    if (bot->scriptEngine)
+        bot->scriptEngine->fireEvent(QStringLiteral("chat_message"), args);
+    // Global scripts coordinate several bots at once, so they need every bot's
+    // chat, not just the chat of whichever bot tab is selected.
+    ScriptMessageBus::instance().fireEventForScope(
+        QStringLiteral("_global"), QStringLiteral("chat_message"), args);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] ChatMessage received: %2").arg(bot->name, output), LogManager::Debug);
