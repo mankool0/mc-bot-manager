@@ -781,32 +781,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hold_attackenabled-duration_ticks0-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hold_attack(enabled, duration_ticks=0, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_hold_attackbot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_hold_attack(bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
         look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#look_at_entityentity_id-sneakfalse-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        look_at_entity(entity_id, sneak=False, bot_name="")
       
     </span>
   </a>
@@ -1783,32 +1772,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hold_attackenabled-duration_ticks0-bot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hold_attack(enabled, duration_ticks=0, bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_hold_attackbot_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_hold_attack(bot_name="")
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name" class="md-nav__link">
     <span class="md-ellipsis">
       
         look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#look_at_entityentity_id-sneakfalse-bot_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        look_at_entity(entity_id, sneak=False, bot_name="")
       
     </span>
   </a>
@@ -2801,34 +2779,6 @@ carries furnace burn and cook progress) or when the chunk is loaded again.</p>
 </code></pre></div>
 <hr />
 <h2 id="block-interaction">Block Interaction</h2>
-<h3 id="hold_attackenabled-duration_ticks0-bot_name"><code>hold_attack(enabled, duration_ticks=0, bot_name="")</code></h3>
-<p>Hold or release the left-click attack button in-game. While enabled, the client drives <code>continueDestroyBlock</code> every game tick against whatever block the crosshair is currently targeting.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>enabled</code> (<code>bool</code>) - <code>True</code> to start holding attack, <code>False</code> to release</li>
-<li><code>duration_ticks</code> (<code>int</code>, optional) - Auto-release after this many game ticks. <code>0</code> holds indefinitely until an explicit <code>False</code> call (default: <code>0</code>)</li>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="c1"># Hold for 100 ticks (5 seconds), then auto-release</span>
-<span class="n">world</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">duration_ticks</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-
-<span class="c1"># Hold indefinitely</span>
-<span class="n">world</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-<span class="c1"># ... later:</span>
-<span class="n">world</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h3 id="get_hold_attackbot_name"><code>get_hold_attack(bot_name="")</code></h3>
-<p>Query whether the client is currently holding the attack button.</p>
-<p><strong>Returns:</strong> <code>bool</code> - <code>True</code> if attack is being held, <code>False</code> otherwise</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">get_hold_attack</span><span class="p">():</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Currently mining"</span><span class="p">)</span>
-</code></pre></div>
-<hr />
 <h3 id="look_atx-y-z-faceworldblockfaceauto-sneakfalse-bot_name"><code>look_at(x, y, z, face=world.BlockFace.AUTO, sneak=False, bot_name="")</code></h3>
 <p>Rotate the bot to look at a block. With <code>face=AUTO</code> the handler raycasts each face and picks the first visible one. When a specific face is given it uses candidate points on that face (center + near-corners for UP/DOWN, top/bottom for horizontal faces) and picks the first visible candidate. If <code>sneak=False</code> and no candidate is visible standing up, it automatically retries with the crouched eye position.</p>
 <p><strong>Parameters:</strong></p>
@@ -2847,6 +2797,21 @@ carries furnace burn and cook progress) or when the chunk is loaded again.</p>
 
 <span class="c1"># Auto-find best visible face</span>
 <span class="n">world</span><span class="o">.</span><span class="n">look_at</span><span class="p">(</span><span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="look_at_entityentity_id-sneakfalse-bot_name"><code>look_at_entity(entity_id, sneak=False, bot_name="")</code></h3>
+<p>Rotate the bot to look at an entity's eyes. Entity ids come from <code>world.entities()</code> and <code>world.find_entities_near()</code> (the <code>entity_id</code> field). There is no visibility check; the bot turns toward the entity even through walls.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>entity_id</code> (<code>int</code>) - Entity id</li>
+<li><code>sneak</code> (<code>bool</code>, optional) - Aim from the crouching eye height (default: False)</li>
+<li><code>bot_name</code> (<code>str</code>, optional) - Bot name, defaults to current bot</li>
+</ul>
+<p><strong>Raises:</strong> <code>RuntimeError</code> if bot not found or not online. An unknown entity id is reported by the client in the bot console (<code>Entity &lt;id&gt; not found</code>); nothing is raised.</p>
+<div class="highlight"><pre><span></span><code><span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
+<span class="n">zombies</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_entities_near</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="s2">"x"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"y"</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="s2">"z"</span><span class="p">],</span> <span class="mi">8</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">"minecraft:zombie"</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">zombies</span><span class="p">:</span>
+    <span class="n">world</span><span class="o">.</span><span class="n">look_at_entity</span><span class="p">(</span><span class="n">zombies</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"entity_id"</span><span class="p">])</span>
+    <span class="n">bot</span><span class="o">.</span><span class="n">hold_attack</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">duration_ticks</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="interact_blockx-y-z-sneakfalse-look_at_blocktrue-faceworldblockfaceauto-bot_name"><code>interact_block(x, y, z, sneak=False, look_at_block=True, face=world.BlockFace.AUTO, bot_name="")</code></h3>
 <p>Interact with (right-click) a block at the specified position.</p>
