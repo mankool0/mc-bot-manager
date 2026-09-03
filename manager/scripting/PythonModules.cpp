@@ -493,6 +493,16 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("use_disk") = false,
               py::arg("dimension") = "",
               py::arg("bot_name") = "");
+    def_query("find_block_entities", &PythonAPI::findBlockEntities,
+              "Find block entities whose id is in types (all when the list is empty) within a horizontal "
+              "radius of (center_x, center_z) at any y, nearest first, as a list of BlockEntity. "
+              "If use_disk=True, chunks not loaded in memory are read from the saved world. "
+              "limit > 0 caps the number returned.",
+              py::arg("types"), py::arg("center_x"), py::arg("center_z"), py::arg("radius"),
+              py::arg("dimension") = "",
+              py::arg("use_disk") = false,
+              py::arg("limit") = 0,
+              py::arg("bot_name") = "");
     def_query("is_solid", &PythonAPI::isBlockSolid,
               "Check if a block state string has a solid face in the given direction. "
               "Returns True/False, or None if block registry not loaded.",
@@ -500,12 +510,15 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("face") = BlockRegistry::Direction::UP,
               py::arg("bot_name") = "");
     def_query("find_blocks", &PythonAPI::findBlocks,
-              "Find all blocks of type within radius of center, returns list of (x,y,z) tuples. "
-              "Optionally filter by block/sky light range (0-15).",
+              "Find all blocks of type within radius of center, nearest first, returns list of (x,y,z) tuples. "
+              "Optionally filter by block/sky light range (0-15). "
+              "If use_disk=True, chunks not loaded in memory are read from the saved world.",
               py::arg("block_type"), py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
               py::arg("radius"),
               py::arg("min_block_light") = 0, py::arg("max_block_light") = 15,
               py::arg("min_sky_light") = 0, py::arg("max_sky_light") = 15,
+              py::arg("dimension") = "",
+              py::arg("use_disk") = false,
               py::arg("bot_name") = "");
     def_state("entities", &PythonAPI::getEntities,
               "Get all tracked entities as list of dicts",
@@ -517,8 +530,11 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("type") = "",
               py::arg("bot_name") = "");
     def_query("find_nearest", &PythonAPI::findNearestBlock,
-              "Find nearest block matching any type in list, returns (x,y,z) tuple or None",
+              "Find nearest block matching any type in list, returns (x,y,z) tuple or None. "
+              "If use_disk=True, chunks not loaded in memory are read from the saved world.",
               py::arg("block_types"), py::arg("max_distance") = 128,
+              py::arg("dimension") = "",
+              py::arg("use_disk") = false,
               py::arg("bot_name") = "");
     def_state("loaded_chunk_count", &PythonAPI::getLoadedChunkCount,
               "Get number of loaded chunks",

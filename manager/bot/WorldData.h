@@ -174,6 +174,7 @@ public:
     void removeBlockEntity(int x, int y, int z, const QString& dimension);
     std::optional<BlockEntityData> getBlockEntity(int x, int y, int z, const QString& dimension) const;
     QVector<BlockEntityData> getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const;
+    QVector<BlockEntityData> getBlockEntitiesInDimension(const QString& dimension) const;
 
 private:
     QHash<ChunkPos, ChunkData> chunks;

@@ -334,8 +334,15 @@ public:
                                 int radius,
                                 int minBlockLight = 0, int maxBlockLight = 15,
                                 int minSkyLight = 0, int maxSkyLight = 15,
+                                const std::string &dimension = "", bool useDisk = false,
                                 const std::string &bot = "");
-    static py::object findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot = "");
+    static py::object findNearestBlock(const py::list &blockTypes, int maxDistance,
+                                       const std::string &dimension = "", bool useDisk = false,
+                                       const std::string &bot = "");
+    static std::vector<PyBlockEntity> findBlockEntities(const std::vector<std::string> &types,
+                                                        double centerX, double centerZ, double radius,
+                                                        const std::string &dimension = "", bool useDisk = false, int limit = 0,
+                                                        const std::string &bot = "");
     static int getLoadedChunkCount(const std::string &bot = "");
     static size_t getWorldMemoryUsage(const std::string &bot = "");
     static py::list getLoadedChunks(const std::string &bot = "");

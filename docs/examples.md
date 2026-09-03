@@ -121,6 +121,41 @@ def health_monitor(old_health, new_health):
         utils.log("Low health!")
 ```
 
+## Search the Saved World
+
+Find an ender chest without loading a single chunk. The manager's autosave keeps every chunk a
+bot has seen on this server, and `use_disk=True` searches it alongside memory (see
+[Saved world](api/world.md#saved-world)). A bot that respawns at spawn with an empty inventory
+picks the candidate farthest from `0, 0`, where builds near spawn are least likely to be picked
+clean, and verifies it on arrival:
+
+```python
+import math
+import baritone
+import world
+import utils
+
+hits = world.find_block_entities(["minecraft:ender_chest"], 0, 0, 5000,
+                                 dimension="minecraft:overworld", use_disk=True)
+hits.sort(key=lambda be: -math.hypot(be.x, be.z))   # farthest from spawn first
+for be in hits[:10]:
+    utils.log(f"ender chest at {be.x} {be.y} {be.z}")
+
+if hits:
+    target = hits[0]
+    baritone.goto(target.x, target.y, target.z)
+    # ... wait for arrival, then confirm the chunk still holds it
+    if world.get_block(target.x, target.y, target.z) == "minecraft:ender_chest":
+        world.interact_block(target.x, target.y, target.z)
+```
+
+The block searches take the same flags. Nether portal frames along a bearing, from the save:
+
+```python
+frames = world.find_blocks("minecraft:obsidian", 0, 64, 0, radius=2000,
+                           dimension="minecraft:the_nether", use_disk=True)
+```
+
 ## Orchestrator and Workers
 
 A global script (Global Scripts tab) that hands out mining tasks and reacts to

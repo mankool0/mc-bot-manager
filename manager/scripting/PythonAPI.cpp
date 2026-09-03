@@ -12,6 +12,7 @@
 #include "world/NBTSerializer.h"
 #include "world/RegionFile.h"
 #include "world/WorldExporter.h"
+#include "world/SavedWorldScan.h"
 #include "world/SectionCodec.h"
 #include <QDebug>
 #include <QFile>
@@ -1806,20 +1807,11 @@ py::object PythonAPI::column(const std::string &name, double interval)
 static nbt::tag_compound readChunkNBT(const WorldAutoSaver& saver, int chunkX, int chunkZ,
                                       const QString& dimension)
 {
-    QString dim = dimension.isEmpty() ? QStringLiteral("minecraft:overworld") : dimension;
-    if (dim != "minecraft:overworld" && dim != "minecraft:the_nether" && dim != "minecraft:the_end") {
-        return {};
-    }
+    QString regionDir = SavedWorldScan::regionDir(saver.getWorldPath(), saver.getDataVersion(), dimension);
+    if (regionDir.isEmpty()) return {};
 
-    QString regionDir = WorldExporter::getDimensionPath(saver.getWorldPath(), dim, saver.getDataVersion()) + "/region";
-    int regionX = chunkX >> 5;
-    int regionZ = chunkZ >> 5;
-    QString regionPath = QString("%1/r.%2.%3.mca").arg(regionDir).arg(regionX).arg(regionZ);
-
-    // RegionFile creates a missing file on open; a read must not leave empty regions behind.
-    if (!QFile::exists(regionPath)) return {};
-
-    RegionFile regionFile(regionPath);
+    QString regionPath = QString("%1/r.%2.%3.mca").arg(regionDir).arg(chunkX >> 5).arg(chunkZ >> 5);
+    RegionFile regionFile(regionPath, RegionFile::Mode::ReadOnly);
     if (!regionFile.isValid()) return {};
 
     return regionFile.readChunk(chunkX & 31, chunkZ & 31);
@@ -2416,226 +2408,237 @@ py::object PythonAPI::isBlockSolid(const std::string &blockState, BlockRegistry:
     return py::bool_(botInstance->blockRegistry->isFaceSolid(stateId.value(), face));
 }
 
+// ---------------------------------------------------------------------------
+// Block / block entity search: memory first, then the saved world
+// ---------------------------------------------------------------------------
+
+// Chunks held in memory for `dim` whose footprint reaches the disc: the memory half of a
+// search, and the set a disk scan leaves alone so nothing is reported twice.
+static QSet<ChunkPos> memoryChunksInDisc(BotInstance *botInstance, const QString &dim,
+                                         double centerX, double centerZ, double radius)
+{
+    QSet<ChunkPos> result;
+    double radiusSq = radius * radius;
+    QReadLocker locker(botInstance->worldDataLock.get());
+    const QVector<ChunkPos> loaded = botInstance->worldData.getLoadedChunks();
+    for (const ChunkPos &pos : loaded) {
+        if (!SavedWorldScan::chunkInDisc(pos.x, pos.z, centerX, centerZ, radiusSq)) continue;
+        if (!chunkIsDimension(botInstance->worldData.getChunk(pos.x, pos.z), dim)) continue;
+        result.insert(pos);
+    }
+    return result;
+}
+
+// Region directory to scan for `dim`, or empty when the bot has no save to read from.
+static QString savedRegionDir(BotInstance *botInstance, const QString &dim, bool useDisk)
+{
+    if (!useDisk) return {};
+    std::shared_ptr<WorldAutoSaver> saver = botInstance->worldAutoSaver;
+    if (!saver) return {};
+    return SavedWorldScan::regionDir(saver->getWorldPath(), saver->getDataVersion(), dim);
+}
+
+// A copy of one in-memory chunk, or nothing if it unloaded since the snapshot.
+static std::optional<ChunkData> copyChunk(BotInstance *botInstance, const ChunkPos &pos)
+{
+    QReadLocker locker(botInstance->worldDataLock.get());
+    const ChunkData *chunk = botInstance->worldData.getChunk(pos.x, pos.z);
+    if (!chunk) return std::nullopt;
+    return *chunk;
+}
+
+static SavedWorldScan::BlockQuery makeBlockQuery(double centerX, double centerY, double centerZ, int radius)
+{
+    radius = qMax(radius, 0);
+    SavedWorldScan::BlockQuery q;
+    q.centerX = centerX;
+    q.centerY = centerY;
+    q.centerZ = centerZ;
+    q.radiusSq = static_cast<double>(radius) * radius;
+    q.minY = qMax(static_cast<int>(centerY - radius), -64);
+    q.maxY = qMin(static_cast<int>(centerY + radius), 320);
+    return q;
+}
+
 py::list PythonAPI::findBlocks(const std::string &blockType, double centerX, double centerY, double centerZ,
                                 int radius,
                                 int minBlockLight, int maxBlockLight,
                                 int minSkyLight, int maxSkyLight,
+                                const std::string &dimension, bool useDisk,
                                 const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    QVector3D center(centerX, centerY, centerZ);
-    QString blockTypeQ = QString::fromStdString(blockType);
+    SavedWorldScan::BlockQuery query = makeBlockQuery(centerX, centerY, centerZ, radius);
+    query.ids = {SavedWorldScan::stripState(blockType)};
+    query.minBlockLight = minBlockLight;
+    query.maxBlockLight = maxBlockLight;
+    query.minSkyLight = minSkyLight;
+    query.maxSkyLight = maxSkyLight;
 
-    // Extract search ID once (part before '[' for block states)
-    QString searchId = blockTypeQ.contains('[') ? blockTypeQ.left(blockTypeQ.indexOf('[')) : blockTypeQ;
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    QString regionDir = savedRegionDir(botInstance, dim, useDisk);
 
-    QVector<QVector3D> results;
-
-    // Release GIL for the entire search operation to avoid blocking main thread
+    std::vector<SavedWorldScan::BlockHit> hits;
     {
         py::gil_scoped_release release;
 
-        // Calculate chunk bounds
-        int minChunkX = static_cast<int>(qFloor((centerX - radius) / 16.0));
-        int maxChunkX = static_cast<int>(qFloor((centerX + radius) / 16.0));
-        int minChunkZ = static_cast<int>(qFloor((centerZ - radius) / 16.0));
-        int maxChunkZ = static_cast<int>(qFloor((centerZ + radius) / 16.0));
-
-        // Get list of chunks to search (brief lock)
-        QVector<ChunkPos> chunksToSearch;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
-                for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
-                    if (botInstance->worldData.isChunkLoaded(cx, cz)) {
-                        chunksToSearch.append(ChunkPos{cx, cz});
-                    }
-                }
+        QSet<ChunkPos> inMemory = memoryChunksInDisc(botInstance, dim, centerX, centerZ, radius);
+        for (const ChunkPos &pos : std::as_const(inMemory)) {
+            if (auto chunk = copyChunk(botInstance, pos)) {
+                SavedWorldScan::matchChunk(*chunk, query, hits);
             }
         }
 
-    // Now search each chunk with fine-grained locking
-    for (const ChunkPos &chunkPos : chunksToSearch) {
-        // Copy chunk data under lock
-        ChunkData chunkCopy;
-        {
-            QReadLocker locker(botInstance->worldDataLock.get());
-            const ChunkData* chunk = botInstance->worldData.getChunk(chunkPos.x, chunkPos.z);
-            if (chunk) {
-                chunkCopy = *chunk;
-            } else {
-                continue;  // Chunk unloaded between checks
-            }
+        if (!regionDir.isEmpty()) {
+            std::vector<SavedWorldScan::BlockHit> saved = SavedWorldScan::findBlocks(regionDir, query, inMemory);
+            hits.insert(hits.end(), saved.begin(), saved.end());
         }
-        // Lock released - now search the copy without holding lock
 
-        // Search this chunk
-        int minY = qMax(static_cast<int>(centerY - radius), -64);
-        int maxY = qMin(static_cast<int>(centerY + radius), 320);
-        double radiusSq = static_cast<double>(radius) * radius;
-
-        for (int x = 0; x < 16; ++x) {
-            int worldX = chunkPos.x * 16 + x;
-            double dx = worldX - centerX;
-            double dxSq = dx * dx;
-
-            for (int z = 0; z < 16; ++z) {
-                int worldZ = chunkPos.z * 16 + z;
-                double dz = worldZ - centerZ;
-                double dzSq = dz * dz;
-                double horizDistSq = dxSq + dzSq;
-
-                if (horizDistSq > radiusSq) continue;
-
-                for (int y = minY; y <= maxY; ++y) {
-                    double dy = y - centerY;
-                    double distSq = horizDistSq + dy*dy;
-
-                    if (distSq > radiusSq) continue;
-
-                    auto block = chunkCopy.getBlock(x, y, z);
-                    if (block) {
-                        // Extract block ID (part before '[' for block states)
-                        QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
-                        if (blockId == searchId) {
-                            if (minBlockLight == 0 && maxBlockLight == 15 && minSkyLight == 0 && maxSkyLight == 15) {
-                                results.append(QVector3D(worldX, y, worldZ));
-                            } else {
-                                auto light = chunkCopy.getLight(x, y, z);
-                                if (light.block >= minBlockLight && light.block <= maxBlockLight &&
-                                    light.sky   >= minSkyLight   && light.sky   <= maxSkyLight) {
-                                    results.append(QVector3D(worldX, y, worldZ));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        std::stable_sort(hits.begin(), hits.end(), [](const auto &a, const auto &b) { return a.distSq < b.distSq; });
     }
-    } // Release GIL scope ends - reacquire for Python object creation
 
     py::list positions;
-    for (const QVector3D &pos : results) {
-        py::tuple coord = py::make_tuple(pos.x(), pos.y(), pos.z());
-        positions.append(coord);
+    for (const SavedWorldScan::BlockHit &hit : hits) {
+        positions.append(py::make_tuple(static_cast<double>(hit.x), static_cast<double>(hit.y), static_cast<double>(hit.z)));
     }
-
     return positions;
 }
 
-py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistance, const std::string &bot)
+py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistance,
+                                       const std::string &dimension, bool useDisk, const std::string &bot)
 {
     QString botName = resolveBotName(bot);
     BotInstance *botInstance = ensureBotOnline(botName);
 
-    // Convert Python list to QStringList and extract block IDs
-    QStringList types;
-    QStringList searchIds;
+    std::vector<std::string> ids;
     for (const auto &item : blockTypes) {
-        QString type = QString::fromStdString(item.cast<std::string>());
-        types.append(type);
-        // Extract ID (part before '[' for block states)
-        searchIds.append(type.contains('[') ? type.left(type.indexOf('[')) : type);
+        ids.push_back(SavedWorldScan::stripState(item.cast<std::string>()));
     }
 
-    std::optional<QVector3D> nearest;
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    QString regionDir = savedRegionDir(botInstance, dim, useDisk);
 
-    // Release GIL for the entire search operation to avoid blocking main thread
+    std::optional<SavedWorldScan::BlockHit> nearest;
     {
         py::gil_scoped_release release;
 
-        // Get bot position (brief lock)
         QVector3D start;
         {
             QReadLocker locker(botInstance->worldDataLock.get());
             start = botInstance->position;
         }
 
-    // Calculate chunk bounds
-    int minChunkX = static_cast<int>(qFloor((start.x() - maxDistance) / 16.0));
-    int maxChunkX = static_cast<int>(qFloor((start.x() + maxDistance) / 16.0));
-    int minChunkZ = static_cast<int>(qFloor((start.z() - maxDistance) / 16.0));
-    int maxChunkZ = static_cast<int>(qFloor((start.z() + maxDistance) / 16.0));
+        SavedWorldScan::BlockQuery query = makeBlockQuery(start.x(), start.y(), start.z(), maxDistance);
+        query.ids = std::move(ids);
+        query.inclusive = false;
 
-    // Get list of chunks to search (brief lock)
-    QVector<ChunkPos> chunksToSearch;
-    {
-        QReadLocker locker(botInstance->worldDataLock.get());
-        for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
-            for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
-                if (botInstance->worldData.isChunkLoaded(cx, cz)) {
-                    chunksToSearch.append(ChunkPos{cx, cz});
+        // Nearest chunks first, so each one tightens the bound the rest are checked against.
+        QSet<ChunkPos> inMemory = memoryChunksInDisc(botInstance, dim, start.x(), start.z(), maxDistance);
+        QVector<ChunkPos> ordered(inMemory.begin(), inMemory.end());
+        auto chunkDistSq = [&](const ChunkPos &pos) {
+            double dx = qMax(0.0, qMax(pos.x * 16 - start.x(), start.x() - (pos.x * 16 + 15)));
+            double dz = qMax(0.0, qMax(pos.z * 16 - start.z(), start.z() - (pos.z * 16 + 15)));
+            return dx * dx + dz * dz;
+        };
+        std::sort(ordered.begin(), ordered.end(), [&](const ChunkPos &a, const ChunkPos &b) {
+            return chunkDistSq(a) < chunkDistSq(b);
+        });
+
+        std::vector<SavedWorldScan::BlockHit> hits;
+        for (const ChunkPos &pos : std::as_const(ordered)) {
+            if (chunkDistSq(pos) >= query.radiusSq) break;
+            auto chunk = copyChunk(botInstance, pos);
+            if (!chunk) continue;
+            hits.clear();
+            SavedWorldScan::matchChunk(*chunk, query, hits);
+            for (const SavedWorldScan::BlockHit &hit : hits) {
+                if (hit.distSq < query.radiusSq) {
+                    query.radiusSq = hit.distSq;
+                    nearest = hit;
                 }
+            }
+        }
+
+        if (!regionDir.isEmpty()) {
+            if (auto saved = SavedWorldScan::findNearestBlock(regionDir, query, inMemory)) {
+                nearest = saved;
             }
         }
     }
 
-    // Search each chunk with fine-grained locking
-    double nearestDistSq = static_cast<double>(maxDistance) * maxDistance;
+    if (nearest) {
+        return py::make_tuple(static_cast<double>(nearest->x), static_cast<double>(nearest->y), static_cast<double>(nearest->z));
+    }
+    return py::none();
+}
 
-    for (const ChunkPos &chunkPos : chunksToSearch) {
-        // Copy chunk data under lock
-        ChunkData chunkCopy;
+std::vector<PyBlockEntity> PythonAPI::findBlockEntities(const std::vector<std::string> &types,
+                                                        double centerX, double centerZ, double radius,
+                                                        const std::string &dimension, bool useDisk, int limit,
+                                                        const std::string &bot)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    radius = qMax(radius, 0.0);
+    QString dim = dimension.empty() ? botInstance->dimension : QString::fromStdString(dimension);
+    QString regionDir = savedRegionDir(botInstance, dim, useDisk);
+
+    // Nearest first across both sources, then converted; `limit` is applied before conversion.
+    struct Ranked {
+        double distSq;
+        bool fromDisk;
+        size_t index;
+    };
+    QVector<BlockEntityData> fromMemory;
+    std::vector<SavedWorldScan::BlockEntityHit> fromDisk;
+    std::vector<Ranked> ranked;
+    {
+        py::gil_scoped_release release;
+
+        double radiusSq = radius * radius;
+        QSet<ChunkPos> inMemory = memoryChunksInDisc(botInstance, dim, centerX, centerZ, radius);
         {
             QReadLocker locker(botInstance->worldDataLock.get());
-            const ChunkData* chunk = botInstance->worldData.getChunk(chunkPos.x, chunkPos.z);
-            if (chunk) {
-                chunkCopy = *chunk;
-            } else {
-                continue;
+            const QVector<BlockEntityData> all = botInstance->worldData.getBlockEntitiesInDimension(dim);
+            for (const BlockEntityData &be : all) {
+                if (!inMemory.contains(ChunkPos(be.x >> 4, be.z >> 4))) continue;
+                if (!types.empty() && std::find(types.begin(), types.end(), be.type.toStdString()) == types.end()) continue;
+                double dx = be.x - centerX;
+                double dz = be.z - centerZ;
+                double distSq = dx * dx + dz * dz;
+                if (distSq > radiusSq) continue;
+                ranked.push_back({distSq, false, static_cast<size_t>(fromMemory.size())});
+                fromMemory.append(be);
             }
         }
-        // Lock released
 
-        // Search this chunk
-        int minY = qMax(static_cast<int>(start.y() - maxDistance), -64);
-        int maxY = qMin(static_cast<int>(start.y() + maxDistance), 320);
-
-        for (int x = 0; x < 16; ++x) {
-            int worldX = chunkPos.x * 16 + x;
-            double dx = worldX - start.x();
-            double dxSq = dx * dx;
-
-            for (int z = 0; z < 16; ++z) {
-                int worldZ = chunkPos.z * 16 + z;
-                double dz = worldZ - start.z();
-                double dzSq = dz * dz;
-                double horizDistSq = dxSq + dzSq;
-
-                if (horizDistSq >= nearestDistSq) continue;
-
-                for (int y = minY; y <= maxY; ++y) {
-                    double dy = y - start.y();
-                    double distSq = horizDistSq + dy*dy;
-
-                    if (distSq >= nearestDistSq) continue;
-
-                    auto block = chunkCopy.getBlock(x, y, z);
-                    if (block) {
-                        // Extract block ID (part before '[' for block states)
-                        QString blockId = block->contains('[') ? block->left(block->indexOf('[')) : *block;
-                        for (const QString& searchId : searchIds) {
-                            if (blockId == searchId) {
-                                nearest = QVector3D(worldX, y, worldZ);
-                                nearestDistSq = distSq;
-                                break;
-                            }
-                        }
-                    }
-                }
+        if (!regionDir.isEmpty()) {
+            fromDisk = SavedWorldScan::findBlockEntities(regionDir, types, centerX, centerZ, radius, inMemory);
+            for (size_t i = 0; i < fromDisk.size(); ++i) {
+                ranked.push_back({fromDisk[i].distSq, true, i});
             }
         }
-    }
-    } // Release GIL scope ends - reacquire for Python object creation
 
-    if (nearest.has_value()) {
-        return py::make_tuple(nearest.value().x(), nearest.value().y(), nearest.value().z());
+        std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked &a, const Ranked &b) { return a.distSq < b.distSq; });
+        if (limit > 0 && ranked.size() > static_cast<size_t>(limit)) {
+            ranked.resize(static_cast<size_t>(limit));
+        }
     }
 
-    return py::none();
+    std::vector<PyBlockEntity> result;
+    result.reserve(ranked.size());
+    for (const Ranked &r : ranked) {
+        if (r.fromDisk) {
+            const SavedWorldScan::BlockEntityHit &hit = fromDisk[r.index];
+            result.push_back(diskBlockEntityToPy(*hit.nbt, botInstance->itemRegistry, hit.nbt));
+        } else {
+            result.push_back(buildBlockEntity(fromMemory[r.index], true));
+        }
+    }
+    return result;
 }
 
 int PythonAPI::getLoadedChunkCount(const std::string &bot)

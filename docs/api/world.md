@@ -4,6 +4,23 @@ World data queries and block interaction.
 
 The world module provides access to chunk data collected from the Minecraft client, enabling block queries and world interaction. Chunks are automatically synchronized and cached in memory.
 
+## Saved world
+
+Every query that takes `use_disk` can also read the world the manager saves to disk (the `.mca`
+autosave under the world save directory, one save per server). Memory comes first: a chunk that is
+loaded in memory for the requested dimension is answered from memory only, and disk is consulted
+for the chunks that are not. Nothing is reported twice. When the save path does not exist, saving
+is disabled, or a chunk was never saved, the disk side contributes nothing - no error is raised.
+
+The area searches (`find_blocks`, `find_nearest`, `find_block_entities`) scan by region rather
+than by chunk: the region files covering the search disc are opened once each, split across worker
+threads, and only the saved chunks inside the disc that are not in memory are decoded. Only the
+parts of a chunk the query needs are parsed (the palette of a section is checked before its block
+data), so a search over a few hundred regions takes well under a second to a few seconds,
+depending on disk and cores, and never runs on the manager's UI thread. `dimension` follows `get_block`: it defaults to the bot's current dimension, memory is read
+when the loaded chunk belongs to that dimension, and the save's `region`, `DIM-1/region`,
+`DIM1/region` (or `dimensions/...` on 26.1+) directory is read for the rest.
+
 ## Block Queries
 
 ### `get_block(x, y, z, use_disk=False, dimension="", bot_name="")`
@@ -44,15 +61,16 @@ if block:
 block = world.get_block(100, 64, 100, use_disk=True, dimension="minecraft:the_nether")
 ```
 
-### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, bot_name="")`
+### `find_blocks(block_type, center_x, center_y, center_z, radius, min_block_light=0, max_block_light=15, min_sky_light=0, max_sky_light=15, dimension="", use_disk=False, bot_name="")`
 
 Find all blocks of a specific type within a spherical radius, with optional light level filters.
 
-This function only searches loaded chunks. Blocks in unloaded chunks will not be found.
+By default only loaded chunks are searched. With `use_disk=True`, chunks inside the radius that are
+not loaded in memory are read from the [saved world](#saved-world).
 
 **Parameters:**
 
-- `block_type` (`str`) - Block type to search for (e.g., `"minecraft:diamond_ore"`)
+- `block_type` (`str`) - Block type to search for (e.g., `"minecraft:diamond_ore"`). A `[state]` suffix is ignored; every state of the block matches
 - `center_x` (`float`) - Search center X coordinate
 - `center_y` (`float`) - Search center Y coordinate
 - `center_z` (`float`) - Search center Z coordinate
@@ -61,9 +79,11 @@ This function only searches loaded chunks. Blocks in unloaded chunks will not be
 - `max_block_light` (`int`, optional) - Maximum block light level, inclusive (default: 15)
 - `min_sky_light` (`int`, optional) - Minimum sky light level, inclusive (default: 0)
 - `max_sky_light` (`int`, optional) - Maximum sky light level, inclusive (default: 15)
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as `get_block`
+- `use_disk` (`bool`, optional) - Also search saved chunks that are not loaded (default: `False`)
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
-**Returns:** `list[tuple]` - List of block positions as `(x, y, z)` tuples of floats
+**Returns:** `list[tuple]` - Block positions as `(x, y, z)` tuples of floats, nearest to the center first
 
 **Note:** Returns float coordinates. Convert to int for block operations: `int(x), int(y), int(z)`
 
@@ -90,18 +110,26 @@ dark_air = world.find_blocks("minecraft:air",
                              radius=128,
                              max_block_light=0,
                              max_sky_light=0)
+
+# Every obsidian block within 2000 blocks of the nether origin, loaded or saved
+obsidian = world.find_blocks("minecraft:obsidian", 0, 64, 0, radius=2000,
+                             dimension="minecraft:the_nether", use_disk=True)
 ```
 
-### `find_nearest(block_types, max_distance=128, bot_name="")`
+### `find_nearest(block_types, max_distance=128, dimension="", use_disk=False, bot_name="")`
 
 Find the nearest block matching any of the specified types.
 
-This function searches from the bot's current position and only searches loaded chunks.
+This function searches from the bot's current position. By default only loaded chunks are
+searched; with `use_disk=True`, chunks within `max_distance` that are not loaded are read from the
+[saved world](#saved-world) as well.
 
 **Parameters:**
 
-- `block_types` (`list[str]`) - List of block types to search for
+- `block_types` (`list[str]`) - List of block types to search for (a `[state]` suffix is ignored)
 - `max_distance` (`int`, optional) - Maximum search distance in blocks (default: 128)
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as `get_block`
+- `use_disk` (`bool`, optional) - Also search saved chunks that are not loaded (default: `False`)
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 **Returns:** `tuple` - Position as `(x, y, z)` tuple of floats, or `None` if no matching block found
@@ -172,6 +200,9 @@ if ore:
     print(f"Ore type: {block}")
 else:
     print("No ore found within 50 blocks")
+
+# Nearest saved ender chest, even if the chunk is not loaded
+echest = world.find_nearest(["minecraft:ender_chest"], max_distance=2000, use_disk=True)
 ```
 
 ## Block Entities
@@ -314,6 +345,51 @@ utils.log(f"Found {len(chests)} chests in saved chunk (312, -5)")
 # Scan a chunk in the nether from disk
 nether_ents = world.get_block_entities_in_chunk(10, 10,
     use_disk=True, dimension="minecraft:the_nether")
+```
+
+---
+
+### `find_block_entities(types, center_x, center_z, radius, dimension="", use_disk=False, limit=0, bot_name="")`
+
+Find block entities of the given types within a horizontal radius of a point, at any y.
+
+By default only loaded chunks are searched. With `use_disk=True`, chunks inside the radius that are
+not loaded in memory are read from the [saved world](#saved-world), so one call answers "every ender
+chest within 5000 blocks of here" without loading anything.
+
+**Parameters:**
+
+- `types` (`list[str]`) - Block entity ids to look for, e.g. `["minecraft:ender_chest"]` or `["minecraft:chest", "minecraft:barrel"]`. An empty list matches every block entity
+- `center_x` (`float`) - Search center X coordinate
+- `center_z` (`float`) - Search center Z coordinate
+- `radius` (`float`) - Horizontal search radius in blocks; the search is a disc, every y is included
+- `dimension` (`str`, optional) - Dimension string. Defaults to the bot's current dimension; same semantics as `get_block`
+- `use_disk` (`bool`, optional) - Also search saved chunks that are not loaded (default: `False`)
+- `limit` (`int`, optional) - Return at most this many, nearest first. `0` means no limit (default)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `list[BlockEntity]` - the same objects `get_block_entity` returns, sorted by horizontal distance from `(center_x, center_z)` ascending. `items` is filled where it is known (opened this session from memory, or saved with the chunk)
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+import math
+
+# Ender chests in the saved overworld within 5000 blocks of spawn, farthest first
+hits = world.find_block_entities(["minecraft:ender_chest"], 0, 0, 5000,
+                                 dimension="minecraft:overworld", use_disk=True)
+hits.sort(key=lambda be: -math.hypot(be.x, be.z))
+for be in hits[:10]:
+    utils.log(f"ender chest at {be.x} {be.y} {be.z}")
+
+# The five nearest containers of any kind, loaded or saved
+pos = bot.position()
+nearby = world.find_block_entities(["minecraft:chest", "minecraft:trapped_chest", "minecraft:barrel"],
+                                   pos["x"], pos["z"], 500, use_disk=True, limit=5)
+
+# Everything with a block entity in the loaded nether chunks around the bot
+everything = world.find_block_entities([], pos["x"], pos["z"], 200,
+                                       dimension="minecraft:the_nether")
 ```
 
 ---
