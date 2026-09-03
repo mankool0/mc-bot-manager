@@ -267,7 +267,7 @@ qt_finalize_executable(mc-bot-manager)
 FetchContent_Declare(
     prismlauncher
     GIT_REPOSITORY https://github.com/PrismLauncher/PrismLauncher.git
-    GIT_TAG        develop
+    GIT_TAG        11.1.0
     GIT_SHALLOW    TRUE
     SOURCE_SUBDIR  _no_build
 )
