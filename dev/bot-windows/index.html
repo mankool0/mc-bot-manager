@@ -497,6 +497,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#prism-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prism Launcher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auto-tiling-from-the-manager" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -943,6 +954,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#prism-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prism Launcher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auto-tiling-from-the-manager" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -998,7 +1020,7 @@
 <h1 id="bot-windows">Bot Windows</h1>
 <p>The client mod changes how each bot's game window is created so that launching bots does not
 interrupt whatever you are doing, and so that the windows can be told apart. The manager can then
-tile them (see below).</p>
+tile them (see below). The Prism hook does the same for Prism Launcher's own windows.</p>
 <h2 id="what-the-mod-does">What the mod does</h2>
 <ul>
 <li><strong>Window class</strong>: every bot window is created with the window class <code>mcbot-&lt;account&gt;</code>
@@ -1012,6 +1034,12 @@ tile them (see below).</p>
   the window manager has the final say over freshly mapped windows, and some (KWin at its default
   focus-stealing level) still activate them - see the KDE rule below. Native Wayland compositors
   ignore the hints entirely.</li>
+<li><strong>Shown in place</strong>: the window is created hidden and stays that way until the manager has sent
+  its placement, which is what maps it. A new bot therefore appears straight in its cell on the
+  bot monitor (or, with tiling off, wherever the window manager puts it) instead of landing on the
+  main screen first and being moved a moment later. The game loads behind the scenes meanwhile;
+  the manager still shows the bot starting. Should the manager never answer, the window shows
+  itself after 10 seconds.</li>
 <li><strong>X11 over Wayland</strong>: on a Wayland desktop the game runs under XWayland rather than as a native
   Wayland client, because Wayland does not let applications position their own windows and the
   manager's tiling would be a no-op. Minecraft 26.1+ already prefers X11 on its own; the mod extends
@@ -1031,17 +1059,44 @@ tile them (see below).</p>
 <td>Keep GLFW's default behaviour where a new window takes focus</td>
 </tr>
 <tr>
+<td><code>-Dmcbot.window.deferShow=false</code></td>
+<td>Map the window as soon as the game creates it instead of waiting for the manager's placement</td>
+</tr>
+<tr>
 <td><code>-Dmcbot.window.nativeWayland=true</code></td>
 <td>Let GLFW pick native Wayland on 1.21.x. Window placement will not work</td>
 </tr>
 </tbody>
 </table>
 <p>The window class and title are always applied.</p>
+<h2 id="prism-launcher">Prism Launcher</h2>
+<p>Prism opens windows of its own: the main window when the manager starts it, and on every bot
+launch a progress dialog plus, if Prism's <em>Show console while the game is running</em> option is on,
+the instance console. With the Prism hook enabled (Settings -&gt; Prism Launcher -&gt; <strong>Enable Prism
+hook</strong>) the hook library marks every top-level Prism window as <em>show without activating</em> before
+it appears. Qt turns that into <code>_NET_WM_USER_TIME = 0</code> on X11, a no-activate show on Windows and
+no activation request on Wayland, so Prism does not ask for focus when it opens a window.</p>
+<p>The same limits as for the game windows apply: the window manager decides in the end. KWin on
+Wayland at its default focus-stealing level activates every new window regardless, and on X11 Qt
+asks the window manager to activate a modal dialog (the launch progress dialog) once it is
+mapped, which KWin at its default level grants. See the KDE section below for what helps where.</p>
+<p>Prism's windows carry the application id <code>org.prismlauncher.PrismLauncher</code> (the <code>app_id</code> on
+Wayland; the X11 class is <code>prismlauncher</code>).</p>
+<p>To keep Prism off the screen altogether, enable <strong>Keep Prism windows minimized</strong> next to the hook
+setting (takes effect the next time the manager starts Prism). Every window Prism opens then
+starts minimized: the main window, the launch progress dialog, the instance console, and also any
+error or login prompt, so check the taskbar if a launch seems stuck. Bring Prism up from the
+taskbar when you need it; on X11 and Windows the manager's <em>Launch Prism Launcher</em> action restores
+it as well, on Wayland the compositor only lets it flag the taskbar entry. Prism's output is in the
+manager's log either way.</p>
+<p>Set <code>MCBM_PRISM_FOCUS=1</code> in the manager's environment to keep Qt's default behaviour. Prism
+inherits it from the manager, Flatpak included. Without the hook Prism is left alone entirely.</p>
 <h2 id="auto-tiling-from-the-manager">Auto-tiling from the manager</h2>
 <p>Settings -&gt; Bots -&gt; <strong>Game Windows</strong>:</p>
 <ul>
 <li><strong>Tile bot windows on connect</strong> - when a bot connects, the manager moves and resizes its window
-  into its cell of a grid on the chosen monitor. A bot's cell is its position in the bot list
+  into its cell of a grid on the chosen monitor. The window is still hidden at that point and
+  appears directly in the cell. A bot's cell is its position in the bot list
   (first bot = top-left, then row by row), so every bot has a fixed slot: a crashed bot leaves
   its cell empty and takes it back when it relaunches, and nothing else moves. With more bots
   than cells the numbering wraps and windows overlap.</li>
@@ -1070,6 +1125,22 @@ still grab focus, add a window rule once and it applies to every bot:</p>
 manager's auto-tiling works as on any X11 desktop; KWin rules with <strong>Screen</strong>, <strong>Size</strong>, or
 <strong>Position</strong> properties (<em>Apply Initially</em>) are an alternative for static layouts, one rule per bot
 matching the exact class <code>mcbot-&lt;account&gt;</code>.</p>
+<p>Prism is a different case, because it runs as a native Wayland client, and for those KWin only
+consults the per-window rule once the <em>global</em> level (System Settings -&gt; Window Management -&gt;
+Window Behavior -&gt; <strong>Focus stealing prevention</strong>) is at least <strong>Medium</strong>. At the default <strong>Low</strong> it
+activates every new Wayland window before looking at rules, so a Prism rule alone changes nothing
+there (the game windows are XWayland windows, which take the X11 path where the rule does work).
+The options:</p>
+<ul>
+<li><strong>Keep Prism windows minimized</strong> in the manager (see above) sidesteps activation entirely: a
+  window that asks to start minimized is never activated. This works at any level.</li>
+<li>Or raise the global level to <strong>Medium</strong>, which only affects windows that open without a fresh
+  activation token (applications you start yourself still get focus), and add a rule for Prism:
+  window class <strong>Regular Expression</strong> <code>(?i)prismlauncher</code>, <strong>Focus stealing prevention</strong> -&gt; Force
+  -&gt; <strong>High</strong>. Prism's windows then open under whatever you are working in, on the screen KWin
+  picks. Give the same rule a <strong>Screen</strong> property (<em>Apply Initially</em>) pointing at the bot monitor
+  to keep them off the main screen.</li>
+</ul>
 <h2 id="other-compositors">Other compositors</h2>
 <ul>
 <li><strong>GNOME (Wayland)</strong>: no window rules and no public placement API; GNOME applies its own
@@ -1077,9 +1148,10 @@ matching the exact class <code>mcbot-&lt;account&gt;</code>.</p>
   window.</li>
 <li><strong>Sway / i3</strong>: <code>no_focus [app_id="^mcbot-"]</code> keeps focus where it is;
   <code>for_window [app_id="^mcbot-"] move to output DP-1</code> and friends handle placement
-  (<code>class</code> instead of <code>app_id</code> on i3).</li>
-<li><strong>X11 window managers</strong>: match <code>WM_CLASS</code> <code>mcbot-&lt;account&gt;</code> in the WM's rules; tools like
-  <code>xdotool search --class mcbot-</code> and <code>wmctrl</code> also see the windows.</li>
+  (<code>class</code> instead of <code>app_id</code> on i3). <code>no_focus [app_id="^org.prismlauncher.PrismLauncher$"]</code>
+  does the same for Prism.</li>
+<li><strong>X11 window managers</strong>: match <code>WM_CLASS</code> <code>mcbot-&lt;account&gt;</code> (and <code>prismlauncher</code>) in the WM's
+  rules; tools like <code>xdotool search --class mcbot-</code> and <code>wmctrl</code> also see the windows.</li>
 </ul>
 
 
