@@ -11,8 +11,10 @@
 #include "world/ItemRegistry.h"
 #include "world/NBTSerializer.h"
 #include "world/RegionFile.h"
+#include "world/WorldExporter.h"
 #include "world/SectionCodec.h"
 #include <QDebug>
+#include <QFile>
 #include <QDeadlineTimer>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -1798,27 +1800,24 @@ py::object PythonAPI::column(const std::string &name, double interval)
 // Private disk-read helpers
 // ---------------------------------------------------------------------------
 
-static QString dimensionRegionPath(const QString& worldPath, const QString& dimension)
-{
-    if (dimension == "minecraft:overworld" || dimension.isEmpty()) {
-        return worldPath + "/region";
-    } else if (dimension == "minecraft:the_nether") {
-        return worldPath + "/DIM-1/region";
-    } else if (dimension == "minecraft:the_end") {
-        return worldPath + "/DIM1/region";
-    }
-    return {};
-}
-
-static nbt::tag_compound readChunkNBT(const QString& worldPath, int chunkX, int chunkZ,
+// Reads a chunk from the saved world. The region directory depends on the save's data version
+// (pre-26.1: region/, DIM-1/region, DIM1/region; 26.1+: dimensions/minecraft/<dim>/region), so
+// the same path logic as the writer (WorldExporter::getDimensionPath) is used here.
+static nbt::tag_compound readChunkNBT(const WorldAutoSaver& saver, int chunkX, int chunkZ,
                                       const QString& dimension)
 {
-    QString regionDir = dimensionRegionPath(worldPath, dimension);
-    if (regionDir.isEmpty()) return {};
+    QString dim = dimension.isEmpty() ? QStringLiteral("minecraft:overworld") : dimension;
+    if (dim != "minecraft:overworld" && dim != "minecraft:the_nether" && dim != "minecraft:the_end") {
+        return {};
+    }
 
+    QString regionDir = WorldExporter::getDimensionPath(saver.getWorldPath(), dim, saver.getDataVersion()) + "/region";
     int regionX = chunkX >> 5;
     int regionZ = chunkZ >> 5;
     QString regionPath = QString("%1/r.%2.%3.mca").arg(regionDir).arg(regionX).arg(regionZ);
+
+    // RegionFile creates a missing file on open; a read must not leave empty regions behind.
+    if (!QFile::exists(regionPath)) return {};
 
     RegionFile regionFile(regionPath);
     if (!regionFile.isValid()) return {};
@@ -2229,11 +2228,10 @@ py::object PythonAPI::getBlock(double x, double y, double z, bool useDisk, const
         return py::none();
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+        chunkNbt = readChunkNBT(*botInstance->worldAutoSaver, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("sections")) return py::none();
@@ -2276,11 +2274,10 @@ py::object PythonAPI::getLight(double x, double y, double z, bool useDisk, const
         return py::none();
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
     nbt::tag_compound chunkNbt;
     {
         py::gil_scoped_release gil;
-        chunkNbt = readChunkNBT(worldPath, ix >> 4, iz >> 4, dim);
+        chunkNbt = readChunkNBT(*botInstance->worldAutoSaver, ix >> 4, iz >> 4, dim);
     }
 
     if (!chunkNbt.has_key("sections")) return py::none();
@@ -2323,12 +2320,11 @@ std::optional<PyBlockEntity> PythonAPI::getBlockEntity(double x, double y, doubl
         return std::nullopt;
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
     // Held by shared_ptr because the block entity handed back aliases into it for `nbt`.
     std::shared_ptr<const nbt::tag_compound> root;
     {
         py::gil_scoped_release gil;
-        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(worldPath, ix >> 4, iz >> 4, dim));
+        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(*botInstance->worldAutoSaver, ix >> 4, iz >> 4, dim));
     }
 
     if (!root->has_key("block_entities")) {
@@ -2389,11 +2385,10 @@ std::vector<PyBlockEntity> PythonAPI::getBlockEntitiesInChunk(int chunkX, int ch
         return {};
     }
 
-    QString worldPath = botInstance->worldAutoSaver->getWorldPath();
     std::shared_ptr<const nbt::tag_compound> root;
     {
         py::gil_scoped_release gil;
-        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(worldPath, chunkX, chunkZ, dim));
+        root = std::make_shared<const nbt::tag_compound>(readChunkNBT(*botInstance->worldAutoSaver, chunkX, chunkZ, dim));
     }
 
     if (!root->has_key("block_entities")) return {};
