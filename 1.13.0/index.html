@@ -484,6 +484,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -925,11 +953,11 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">baritone</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handle_commands</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!goto spawn&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!goto spawn"</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Going to spawn!&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Going to spawn!"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="documentation">Documentation</h2>
 <ul>
@@ -937,6 +965,7 @@
 <li><a href="api/">API Reference</a> - Complete API documentation</li>
 <li><a href="examples/">Examples</a> - Code examples</li>
 <li><a href="events/">Events</a> - Available events</li>
+<li><a href="bot-windows/">Bot Windows</a> - Window class, title, and focus behaviour of bot windows</li>
 </ul>
 
 

@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -863,6 +891,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#search-the-saved-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search the Saved World
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#orchestrator-and-workers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1001,6 +1040,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#search-the-saved-world" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search the Saved World
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#orchestrator-and-workers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1036,10 +1086,10 @@
 <p>Respond to chat messages:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handle_chat</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!hello&quot;</span><span class="p">:</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!hello"</span><span class="p">:</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Hello </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">!"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="query-bot-state">Query Bot State</h2>
 <p>Get bot information:</p>
@@ -1050,9 +1100,9 @@
 <span class="n">hunger</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">hunger</span><span class="p">()</span>
 <span class="n">dim</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">dimension</span><span class="p">()</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Position: </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Health: </span><span class="si">{</span><span class="n">health</span><span class="si">}</span><span class="s2">, Hunger: </span><span class="si">{</span><span class="n">hunger</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dimension: </span><span class="si">{</span><span class="n">dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Position: </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'y'</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Health: </span><span class="si">{</span><span class="n">health</span><span class="si">}</span><span class="s2">, Hunger: </span><span class="si">{</span><span class="n">hunger</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Dimension: </span><span class="si">{</span><span class="n">dim</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="control-baritone">Control Baritone</h2>
 <p>Navigate and mine:</p>
@@ -1062,10 +1112,10 @@
 <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
 
 <span class="c1"># Follow player</span>
-<span class="n">baritone</span><span class="o">.</span><span class="n">follow</span><span class="p">(</span><span class="s2">&quot;PlayerName&quot;</span><span class="p">)</span>
+<span class="n">baritone</span><span class="o">.</span><span class="n">follow</span><span class="p">(</span><span class="s2">"PlayerName"</span><span class="p">)</span>
 
 <span class="c1"># Mine blocks</span>
-<span class="n">baritone</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="s2">&quot;diamond_ore&quot;</span><span class="p">)</span>
+<span class="n">baritone</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="s2">"diamond_ore"</span><span class="p">)</span>
 
 <span class="c1"># Cancel task</span>
 <span class="n">baritone</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
@@ -1075,23 +1125,23 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">meteor</span>
 
 <span class="c1"># Enable module</span>
-<span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
+<span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
 
 <span class="c1"># Configure setting</span>
-<span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">,</span> <span class="s2">&quot;health&quot;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+<span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">,</span> <span class="s2">"health"</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
 
 <span class="c1"># Toggle module</span>
-<span class="n">meteor</span><span class="o">.</span><span class="n">toggle</span><span class="p">(</span><span class="s2">&quot;kill-aura&quot;</span><span class="p">)</span>
+<span class="n">meteor</span><span class="o">.</span><span class="n">toggle</span><span class="p">(</span><span class="s2">"kill-aura"</span><span class="p">)</span>
 
 <span class="c1"># Disable module</span>
-<span class="n">meteor</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
+<span class="n">meteor</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="logging">Logging</h2>
 <p>Log messages to console:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">utils</span>
 
-<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Script started&quot;</span><span class="p">)</span>
-<span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Something went wrong&quot;</span><span class="p">)</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Script started"</span><span class="p">)</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"Something went wrong"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="combined-example">Combined Example</h2>
 <p>Full script using multiple features:</p>
@@ -1101,33 +1151,61 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">utils</span>
 
 <span class="c1"># Enable modules on connect</span>
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;player_state&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"player_state"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_connect</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
-    <span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;auto-totem enabled&quot;</span><span class="p">)</span>
+    <span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"auto-totem enabled"</span><span class="p">)</span>
 
 <span class="c1"># Handle chat commands</span>
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handle_commands</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!follow&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!follow"</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">follow</span><span class="p">(</span><span class="n">sender</span><span class="p">)</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Following </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Following </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!stop&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!stop"</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Stopped&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Stopped"</span><span class="p">)</span>
 
-    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!status&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!status"</span><span class="p">:</span>
         <span class="n">pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
         <span class="n">health</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">health</span><span class="p">()</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HP: </span><span class="si">{</span><span class="n">health</span><span class="si">}</span><span class="s2"> Pos: </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;y&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"HP: </span><span class="si">{</span><span class="n">health</span><span class="si">}</span><span class="s2"> Pos: </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'x'</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'y'</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">pos</span><span class="p">[</span><span class="s1">'z'</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Monitor health</span>
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;health_change&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"health_change"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health_monitor</span><span class="p">(</span><span class="n">old_health</span><span class="p">,</span> <span class="n">new_health</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">new_health</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Low health!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Low health!"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="search-the-saved-world">Search the Saved World</h2>
+<p>Find an ender chest without loading a single chunk. The manager's autosave keeps every chunk a
+bot has seen on this server, and <code>use_disk=True</code> searches it alongside memory (see
+<a href="../api/world/#saved-world">Saved world</a>). A bot that respawns at spawn with an empty inventory
+picks the candidate farthest from <code>0, 0</code>, where builds near spawn are least likely to be picked
+clean, and verifies it on arrival:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">baritone</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">world</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">utils</span>
+
+<span class="n">hits</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_block_entities</span><span class="p">([</span><span class="s2">"minecraft:ender_chest"</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span>
+                                 <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:overworld"</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">hits</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">be</span><span class="p">:</span> <span class="o">-</span><span class="n">math</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">be</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">be</span><span class="o">.</span><span class="n">z</span><span class="p">))</span>   <span class="c1"># farthest from spawn first</span>
+<span class="k">for</span> <span class="n">be</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">[:</span><span class="mi">10</span><span class="p">]:</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ender chest at </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">be</span><span class="o">.</span><span class="n">z</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">hits</span><span class="p">:</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">baritone</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+    <span class="c1"># ... wait for arrival, then confirm the chunk still holds it</span>
+    <span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">get_block</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">z</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"minecraft:ender_chest"</span><span class="p">:</span>
+        <span class="n">world</span><span class="o">.</span><span class="n">interact_block</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+</code></pre></div>
+<p>The block searches take the same flags. Nether portal frames along a bearing, from the save:</p>
+<div class="highlight"><pre><span></span><code><span class="n">frames</span> <span class="o">=</span> <span class="n">world</span><span class="o">.</span><span class="n">find_blocks</span><span class="p">(</span><span class="s2">"minecraft:obsidian"</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>
+                           <span class="n">dimension</span><span class="o">=</span><span class="s2">"minecraft:the_nether"</span><span class="p">,</span> <span class="n">use_disk</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="orchestrator-and-workers">Orchestrator and Workers</h2>
 <p>A global script (Global Scripts tab) that hands out mining tasks and reacts to
@@ -1146,18 +1224,18 @@ the <a href="../api/comms/"><code>comms</code></a> module for the messaging deta
     <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">continue</span>
 
-    <span class="n">cmd</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;cmd&quot;</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;mine&quot;</span><span class="p">:</span>
-        <span class="n">block</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;block&quot;</span><span class="p">]</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mining </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"cmd"</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">"mine"</span><span class="p">:</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"block"</span><span class="p">]</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Mining </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;stop&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">"stop"</span><span class="p">:</span>
         <span class="n">baritone</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
 
     <span class="c1"># Report status back to whoever sent the command</span>
-    <span class="n">picks</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">bot</span><span class="o">.</span><span class="n">inventory</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;pickaxe&quot;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">])</span>
+    <span class="n">picks</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">bot</span><span class="o">.</span><span class="n">inventory</span><span class="p">()</span> <span class="k">if</span> <span class="s2">"pickaxe"</span> <span class="ow">in</span> <span class="n">i</span><span class="p">[</span><span class="s2">"item_id"</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">picks</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;sender_scope&quot;</span><span class="p">],</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;no_pickaxes&quot;</span><span class="p">},</span> <span class="n">topic</span><span class="o">=</span><span class="s2">&quot;reports&quot;</span><span class="p">)</span>
+        <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">"sender_scope"</span><span class="p">],</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"no_pickaxes"</span><span class="p">},</span> <span class="n">topic</span><span class="o">=</span><span class="s2">"reports"</span><span class="p">)</span>
 </code></pre></div>
 <p>Orchestrator - global script:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span>
@@ -1170,28 +1248,28 @@ the <a href="../api/comms/"><code>comms</code></a> module for the messaging deta
     <span class="k">if</span> <span class="ow">not</span> <span class="n">bot</span><span class="o">.</span><span class="n">is_online</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
         <span class="n">bot</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">bot</span><span class="o">.</span><span class="n">wait_for_online</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bot_name</span><span class="o">=</span><span class="n">name</span><span class="p">):</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to come online&quot;</span><span class="p">)</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed to come online"</span><span class="p">)</span>
             <span class="k">return</span>
     <span class="k">if</span> <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">manager</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s2">&quot;miner.py&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s2">"miner.py"</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># let it start and subscribe</span>
         <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;script_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"script_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_report</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;no_pickaxes&quot;</span><span class="p">:</span>
-        <span class="n">worker</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;sender_scope&quot;</span><span class="p">]</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">worker</span><span class="si">}</span><span class="s2"> is out of pickaxes - sending it to restock&quot;</span><span class="p">)</span>
-        <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">worker</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;stop&quot;</span><span class="p">})</span>
+    <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s2">"data"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"status"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"no_pickaxes"</span><span class="p">:</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">"sender_scope"</span><span class="p">]</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">worker</span><span class="si">}</span><span class="s2"> is out of pickaxes - sending it to restock"</span><span class="p">)</span>
+        <span class="n">comms</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">worker</span><span class="p">,</span> <span class="p">{</span><span class="s2">"cmd"</span><span class="p">:</span> <span class="s2">"stop"</span><span class="p">})</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;bot_disconnected&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"bot_disconnected"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_bot_lost</span><span class="p">(</span><span class="n">bot_name</span><span class="p">,</span> <span class="n">uptime_seconds</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bot_name</span><span class="si">}</span><span class="s2"> disconnected after </span><span class="si">{</span><span class="n">uptime_seconds</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">bot_name</span><span class="si">}</span><span class="s2"> disconnected after </span><span class="si">{</span><span class="n">uptime_seconds</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
 
-<span class="n">command_bot</span><span class="p">(</span><span class="s2">&quot;Miner1&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;mine&quot;</span><span class="p">,</span> <span class="s2">&quot;block&quot;</span><span class="p">:</span> <span class="s2">&quot;diamond_ore&quot;</span><span class="p">})</span>
-<span class="n">command_bot</span><span class="p">(</span><span class="s2">&quot;Miner2&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;mine&quot;</span><span class="p">,</span> <span class="s2">&quot;block&quot;</span><span class="p">:</span> <span class="s2">&quot;iron_ore&quot;</span><span class="p">})</span>
-<span class="c1"># The script&#39;s body is done, but the @on handlers keep it alive and reacting.</span>
+<span class="n">command_bot</span><span class="p">(</span><span class="s2">"Miner1"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"cmd"</span><span class="p">:</span> <span class="s2">"mine"</span><span class="p">,</span> <span class="s2">"block"</span><span class="p">:</span> <span class="s2">"diamond_ore"</span><span class="p">})</span>
+<span class="n">command_bot</span><span class="p">(</span><span class="s2">"Miner2"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"cmd"</span><span class="p">:</span> <span class="s2">"mine"</span><span class="p">,</span> <span class="s2">"block"</span><span class="p">:</span> <span class="s2">"iron_ore"</span><span class="p">})</span>
+<span class="c1"># The script's body is done, but the @on handlers keep it alive and reacting.</span>
 </code></pre></div>
 
 

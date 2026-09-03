@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -701,6 +729,17 @@
     <span class="md-ellipsis">
       
         get_setting(module, setting, bot_name="")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#packet-list-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Packet list settings
       
     </span>
   </a>
@@ -1071,6 +1110,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#packet-list-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Packet list settings
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1154,7 +1204,7 @@ instead of raising - there is nothing to check against until the mod connects.</
 <li><code>module</code> (<code>str</code>) - Module name</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">toggle</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">toggle</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="enablemodule-bot_name"><code>enable(module, bot_name="")</code></h3>
 <p>Enable module.</p>
@@ -1163,7 +1213,7 @@ instead of raising - there is nothing to check against until the mod connects.</
 <li><code>module</code> (<code>str</code>) - Module name</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">enable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="disablemodule-bot_name"><code>disable(module, bot_name="")</code></h3>
 <p>Disable module.</p>
@@ -1172,7 +1222,7 @@ instead of raising - there is nothing to check against until the mod connects.</
 <li><code>module</code> (<code>str</code>) - Module name</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="settings">Settings</h2>
 <h3 id="set_settingmodule-setting-value-bot_name"><code>set_setting(module, setting, value, bot_name="")</code></h3>
@@ -1184,8 +1234,8 @@ instead of raising - there is nothing to check against until the mod connects.</
 <li><code>value</code> - Setting value</li>
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">,</span> <span class="s2">&quot;health&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-<span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">&quot;kill-aura&quot;</span><span class="p">,</span> <span class="s2">&quot;Targeting.range&quot;</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">,</span> <span class="s2">"health"</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">meteor</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">"kill-aura"</span><span class="p">,</span> <span class="s2">"Targeting.range"</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="get_settingmodule-setting-bot_name"><code>get_setting(module, setting, bot_name="")</code></h3>
 <p>Get module setting value.</p>
@@ -1196,8 +1246,21 @@ instead of raising - there is nothing to check against until the mod connects.</
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
 <p><strong>Returns:</strong> Setting value</p>
-<div class="highlight"><pre><span></span><code><span class="n">health</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">,</span> <span class="s2">&quot;health&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">health</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">,</span> <span class="s2">"health"</span><span class="p">)</span>
 </code></pre></div>
+<h3 id="packet-list-settings">Packet list settings</h3>
+<p>Packet list settings (e.g. Packet Canceller's <code>s2c-packets</code>) hold packet names whose format
+depends on the Meteor build the bot is running:</p>
+<ul>
+<li>Older Meteor builds (1.21.x): class names like <code>HandSwingC2SPacket</code> or
+  <code>PlayerMoveC2SPacket.PositionAndOnGround</code></li>
+<li>Newer Meteor builds (PacketType-based, 26.1.2+): flow-prefixed ids like
+  <code>serverbound/minecraft:swing</code></li>
+</ul>
+<p>Treat the names as opaque strings: read the current list, modify it, and write it back
+unchanged. There is no cross-version translation - names from one Meteor generation
+silently resolve to nothing on the other (unknown names are dropped without error), so
+scripts that hardcode packet names are tied to the Meteor generation they were written for.</p>
 <h2 id="module-info">Module Info</h2>
 <h3 id="list_modulesbot_name"><code>list_modules(bot_name="")</code></h3>
 <p>List all available Meteor modules.</p>
@@ -1218,7 +1281,7 @@ instead of raising - there is nothing to check against until the mod connects.</
 <li><code>bot_name</code> (<code>str</code>, optional) - Bot name</li>
 </ul>
 <p><strong>Returns:</strong> <code>dict</code> with module information</p>
-<div class="highlight"><pre><span></span><code><span class="n">info</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">get_module</span><span class="p">(</span><span class="s2">&quot;auto-totem&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">info</span> <span class="o">=</span> <span class="n">meteor</span><span class="o">.</span><span class="n">get_module</span><span class="p">(</span><span class="s2">"auto-totem"</span><span class="p">)</span>
 </code></pre></div>
 
 

@@ -417,6 +417,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1055,9 +1083,9 @@
 
 <span class="n">info</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">get_info</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">info</span><span class="p">:</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">address</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">motd</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ping: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">ping</span><span class="si">}</span><span class="s2">ms | Players: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">players_online</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">players_max</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Version: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">address</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">motd</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Ping: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">ping</span><span class="si">}</span><span class="s2">ms | Players: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">players_online</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">players_max</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Version: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h3 id="get_player_listbot_name"><code>get_player_list(bot_name="")</code></h3>
@@ -1132,10 +1160,10 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">utils</span>
 
 <span class="n">players</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">get_player_list</span><span class="p">()</span>
-<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">players</span><span class="p">)</span><span class="si">}</span><span class="s2"> players online:&quot;</span><span class="p">)</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">players</span><span class="p">)</span><span class="si">}</span><span class="s2"> players online:"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">players</span><span class="p">:</span>
     <span class="n">name</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">display_name</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">display_name</span> <span class="k">else</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">gamemode</span><span class="si">}</span><span class="s2">) - </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">ping</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">gamemode</span><span class="si">}</span><span class="s2">) - </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">ping</span><span class="si">}</span><span class="s2">ms"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h3 id="get_statsbot_name"><code>get_stats(bot_name="")</code></h3>
@@ -1172,16 +1200,16 @@ out but an earlier call succeeded, the last cached snapshot is returned.</p>
 
 <span class="n">stats</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">stats</span><span class="p">:</span>
-    <span class="n">custom</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;minecraft:custom&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    <span class="n">play_ticks</span> <span class="o">=</span> <span class="n">custom</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;minecraft:play_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Playtime: </span><span class="si">{</span><span class="n">play_ticks</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">3600</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours&quot;</span><span class="p">)</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Deaths: </span><span class="si">{</span><span class="n">custom</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;minecraft:deaths&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Distance walked: </span><span class="si">{</span><span class="n">custom</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;minecraft:walk_one_cm&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m&quot;</span><span class="p">)</span>
+    <span class="n">custom</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"minecraft:custom"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">play_ticks</span> <span class="o">=</span> <span class="n">custom</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"minecraft:play_time"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Playtime: </span><span class="si">{</span><span class="n">play_ticks</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">3600</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours"</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Deaths: </span><span class="si">{</span><span class="n">custom</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'minecraft:deaths'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Distance walked: </span><span class="si">{</span><span class="n">custom</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'minecraft:walk_one_cm'</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m"</span><span class="p">)</span>
 
     <span class="c1"># Top 5 mined blocks</span>
-    <span class="n">mined</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;minecraft:mined&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">mined</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"minecraft:mined"</span><span class="p">,</span> <span class="p">{})</span>
     <span class="k">for</span> <span class="n">block</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">mined</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="n">kv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:</span><span class="mi">5</span><span class="p">]:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 
 

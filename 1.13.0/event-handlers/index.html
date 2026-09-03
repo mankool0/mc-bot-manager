@@ -18,7 +18,7 @@
         <link rel="prev" href="../first-script/">
       
       
-        <link rel="next" href="../api/">
+        <link rel="next" href="../bot-windows/">
       
       
         
@@ -532,6 +532,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bot-windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bot Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1014,28 +1042,28 @@
 <h1 id="event-handlers">Event Handlers</h1>
 <h2 id="basics">Basics</h2>
 <p>Event handlers are functions decorated with <code>@on(event_name)</code> that execute when specific events occur.</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;health_change&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"health_change"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">on_health</span><span class="p">(</span><span class="n">old_health</span><span class="p">,</span> <span class="n">new_health</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Health: </span><span class="si">{</span><span class="n">old_health</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_health</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Health: </span><span class="si">{</span><span class="n">old_health</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_health</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="multiple-handlers">Multiple Handlers</h2>
 <p>A script can register multiple event handlers:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">bot</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">utils</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">chat_handler</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chat: </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Chat: </span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;health_change&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"health_change"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health_handler</span><span class="p">(</span><span class="n">old_health</span><span class="p">,</span> <span class="n">new_health</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">new_health</span> <span class="o">&lt;</span> <span class="n">old_health</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Took damage!&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Took damage!"</span><span class="p">)</span>
 
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;hunger_change&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"hunger_change"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hunger_handler</span><span class="p">(</span><span class="n">old_hunger</span><span class="p">,</span> <span class="n">new_hunger</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">new_hunger</span> <span class="o">&lt;</span> <span class="mi">6</span><span class="p">:</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Need food!&quot;</span><span class="p">)</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Need food!"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="handler-registration">Handler Registration</h2>
 <p>Handlers are registered when the script loads:</p>
@@ -1057,13 +1085,13 @@
 </ul>
 <h2 id="error-handling">Error Handling</h2>
 <p>If a handler crashes, other handlers continue running:</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Your code</span>
         <span class="k">pass</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Handler failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Handler failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="combining-event-driven-and-imperative">Combining Event-Driven and Imperative</h2>
 <p>Scripts can use both approaches:</p>
@@ -1072,13 +1100,13 @@
 
 <span class="c1"># Runs once when script loads</span>
 <span class="n">initial_pos</span> <span class="o">=</span> <span class="n">bot</span><span class="o">.</span><span class="n">position</span><span class="p">()</span>
-<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Started at </span><span class="si">{</span><span class="n">initial_pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">utils</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Started at </span><span class="si">{</span><span class="n">initial_pos</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="c1"># Runs when events fire</span>
-<span class="nd">@on</span><span class="p">(</span><span class="s2">&quot;chat_message&quot;</span><span class="p">)</span>
+<span class="nd">@on</span><span class="p">(</span><span class="s2">"chat_message"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">&quot;!status&quot;</span><span class="p">:</span>
-        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">&quot;Online and ready!&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="o">==</span> <span class="s2">"!status"</span><span class="p">:</span>
+        <span class="n">bot</span><span class="o">.</span><span class="n">chat</span><span class="p">(</span><span class="s2">"Online and ready!"</span><span class="p">)</span>
 </code></pre></div>
 
 
