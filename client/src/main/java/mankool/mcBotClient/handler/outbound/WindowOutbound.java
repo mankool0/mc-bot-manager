@@ -22,11 +22,11 @@ import java.util.UUID;
  *
  * <p>Rectangles on the wire are the window's outer frame relative to a monitor's work area (see
  * {@code window.proto}); GLFW reports the client area in screen coordinates, so this converts with
- * {@code glfwGetWindowFrameSize}. Moving is platform-specific: on Win32 {@code glfwSetWindowPos}
- * places the client area, but on X11 it is a bare {@code XMoveWindow}, and the window manager puts
- * the frame's corner at the requested point (ICCCM north-west gravity), so no frame offset is added
- * there. Everything here runs on the render thread, which owns GLFW: inbound commands are
- * dispatched from the client tick and reports are scheduled onto it.
+ * {@code glfwGetWindowFrameSize}. {@code glfwSetWindowPos} places the <em>content</em> area on
+ * every platform - GLFW gives its X11 windows {@code StaticGravity}, so the window manager moves a
+ * mapped window's content, not its frame, to the requested point - so the frame's top-left inset is
+ * added to the target. Everything here runs on the render thread, which owns GLFW: inbound commands
+ * are dispatched from the client tick and reports are scheduled onto it.
  *
  * <p>A report that follows a change is delayed a few ticks. On X11 a move is a ConfigureRequest
  * the window manager handles on its own schedule (and it owns {@code _NET_FRAME_EXTENTS} too), so
@@ -40,8 +40,9 @@ import java.util.UUID;
  * post-handshake report together with the placement. Should that never arrive, the window is shown
  * where it is after {@link #SHOW_FALLBACK_TICKS}. X11 reports frame extents only for a mapped and
  * decorated window, so a placement applied while hidden sizes the client area as if the frame had
- * none and is applied once more after the show, which trims it to the cell; the position was
- * already right.
+ * none and cannot inset the position either (the window manager frames such a window at the
+ * requested point when it maps it). Every placement that shows the window is therefore applied once
+ * more afterwards, which trims the size to the cell and takes the decorations off the position.
  */
 public class WindowOutbound extends BaseOutbound {
     private static final Logger LOGGER = LoggerFactory.getLogger(WindowOutbound.class);
@@ -137,16 +138,15 @@ public class WindowOutbound extends BaseOutbound {
         }
 
         boolean wantsGeometry = cmd.hasX() || cmd.hasY() || cmd.hasWidth() || cmd.hasHeight() || !cmd.getMonitor().isEmpty();
-        boolean extentsKnown = true;
         if (wantsGeometry && fullscreen) {
             LOGGER.warn("Ignoring window placement while fullscreen");
         } else if (wantsGeometry) {
-            extentsKnown = applyGeometry(handle, cmd, canMove);
+            applyGeometry(handle, cmd, canMove);
         }
 
         if (cmd.hasVisible() && cmd.getVisible() && !BotWindow.isVisible(handle)) {
             BotWindow.setVisible(handle, true);
-            if (wantsGeometry && !fullscreen && !extentsKnown) {
+            if (wantsGeometry && !fullscreen) {
                 pendingGeometry = cmd;
             }
         }
@@ -157,8 +157,8 @@ public class WindowOutbound extends BaseOutbound {
         scheduleReport(messageId);
     }
 
-    /** Applies the placement; returns whether frame extents were available (false while unmapped on X11). */
-    private boolean applyGeometry(long handle, WindowProto.SetWindowCommand cmd, boolean canMove) {
+    /** Applies the placement. Frame extents read as zero while the window is unmapped on X11. */
+    private void applyGeometry(long handle, WindowProto.SetWindowCommand cmd, boolean canMove) {
         List<Monitor> monitors = monitors();
         Frame current = currentFrame(handle, canMove);
         Monitor target = null;
@@ -174,7 +174,6 @@ public class WindowOutbound extends BaseOutbound {
 
         int[] left = new int[1], top = new int[1], right = new int[1], bottom = new int[1];
         GLFW.glfwGetWindowFrameSize(handle, left, top, right, bottom);
-        boolean extentsKnown = left[0] + top[0] + right[0] + bottom[0] > 0;
 
         // Frame rect relative to the target work area. Unset position keeps the window's offset
         // within its current monitor's work area, so a bare monitor change carries it across.
@@ -193,14 +192,16 @@ public class WindowOutbound extends BaseOutbound {
         if (moves) {
             if (!canMove) {
                 LOGGER.warn("Window positioning is not available on this platform ({})", platformName());
-                return extentsKnown;
+                return;
             }
-            boolean framePositioned = GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_X11;
-            int absX = (target != null ? target.workX : 0) + relX + (framePositioned ? 0 : left[0]);
-            int absY = (target != null ? target.workY : 0) + relY + (framePositioned ? 0 : top[0]);
+            // glfwSetWindowPos takes a content-area corner, so the target frame corner moves in
+            // by the frame's top-left inset. While unmapped on X11 the inset reads as zero and the
+            // window manager frames the window at the requested point; the redo after the show
+            // then applies the real inset.
+            int absX = (target != null ? target.workX : 0) + relX + left[0];
+            int absY = (target != null ? target.workY : 0) + relY + top[0];
             GLFW.glfwSetWindowPos(handle, absX, absY);
         }
-        return extentsKnown;
     }
 
     /** Sends the current state. Runs on the render thread. */
