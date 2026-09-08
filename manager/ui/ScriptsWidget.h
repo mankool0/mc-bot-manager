@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QSplitter>
 #include <QLabel>
+#include <QSet>
 
 #include "ui/MonacoWidget.h"
 
@@ -49,6 +50,7 @@ private:
     void setupUI();
     void updateButtons();
     void setupEditor();
+    void setScriptModified(const QString &filename, bool modified);
 
     ScriptEngine *scriptEngine;
     ZubanClient *zubanClient = nullptr;
@@ -64,7 +66,7 @@ private:
     QLabel *statusLabel;
 
     QString currentScript;
-    bool isModified;
+    QSet<QString> modifiedScripts;
 };
 
 #endif // SCRIPTSWIDGET_H

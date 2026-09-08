@@ -14,7 +14,7 @@ public:
     explicit Bridge(MonacoWidget *parent = nullptr) : QObject(parent), m_widget(parent) {}
 
     Q_INVOKABLE void editorReady()                  { emit editorReadySignal(); }
-    Q_INVOKABLE void onTextChanged(const QString &text) { emit textChangedSignal(text); }
+    Q_INVOKABLE void onTextChanged(const QString &key, const QString &text) { emit textChangedSignal(key, text); }
 
     Q_INVOKABLE void requestCompletion(const QString &code, int line, int col, int requestId)
     {
@@ -63,13 +63,16 @@ public:
 
 signals:
     void editorReadySignal();
-    void textChangedSignal(const QString &text);
+    void textChangedSignal(const QString &key, const QString &text);
     void eventDataChanged(const QString &json);
     void completionResult(int requestId, const QString &json);
     void signatureResult(int requestId, const QString &json);
     void hoverResult(int requestId, const QString &json);
     void diagnosticsChanged(const QString &json);
-    void setTextRequested(const QString &text);
+    void openDocumentRequested(const QString &key, const QString &text);
+    void closeDocumentRequested(const QString &key);
+    void renameDocumentRequested(const QString &oldKey, const QString &newKey);
+    void showNoDocumentRequested();
     void setReadOnlyRequested(bool readOnly);
     void setThemeRequested(bool dark);
 
@@ -110,16 +113,29 @@ void MonacoWidget::onEditorReady()
     emit m_bridge->setThemeRequested(m_pendingDark);
     emit m_bridge->setReadOnlyRequested(m_pendingReadOnly);
 
-    if (m_textPendingPush) {
-        emit m_bridge->setTextRequested(m_text);
-        m_textPendingPush = false;
+    for (const PendingOp &op : std::as_const(m_pendingOps)) {
+        switch (op.type) {
+        case PendingOp::Open:
+            emit m_bridge->openDocumentRequested(op.a, op.b);
+            break;
+        case PendingOp::Close:
+            emit m_bridge->closeDocumentRequested(op.a);
+            break;
+        case PendingOp::Rename:
+            emit m_bridge->renameDocumentRequested(op.a, op.b);
+            break;
+        case PendingOp::ShowNone:
+            emit m_bridge->showNoDocumentRequested();
+            break;
+        }
     }
+    m_pendingOps.clear();
 }
 
-void MonacoWidget::onEditorTextChanged(const QString &text)
+void MonacoWidget::onEditorTextChanged(const QString &key, const QString &text)
 {
-    m_text = text;
-    emit textChanged();
+    m_docText.insert(key, text);
+    emit textChanged(key);
 }
 
 void MonacoWidget::loadEventData(const QString &eventJson)
@@ -153,23 +169,70 @@ void MonacoWidget::setDiagnostics(const QJsonArray &diagnostics)
     }
 }
 
-void MonacoWidget::setText(const QString &text)
+void MonacoWidget::openDocument(const QString &key, const QString &text)
 {
-    m_text = text;
+    if (key.isEmpty()) {
+        clear();
+        return;
+    }
+
+    // An already open document keeps its own (possibly unsaved) contents.
+    if (!m_docText.contains(key))
+        m_docText.insert(key, text);
+    m_currentKey = key;
+
     if (m_pageReady)
-        emit m_bridge->setTextRequested(text);
+        emit m_bridge->openDocumentRequested(key, text);
     else
-        m_textPendingPush = true;
+        m_pendingOps.append({PendingOp::Open, key, text});
+}
+
+void MonacoWidget::closeDocument(const QString &key)
+{
+    m_docText.remove(key);
+    if (m_currentKey == key)
+        m_currentKey.clear();
+
+    if (m_pageReady)
+        emit m_bridge->closeDocumentRequested(key);
+    else
+        m_pendingOps.append({PendingOp::Close, key, QString()});
+}
+
+void MonacoWidget::renameDocument(const QString &oldKey, const QString &newKey)
+{
+    if (oldKey == newKey || oldKey.isEmpty() || newKey.isEmpty())
+        return;
+
+    if (m_docText.contains(oldKey))
+        m_docText.insert(newKey, m_docText.take(oldKey));
+    if (m_currentKey == oldKey)
+        m_currentKey = newKey;
+
+    if (m_pageReady)
+        emit m_bridge->renameDocumentRequested(oldKey, newKey);
+    else
+        m_pendingOps.append({PendingOp::Rename, oldKey, newKey});
 }
 
 QString MonacoWidget::getText() const
 {
-    return m_text;
+    return m_docText.value(m_currentKey);
+}
+
+QString MonacoWidget::documentText(const QString &key) const
+{
+    return m_docText.value(key);
 }
 
 void MonacoWidget::clear()
 {
-    setText(QString());
+    m_currentKey.clear();
+
+    if (m_pageReady)
+        emit m_bridge->showNoDocumentRequested();
+    else
+        m_pendingOps.append({PendingOp::ShowNone, QString(), QString()});
 }
 
 void MonacoWidget::setReadOnly(bool readOnly)

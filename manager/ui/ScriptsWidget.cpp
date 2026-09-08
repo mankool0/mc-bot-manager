@@ -13,15 +13,27 @@
 #include <QGuiApplication>
 #include <QStyleHints>
 #include <QPainter>
+#include <QSignalBlocker>
 #include <QStyledItemDelegate>
 
 enum ScriptItemState { StateNormal = 0, StateRunning = 1, StateError = 2 };
 static const int ScriptStateRole = Qt::UserRole + 1;
+static const int ScriptModifiedRole = Qt::UserRole + 2;
 
 class ScriptItemDelegate : public QStyledItemDelegate
 {
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
+
+    void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override
+    {
+        QStyledItemDelegate::initStyleOption(option, index);
+
+        // The item text stays the plain file name (it identifies the script),
+        // so the unsaved marker is added at paint time only.
+        if (index.data(ScriptModifiedRole).toBool())
+            option->text += " *";
+    }
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override
     {
@@ -43,7 +55,6 @@ public:
 ScriptsWidget::ScriptsWidget(ScriptEngine *engine, QWidget *parent)
     : QWidget(parent)
     , scriptEngine(engine)
-    , isModified(false)
 {
     setupUI();
     refreshScriptList();
@@ -143,7 +154,12 @@ void ScriptsWidget::setupUI()
     connect(stopButton, &QPushButton::clicked,
             this, &ScriptsWidget::onStopScript);
     connect(codeEditor, &MonacoWidget::textChanged,
-            this, [this]() { isModified = true; updateButtons(); });
+            this, [this](const QString &filename) {
+                // Compared against the saved code, so undoing back to it clears
+                // the unsaved marker again.
+                ScriptContext *ctx = scriptEngine ? scriptEngine->getScript(filename) : nullptr;
+                setScriptModified(filename, !ctx || codeEditor->documentText(filename) != ctx->code);
+            });
 
     updateButtons();
 }
@@ -169,6 +185,9 @@ void ScriptsWidget::refreshScriptList()
         if (scriptEngine->isScriptRunning(scriptName))
             item->setData(ScriptStateRole, StateRunning);
 
+        if (modifiedScripts.contains(scriptName))
+            item->setData(ScriptModifiedRole, true);
+
         scriptList->addItem(item);
     }
 }
@@ -182,11 +201,37 @@ void ScriptsWidget::loadScript(const QString &filename)
     ScriptContext *ctx = scriptEngine->getScript(filename);
     if (ctx) {
         currentScript = filename;
-        codeEditor->setText(ctx->code);
-        isModified = false;
-        statusLabel->setText(QString("Loaded: %1").arg(filename));
+        // Keeps the unsaved contents when this script was edited before.
+        codeEditor->openDocument(filename, ctx->code);
+        statusLabel->setText(modifiedScripts.contains(filename)
+                                 ? QString("Unsaved changes: %1").arg(filename)
+                                 : QString("Loaded: %1").arg(filename));
         updateButtons();
     }
+}
+
+void ScriptsWidget::setScriptModified(const QString &filename, bool modified)
+{
+    if (modifiedScripts.contains(filename) == modified)
+        return;
+
+    if (modified)
+        modifiedScripts.insert(filename);
+    else
+        modifiedScripts.remove(filename);
+
+    for (int i = 0; i < scriptList->count(); ++i) {
+        QListWidgetItem *item = scriptList->item(i);
+        if (item->text() == filename) {
+            // Blocked so the item change is not mistaken for the user toggling
+            // the autorun check box, which would rewrite the script states.
+            const QSignalBlocker blocker(scriptList);
+            item->setData(ScriptModifiedRole, modified);
+            break;
+        }
+    }
+
+    updateButtons();
 }
 
 void ScriptsWidget::onScriptSelectionChanged()
@@ -279,6 +324,10 @@ void ScriptsWidget::onRenameScript()
     scriptEngine->enableScript(newName, autorun);
     scriptEngine->unloadScript(currentScript);
 
+    codeEditor->renameDocument(currentScript, newName);
+    if (modifiedScripts.remove(currentScript))
+        modifiedScripts.insert(newName);
+
     currentScript = newName;
     refreshScriptList();
 
@@ -304,13 +353,16 @@ void ScriptsWidget::onDeleteScript()
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        scriptEngine->unloadScript(currentScript);
+        QString deleted = currentScript;
+        scriptEngine->unloadScript(deleted);
         QString botName = scriptEngine->getScopeName();
-        ScriptFileManager::deleteScript(botName, currentScript);
-        refreshScriptList();
+        ScriptFileManager::deleteScript(botName, deleted);
+        modifiedScripts.remove(deleted);
+        codeEditor->closeDocument(deleted);
         currentScript.clear();
-        codeEditor->clear();
+        refreshScriptList();
         statusLabel->setText("Script deleted");
+        updateButtons();
     }
 }
 
@@ -325,9 +377,8 @@ void ScriptsWidget::onSaveScript()
 
     if (scriptEngine->loadScript(currentScript, code) &&
         ScriptFileManager::saveScript(botName, currentScript, code)) {
-        isModified = false;
+        setScriptModified(currentScript, false);
         statusLabel->setText(QString("Saved: %1").arg(currentScript));
-        updateButtons();
         emit scriptSaved(currentScript);
     } else {
         QMessageBox::warning(this, "Save Failed", "Failed to save script.");
@@ -340,7 +391,7 @@ void ScriptsWidget::onRunScript()
         return;
     }
 
-    if (isModified) {
+    if (modifiedScripts.contains(currentScript)) {
         onSaveScript();
     }
 
@@ -440,7 +491,7 @@ void ScriptsWidget::updateButtons()
 
     renameButton->setEnabled(hasScript && !isRunning);
     deleteButton->setEnabled(hasScript && !isRunning);
-    saveButton->setEnabled(hasScript && isModified);
+    saveButton->setEnabled(hasScript && modifiedScripts.contains(currentScript));
     runButton->setEnabled(hasScript && !isRunning);
     stopButton->setEnabled(hasScript && isRunning);
     codeEditor->setReadOnly(isRunning);
