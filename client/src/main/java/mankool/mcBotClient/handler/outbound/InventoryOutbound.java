@@ -43,6 +43,10 @@ public class InventoryOutbound extends BaseOutbound {
             pendingUpdate = true;
         }
 
+        if (!ItemStack.matches(sentCursor, player.containerMenu.getCarried())) {
+            pendingUpdate = true;
+        }
+
         // Send batched inventory update once per tick
         if (pendingUpdate) {
             pendingUpdate = false;
