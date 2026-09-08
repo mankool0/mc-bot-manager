@@ -33,7 +33,66 @@
       wordBasedSuggestions: 'off',
     });
 
-    var suppressChange = false;
+    // One model per open document, so each keeps its own text, undo history,
+    // cursor and scroll position. The model the editor starts with is the
+    // placeholder shown when no document is selected.
+    var docs = {};
+    var currentKey = null;
+    var nextDocId = 0;
+    var placeholderModel = editor.getModel();
+
+    function saveCurrentViewState() {
+      if (currentKey !== null && docs[currentKey]) {
+        docs[currentKey].state = editor.saveViewState();
+      }
+    }
+
+    function createDoc(key, text) {
+      var uri = monaco.Uri.parse('inmemory://scripts/' + (nextDocId++) + '.py');
+      var entry = { key: key, model: monaco.editor.createModel(text, 'python', uri), state: null };
+      entry.model.onDidChangeContent(function() {
+        if (window.bridge) window.bridge.onTextChanged(entry.key, entry.model.getValue());
+      });
+      docs[key] = entry;
+      return entry;
+    }
+
+    function openDocument(key, text) {
+      var entry = docs[key];
+      if (entry && key === currentKey) return;
+      saveCurrentViewState();
+      if (!entry) entry = createDoc(key, text);
+      currentKey = key;
+      editor.setModel(entry.model);
+      if (entry.state) editor.restoreViewState(entry.state);
+    }
+
+    function closeDocument(key) {
+      var entry = docs[key];
+      delete docs[key];
+      if (currentKey === key) {
+        currentKey = null;
+        showNoDocument();
+      }
+      if (entry) entry.model.dispose();
+    }
+
+    function renameDocument(oldKey, newKey) {
+      var entry = docs[oldKey];
+      if (!entry) return;
+      delete docs[oldKey];
+      entry.key = newKey;
+      docs[newKey] = entry;
+      if (currentKey === oldKey) currentKey = newKey;
+    }
+
+    function showNoDocument() {
+      saveCurrentViewState();
+      currentKey = null;
+      placeholderModel.setValue('');
+      editor.setModel(placeholderModel);
+    }
+
     var nextRequestId = 0;
     var pendingCompletions = {};
     var pendingSignatures = {};
@@ -111,11 +170,10 @@
           dispose: function() {}
         });
       });
-      window.bridge.setTextRequested.connect(function(text) {
-        suppressChange = true;
-        editor.setValue(text);
-        suppressChange = false;
-      });
+      window.bridge.openDocumentRequested.connect(openDocument);
+      window.bridge.closeDocumentRequested.connect(closeDocument);
+      window.bridge.renameDocumentRequested.connect(renameDocument);
+      window.bridge.showNoDocumentRequested.connect(showNoDocument);
       window.bridge.setReadOnlyRequested.connect(function(ro) {
         editor.updateOptions({ readOnly: ro });
       });
@@ -142,12 +200,6 @@
       });
 
       window.bridge.editorReady();
-    });
-
-    editor.onDidChangeModelContent(function() {
-      if (!suppressChange && window.bridge) {
-        window.bridge.onTextChanged(editor.getValue());
-      }
     });
 
     editor.onDidType(function(text) {
