@@ -93,8 +93,13 @@ private:
         EntityData data;
         QString dimension;
     };
-    QHash<int, TrackedEntity> m_trackedEntities;
+    // Keyed by uuid, not entity id: the server reassigns network ids whenever an
+    // entity's chunk reloads, so id keys saved one entity once per id it had held.
+    // Shared by every bot on this world, so it is never cleared per session.
+    QHash<QString, TrackedEntity> m_trackedEntities;
+    QHash<int, QString> m_entityIdToUuid;
     QSet<DimChunkPos> m_dirtyEntityChunks;
+    void markEntityChunkDirty(const EntityData& entity, const QString& dimension);
     QTimer* m_periodicFlushTimer;
 
     // Player data (per-UUID to support multiple bots on the same server)

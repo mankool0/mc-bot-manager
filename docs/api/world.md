@@ -1413,6 +1413,15 @@ The `item` sub-dict follows the standard [item dict schema](bot.md#item-dict).
 
 Returns a list of all currently tracked entity dicts.
 
+Tracking follows the bot's own client, so the list holds what that bot can currently
+see - entities in loaded chunks of the dimension it is in, and nothing from a
+dimension it has left or a session it has since restarted. A bot that is attached to
+the manager but not on a server tracks nothing, so this returns an empty list rather
+than the last state it saw, and raises nothing. There is exactly one entry
+per entity: `uuid` identifies an entity for the life of the world, while `entity_id`
+is a per-session network handle that the server reassigns whenever the entity's chunk
+reloads, so prefer `uuid` for anything you hold on to across time.
+
 ```python
 import world
 

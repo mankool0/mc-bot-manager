@@ -125,6 +125,17 @@ void WorldAutoSaver::flushBlockChunk(int chunkX, int chunkZ, const QString& dime
     }
 }
 
+// Falls back to the network id so a report without a uuid stays its own record.
+static QString trackedEntityKey(const EntityData& entity) {
+    return entity.uuid.isEmpty() ? QStringLiteral("#%1").arg(entity.entityId) : entity.uuid;
+}
+
+void WorldAutoSaver::markEntityChunkDirty(const EntityData& entity, const QString& dimension) {
+    int chunkX = static_cast<int>(std::floor(entity.x / 16.0));
+    int chunkZ = static_cast<int>(std::floor(entity.z / 16.0));
+    m_dirtyEntityChunks.insert({dimension, chunkX, chunkZ});
+}
+
 void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
                                        const QString& dimension) {
     if (!m_saveSettings.saveEntities) return;
@@ -133,20 +144,43 @@ void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, cons
         if (e.isPlayer) continue;  // Players are saved in playerdata/
         if (!m_saveSettings.saveItemEntities && e.isItem) continue;
 
-        m_trackedEntities[e.entityId] = {e, dimension};
+        const QString key = trackedEntityKey(e);
 
-        int chunkX = static_cast<int>(std::floor(e.x / 16.0));
-        int chunkZ = static_cast<int>(std::floor(e.z / 16.0));
-        m_dirtyEntityChunks.insert({dimension, chunkX, chunkZ});
+        // This id may have been reused for a different entity since it was last seen.
+        auto previous = m_entityIdToUuid.constFind(e.entityId);
+        if (previous != m_entityIdToUuid.constEnd() && *previous != key) {
+            auto stale = m_trackedEntities.constFind(*previous);
+            if (stale != m_trackedEntities.constEnd()) {
+                markEntityChunkDirty(stale->data, stale->dimension);
+                m_trackedEntities.remove(*previous);
+            }
+        }
+        // Where this entity was last saved has to be rewritten as well, or the copy
+        // left in that chunk survives on disk.
+        auto existing = m_trackedEntities.constFind(key);
+        if (existing != m_trackedEntities.constEnd()) {
+            m_entityIdToUuid.remove(existing->data.entityId);
+            markEntityChunkDirty(existing->data, existing->dimension);
+        }
+
+        m_trackedEntities[key] = {e, dimension};
+        m_entityIdToUuid[e.entityId] = key;
+        markEntityChunkDirty(e, dimension);
     }
 
     for (int id : removed) {
-        auto it = m_trackedEntities.find(id);
-        if (it != m_trackedEntities.end()) {
-            int chunkX = static_cast<int>(std::floor(it->data.x / 16.0));
-            int chunkZ = static_cast<int>(std::floor(it->data.z / 16.0));
-            m_dirtyEntityChunks.insert({it->dimension, chunkX, chunkZ});
-            m_trackedEntities.erase(it);
+        auto it = m_entityIdToUuid.constFind(id);
+        if (it == m_entityIdToUuid.constEnd()) {
+            continue;
+        }
+        const QString key = *it;
+        m_entityIdToUuid.erase(it);
+        // A re-created entity has already pointed its uuid at a newer id, and that
+        // record has to survive this removal.
+        auto tracked = m_trackedEntities.constFind(key);
+        if (tracked != m_trackedEntities.constEnd() && tracked->data.entityId == id) {
+            markEntityChunkDirty(tracked->data, tracked->dimension);
+            m_trackedEntities.remove(key);
         }
     }
 }

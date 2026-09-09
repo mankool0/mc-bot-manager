@@ -678,6 +678,10 @@ private:
     // Helper to initialize WorldAutoSaver when both server and dataVersion are available
     void tryInitializeWorldAutoSaver(BotInstance* bot);
 
+    // Drops everything cached for one play session (chunks, entities, block entities,
+    // statistics, tab list), flushing it to disk first when world saving is on.
+    void resetWorldState(BotInstance* bot);
+
     bool sendOutboundMessage(int connectionId, mankool::mcbot::protocol::ManagerToClientMessage &msg, bool silent = false, const QString &messageId = {});
 
     QVector<BotInstance*> botInstances;

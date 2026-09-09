@@ -467,13 +467,53 @@ size_t BotWorldData::totalMemoryUsage() const
 // Entity Tracking Implementation
 // ============================================================================
 
-void BotWorldData::updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed)
+// Falls back to the network id so a report without a uuid stays its own record.
+static QString entityKey(const EntityData& e)
 {
-    for (const auto &e : upserted) {
-        entities[e.entityId] = e;
+    return e.uuid.isEmpty() ? QStringLiteral("#%1").arg(e.entityId) : e.uuid;
+}
+
+void BotWorldData::updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed,
+                                  const QString& dimension)
+{
+    // A client tracks exactly one level, so a batch from another dimension means
+    // everything cached belongs to the one the bot just left.
+    if (!dimension.isEmpty() && dimension != entityDimension) {
+        entities.clear();
+        entityIdToUuid.clear();
+        entityDimension = dimension;
     }
+
+    for (const auto &e : upserted) {
+        const QString key = entityKey(e);
+
+        // This id may have been reused for a different entity since it was last seen.
+        auto previous = entityIdToUuid.constFind(e.entityId);
+        if (previous != entityIdToUuid.constEnd() && *previous != key) {
+            entities.remove(*previous);
+        }
+        auto existing = entities.constFind(key);
+        if (existing != entities.constEnd() && existing->entityId != e.entityId) {
+            entityIdToUuid.remove(existing->entityId);
+        }
+
+        entities[key] = e;
+        entityIdToUuid[e.entityId] = key;
+    }
+
     for (int id : removed) {
-        entities.remove(id);
+        auto it = entityIdToUuid.constFind(id);
+        if (it == entityIdToUuid.constEnd()) {
+            continue;
+        }
+        const QString key = *it;
+        entityIdToUuid.erase(it);
+        // A re-created entity has already pointed its uuid at a newer id, and that
+        // record has to survive this removal.
+        auto entity = entities.constFind(key);
+        if (entity != entities.constEnd() && entity->entityId == id) {
+            entities.remove(key);
+        }
     }
 }
 
@@ -505,12 +545,14 @@ QVector<EntityData> BotWorldData::findEntitiesNear(double x, double y, double z,
 void BotWorldData::clearEntities()
 {
     entities.clear();
+    entityIdToUuid.clear();
+    entityDimension.clear();
 }
 
 void BotWorldData::clearWorldState()
 {
     chunks.clear();
-    entities.clear();
+    clearEntities();
     blockEntities.clear();
 }
 
