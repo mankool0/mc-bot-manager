@@ -45,6 +45,7 @@ struct PrismConfig {
     QMap<QString, QString> accountIdToNameMap;
     bool useHook = true;
     bool minimizeWindows = false;
+    bool autoInstallClientMod = true;
 };
 
 class ManagerMainWindow : public QMainWindow

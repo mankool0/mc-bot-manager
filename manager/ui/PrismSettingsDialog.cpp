@@ -1,4 +1,5 @@
 #include "PrismSettingsDialog.h"
+#include <QCoreApplication>
 #include <QFileDialog>
 #include <QDir>
 #include <QFile>
@@ -7,6 +8,9 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QMessageBox>
+
+#include "logging/LogManager.h"
+#include "prism/ClientModInstaller.h"
 
 PrismSettingsDialog::PrismSettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -17,11 +21,13 @@ PrismSettingsDialog::PrismSettingsDialog(QWidget *parent)
     connect(ui->browseButton, &QPushButton::clicked, this, &PrismSettingsDialog::onBrowseClicked);
     connect(ui->browseExeButton, &QPushButton::clicked, this, &PrismSettingsDialog::onBrowseExeClicked);
     connect(ui->useHookCheckBox, &QCheckBox::toggled, ui->minimizeWindowsCheckBox, &QWidget::setEnabled);
+    connect(ui->syncModsButton, &QPushButton::clicked, this, &PrismSettingsDialog::onSyncModsClicked);
 
     // Set initial labels for lists
     ui->instancesList->addItem("Instances:");
     ui->accountsList->addItem("Accounts:");
 
+    updateClientModLabel();
     updateStatistics();
 }
 
@@ -117,6 +123,89 @@ void PrismSettingsDialog::setMinimizeWindows(bool enabled)
 bool PrismSettingsDialog::getMinimizeWindows() const
 {
     return ui->minimizeWindowsCheckBox->isChecked();
+}
+
+void PrismSettingsDialog::setAutoInstallClientMod(bool enabled)
+{
+    ui->autoInstallModCheckBox->setChecked(enabled);
+}
+
+bool PrismSettingsDialog::getAutoInstallClientMod() const
+{
+    return ui->autoInstallModCheckBox->isChecked();
+}
+
+void PrismSettingsDialog::updateClientModLabel()
+{
+    QStringList versions = ClientModInstaller::bundledJars().keys();
+    const bool haveJars = !versions.isEmpty();
+
+    if (haveJars) {
+        versions.sort();
+        ui->clientModVersionLabel->setText(QString("Bundled: %1 for Minecraft %2")
+                                              .arg(QCoreApplication::applicationVersion(),
+                                                   versions.join(", ")));
+    } else {
+        ui->clientModVersionLabel->setText(
+            QString("No client mod bundled with this build (looked in %1)")
+                .arg(ClientModInstaller::bundledJarDir()));
+    }
+
+    // Nothing to install and nothing to check against, so both controls would
+    // only produce warnings.
+    ui->autoInstallModCheckBox->setEnabled(haveJars);
+    ui->syncModsButton->setEnabled(haveJars);
+}
+
+void PrismSettingsDialog::onSyncModsClicked()
+{
+    if (currentPath.isEmpty()) {
+        QMessageBox::warning(this, "No PrismLauncher Directory",
+                             "Select the PrismLauncher directory first.");
+        return;
+    }
+
+    const QVector<ClientModInstaller::Outcome> outcomes =
+        ClientModInstaller::syncUsedInstances(currentPath);
+
+    if (outcomes.isEmpty()) {
+        QMessageBox::information(this, "Sync Client Mod",
+                                 "No configured bot has an instance to update.");
+        return;
+    }
+
+    int unchanged = 0;
+    QStringList updated;
+    QStringList skipped;
+    for (const ClientModInstaller::Outcome &outcome : outcomes) {
+        switch (outcome.result) {
+        case ClientModInstaller::Result::UpToDate:
+            ++unchanged;
+            break;
+        case ClientModInstaller::Result::Installed:
+        case ClientModInstaller::Result::Replaced:
+            updated.append(QString("%1: %2").arg(outcome.instance, outcome.detail));
+            LogManager::log(QString("Client mod: %1").arg(outcome.detail), LogManager::Success);
+            break;
+        default:
+            skipped.append(outcome.detail);
+            LogManager::log(QString("Client mod not updated: %1").arg(outcome.detail),
+                            LogManager::Warning);
+            break;
+        }
+    }
+
+    QStringList report;
+    report.append(QString("%1 of %2 instance(s) already up to date.")
+                      .arg(unchanged).arg(outcomes.size()));
+    if (!updated.isEmpty()) {
+        report.append(QString("\nUpdated %1:\n  %2").arg(updated.size()).arg(updated.join("\n  ")));
+    }
+    if (!skipped.isEmpty()) {
+        report.append(QString("\nSkipped %1:\n  %2").arg(skipped.size()).arg(skipped.join("\n  ")));
+    }
+
+    QMessageBox::information(this, "Sync Client Mod", report.join("\n"));
 }
 
 void PrismSettingsDialog::onBrowseClicked()

@@ -1514,6 +1514,7 @@ void ManagerMainWindow::configurePrismLauncher()
 
     dialog.setUseHook(prismConfig.useHook);
     dialog.setMinimizeWindows(prismConfig.minimizeWindows);
+    dialog.setAutoInstallClientMod(prismConfig.autoInstallClientMod);
 
     if (dialog.exec() == QDialog::Accepted) {
         QString newPath = dialog.getCurrentPath();
@@ -1533,6 +1534,7 @@ void ManagerMainWindow::configurePrismLauncher()
         prismConfig.prismExecutable = newExecutable;
         prismConfig.useHook = dialog.getUseHook();
         prismConfig.minimizeWindows = dialog.getMinimizeWindows();
+        prismConfig.autoInstallClientMod = dialog.getAutoInstallClientMod();
     }
 }
 
@@ -1577,6 +1579,7 @@ void ManagerMainWindow::saveSettings()
     settings.setValue("accounts", prismConfig.accounts);
     settings.setValue("useHook", prismConfig.useHook);
     settings.setValue("minimizeWindows", prismConfig.minimizeWindows);
+    settings.setValue("autoInstallClientMod", prismConfig.autoInstallClientMod);
     settings.endGroup();
 
     // Save world save path
@@ -1618,6 +1621,7 @@ void ManagerMainWindow::loadSettings()
     prismConfig.prismExecutable = settings.value("executable", "").toString();
     prismConfig.useHook = settings.value("useHook", true).toBool();
     prismConfig.minimizeWindows = settings.value("minimizeWindows", false).toBool();
+    prismConfig.autoInstallClientMod = settings.value("autoInstallClientMod", true).toBool();
     settings.endGroup();
 
     // Load world save path

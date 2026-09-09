@@ -222,6 +222,51 @@ qt_add_executable(mc-bot-manager
 
 add_dependencies(mc-bot-manager generate_stubs)
 
+# ---- Client mod jars ----
+set(CLIENT_MOD_MC_VERSIONS "1.21.4;1.21.11;26.1.2" CACHE STRING
+    "Minecraft versions to bundle the client mod for")
+set(CLIENT_MOD_JARS_DIR "" CACHE PATH
+    "Directory of prebuilt client mod jars. Set to skip the Gradle build (CI passes its build-client artifacts here)")
+set(CLIENT_MODS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/client-mods")
+set(CLIENT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../client")
+
+if(CLIENT_MOD_JARS_DIR)
+    set(BUNDLE_CLIENT_MOD_DEFAULT ON)
+elseif(EXISTS "${CLIENT_SOURCE_DIR}/gradlew")
+    find_program(JAVA_EXECUTABLE NAMES java)
+    if(JAVA_EXECUTABLE)
+        set(BUNDLE_CLIENT_MOD_DEFAULT ON)
+    else()
+        set(BUNDLE_CLIENT_MOD_DEFAULT OFF)
+        message(WARNING
+            "No java found, so the client mod will not be bundled and bots will not get it "
+            "installed automatically. Install a JDK, or pass -DCLIENT_MOD_JARS_DIR=<dir>.")
+    endif()
+else()
+    set(BUNDLE_CLIENT_MOD_DEFAULT OFF)
+endif()
+
+option(BUNDLE_CLIENT_MOD "Bundle the client mod jars next to the manager binary"
+       ${BUNDLE_CLIENT_MOD_DEFAULT})
+
+if(BUNDLE_CLIENT_MOD)
+    # Comma separated: a CMake list would be split into separate arguments by
+    # some generators before the script ever sees it.
+    string(REPLACE ";" "," CLIENT_MOD_MC_VERSIONS_ARG "${CLIENT_MOD_MC_VERSIONS}")
+    add_custom_target(client_mods
+        COMMAND ${CMAKE_COMMAND}
+                "-DCLIENT_DIR=${CLIENT_SOURCE_DIR}"
+                "-DOUT_DIR=${CLIENT_MODS_OUTPUT_DIR}"
+                "-DMC_VERSIONS=${CLIENT_MOD_MC_VERSIONS_ARG}"
+                "-DMANAGER_VERSION=${PROJECT_VERSION}"
+                "-DJARS_DIR=${CLIENT_MOD_JARS_DIR}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BuildClientMods.cmake"
+        COMMENT "Bundling client mod jars"
+        USES_TERMINAL
+    )
+    add_dependencies(mc-bot-manager client_mods)
+endif()
+
 target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Widgets
     Qt6::Network
@@ -260,6 +305,14 @@ install(TARGETS mc-bot-manager mc-bot-manager-proto
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(BUNDLE_CLIENT_MOD)
+    # Next to the binary: ClientModInstaller looks in applicationDirPath()/client-mods.
+    install(DIRECTORY "${CLIENT_MODS_OUTPUT_DIR}/"
+        DESTINATION ${CMAKE_INSTALL_BINDIR}/client-mods
+        FILES_MATCHING PATTERN "*.jar"
+    )
+endif()
 
 qt_finalize_executable(mc-bot-manager)
 
@@ -306,6 +359,12 @@ endif()
 option(BUILD_APPIMAGE "Build AppImage" OFF)
 
 if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
+    if(BUNDLE_CLIENT_MOD)
+        set(APPIMAGE_CLIENT_MODS_COMMAND
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${CLIENT_MODS_OUTPUT_DIR}" AppDir/usr/bin/client-mods)
+    endif()
+
     # Custom target to build AppImage in build directory
     add_custom_target(appimage
         COMMAND ${CMAKE_COMMAND} -E make_directory AppDir/usr/bin
@@ -316,6 +375,7 @@ if(BUILD_APPIMAGE AND UNIX AND NOT APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libmc-bot-manager-proto.so AppDir/usr/lib/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libprismhook.so AppDir/usr/bin/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libprismhook_core.so AppDir/usr/bin/
+        ${APPIMAGE_CLIENT_MODS_COMMAND}
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/mc-bot-manager.desktop AppDir/usr/share/applications/
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/icons/mc-bot-manager.png AppDir/usr/share/icons/hicolor/256x256/apps/ || true
         COMMAND ${CMAKE_COMMAND} -E make_directory "AppDir/usr/lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}"
