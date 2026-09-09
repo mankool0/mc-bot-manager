@@ -162,7 +162,8 @@ public:
     void setCurrentDimension(const QString& dimension) { currentDimension = dimension; }
 
     // Entity tracking
-    void updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed);
+    void updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed,
+                        const QString& dimension);
     QVector<EntityData> getAllEntities() const;
     QVector<EntityData> findEntitiesNear(double x, double y, double z, double radius,
                                          const QString& typeFilter = "") const;
@@ -179,7 +180,11 @@ public:
 private:
     QHash<ChunkPos, ChunkData> chunks;
     QString currentDimension;
-    QHash<int, EntityData> entities;
+    // Keyed by uuid, not entity id: the server hands out a fresh network id every time
+    // an entity's chunk reloads, while the uuid lasts as long as the world does.
+    QHash<QString, EntityData> entities;
+    QHash<int, QString> entityIdToUuid;
+    QString entityDimension;
     QHash<BlockEntityPos, BlockEntityData> blockEntities;
 
     bool blockMatches(const QString& blockState, const QStringList& blockTypes) const;  // Handles exact matches and wildcards

@@ -24,13 +24,11 @@ public class ServerOutbound extends BaseOutbound {
 
     @Override
     protected void onClientTick(Minecraft client) {
-        if (client.player == null || client.level == null) {
-            return;
-        }
-
         tickCounter++;
 
-        // Send server status every 100 ticks (5 seconds)
+        // Every 100 ticks (5 seconds), and deliberately not gated on being in a level:
+        // the "Disconnected" report is what makes the manager drop the world state it
+        // cached, and it is all that arrives if a disconnect went unreported.
         if (tickCounter % 100 == 0) {
             sendStatusUpdate();
         }
@@ -94,6 +92,26 @@ public class ServerOutbound extends BaseOutbound {
             .build();
         connection.sendMessage(message);
         LOGGER.info("Sent NETWORK_DROP status to manager");
+    }
+
+    // Leaving a server for a reason the manager has no special handling for: a kick, or
+    // a disconnect the player asked for. NETWORK_DROP and INVALID_SESSION keep their own
+    // methods because the manager keys behaviour off those two exact strings.
+    public void sendDisconnectedStatus(String reason) {
+        Connection.ServerConnectionStatus status = Connection.ServerConnectionStatus.newBuilder()
+            .setStatus(Connection.ServerConnectionStatus.Status.INITIAL)
+            .setServerAddress("Disconnected")
+            .setDisconnectReason(reason == null ? "" : reason)
+            .build();
+
+        Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setServerStatus(status)
+            .build();
+
+        connection.sendMessage(message);
+        LOGGER.info("Sent disconnected status to manager: {}", reason);
     }
 
     public void sendInvalidSessionStatus() {

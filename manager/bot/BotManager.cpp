@@ -637,6 +637,35 @@ bool BotManager::sendOutboundMessage(int connectionId, mankool::mcbot::protocol:
     return true;
 }
 
+// Called when a bot leaves a server and when a fresh client completes the handshake.
+void BotManager::resetWorldState(BotInstance* bot)
+{
+    if (!bot) {
+        return;
+    }
+
+    // The saver's own entity tracking is deliberately left alone: it is shared with
+    // every other bot on this world, and is keyed by uuid so it needs no reset.
+    if (bot->worldAutoSaver && bot->saveWorldToDisk) {
+        bot->worldAutoSaver->flushAll();
+    }
+
+    {
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.clearWorldState();
+    }
+
+    bot->sectionDirty->clear();
+
+    {
+        QMutexLocker statsLocker(&m_statsCacheMutex);
+        m_statsCache.remove(bot->name);
+    }
+
+    QMutexLocker tabLocker(bot->dataMutex.get());
+    bot->tabList.clear();
+}
+
 void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
 {
     if (!bot) return;
@@ -937,6 +966,8 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
     BotInstance *bot = findStartingBotByUuid(playerUuid);
 
     if (bot) {
+        resetWorldState(bot);
+
         bot->connectionId = connectionId;
         bot->status = BotStatus::Online;
         bot->minecraftPid = info.processId();
@@ -1067,25 +1098,7 @@ void BotManager::handleServerStatusImpl(int connectionId, const mankool::mcbot::
         // Clear world state and tab list when bot disconnects from server
         using Status = mankool::mcbot::protocol::ServerConnectionStatus_QtProtobufNested::Status;
         if (status.status() != Status::SUCCESSFUL) {
-            // Flush all dirty chunks and player data before clearing world data
-            if (bot->worldAutoSaver && bot->saveWorldToDisk) {
-                bot->worldAutoSaver->flushAll();
-            }
-
-            {
-                QWriteLocker locker(bot->worldDataLock.get());
-                bot->worldData.clearWorldState();
-            }
-
-            bot->sectionDirty->clear();
-
-            {
-                QMutexLocker statsLocker(&m_statsCacheMutex);
-                m_statsCache.remove(bot->name);
-            }
-
-            QMutexLocker tabLocker(bot->dataMutex.get());
-            bot->tabList.clear();
+            resetWorldState(bot);
         }
 
         // Try to initialize WorldAutoSaver now that we have server address
@@ -3350,13 +3363,20 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
         removed.append(id);
     }
 
+    // The batch names the level the client observed these in; the bot's own dimension
+    // is a separate report that can lag a step behind during a dimension change.
+    QString dimension = batch.dimension();
+    if (dimension.isEmpty()) {
+        dimension = bot->dimension;
+    }
+
     {
         QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.updateEntities(upserted, removed);
+        bot->worldData.updateEntities(upserted, removed, dimension);
     }
 
     if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.saveEntities) {
-        bot->worldAutoSaver->onEntitiesUpdated(upserted, removed, bot->dimension);
+        bot->worldAutoSaver->onEntitiesUpdated(upserted, removed, dimension);
     }
 }
 
