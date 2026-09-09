@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>300</height>
+    <width>560</width>
+    <height>760</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -98,17 +98,79 @@
        </widget>
       </item>
       <item>
-       <widget class="QTextEdit" name="hookNoteLabel">
-        <property name="plainText">
+       <widget class="QLabel" name="hookNoteLabel">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
          <string>When enabled, a shared library is injected into the PrismLauncher process. It refreshes account tokens on demand instead of waiting for Prism's own schedule, and keeps Prism's windows from taking focus when bots launch.</string>
         </property>
-        <property name="readOnly">
+        <property name="styleSheet">
+         <string notr="true">color: gray;</string>
+        </property>
+        <property name="wordWrap">
          <bool>true</bool>
         </property>
-        <property name="maximumHeight">
-         <number>60</number>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="clientModGroupBox">
+     <property name="title">
+      <string>Client Mod</string>
+     </property>
+     <layout class="QVBoxLayout" name="clientModLayout">
+      <item>
+       <widget class="QCheckBox" name="autoInstallModCheckBox">
+        <property name="toolTip">
+         <string>Before a bot launches, its instance gets the client mod jar built for that instance's Minecraft version. Any other mc-bot-client jar in the instance is removed first. Instances running a Minecraft version this manager has no client mod for are left alone.</string>
+        </property>
+        <property name="text">
+         <string>Install the matching client mod before launching a bot</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="syncModsLayout">
+        <item>
+         <widget class="QPushButton" name="syncModsButton">
+          <property name="toolTip">
+           <string>Update every instance used by a configured bot now, without launching anything.</string>
+          </property>
+          <property name="text">
+           <string>Sync client mod now</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="clientModVersionLabel">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="syncModsSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>

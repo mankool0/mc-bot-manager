@@ -65,6 +65,7 @@ private:
     PrismLauncherManager& operator=(const PrismLauncherManager&) = delete;
 
     void launchBotImpl(BotInstance *bot);
+    void syncClientMod(BotInstance *bot);
     void openPrismGUIImpl();
     void stopBotImpl(qint64 minecraftPid);
     void stopPrismGUIImpl();

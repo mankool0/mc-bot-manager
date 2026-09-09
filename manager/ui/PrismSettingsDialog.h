@@ -29,6 +29,8 @@ public:
     bool getUseHook() const;
     void setMinimizeWindows(bool enabled);
     bool getMinimizeWindows() const;
+    void setAutoInstallClientMod(bool enabled);
+    bool getAutoInstallClientMod() const;
 
     QStringList getInstances() const { return instances; }
     QStringList getAccounts() const;
@@ -43,6 +45,7 @@ public:
 private slots:
     void onBrowseClicked();
     void onBrowseExeClicked();
+    void onSyncModsClicked();
     void updateStatistics();
 
 private:
@@ -53,6 +56,7 @@ private:
     QMap<QString, QString> accountIdToNameMap;
 
     void parsePrismDirectory(const QString &path);
+    void updateClientModLabel();
     static bool isFlatpakPath(const QString &path);
 };
 

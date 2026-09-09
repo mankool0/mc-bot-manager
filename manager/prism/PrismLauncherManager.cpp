@@ -1,4 +1,5 @@
 #include "PrismLauncherManager.h"
+#include "ClientModInstaller.h"
 #include "logging/LogManager.h"
 #include "ui/ManagerMainWindow.h"
 #include "bot/BotManager.h"
@@ -91,12 +92,56 @@ void PrismLauncherManager::launchBot(BotInstance *bot)
     instance().launchBotImpl(bot);
 }
 
+void PrismLauncherManager::syncClientMod(BotInstance *bot)
+{
+    if (!bot || !prismConfig || !prismConfig->autoInstallClientMod) return;
+    if (bot->instance.isEmpty() || prismConfig->prismPath.isEmpty()) return;
+
+    // Only this bot's instance, and only while nothing is running out of it:
+    // the game holds its jars open on Windows, and swapping the mod under a bot
+    // that is already using it helps nobody. Stopping counts, since the JVM is
+    // still on its way down.
+    for (const BotInstance *other : std::as_const(BotManager::getBots())) {
+        if (other == bot || other->instance != bot->instance) continue;
+        if (other->status == BotStatus::Starting || other->status == BotStatus::Online
+            || other->status == BotStatus::Stopping) {
+            LogManager::log(QString("[%1] Skipping client mod check: '%2' is already in use by '%3'")
+                                .arg(bot->name, bot->instance, other->name),
+                            LogManager::Warning);
+            return;
+        }
+    }
+
+    const ClientModInstaller::Outcome outcome =
+        ClientModInstaller::syncInstance(prismConfig->prismPath, bot->instance);
+
+    switch (outcome.result) {
+    case ClientModInstaller::Result::UpToDate:
+        break;
+    case ClientModInstaller::Result::Installed:
+    case ClientModInstaller::Result::Replaced:
+        LogManager::log(QString("[%1] Client mod: %2").arg(bot->name, outcome.detail),
+                        LogManager::Success);
+        break;
+    default:
+        // Never a reason to hold up a launch: the bot may have a working mod
+        // installed by hand, and a stale one is caught by the version handshake.
+        LogManager::log(QString("[%1] Client mod not updated: %2").arg(bot->name, outcome.detail),
+                        LogManager::Warning);
+        break;
+    }
+}
+
 void PrismLauncherManager::launchBotImpl(BotInstance *bot)
 {
     if (!prismConfig) {
         failLaunch(bot, "PrismLauncher config not set");
         return;
     }
+
+    // Before either branch below, so it covers the launch that starts the GUI
+    // and the ones that queue behind a running one.
+    syncClientMod(bot);
 
     if (prismGUIProcess == nullptr || prismGUIProcess->state() == QProcess::NotRunning) {
         launchPrismGUIImpl(bot);
