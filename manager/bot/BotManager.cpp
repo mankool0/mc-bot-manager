@@ -3084,17 +3084,18 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
             bot->containerState.isOpen = true;
             bot->containerState.containerId = containerId;
             bot->containerState.containerType = containerUpdate.type();
+            if (containerUpdate.hasPosition()) {
+                bot->containerState.position = containerUpdate.position();
+            } else {
+                bot->containerState.position.reset();
+            }
 
             bot->containerState.items.clear();
             for (const auto &item : containerUpdate.items()) {
                 bot->containerState.items.append(item);
             }
         } else {
-            // Container closed - reset state
-            bot->containerState.isOpen = false;
-            bot->containerState.containerId = -1;
-            bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
-            bot->containerState.items.clear();
+            bot->containerState.clear();
         }
     }
 
@@ -3396,12 +3397,10 @@ void BotManager::handleScreenUpdateImpl(int connectionId, const mankool::mcbot::
 
     QString screenClass = screen.screenClass();
 
-    // If screen is closed (null/empty) and container was open, close the container
+    // Fallback for closes the client never reports (a disconnect mid-container, a screen
+    // dismissed by a mixin-less path); the normal path is the is_open=false ContainerUpdate.
     if (bot->containerState.isOpen && screenClass.isEmpty()) {
-        bot->containerState.isOpen = false;
-        bot->containerState.containerId = -1;
-        bot->containerState.containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
-        bot->containerState.items.clear();
+        bot->containerState.clear();
     }
 
     // Update screen state

@@ -2,6 +2,7 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Common;
+import mankool.mcBotClient.handler.outbound.ContainerOutbound;
 import mankool.mcBotClient.handler.outbound.InventoryOutbound;
 import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
@@ -91,19 +92,18 @@ public class InventoryHandler extends BaseInboundHandler {
             return;
         }
 
-        if (player.containerMenu == null) {
-            sendFailure(messageId, "No container open");
-            return;
-        }
-
         try {
             int slotIndex = command.getSlotIndex();
             int button = command.getButton();
 
             if (client.gameMode != null) {
+                // containerMenu is never null: with nothing open it is the player's own
+                // InventoryMenu (id 0), and clicking that is a supported path (2x2 crafting,
+                // stack consolidation), so say where the click went instead of refusing.
                 int containerId = player.containerMenu.containerId;
+                String target = player.containerMenu == player.inventoryMenu ? "player inventory" : "container " + containerId;
                 VersionCompat.clickContainerSlot(client.gameMode, containerId, slotIndex, button, command.getClickType(), player);
-                sendSuccess(messageId, "Clicked slot " + slotIndex + " with button " + button + " (type: " + command.getClickType() + ")");
+                sendSuccess(messageId, "Clicked slot " + slotIndex + " in " + target + " with button " + button + " (type: " + command.getClickType() + ")");
             } else {
                 sendFailure(messageId, "Game mode not available");
             }
@@ -121,10 +121,27 @@ public class InventoryHandler extends BaseInboundHandler {
         }
 
         try {
-            player.closeContainer();
+            closeContainer(player);
             sendSuccess(messageId, "Closed container");
         } catch (Exception e) {
             sendFailure(messageId, "Failed to close container: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Closes whatever menu the player has open and reports it to the manager. The server only
+     * sends ClientboundContainerClosePacket for closes it initiated, so a client-side close
+     * would otherwise leave ContainerOutbound (and the manager) believing the container is
+     * still open until the screen change is noticed a tick later - or never, if another
+     * screen replaces it within the same tick.
+     */
+    private static void closeContainer(LocalPlayer player) {
+        // closeContainer() swaps containerMenu back to inventoryMenu, so read the id first
+        int containerId = player.containerMenu.containerId;
+        player.closeContainer();
+        ContainerOutbound handler = ContainerOutbound.getInstance();
+        if (handler != null) {
+            handler.onContainerClosed(containerId);
         }
     }
 
@@ -136,8 +153,15 @@ public class InventoryHandler extends BaseInboundHandler {
         }
 
         try {
+            // Replacing only the screen would leave containerMenu pointing at the container, so
+            // clicks would still go there (with the inventory screen's slot numbering) and the
+            // container would keep being reported as open.
+            boolean closedContainer = player.containerMenu != player.inventoryMenu;
+            if (closedContainer) {
+                closeContainer(player);
+            }
             client.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(player));
-            sendSuccess(messageId, "Opened inventory");
+            sendSuccess(messageId, closedContainer ? "Closed container and opened inventory" : "Opened inventory");
         } catch (Exception e) {
             sendFailure(messageId, "Failed to open inventory: " + e.getMessage());
         }
