@@ -636,9 +636,12 @@ Get the currently open container. Returns `None` if no container is open or bot 
 |-----|------|-------------|
 | `id` | `int` | Container ID |
 | `type` | `ContainerType` | Container type enum value |
+| `position` | `tuple[int, int, int]` | Block position of the container. Only present when the client could attribute the open screen to a block (the block was opened by interacting with it shortly before), so use `container.get('position')`. |
 | `items` | `list` | List of [item dicts](bot.md#item-dict) for all slots |
 
 **Note:** Only works for external containers (chests, barrels, etc.). For the player's own inventory use `bot.inventory()`.
+
+Compare `position` against the block you interacted with before clicking slots: it tells you whether the screen that came up belongs to the container you asked for.
 
 ```python
 import world, time
@@ -648,6 +651,8 @@ time.sleep(0.3)  # wait for server to open container
 
 container = world.get_container()
 if container:
+    if container.get('position') not in (None, (cx, cy, cz)):
+        raise RuntimeError(f"Opened the wrong block: {container['position']}")
     print(f"Container type: {container['type']}")
     for item in container['items']:
         if item['item_id'] != 'minecraft:air':
@@ -831,7 +836,7 @@ if screen is not None:
 
 ### `close_container(bot_name="")`
 
-Close the currently open container.
+Close the currently open container. The client reports the close as soon as it processes the command, rather than leaving it to be noticed when the screen next changes, so `get_container()` clears within a tick. The call itself does not wait for that - it returns once the command has been sent - so a `get_container()` immediately afterwards can still answer with the container that was open.
 
 **Raises:** `RuntimeError` if bot not found or not online
 
@@ -843,7 +848,7 @@ world.close_container()
 
 ### `open_inventory(bot_name="")`
 
-Open the player's own inventory screen.
+Open the player's own inventory screen. If a container is open it is closed first, so `click_slot()` afterwards uses the player inventory's slot numbering. Like `close_container`, the call returns once the command has been sent and not when the screen is up.
 
 **Raises:** `RuntimeError` if bot not found or not online
 

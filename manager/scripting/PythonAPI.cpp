@@ -3240,6 +3240,14 @@ py::object PythonAPI::getContainer(const std::string &bot)
     py::dict result;
     result["id"] = botInstance->containerState.containerId;
     result["type"] = botInstance->containerState.containerType;
+    if (botInstance->containerState.position) {
+        // Cast: the accessors return QtProtobuf::int32, a TransparentWrapper that
+        // pybind11 has no caster for - handing it one raises at the call.
+        const auto &pos = *botInstance->containerState.position;
+        result["position"] = py::make_tuple(static_cast<int>(pos.x()),
+                                            static_cast<int>(pos.y()),
+                                            static_cast<int>(pos.z()));
+    }
 
     py::list items;
     for (const auto &item : std::as_const(botInstance->containerState.items)) {

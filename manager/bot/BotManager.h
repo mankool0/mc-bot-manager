@@ -278,7 +278,16 @@ struct BotInstance : public BotConfig {
         bool isOpen = false;
         int containerId = -1;
         mankool::mcbot::protocol::ContainerUpdate::ContainerType containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+        std::optional<mankool::mcbot::protocol::BlockPos> position;
         QVector<mankool::mcbot::protocol::ItemStack> items;
+
+        void clear() {
+            isOpen = false;
+            containerId = -1;
+            containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
+            position.reset();
+            items.clear();
+        }
     } containerState;
 
     QProcess* process = nullptr;
