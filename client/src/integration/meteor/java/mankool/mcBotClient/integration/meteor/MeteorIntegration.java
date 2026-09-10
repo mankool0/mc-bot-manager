@@ -49,6 +49,13 @@ public class MeteorIntegration implements ClientIntegration {
         ctx.registerHandler(Protocol.ManagerToClientMessage.PayloadCase.SET_MODULE_CONFIG,
             msg -> moduleHandler.handleSetModuleConfig(msg.getMessageId(), msg.getSetModuleConfig()));
 
+        MeteorFriendsHandler friendsHandler = new MeteorFriendsHandler(ctx.client(), ctx.connection());
+        ctx.registerTick(friendsHandler::tick);
+        ctx.registerHandler(Protocol.ManagerToClientMessage.PayloadCase.GET_FRIENDS,
+            msg -> friendsHandler.handleGetFriends(msg.getMessageId()));
+        ctx.registerHandler(Protocol.ManagerToClientMessage.PayloadCase.MODIFY_FRIENDS,
+            msg -> friendsHandler.handleModifyFriends(msg.getModifyFriends()));
+
         PipeConnection connection = ctx.connection();
         ctx.registerHandler(Protocol.ManagerToClientMessage.PayloadCase.SET_PROXY_CONFIG,
             msg -> handleSetProxyConfig(connection, msg.getMessageId(), msg.getSetProxyConfig()));

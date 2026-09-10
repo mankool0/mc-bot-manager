@@ -21,6 +21,9 @@ public:
 
     QStringList getItems() const;
 
+protected:
+    void keyPressEvent(QKeyEvent *event) override;
+
 private slots:
     void onAddClicked();
     void onRemoveItemClicked();

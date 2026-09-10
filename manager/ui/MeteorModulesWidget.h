@@ -14,6 +14,7 @@
 #include <QDoubleSpinBox>
 #include <QScrollBar>
 #include <QMap>
+#include <QStringList>
 #include <QPointer>
 #include <optional>
 
@@ -31,11 +32,14 @@ public:
 
     void updateModules(const QMap<QString, MeteorModuleData> &modules);
     void updateSingleModule(const MeteorModuleData &module);
+    void updateFriends(const QStringList &friends, bool known);
+    void setFriendsEditable(bool editable);
     void clear();
 
 signals:
     void moduleToggled(const QString &moduleName, bool enabled);
     void settingChanged(const QString &moduleName, const QString &settingPath, const QVariant &value);
+    void friendsChanged(const QStringList &add, const QStringList &remove);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -43,6 +47,7 @@ protected:
 private slots:
     void onItemChanged(QTreeWidgetItem *item, int column);
     void applyFilters();
+    void onFriendsClicked();
 
 private:
     enum UserDataRole {
@@ -54,6 +59,7 @@ private:
     static constexpr int DEFAULT_COLUMN_WIDTH = 300;
     static constexpr int MAX_DISPLAY_LENGTH = 50;
     static constexpr int TRUNCATE_LENGTH = 47;
+    static constexpr int FRIENDS_TOOLTIP_LENGTH = 200;
 
     void setupUI();
     void populateTree();
@@ -64,11 +70,17 @@ private:
                                    const QString &moduleName,
                                    const QString &settingPath);
     QLabel* createColorLabel(const RGBAColor &color, QWidget *parent);
+    void updateFriendsButton();
 
     QVBoxLayout *mainLayout;
     QLineEdit *filterEdit;
     QComboBox *categoryFilter;
     QTreeWidget *moduleTree;
+    QPushButton *friendsButton;
+
+    QStringList friends;
+    bool friendsKnown = false;
+    bool friendsEditable = false;
 
     QMap<QString, MeteorModuleData> allModules;
     QMap<QString, QTreeWidgetItem*> moduleItems;

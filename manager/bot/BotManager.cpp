@@ -1651,6 +1651,36 @@ void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::m
     }
 }
 
+void BotManager::handleFriendsUpdate(int connectionId, const mankool::mcbot::protocol::FriendsUpdate &update)
+{
+    instance().handleFriendsUpdateImpl(connectionId, update);
+}
+
+void BotManager::handleFriendsUpdateImpl(int connectionId, const mankool::mcbot::protocol::FriendsUpdate &update)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot) return;
+
+    // The bot sends this unasked whenever the list changes, so a no-op arrives only on connect.
+    const QStringList friends = update.friends();
+    if (bot->meteorFriendsKnown && bot->meteorFriends == friends) return;
+
+    const bool first = !bot->meteorFriendsKnown;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->meteorFriends = friends;
+        bot->meteorFriendsKnown = true;
+    }
+
+    // The first report is every bot on every connect; a later one is a friend actually added or
+    // removed, which is worth a line - it is the answer to `meteor friends add`.
+    LogManager::log(QString("[%1] Meteor friends: %2").arg(bot->name,
+                    friends.isEmpty() ? QStringLiteral("none") : friends.join(", ")),
+                    first ? LogManager::Debug : LogManager::Info);
+
+    emit meteorFriendsReceived(bot->name);
+}
+
 static QStringList parseCommandWithQuotes(const QString &commandText)
 {
     QStringList result;
@@ -1848,7 +1878,7 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
     }
     else if (cmd == "meteor") {
         if (parts.size() < 2) {
-            LogManager::log("Usage: meteor list [category] | meteor toggle <module> | meteor set <module> <setting|enabled> <value>", LogManager::Warning);
+            LogManager::log("Usage: meteor list [category] | meteor toggle <module> | meteor set <module> <setting|enabled> <value> | meteor friends [add|remove <player>]", LogManager::Warning);
             return;
         }
         QString subCmd = parts[1].toLower();
@@ -1906,6 +1936,32 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
                 setModuleCmd.setSettings(settings);
             }
             msg.setSetModuleConfig(setModuleCmd);
+        }
+        else if (subCmd == "friends") {
+            if (parts.size() < 3) {
+                // What the bot last reported; a bare `meteor friends` also asks for it again.
+                LogManager::log(QString("[%1] Meteor friends: %2").arg(bot->name,
+                                bot->meteorFriends.isEmpty()
+                                    ? (bot->meteorFriendsKnown ? QStringLiteral("none")
+                                                               : QStringLiteral("not reported yet"))
+                                    : bot->meteorFriends.join(", ")),
+                                LogManager::Info);
+                msg.setGetFriends(mankool::mcbot::protocol::GetFriendsRequest{});
+            }
+            else {
+                QString action = parts[2].toLower();
+                if (parts.size() < 4 || (action != "add" && action != "remove")) {
+                    LogManager::log("Usage: meteor friends | meteor friends add <player> | meteor friends remove <player>", LogManager::Warning);
+                    return;
+                }
+                mankool::mcbot::protocol::ModifyFriendsCommand modifyCmd;
+                if (action == "add") {
+                    modifyCmd.setAdd(parts.mid(3));
+                } else {
+                    modifyCmd.setRemove(parts.mid(3));
+                }
+                msg.setModifyFriends(modifyCmd);
+            }
         }
         else {
             LogManager::log(QString("Unknown meteor subcommand: %1").arg(subCmd), LogManager::Warning);
@@ -2578,6 +2634,33 @@ void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QStri
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setSetModuleConfig(setModuleCmd);
+    sendOutboundMessage(bot->connectionId, msg);
+}
+
+void BotManager::sendMeteorFriendChange(const QString &botName, const QStringList &add, const QStringList &remove)
+{
+    instance().sendMeteorFriendChangeImpl(botName, add, remove);
+}
+
+void BotManager::sendMeteorFriendChangeImpl(const QString &botName, const QStringList &add, const QStringList &remove)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot) {
+        LogManager::log(QString("Cannot change Meteor friends: bot '%1' not found").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    if (bot->connectionId <= 0) {
+        LogManager::log(QString("Cannot change Meteor friends: bot '%1' not connected").arg(botName), LogManager::Warning);
+        return;
+    }
+
+    mankool::mcbot::protocol::ModifyFriendsCommand modifyCmd;
+    modifyCmd.setAdd(add);
+    modifyCmd.setRemove(remove);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setModifyFriends(modifyCmd);
     sendOutboundMessage(bot->connectionId, msg);
 }
 

@@ -310,6 +310,9 @@ public:
                                        const std::string &bot = "");
     static py::dict meteorGetModule(const std::string &module, const std::string &bot = "");
     static py::list meteorListModules(const std::string &bot = "");
+    static py::object meteorFriends(const std::string &bot = "");
+    static void meteorAddFriend(const std::string &player, const std::string &bot = "");
+    static void meteorRemoveFriend(const std::string &player, const std::string &bot = "");
 
     // Entity queries
     static py::list getEntities(const std::string &bot = "");

@@ -2,6 +2,7 @@
 #include "SettingEditorFactory.h"
 #include "ListEditorDialog.h"
 #include "StringListEditorDialog.h"
+#include "MeteorFriendsDialog.h"
 #include "ESPBlockDataMapEditorDialog.h"
 #include "bot/BotManager.h"
 #include <QHeaderView>
@@ -11,6 +12,7 @@
 #include <QPixmap>
 #include <QEvent>
 #include <QScopeGuard>
+#include <QSet>
 #include <algorithm>
 #include <functional>
 
@@ -49,6 +51,10 @@ void MeteorModulesWidget::setupUI()
     categoryFilter->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     filterLayout->addWidget(categoryFilter);
 
+    friendsButton = new QPushButton("Friends", this);
+    filterLayout->addWidget(friendsButton);
+    updateFriendsButton();
+
     mainLayout->addLayout(filterLayout);
 
     moduleTree = new QTreeWidget(this);
@@ -58,6 +64,7 @@ void MeteorModulesWidget::setupUI()
     moduleTree->setEditTriggers(QAbstractItemView::NoEditTriggers);
     mainLayout->addWidget(moduleTree);
 
+    connect(friendsButton, &QPushButton::clicked, this, &MeteorModulesWidget::onFriendsClicked);
     connect(filterEdit, &QLineEdit::textChanged, this, &MeteorModulesWidget::applyFilters);
     connect(categoryFilter, &QComboBox::currentTextChanged, this, &MeteorModulesWidget::applyFilters);
     connect(moduleTree, &QTreeWidget::itemChanged, this, &MeteorModulesWidget::onItemChanged);
@@ -104,6 +111,89 @@ void MeteorModulesWidget::flushPendingModules()
     const QMap<QString, MeteorModuleData> modules = std::move(*pendingModules);
     pendingModules.reset();
     updateModules(modules);
+}
+
+void MeteorModulesWidget::updateFriends(const QStringList &friends, bool known)
+{
+    this->friends = friends;
+    friendsKnown = known;
+    updateFriendsButton();
+}
+
+void MeteorModulesWidget::setFriendsEditable(bool editable)
+{
+    friendsEditable = editable;
+    updateFriendsButton();
+}
+
+void MeteorModulesWidget::updateFriendsButton()
+{
+    friendsButton->setText(friendsKnown ? QString("Friends (%1)").arg(friends.size())
+                                        : QStringLiteral("Friends"));
+    friendsButton->setEnabled(friendsKnown && friendsEditable);
+
+    if (!friendsKnown) {
+        friendsButton->setToolTip("The bot has not reported its Meteor friends yet");
+    } else if (!friendsEditable) {
+        friendsButton->setToolTip("The bot must be online to change its friends");
+    } else if (friends.isEmpty()) {
+        friendsButton->setToolTip("No friends");
+    } else {
+        QString names = friends.join(", ");
+        if (names.length() > FRIENDS_TOOLTIP_LENGTH) {
+            names = names.left(FRIENDS_TOOLTIP_LENGTH - 3) + "...";
+        }
+        friendsButton->setToolTip(names);
+    }
+}
+
+void MeteorModulesWidget::onFriendsClicked()
+{
+    // A push from the bot while the dialog is up would move `friends` under it, and the diff would
+    // then remove a friend the dialog never showed. Diff against what the user was actually given.
+    const QStringList original = friends;
+
+    MeteorFriendsDialog dialog(original, this);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    // Meteor matches friends by name case-insensitively, so retyping a name in another case is
+    // not a change: fold both lists before diffing, or such an edit would remove and re-add.
+    auto folded = [](const QStringList &names) {
+        QSet<QString> set;
+        for (const QString &name : names) {
+            set.insert(name.toLower());
+        }
+        return set;
+    };
+
+    const QStringList edited = dialog.getFriends();
+    const QSet<QString> before = folded(original);
+    const QSet<QString> after = folded(edited);
+
+    QStringList add;
+    QSet<QString> seen;
+    for (const QString &name : edited) {
+        const QString key = name.toLower();
+        if (!before.contains(key) && !seen.contains(key)) {
+            add.append(name);
+            seen.insert(key);
+        }
+    }
+
+    QStringList remove;
+    for (const QString &name : original) {
+        if (!after.contains(name.toLower())) {
+            remove.append(name);
+        }
+    }
+
+    if (add.isEmpty() && remove.isEmpty()) {
+        return;
+    }
+
+    emit friendsChanged(add, remove);
 }
 
 void MeteorModulesWidget::clear()

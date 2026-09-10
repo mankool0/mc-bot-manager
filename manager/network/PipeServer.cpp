@@ -217,6 +217,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleModuleConfigResponse(connectionId, clientMsg.moduleConfigResponse());
         } else if (clientMsg.hasModuleStateChanged()) {
             BotManager::handleModuleStateChanged(connectionId, clientMsg.moduleStateChanged());
+        } else if (clientMsg.hasFriendsUpdate()) {
+            BotManager::handleFriendsUpdate(connectionId, clientMsg.friendsUpdate());
         } else if (clientMsg.hasBaritoneSettingsResponse()) {
             BotManager::handleBaritoneSettingsResponse(connectionId, clientMsg.baritoneSettingsResponse());
         } else if (clientMsg.hasBaritoneCommandsResponse()) {

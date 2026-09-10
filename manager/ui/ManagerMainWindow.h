@@ -168,6 +168,8 @@ private:
     void onMeteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
     void onMeteorModuleToggled(const QString &moduleName, bool enabled);
     void onMeteorSettingChanged(const QString &moduleName, const QString &settingPath, const QVariant &value);
+    void onMeteorFriendsReceived(const QString &botName);
+    void onMeteorFriendsChanged(const QStringList &add, const QStringList &remove);
 
     void setupBaritoneTab();
     void onBaritoneSettingsReceived(const QString &botName);

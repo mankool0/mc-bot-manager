@@ -1458,6 +1458,54 @@ py::list PythonAPI::meteorListModules(const std::string &bot)
     return result;
 }
 
+py::object PythonAPI::meteorFriends(const std::string &bot)
+{
+    QString name = resolveBotName(bot);
+
+    // Capability checked with the GIL held, as in meteorListModules.
+    botIfCapable(name, "meteor");
+
+    bool known = false;
+    QStringList friends;
+    {
+        py::gil_scoped_release release;
+
+        BotInstance *botInst = BotManager::getBotByName(name);
+        if (botInst) {
+            QMutexLocker locker(botInst->dataMutex.get());
+            known = botInst->meteorFriendsKnown;
+            friends = botInst->meteorFriends;
+        }
+    }
+
+    // None, not an empty list: a bot that has never reported has not said it has no friends.
+    if (!known) {
+        return py::none();
+    }
+
+    py::list result;
+    for (const QString &friendName : std::as_const(friends)) {
+        result.append(friendName.toStdString());
+    }
+    return result;
+}
+
+void PythonAPI::meteorAddFriend(const std::string &player, const std::string &bot)
+{
+    QString name = resolveBotName(bot);
+    ensureBotCapability(name, "meteor");
+
+    BotManager::sendMeteorFriendChange(name, {QString::fromStdString(player)}, {});
+}
+
+void PythonAPI::meteorRemoveFriend(const std::string &player, const std::string &bot)
+{
+    QString name = resolveBotName(bot);
+    ensureBotCapability(name, "meteor");
+
+    BotManager::sendMeteorFriendChange(name, {}, {QString::fromStdString(player)});
+}
+
 void PythonAPI::setCurrentStopFlag(std::atomic<bool> *flag)
 {
     currentStopFlag = flag;

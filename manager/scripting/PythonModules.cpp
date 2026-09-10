@@ -388,6 +388,17 @@ PYBIND11_EMBEDDED_MODULE(meteor, m) {
     def_state("list_modules", &PythonAPI::meteorListModules,
               "List all module names",
               py::arg("bot_name") = "");
+    def_state("friends", &PythonAPI::meteorFriends,
+              "List the bot's Meteor friends by name, or None if it has not reported them yet",
+              py::arg("bot_name") = "");
+    def_action("add_friend", &PythonAPI::meteorAddFriend,
+               "Add a player to the bot's Meteor friends",
+               py::arg("player"),
+               py::arg("bot_name") = "");
+    def_action("remove_friend", &PythonAPI::meteorRemoveFriend,
+               "Remove a player from the bot's Meteor friends",
+               py::arg("player"),
+               py::arg("bot_name") = "");
 
     m.attr("__debug_state__") = debugState;
     m.attr("__debug_query__") = debugQuery;

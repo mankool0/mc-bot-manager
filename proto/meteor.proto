@@ -199,3 +199,23 @@ message ModuleStateChanged {
   optional bool enabled = 2;                            // If present, module was toggled
   map<string, MeteorSettingValue> changed_settings = 3; // Settings that changed (path -> typed new value)
 }
+
+// Meteor's friends list: It is per instance and persists in meteor-client/friends.nbt
+
+// The whole list (Client -> Manager). Pushed on connection setup, on world join
+// and after any change, so the manager's copy needs no polling. Names only:
+// Meteor matches friends by name and keeps their UUIDs to itself.
+message FriendsUpdate {
+  repeated string friends = 1;
+}
+
+// Ask for that list (Manager -> Client). Answered with a FriendsUpdate.
+message GetFriendsRequest {
+}
+
+// Add and/or remove friends (Manager -> Client). A name already on the list is
+// left alone, and so is one that is not on it: saying it twice is not an error.
+message ModifyFriendsCommand {
+  repeated string add = 1;
+  repeated string remove = 2;
+}

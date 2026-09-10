@@ -6,6 +6,7 @@
 #include <QGroupBox>
 #include <QScrollArea>
 #include <QMessageBox>
+#include <QKeyEvent>
 
 StringListEditorDialog::StringListEditorDialog(const QString &settingName,
                                                const QStringList &currentItems,
@@ -82,13 +83,23 @@ void StringListEditorDialog::setupUI()
     mainLayout->addWidget(buttonBox);
 
     connect(newItemEdit, &QLineEdit::textChanged, this, &StringListEditorDialog::onNewItemTextChanged);
-    connect(newItemEdit, &QLineEdit::returnPressed, this, &StringListEditorDialog::onAddClicked);
     connect(addButton, &QPushButton::clicked, this, &StringListEditorDialog::onAddClicked);
     connect(clearButton, &QPushButton::clicked, this, &StringListEditorDialog::onClearClicked);
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     newItemEdit->setFocus();
+}
+
+void StringListEditorDialog::keyPressEvent(QKeyEvent *event)
+{
+    // QLineEdit does not consume Enter, so without this the dialog's default button (OK) would
+    // fire on the same keystroke that adds the item and close the dialog.
+    if (focusWidget() == newItemEdit && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)) {
+        onAddClicked();
+        return;
+    }
+    QDialog::keyPressEvent(event);
 }
 
 void StringListEditorDialog::onNewItemTextChanged(const QString &text)
