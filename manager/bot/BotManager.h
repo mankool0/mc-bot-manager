@@ -249,6 +249,7 @@ struct BotInstance : public BotConfig {
     QDateTime startTime;
 
     QString playerUuid;
+    int ownEntityId = 0; // 0 means unknown
     QVector3D position;
     float yaw = 0.0f;
     float pitch = 0.0f;

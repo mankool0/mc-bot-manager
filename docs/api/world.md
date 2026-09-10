@@ -1404,8 +1404,49 @@ Live entity data is pushed from the Minecraft client every tick (only changed/ne
 | `max_health` | `float` | living entities |
 | `item` | [item dict](bot.md#item-dict) | `type == "minecraft:item"` (dropped item entities) |
 | `player_name` | `str` | player entities |
+| `owner_entity_id` | `int` | projectiles - the **owner's** entity id, when the server named one |
+| `owner_uuid` | `str` | projectiles - when this client has resolved that id |
 
 The `item` sub-dict follows the standard [item dict schema](bot.md#item-dict).
+
+#### Projectile ownership
+
+Either field can be absent:
+
+- `owner_entity_id` - the server named no owner, usually because the owner was offline
+  when the projectile last entered range. It fills in the next time that chunk is
+  re-sent while the owner is online.
+- `owner_uuid` - this client has never had the owner in range. Not the same as "no
+  owner".
+
+Entity ids are reassigned on every login, so match them on the spot rather than storing
+them. On 1.21.4 the server resolves an owner only within the owner's own dimension, so a
+cross-dimension owner sends no id at all; 1.21.5 and later, including 26.1, are
+dimension agnostic.
+
+To test against the current bot, compare with [`bot.entity_id()`](bot.md#entity_idbot_name):
+
+```python
+import bot, world
+
+mine = bot.entity_id()
+pearls = world.find_entities_near(px, py, pz, 2, type="minecraft:ender_pearl")
+
+if any(p.get("owner_entity_id") == mine for p in pearls):
+    world.interact_block(tx, ty, tz)
+```
+
+To name any of the manager's bots, build the mapping yourself - rebuild it per use, since
+the ids change on reconnect:
+
+```python
+import bot
+
+owners = {eid: b["name"] for b in bot.list_all()
+          if (eid := bot.entity_id(b["name"])) is not None}
+
+name = owners.get(pearl.get("owner_entity_id"), "someone else")
+```
 
 ---
 
@@ -1413,14 +1454,10 @@ The `item` sub-dict follows the standard [item dict schema](bot.md#item-dict).
 
 Returns a list of all currently tracked entity dicts.
 
-Tracking follows the bot's own client, so the list holds what that bot can currently
-see - entities in loaded chunks of the dimension it is in, and nothing from a
-dimension it has left or a session it has since restarted. A bot that is attached to
-the manager but not on a server tracks nothing, so this returns an empty list rather
-than the last state it saw, and raises nothing. There is exactly one entry
-per entity: `uuid` identifies an entity for the life of the world, while `entity_id`
-is a per-session network handle that the server reassigns whenever the entity's chunk
-reloads, so prefer `uuid` for anything you hold on to across time.
+Holds what the bot can currently see: entities in loaded chunks of the dimension it is
+in, one entry each. Empty (not stale) when the bot is attached to the manager but not on
+a server. `uuid` is stable for the life of the world; `entity_id` is reassigned whenever
+the entity's chunk reloads, so key on `uuid` for anything you keep.
 
 ```python
 import world

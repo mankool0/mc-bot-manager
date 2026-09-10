@@ -68,6 +68,8 @@ struct EntityData {
     float health = 0, maxHealth = 0;
     bool isLiving = false, isItem = false, isPlayer = false;
     mankool::mcbot::protocol::ItemStack itemStack;  // only populated when isItem == true
+    int ownerEntityId = 0;
+    QString ownerUuid;
 };
 
 // Hash function for ChunkPos to use in QHash

@@ -49,6 +49,7 @@ public class PlayerOutbound extends BaseOutbound {
             .setBurning(player.isOnFire())
             .setAbsorption(player.getAbsorptionAmount())
             .setDimension(VersionCompat.keyId(player.level().dimension()))
+            .setEntityId(player.getId())
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

@@ -662,6 +662,8 @@ void BotManager::resetWorldState(BotInstance* bot)
         m_statsCache.remove(bot->name);
     }
 
+    bot->ownEntityId = 0;
+
     QMutexLocker tabLocker(bot->dataMutex.get());
     bot->tabList.clear();
 }
@@ -1135,6 +1137,7 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         if (!state.dimension().isEmpty()) {
             bot->dimension = state.dimension();
         }
+        bot->ownEntityId = state.entityId();
 
         bot->health = state.health();
         bot->foodLevel = state.foodLevel();
@@ -3354,6 +3357,8 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
         }
         e.isPlayer   = proto.isPlayer();
         e.playerName = proto.playerName();
+        e.ownerEntityId = proto.ownerEntityId();
+        e.ownerUuid = proto.ownerUuid();
         upserted.append(e);
     }
 
