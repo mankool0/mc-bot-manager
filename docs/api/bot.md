@@ -246,6 +246,25 @@ Get account username.
 
 **Returns:** `str` or `None`
 
+### `entity_id(bot_name="")`
+
+Get the bot's own entity id on the server it is on - the same id that appears as
+`owner_entity_id` on projectiles it has thrown (see
+[projectile ownership](world.md#projectile-ownership)).
+
+Reassigned on every login and meaningless on another server, so match it on the spot
+rather than storing it.
+
+**Returns:** `int` or `None` - `None` when the bot is not on a server.
+
+```python
+import bot, world
+
+mine = bot.entity_id()
+pearls = [p for p in world.find_entities_near(px, py, pz, 2, type="minecraft:ender_pearl")
+          if p.get("owner_entity_id") == mine]
+```
+
 ### `data_version(bot_name="")`
 
 Get the Minecraft [data version](https://minecraft.wiki/w/Data_version) of the client this bot

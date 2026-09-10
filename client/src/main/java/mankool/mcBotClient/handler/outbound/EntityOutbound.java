@@ -3,6 +3,7 @@ package mankool.mcBotClient.handler.outbound;
 import mankool.mcbot.protocol.Entities;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcBotClient.connection.PipeConnection;
+import mankool.mcBotClient.util.ProjectileOwnerAccess;
 import mankool.mcBotClient.util.ProtoUtil;
 import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.client.Minecraft;
@@ -11,6 +12,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
@@ -133,6 +135,26 @@ public class EntityOutbound extends BaseOutbound {
         if (entity instanceof Player player) {
             builder.setIsPlayer(true)
                    .setPlayerName(player.getName().getString());
+        }
+
+        if (entity instanceof Projectile projectile) {
+            ProjectileOwnerAccess owner = (ProjectileOwnerAccess) projectile;
+            int ownerId = owner.mcbot$ownerEntityId();
+            builder.setOwnerEntityId(ownerId);
+
+            UUID ownerUuid = owner.mcbot$ownerUuid();
+            // Vanilla resolves the owner id once, on the spawn packet, and never again.
+            // Retrying picks up an owner who has since come into range.
+            if (ownerUuid == null && ownerId != 0 && client.level != null) {
+                Entity resolved = client.level.getEntity(ownerId);
+                if (resolved != null) {
+                    ownerUuid = resolved.getUUID();
+                    owner.mcbot$setOwnerUuid(ownerUuid);
+                }
+            }
+            if (ownerUuid != null) {
+                builder.setOwnerUuid(ownerUuid.toString());
+            }
         }
 
         return builder.build();

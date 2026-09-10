@@ -23,6 +23,8 @@ message EntityData {
   ItemStack item_stack = 16;
   bool   is_player   = 17;
   string player_name = 18;
+  int32  owner_entity_id = 19; // Projectiles only
+  string owner_uuid      = 20;
 }
 
 message EntityUpdate {

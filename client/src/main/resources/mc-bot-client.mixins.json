@@ -17,7 +17,8 @@
     "LoginDisconnectMixin",
     "GlfwInitMixin",
     "WindowMixin",
-    "MinecraftTitleMixin"
+    "MinecraftTitleMixin",
+    "ProjectileOwnerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -777,6 +777,18 @@ std::optional<std::string> PythonAPI::getAccount(const std::string &botName)
     return bot->account.toStdString();
 }
 
+std::optional<int> PythonAPI::getEntityId(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    // The server allocates ids from 1, so 0 is a safe "not on a server" sentinel.
+    if (!bot || bot->ownEntityId == 0)
+        return std::nullopt;
+
+    return bot->ownEntityId;
+}
+
 std::optional<int> PythonAPI::getDataVersion(const std::string &botName)
 {
     QString name = resolveBotName(botName);
@@ -2890,6 +2902,12 @@ static py::dict buildEntityDict(const EntityData &e)
     }
     if (e.isPlayer) {
         d["player_name"] = e.playerName.toStdString();
+    }
+    if (e.ownerEntityId != 0) {
+        d["owner_entity_id"] = e.ownerEntityId;
+    }
+    if (!e.ownerUuid.isEmpty()) {
+        d["owner_uuid"] = e.ownerUuid.toStdString();
     }
     return d;
 }

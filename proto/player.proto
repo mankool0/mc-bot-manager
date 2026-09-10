@@ -43,4 +43,6 @@ message PlayerStateUpdate {
 
   // World info
   string dimension = 21;        // From Player.level().dimension().toString()
+
+  int32 entity_id = 22; // From Entity.getId()
 }
