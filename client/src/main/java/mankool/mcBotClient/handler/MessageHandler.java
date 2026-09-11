@@ -94,13 +94,20 @@ public class MessageHandler {
         installTickHook();
     }
 
-    // Installs the single shared tick hook the first time a handler is built. The lambda holds no
+    // Installs the shared tick hooks the first time a handler is built. The lambdas hold no
     // reference to any instance, so a handler becomes collectable as soon as it stops being the
     // active one.
     private static void installTickHook() {
         if (!tickHookInstalled.compareAndSet(false, true)) {
             return;
         }
+
+        ClientTickEvents.START_CLIENT_TICK.register(client -> {
+            MessageHandler handler = activeHandler;
+            if (handler != null) {
+                handler.onClientTickStart(client);
+            }
+        });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             MessageHandler handler = activeHandler;
             if (handler != null) {
@@ -280,8 +287,13 @@ public class MessageHandler {
         for (Runnable tickHook : integrationTicks) {
             tickHook.run();
         }
+    }
 
-        // Tick world interaction handler for continuous actions
+    // The held attack and the held use, pumped at the head of the tick - see installTickHook.
+    private void onClientTickStart(Minecraft client) {
+        if (!running) {
+            return;
+        }
         worldInteractionHandler.tick();
     }
 }

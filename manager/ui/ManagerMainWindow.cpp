@@ -429,6 +429,8 @@ void ManagerMainWindow::setupUI()
             this, &ManagerMainWindow::onMeteorModulesReceived);
     connect(&BotManager::instance(), &BotManager::meteorSingleModuleUpdated,
             this, &ManagerMainWindow::onMeteorSingleModuleUpdated);
+    connect(&BotManager::instance(), &BotManager::meteorFriendsReceived,
+            this, &ManagerMainWindow::onMeteorFriendsReceived);
     connect(&BotManager::instance(), &BotManager::baritoneSettingsReceived,
             this, &ManagerMainWindow::onBaritoneSettingsReceived);
     connect(&BotManager::instance(), &BotManager::baritoneCommandsReceived,
@@ -543,6 +545,10 @@ void ManagerMainWindow::addNewBot()
                         this, &ManagerMainWindow::onMeteorModuleToggled);
                 connect(bot->meteorWidget, &MeteorModulesWidget::settingChanged,
                         this, &ManagerMainWindow::onMeteorSettingChanged);
+                connect(bot->meteorWidget, &MeteorModulesWidget::friendsChanged,
+                        this, &ManagerMainWindow::onMeteorFriendsChanged);
+                bot->meteorWidget->updateFriends(bot->meteorFriends, bot->meteorFriendsKnown);
+                bot->meteorWidget->setFriendsEditable(bot->status == BotStatus::Online);
                 bot->meteorWidget->hide();
 
                 QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(ui->meteorTab->layout());
@@ -1200,6 +1206,10 @@ void ManagerMainWindow::updateStatusDisplay()
         ui->accountComboBox->setEnabled(!isActive);
         ui->serverLineEdit->setEnabled(!isActive);
         ui->memorySpinBox->setEnabled(!isActive && !PrismLauncherManager::isPrismGUIRunning());
+
+        if (selectedBot->meteorWidget) {
+            selectedBot->meteorWidget->setFriendsEditable(isOnline);
+        }
     }
 }
 
@@ -2269,6 +2279,10 @@ void ManagerMainWindow::setupMeteorTab()
                     this, &ManagerMainWindow::onMeteorModuleToggled);
             connect(bot->meteorWidget, &MeteorModulesWidget::settingChanged,
                     this, &ManagerMainWindow::onMeteorSettingChanged);
+            connect(bot->meteorWidget, &MeteorModulesWidget::friendsChanged,
+                    this, &ManagerMainWindow::onMeteorFriendsChanged);
+            bot->meteorWidget->updateFriends(bot->meteorFriends, bot->meteorFriendsKnown);
+            bot->meteorWidget->setFriendsEditable(bot->status == BotStatus::Online);
             bot->meteorWidget->hide();
             layout->addWidget(bot->meteorWidget);
         }
@@ -2291,6 +2305,22 @@ void ManagerMainWindow::onMeteorSingleModuleUpdated(const QString &botName, cons
             bot->meteorWidget->updateSingleModule(bot->meteorModules[moduleName]);
         }
     }
+}
+
+void ManagerMainWindow::onMeteorFriendsReceived(const QString &botName)
+{
+    BotInstance *bot = BotManager::getBotByName(botName);
+    if (bot && bot->meteorWidget) {
+        bot->meteorWidget->updateFriends(bot->meteorFriends, bot->meteorFriendsKnown);
+    }
+}
+
+void ManagerMainWindow::onMeteorFriendsChanged(const QStringList &add, const QStringList &remove)
+{
+    if (selectedBotName.isEmpty()) {
+        return;
+    }
+    BotManager::sendMeteorFriendChange(selectedBotName, add, remove);
 }
 
 void ManagerMainWindow::onMeteorModuleToggled(const QString &moduleName, bool enabled)

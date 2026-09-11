@@ -313,6 +313,9 @@ struct BotInstance : public BotConfig {
     // Meteor modules data
     QMap<QString, MeteorModuleData> meteorModules;
 
+    QStringList meteorFriends;
+    bool meteorFriendsKnown = false;
+
     // Baritone data
     QMap<QString, BaritoneSettingData> baritoneSettings;
     QMap<QString, BaritoneCommandData> baritoneCommands;
@@ -421,6 +424,7 @@ public:
     static void handleModulesResponse(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response);
     static void handleModuleConfigResponse(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response);
     static void handleModuleStateChanged(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange);
+    static void handleFriendsUpdate(int connectionId, const mankool::mcbot::protocol::FriendsUpdate &update);
 
     // Baritone handlers
     static void handleBaritoneSettingsResponse(int connectionId, const mankool::mcbot::protocol::GetBaritoneSettingsResponse &response);
@@ -554,6 +558,7 @@ public:
     static void sendBaritoneSettingChange(const QString &botName, const QString &settingName, const QVariant &value);
     static void sendMeteorSettingChange(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
     static void setMeteorModuleEnabled(const QString &botName, const QString &moduleName, bool enabled);
+    static void sendMeteorFriendChange(const QString &botName, const QStringList &add, const QStringList &remove);
     static void sendProxyConfig(const QString &botName);
 
     static QString getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting);
@@ -564,6 +569,7 @@ signals:
     void botUpdated(const QString &name);
     void proxyDisconnectDetected(const QString &botName);
     void meteorModulesReceived(const QString &botName);
+    void meteorFriendsReceived(const QString &botName);
     void meteorSingleModuleUpdated(const QString &botName, const QString &moduleName);
     void baritoneSettingsReceived(const QString &botName);
     void baritoneCommandsReceived(const QString &botName);
@@ -595,6 +601,7 @@ private:
     void handleModulesResponseImpl(int connectionId, const mankool::mcbot::protocol::GetModulesResponse &response);
     void handleModuleConfigResponseImpl(int connectionId, const mankool::mcbot::protocol::SetModuleConfigResponse &response);
     void handleModuleStateChangedImpl(int connectionId, const mankool::mcbot::protocol::ModuleStateChanged &stateChange);
+    void handleFriendsUpdateImpl(int connectionId, const mankool::mcbot::protocol::FriendsUpdate &update);
     void handleBaritoneSettingsResponseImpl(int connectionId, const mankool::mcbot::protocol::GetBaritoneSettingsResponse &response);
     void handleBaritoneCommandsResponseImpl(int connectionId, const mankool::mcbot::protocol::GetBaritoneCommandsResponse &response);
     void handleBaritoneSettingsSetResponseImpl(int connectionId, const mankool::mcbot::protocol::SetBaritoneSettingsResponse &response);
@@ -684,6 +691,7 @@ private:
     void sendBaritoneCommandImpl(const QString &botName, const QString &commandText);
     void sendBaritoneSettingChangeImpl(const QString &botName, const QString &settingName, const QVariant &value);
     void sendMeteorSettingChangeImpl(const QString &botName, const QString &moduleName, const QString &settingPath, const QVariant &value);
+    void sendMeteorFriendChangeImpl(const QString &botName, const QStringList &add, const QStringList &remove);
 
     // Helper to initialize WorldAutoSaver when both server and dataVersion are available
     void tryInitializeWorldAutoSaver(BotInstance* bot);

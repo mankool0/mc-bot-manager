@@ -49,6 +49,7 @@ message ClientToManagerMessage {
     GetModulesResponse modules_response = 10;
     SetModuleConfigResponse module_config_response = 11;
     ModuleStateChanged module_state_changed = 12;
+    FriendsUpdate friends_update = 44;
 
     // Baritone responses
     GetBaritoneSettingsResponse baritone_settings_response = 13;
@@ -145,6 +146,8 @@ message ManagerToClientMessage {
     // Meteor module management
     GetModulesRequest get_modules = 14;
     SetModuleConfigCommand set_module_config = 15;
+    GetFriendsRequest get_friends = 42;
+    ModifyFriendsCommand modify_friends = 43;
 
     // Baritone control
     GetBaritoneSettingsRequest get_baritone_settings = 16;
