@@ -189,6 +189,7 @@ struct BaritoneProcessInfo {
 struct BaritoneProcessStatus {
     mankool::mcbot::protocol::PathEventTypeGadget::PathEventType eventType = mankool::mcbot::protocol::PathEventTypeGadget::PathEventType::PATH_EVENT_CALC_STARTED;
     bool isPathing = false;
+    bool isCalculating = false;
     QString goalDescription;
     BaritoneProcessInfo activeProcess;
     bool hasActiveProcess = false;
@@ -251,6 +252,7 @@ struct BotInstance : public BotConfig {
     QString playerUuid;
     int ownEntityId = 0; // 0 means unknown
     QVector3D position;
+    bool positionKnown = false;
     float yaw = 0.0f;
     float pitch = 0.0f;
     QString dimension;

@@ -238,11 +238,16 @@ Fired when baritone pathfinding status changes.
 
 - `status` (`dict`) - Baritone status information with keys:
   - `is_pathing` (`bool`) - Whether currently pathfinding
+  - `is_calculating` (`bool`) - Whether a path calculation is running
   - `event_type` (`PathEventType`) - Path event type (see `baritone.PathEventType` enum)
   - `goal_description` (`str`, optional) - Description of current goal
   - `active_process` (`dict`, optional) - Active process info
   - `estimated_ticks_to_goal` (`float`, optional) - ETA in ticks
   - `ticks_remaining_in_segment` (`float`, optional) - Ticks remaining in segment
+
+!!! warning "`is_pathing` false does not mean stopped"
+
+    `is_pathing` is false for the whole of a path calculation - Baritone drops its current path the instant a segment ends - so a bot waiting on the next segment of a long path reads exactly like a bot whose path failed. Check `is_calculating` before treating `is_pathing` false as a stop.
 
 ```python
 from baritone import PathEventType

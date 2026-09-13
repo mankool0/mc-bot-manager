@@ -196,4 +196,5 @@ message BaritoneProcessStatusUpdate {
   optional BaritoneProcessInfo active_process = 4;  // Active process information
   optional double estimated_ticks_to_goal = 5;      // Estimated ticks remaining to goal
   optional double ticks_remaining_in_segment = 6;   // Ticks remaining in current path segment
+  optional bool is_calculating = 7;
 }

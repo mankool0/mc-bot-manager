@@ -167,6 +167,7 @@ Get current Baritone process status and pathfinding state.
 **Returns:** Dictionary with the following keys:
 
 - `is_pathing` (`bool`) - Whether the bot is currently pathfinding
+- `is_calculating` (`bool`) - Whether a path calculation is running
 - `event_type` (`PathEventType`) - Current path event type (see enum above)
 - `goal_description` (`str`, optional) - Description of current goal
 - `active_process` (`dict`, optional) - Active process info with keys:
@@ -179,6 +180,15 @@ Get current Baritone process status and pathfinding state.
 - `ticks_remaining_in_segment` (`float`, optional) - Ticks remaining in current path segment
 
 **Polling approach:**
+
+!!! warning "`is_pathing` false does not mean stopped"
+
+    `is_pathing` is false for the whole of a path calculation - Baritone drops its current path the instant a segment ends - so a bot waiting on the next segment of a long path reads exactly like a bot whose path failed. Check `is_calculating` before treating `is_pathing` false as a stop.
+
+    A poller that re-sends `goto()` on `is_pathing` false will cancel nothing
+    (Baritone ignores a goto it is already working on) but will spend its retry
+    budget on a walk that was going fine. Wait while `is_calculating`; re-send on
+    `CALC_FAILED` / `NEXT_CALC_FAILED`.
 
 !!! note "Timing Consideration"
     When you call `goto()`, baritone needs time to calculate the path. The status won't immediately show `is_pathing=True`. You can either:
