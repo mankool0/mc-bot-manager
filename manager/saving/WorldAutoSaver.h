@@ -9,19 +9,7 @@
 #include <optional>
 #include "bot/WorldData.h"
 #include "world/WorldExporter.h"
-
-struct DimChunkPos {
-    QString dimension;
-    int chunkX = 0, chunkZ = 0;
-
-    bool operator==(const DimChunkPos& other) const {
-        return chunkX == other.chunkX && chunkZ == other.chunkZ && dimension == other.dimension;
-    }
-};
-
-inline size_t qHash(const DimChunkPos& pos, size_t seed = 0) {
-    return qHashMulti(seed, pos.dimension, pos.chunkX, pos.chunkZ);
-}
+#include "saving/DimChunkPos.h"
 
 struct WorldSaveSettings {
     bool saveBlockEntities = true;
@@ -45,6 +33,7 @@ public:
     using ChunkProvider = std::function<std::optional<std::pair<ChunkData, QVector<BlockEntityData>>>(int, int, const QString&)>;
 
     void saveChunkAsync(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities = {});
+    int pendingChunkCount() const;
     void setChunkProvider(ChunkProvider provider);
     void markBlockChunkDirty(int chunkX, int chunkZ, const QString& dimension);
 
@@ -64,8 +53,6 @@ public:
     const WorldSaveSettings& getSaveSettings() const { return m_saveSettings; }
 
 signals:
-    void chunkReadyForSaving(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,
-                             const QString& worldPath, int dataVersion);
     void entityChunkReadyForSaving(int chunkX, int chunkZ, const QString& dimension,
                                    const QVector<EntityData>& entities,
                                    const QString& worldPath, int dataVersion);

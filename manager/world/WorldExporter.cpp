@@ -150,6 +150,11 @@ bool WorldExporter::exportChunk(const ChunkData& chunk, const QString& outputPat
     QString regionPath = getRegionFilePath(outputPath, regionPos.x, regionPos.z);
     RegionFile regionFile(regionPath);
 
+    return exportChunk(chunk, regionFile, dataVersion, blockEntities);
+}
+
+bool WorldExporter::exportChunk(const ChunkData& chunk, RegionFile& regionFile, int dataVersion,
+                                const QVector<BlockEntityData>& blockEntities) {
     if (!regionFile.isValid()) {
         return false;
     }
@@ -172,6 +177,11 @@ bool WorldExporter::exportEntityChunk(int chunkX, int chunkZ, const QString& dim
     QString regionPath = QString("%1/r.%2.%3.mca").arg(entitiesDir).arg(regionPos.x).arg(regionPos.z);
     RegionFile regionFile(regionPath);
 
+    return exportEntityChunk(chunkX, chunkZ, entities, regionFile, dataVersion);
+}
+
+bool WorldExporter::exportEntityChunk(int chunkX, int chunkZ, const QVector<EntityData>& entities,
+                                       RegionFile& regionFile, int dataVersion) {
     if (!regionFile.isValid()) {
         return false;
     }
