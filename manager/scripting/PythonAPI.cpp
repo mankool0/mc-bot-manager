@@ -397,7 +397,7 @@ py::object PythonAPI::getPosition(const std::string &botName)
     py::gil_scoped_release release;
 
     BotInstance *bot = BotManager::getBotByName(name);
-    if (!bot || bot->status != BotStatus::Online) {
+    if (!bot || bot->status != BotStatus::Online || !bot->positionKnown) {
         py::gil_scoped_acquire acquire;
         return py::none();
     }
@@ -1309,6 +1309,7 @@ py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
 
     py::dict result;
     result["is_pathing"] = status.isPathing;
+    result["is_calculating"] = status.isCalculating;
     result["event_type"] = static_cast<int>(status.eventType);
 
     if (!status.goalDescription.isEmpty()) {

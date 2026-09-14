@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.17.0 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.17.1 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -17,7 +17,7 @@ else()
     set(PROJECT_WARNING_FLAGS -Wall -Wextra -Werror)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent WebEngineWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Protobuf Concurrent WebEngineWidgets OpenGLWidgets)
 
 include(FetchContent)
 
@@ -273,6 +273,7 @@ target_link_libraries(mc-bot-manager PRIVATE
     Qt6::Protobuf
     Qt6::Concurrent
     Qt6::WebEngineWidgets
+    Qt6::OpenGLWidgets
     mc-bot-manager-proto
     pybind11::embed
     Python3::Python

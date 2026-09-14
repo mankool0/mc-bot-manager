@@ -41,6 +41,7 @@ public class BaritoneHandler extends BaseInboundHandler {
     // Track last sent state to avoid spam
     private PathEvent lastPathEvent = null;
     private boolean lastIsPathing = false;
+    private boolean lastIsCalculating = false;
     private String lastGoalDescription = null;
     private Double lastEstimatedTicksToGoal = null;
     private Double lastTicksRemainingInSegment = null;
@@ -775,25 +776,48 @@ public class BaritoneHandler extends BaseInboundHandler {
         }
     }
 
+    private boolean isCalculating(IPathingBehavior pathingBehavior) {
+        try {
+            return pathingBehavior.getInProgress().isPresent();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void pollBaritoneStatus() {
         try {
             if (client.player == null) {
                 return;
             }
 
-            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
-            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
-
-            // Only send updates if actively pathing
-            if (!pathingBehavior.isPathing()) {
+            // Nothing has happened yet, so there is no event to report against.
+            if (lastPathEvent == null) {
                 return;
             }
 
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            IPathingBehavior pathingBehavior = baritone.getPathingBehavior();
+
+            boolean isPathing = pathingBehavior.isPathing();
+            boolean isCalculating = isCalculating(pathingBehavior);
+            Goal goal = pathingBehavior.getGoal();
+            String goalDescription = goal != null ? goal.toString() : null;
             Double currentEstimatedTicksToGoal = pathingBehavior.estimatedTicksToGoal().orElse(null);
             Double currentTicksRemainingInSegment = pathingBehavior.ticksRemainingInSegment().orElse(null);
 
-            if (Objects.equals(currentEstimatedTicksToGoal, lastEstimatedTicksToGoal) &&
-                Objects.equals(currentTicksRemainingInSegment, lastTicksRemainingInSegment)) {
+            boolean stateUnchanged = isPathing == lastIsPathing &&
+                    isCalculating == lastIsCalculating &&
+                    Objects.equals(goalDescription, lastGoalDescription);
+
+            // The ETA and the segment clock only mean anything while a path is
+            // running. Off one they drift with the player against a goal that
+            // is still set, which would put a message a second on the wire for
+            // a bot standing still.
+            boolean progressUnchanged = !isPathing ||
+                    (Objects.equals(currentEstimatedTicksToGoal, lastEstimatedTicksToGoal) &&
+                     Objects.equals(currentTicksRemainingInSegment, lastTicksRemainingInSegment));
+
+            if (stateUnchanged && progressUnchanged) {
                 return;
             }
 
@@ -813,16 +837,18 @@ public class BaritoneHandler extends BaseInboundHandler {
             IPathingControlManager controlManager = baritone.getPathingControlManager();
 
             boolean isPathing = pathingBehavior.isPathing();
+            boolean isCalculating = isCalculating(pathingBehavior);
             Goal goal = pathingBehavior.getGoal();
             String goalDescription = goal != null ? goal.toString() : null;
 
             BaritoneProcessStatusUpdate status = buildStatusUpdate(
-                    event, isPathing, goalDescription,
+                    event, isPathing, isCalculating, goalDescription,
                     controlManager.mostRecentInControl(), pathingBehavior
             );
 
             lastPathEvent = event;
             lastIsPathing = isPathing;
+            lastIsCalculating = isCalculating;
             lastGoalDescription = goalDescription;
 
             sendBaritoneProcessStatusUpdate(status);
@@ -883,13 +909,15 @@ public class BaritoneHandler extends BaseInboundHandler {
     private BaritoneProcessStatusUpdate buildStatusUpdate(
             PathEvent event,
             boolean isPathing,
+            boolean isCalculating,
             String goalDescription,
             Optional<IBaritoneProcess> activeProcess,
             IPathingBehavior pathingBehavior
     ) {
         BaritoneProcessStatusUpdate.Builder builder = BaritoneProcessStatusUpdate.newBuilder()
                 .setEventType(toProtoPathEventType(event))
-                .setIsPathing(isPathing);
+                .setIsPathing(isPathing)
+                .setIsCalculating(isCalculating);
 
         if (goalDescription != null) {
             builder.setGoalDescription(goalDescription);

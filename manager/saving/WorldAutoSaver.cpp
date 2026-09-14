@@ -22,11 +22,10 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
 
     // Setup worker thread
     m_workerThread = new QThread();
-    m_worker = new ChunkSavingWorker();
+    m_worker = new ChunkSavingWorker(m_worldPath, m_version.dataVersion);
     m_worker->moveToThread(m_workerThread);
 
     connect(m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
-    connect(this, &WorldAutoSaver::chunkReadyForSaving, m_worker, &ChunkSavingWorker::processChunk, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::entityChunkReadyForSaving, m_worker, &ChunkSavingWorker::processEntityChunk, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::playerDataReadyForSaving, m_worker, &ChunkSavingWorker::processPlayerData, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::mapDataReadyForSaving, m_worker,
@@ -102,7 +101,11 @@ void WorldAutoSaver::saveChunkAsync(const ChunkData& chunk, const QVector<BlockE
         filteredBEs = blockEntities;
     }
 
-    emit chunkReadyForSaving(chunk, filteredBEs, m_worldPath, m_version.dataVersion);
+    m_worker->enqueueChunk(chunk, filteredBEs);
+}
+
+int WorldAutoSaver::pendingChunkCount() const {
+    return m_worker->pendingChunkCount();
 }
 
 void WorldAutoSaver::setChunkProvider(ChunkProvider provider) {

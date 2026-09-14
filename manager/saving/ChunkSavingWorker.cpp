@@ -5,6 +5,9 @@
 #include "logging/LogManager.h"
 #include <QDir>
 #include <QFile>
+#include <QMetaObject>
+#include <QSet>
+#include <algorithm>
 #include <io/stream_reader.h>
 #include <io/stream_writer.h>
 #include <nbt_tags.h>
@@ -52,11 +55,113 @@ static std::optional<nbt::tag_list> readEnderItemsFromPlayerDat(const QString& f
     return std::nullopt;
 }
 
-ChunkSavingWorker::ChunkSavingWorker(QObject *parent) : QObject(parent) {}
+// Only these ever get an Items list written by the manager, so only for these can the copy on
+// disk hold contents the bot has not seen this session. Recovering them means inflating and
+// parsing the whole stored chunk, which for a sign or a banner buys nothing.
+static bool blockEntityHoldsItems(const QString& type) {
+    static const QSet<QString> kTypes = {
+        "minecraft:chest", "minecraft:trapped_chest", "minecraft:barrel", "minecraft:hopper",
+        "minecraft:dispenser", "minecraft:dropper", "minecraft:furnace", "minecraft:blast_furnace",
+        "minecraft:smoker", "minecraft:brewing_stand", "minecraft:crafter",
+        "minecraft:chiseled_bookshelf", "minecraft:campfire", "minecraft:shulker_box",
+    };
+    return kTypes.contains(type) || type.endsWith(QLatin1String("_shulker_box"));
+}
+
+static constexpr int kMaxOpenRegions = 16;
+static constexpr int kBacklogWarnChunks = 1000;
+static constexpr qint64 kBacklogWarnIntervalMs = 60000;
+
+ChunkSavingWorker::ChunkSavingWorker(const QString& worldPath, int dataVersion, QObject *parent)
+    : QObject(parent), m_worldPath(worldPath), m_dataVersion(dataVersion) {}
+
 ChunkSavingWorker::~ChunkSavingWorker() = default;
 
-void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,
-                                      const QString& worldPath, int dataVersion) {
+void ChunkSavingWorker::enqueueChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities) {
+    DimChunkPos key{chunk.dimension, chunk.chunkX, chunk.chunkZ};
+    bool schedule = false;
+    int backlog = 0;
+    {
+        QMutexLocker lock(&m_pendingMutex);
+        auto it = m_pending.find(key);
+        if (it == m_pending.end()) {
+            m_pending.insert(key, {chunk, blockEntities});
+            m_pendingOrder.push_back(key);
+        } else {
+            *it = {chunk, blockEntities};
+        }
+        if (!m_drainScheduled) {
+            m_drainScheduled = true;
+            schedule = true;
+        }
+        backlog = m_pending.size();
+    }
+
+    if (backlog >= kBacklogWarnChunks
+        && (!m_backlogWarning.isValid() || m_backlogWarning.elapsed() >= kBacklogWarnIntervalMs)) {
+        m_backlogWarning.start();
+        LogManager::log(QString("World saver for %1 has %2 chunks waiting; the writer is not keeping up")
+                       .arg(m_worldPath).arg(backlog), LogManager::Warning);
+    }
+
+    if (schedule) {
+        QMetaObject::invokeMethod(this, &ChunkSavingWorker::savePendingChunk, Qt::QueuedConnection);
+    }
+}
+
+int ChunkSavingWorker::pendingChunkCount() const {
+    QMutexLocker lock(&m_pendingMutex);
+    return m_pending.size();
+}
+
+// One chunk per event so entity and player saves on this thread interleave with the drain
+// instead of waiting behind a long backlog.
+void ChunkSavingWorker::savePendingChunk() {
+    PendingChunk next;
+    {
+        QMutexLocker lock(&m_pendingMutex);
+        if (m_pendingOrder.empty()) {
+            m_drainScheduled = false;
+            return;
+        }
+        DimChunkPos key = std::move(m_pendingOrder.front());
+        m_pendingOrder.pop_front();
+        next = m_pending.take(key);
+        m_drainScheduled = !m_pendingOrder.empty();
+        if (m_drainScheduled) {
+            QMetaObject::invokeMethod(this, &ChunkSavingWorker::savePendingChunk, Qt::QueuedConnection);
+        }
+    }
+    processChunk(next.chunk, next.blockEntities);
+}
+
+RegionFile* ChunkSavingWorker::openRegion(const QString& path) {
+    for (auto it = m_openRegions.begin(); it != m_openRegions.end(); ++it) {
+        if (it->first != path) continue;
+        // A save directory deleted underneath the manager would otherwise keep being written
+        // through the unlinked handle.
+        if (!QFile::exists(path)) {
+            m_openRegions.erase(it);
+            break;
+        }
+        std::rotate(it, it + 1, m_openRegions.end());
+        return m_openRegions.back().second.get();
+    }
+
+    auto region = std::make_unique<RegionFile>(path);
+    if (!region->isValid()) {
+        return nullptr;
+    }
+    if (m_openRegions.size() >= static_cast<size_t>(kMaxOpenRegions)) {
+        m_openRegions.erase(m_openRegions.begin());
+    }
+    m_openRegions.emplace_back(path, std::move(region));
+    return m_openRegions.back().second.get();
+}
+
+void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities) {
+    const QString& worldPath = m_worldPath;
+    const int dataVersion = m_dataVersion;
     // Determine dimension path (version-aware: 26.1+ uses dimensions/ subdirectory)
     QString dimensionPath = WorldExporter::getDimensionPath(worldPath, chunk.dimension, dataVersion);
     QString dimensionName;
@@ -83,22 +188,29 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
     // with empty contents on reconnect.
     bool hasUnknownContainers = false;
     for (const auto& be : blockEntities) {
-        if (!be.rawNbt.isEmpty() && be.items.isEmpty()) {
+        if (!be.rawNbt.isEmpty() && be.items.isEmpty() && blockEntityHoldsItems(be.type)) {
             hasUnknownContainers = true;
             break;
         }
     }
 
-    QVector<BlockEntityData> effectiveBEs = blockEntities;
-    if (hasUnknownContainers) {
-        int regionX = chunk.chunkX >> 5;
-        int regionZ = chunk.chunkZ >> 5;
-        QString regionPath = QString("%1/region/r.%2.%3.mca").arg(dimensionPath).arg(regionX).arg(regionZ);
+    int regionX = chunk.chunkX >> 5;
+    int regionZ = chunk.chunkZ >> 5;
+    RegionFile* region = openRegion(QString("%1/region/r.%2.%3.mca").arg(dimensionPath).arg(regionX).arg(regionZ));
+    if (!region) {
+        LogManager::log(QString("Failed to open region r.%1.%2 in %3 for writing")
+                       .arg(regionX).arg(regionZ).arg(dimensionPath), LogManager::Error);
+        return;
+    }
 
-        if (QFile::exists(regionPath)) {
-            RegionFile existingRegion(regionPath);
-            if (existingRegion.isValid()) {
-                nbt::tag_compound existingChunk = existingRegion.readChunk(chunk.chunkX & 31, chunk.chunkZ & 31);
+    const int localX = chunk.chunkX & 31;
+    const int localZ = chunk.chunkZ & 31;
+
+    QVector<BlockEntityData> effectiveBEs = blockEntities;
+    if (hasUnknownContainers && region->hasChunk(localX, localZ)) {
+        {
+            {
+                nbt::tag_compound existingChunk = region->readChunk(localX, localZ);
 
                 if (existingChunk.has_key("block_entities", nbt::tag_type::List)) {
                     auto& beList = static_cast<nbt::tag_list&>(existingChunk.at("block_entities").get());
@@ -142,7 +254,9 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
         }
     }
 
-    WorldExporter::exportChunk(chunk, dimensionPath, dataVersion, effectiveBEs);
+    WorldExporter::exportChunk(chunk, *region, dataVersion, effectiveBEs);
+    // Readers open their own handle, so what the kernel has is what a scan of the save sees.
+    region->flush();
 }
 
 void ChunkSavingWorker::processEntityChunk(int chunkX, int chunkZ, const QString& dimension,
@@ -155,12 +269,15 @@ void ChunkSavingWorker::processEntityChunk(int chunkX, int chunkZ, const QString
     }
     QString entitiesDir = WorldExporter::getDimensionPath(worldPath, dimension, dataVersion) + "/entities";
 
-    QDir dir;
-    if (!dir.exists(entitiesDir)) {
-        dir.mkpath(entitiesDir);
+    RegionFile* region = openRegion(QString("%1/r.%2.%3.mca").arg(entitiesDir).arg(chunkX >> 5).arg(chunkZ >> 5));
+    if (!region) {
+        LogManager::log(QString("Failed to open entity region for chunk (%1, %2) in %3")
+                       .arg(chunkX).arg(chunkZ).arg(entitiesDir), LogManager::Error);
+        return;
     }
 
-    WorldExporter::exportEntityChunk(chunkX, chunkZ, dimension, entities, worldPath, dataVersion);
+    WorldExporter::exportEntityChunk(chunkX, chunkZ, entities, *region, dataVersion);
+    region->flush();
 }
 
 void ChunkSavingWorker::processPlayerData(const PlayerSaveData& data, const QString& worldPath, int dataVersion) {

@@ -59,9 +59,14 @@ public:
 
     static bool exportChunk(const ChunkData& chunk, const QString& outputPath, int dataVersion,
                             const QVector<BlockEntityData>& blockEntities = {});
+    // Into an already open region; the caller owns the handle and decides when it is flushed.
+    static bool exportChunk(const ChunkData& chunk, RegionFile& regionFile, int dataVersion,
+                            const QVector<BlockEntityData>& blockEntities = {});
     static bool exportEntityChunk(int chunkX, int chunkZ, const QString& dimension,
                                    const QVector<EntityData>& entities,
                                    const QString& worldPath, int dataVersion);
+    static bool exportEntityChunk(int chunkX, int chunkZ, const QVector<EntityData>& entities,
+                                   RegionFile& regionFile, int dataVersion);
     static std::tuple<int, int, int, int> getChunkBounds(const BotWorldData& worldData);  // Returns (minX, maxX, minZ, maxZ)
     static bool createWorldDirectories(const QString& outputPath, int dataVersion);
 

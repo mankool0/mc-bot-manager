@@ -666,6 +666,8 @@ void BotManager::resetWorldState(BotInstance* bot)
 
     QMutexLocker tabLocker(bot->dataMutex.get());
     bot->tabList.clear();
+    bot->positionKnown = false;
+    bot->dimension.clear();
 }
 
 void BotManager::tryInitializeWorldAutoSaver(BotInstance* bot)
@@ -1131,6 +1133,7 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         }
         if (state.hasPosition()) {
             bot->position = QVector3D(state.position().x(), state.position().y(), state.position().z());
+            bot->positionKnown = true;
         }
         bot->yaw   = state.yaw();
         bot->pitch = state.pitch();
@@ -1665,18 +1668,17 @@ void BotManager::handleFriendsUpdateImpl(int connectionId, const mankool::mcbot:
     const QStringList friends = update.friends();
     if (bot->meteorFriendsKnown && bot->meteorFriends == friends) return;
 
-    const bool first = !bot->meteorFriendsKnown;
     {
         QMutexLocker locker(bot->dataMutex.get());
         bot->meteorFriends = friends;
         bot->meteorFriendsKnown = true;
     }
 
-    // The first report is every bot on every connect; a later one is a friend actually added or
-    // removed, which is worth a line - it is the answer to `meteor friends add`.
-    LogManager::log(QString("[%1] Meteor friends: %2").arg(bot->name,
-                    friends.isEmpty() ? QStringLiteral("none") : friends.join(", ")),
-                    first ? LogManager::Debug : LogManager::Info);
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] Meteor friends: %2").arg(bot->name,
+                        friends.isEmpty() ? QStringLiteral("none") : friends.join(", ")),
+                        LogManager::Debug);
+    }
 
     emit meteorFriendsReceived(bot->name);
 }
@@ -2179,6 +2181,7 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
     // Update the baritone process status
     bot->baritoneProcessStatus.eventType = status.eventType();
     bot->baritoneProcessStatus.isPathing = status.isPathing();
+    bot->baritoneProcessStatus.isCalculating = status.hasIsCalculating() && status.isCalculating();
 
     if (status.hasGoalDescription()) {
         bot->baritoneProcessStatus.goalDescription = status.goalDescription();
@@ -2216,6 +2219,7 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
     if (bot->scriptEngine) {
         QVariantMap statusData;
         statusData["is_pathing"] = bot->baritoneProcessStatus.isPathing;
+        statusData["is_calculating"] = bot->baritoneProcessStatus.isCalculating;
         statusData["event_type"] = static_cast<int>(bot->baritoneProcessStatus.eventType);
         // Redundant for per-bot scripts, essential for the global-scope copy.
         statusData["bot_name"] = bot->name;
