@@ -1668,18 +1668,17 @@ void BotManager::handleFriendsUpdateImpl(int connectionId, const mankool::mcbot:
     const QStringList friends = update.friends();
     if (bot->meteorFriendsKnown && bot->meteorFriends == friends) return;
 
-    const bool first = !bot->meteorFriendsKnown;
     {
         QMutexLocker locker(bot->dataMutex.get());
         bot->meteorFriends = friends;
         bot->meteorFriendsKnown = true;
     }
 
-    // The first report is every bot on every connect; a later one is a friend actually added or
-    // removed, which is worth a line - it is the answer to `meteor friends add`.
-    LogManager::log(QString("[%1] Meteor friends: %2").arg(bot->name,
-                    friends.isEmpty() ? QStringLiteral("none") : friends.join(", ")),
-                    first ? LogManager::Debug : LogManager::Info);
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] Meteor friends: %2").arg(bot->name,
+                        friends.isEmpty() ? QStringLiteral("none") : friends.join(", ")),
+                        LogManager::Debug);
+    }
 
     emit meteorFriendsReceived(bot->name);
 }
