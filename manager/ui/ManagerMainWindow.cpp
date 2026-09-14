@@ -93,6 +93,8 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    ScriptsWidget::reserveEditorSurface(this);
+
     LogManager::setManagerLogWidget(ui->managerLogTextEdit);
     LogManager::setPrismLogWidget(ui->prismLogTextEdit);
 

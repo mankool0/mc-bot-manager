@@ -9,6 +9,8 @@
 #include <QSplitter>
 #include <QLabel>
 #include <QSet>
+#include <QTimer>
+#include <memory>
 
 #include "ui/MonacoWidget.h"
 
@@ -28,6 +30,13 @@ public:
     void reloadTheme();
 
     static QStringList getAvailableThemes();
+
+    // Call on the top-level window that will host editors, before it is first shown.
+    static void reserveEditorSurface(QWidget *topLevel);
+
+protected:
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 signals:
     void scriptLoaded(const QString &filename);
@@ -49,14 +58,24 @@ private slots:
 private:
     void setupUI();
     void updateButtons();
-    void setupEditor();
+    // The editor is a Chromium renderer plus a language server, about 200 MB per widget,
+    // and there is one widget per bot. It exists only while its tab is or was recently
+    // on screen: created on the first show, released after a long spell hidden.
+    void ensureEditor();
+    void releaseEditor();
     void setScriptModified(const QString &filename, bool modified);
 
     ScriptEngine *scriptEngine;
-    ZubanClient *zubanClient = nullptr;
+    // Shared with the completion lambdas, which run on a thread pool and may still be
+    // inside a request when the editor is released; the last holder posts the delete.
+    std::shared_ptr<ZubanClient> zubanClient;
 
     QListWidget *scriptList;
-    MonacoWidget *codeEditor;
+    QVBoxLayout *editorHostLayout = nullptr;
+    QLabel *editorPlaceholder = nullptr;
+    MonacoWidget *codeEditor = nullptr;
+    bool editorCreating = false;
+    QTimer *editorIdleTimer = nullptr;
     QPushButton *newButton;
     QPushButton *renameButton;
     QPushButton *deleteButton;

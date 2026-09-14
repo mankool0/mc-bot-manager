@@ -15,8 +15,10 @@
 #include <QPainter>
 #include <QSignalBlocker>
 #include <QStyledItemDelegate>
+#include <QOpenGLWidget>
 
 enum ScriptItemState { StateNormal = 0, StateRunning = 1, StateError = 2 };
+static const int kEditorIdleReleaseMs = 10 * 60 * 1000;
 static const int ScriptStateRole = Qt::UserRole + 1;
 static const int ScriptModifiedRole = Qt::UserRole + 2;
 
@@ -112,8 +114,23 @@ void ScriptsWidget::setupUI()
     editorLabel->setStyleSheet("font-weight: bold; font-size: 11pt;");
     rightLayout->addWidget(editorLabel);
 
-    setupEditor();
-    rightLayout->addWidget(codeEditor, 1);
+    QWidget *editorHost = new QWidget();
+    editorHostLayout = new QVBoxLayout(editorHost);
+    editorHostLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->addWidget(editorHost, 1);
+
+    editorPlaceholder = new QLabel("Loading editor...");
+    editorPlaceholder->setAlignment(Qt::AlignCenter);
+    editorPlaceholder->hide();
+    editorHostLayout->addWidget(editorPlaceholder, 1);
+
+    editorIdleTimer = new QTimer(this);
+    editorIdleTimer->setSingleShot(true);
+    editorIdleTimer->setInterval(kEditorIdleReleaseMs);
+    connect(editorIdleTimer, &QTimer::timeout, this, [this]() {
+        if (!isVisible())
+            releaseEditor();
+    });
 
     QHBoxLayout *editorButtonLayout = new QHBoxLayout();
     saveButton = new QPushButton("Save");
@@ -153,15 +170,28 @@ void ScriptsWidget::setupUI()
             this, &ScriptsWidget::onRunScript);
     connect(stopButton, &QPushButton::clicked,
             this, &ScriptsWidget::onStopScript);
-    connect(codeEditor, &MonacoWidget::textChanged,
-            this, [this](const QString &filename) {
-                // Compared against the saved code, so undoing back to it clears
-                // the unsaved marker again.
-                ScriptContext *ctx = scriptEngine ? scriptEngine->getScript(filename) : nullptr;
-                setScriptModified(filename, !ctx || codeEditor->documentText(filename) != ctx->code);
-            });
 
     updateButtons();
+}
+
+void ScriptsWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    editorIdleTimer->stop();
+    if (codeEditor)
+        return;
+
+    // Building the web view blocks the GUI thread, mostly for QtWebEngine's one-time
+    // startup on the first editor in the process. Let the tab switch paint first and
+    // say what is going on: a placeholder for a moment reads better than a dead window.
+    editorPlaceholder->show();
+    QTimer::singleShot(0, this, &ScriptsWidget::ensureEditor);
+}
+
+void ScriptsWidget::hideEvent(QHideEvent *event)
+{
+    QWidget::hideEvent(event);
+    editorIdleTimer->start();
 }
 
 void ScriptsWidget::refreshScriptList()
@@ -202,7 +232,8 @@ void ScriptsWidget::loadScript(const QString &filename)
     if (ctx) {
         currentScript = filename;
         // Keeps the unsaved contents when this script was edited before.
-        codeEditor->openDocument(filename, ctx->code);
+        if (codeEditor)
+            codeEditor->openDocument(filename, ctx->code);
         statusLabel->setText(modifiedScripts.contains(filename)
                                  ? QString("Unsaved changes: %1").arg(filename)
                                  : QString("Loaded: %1").arg(filename));
@@ -239,7 +270,8 @@ void ScriptsWidget::onScriptSelectionChanged()
     QList<QListWidgetItem*> selected = scriptList->selectedItems();
     if (selected.isEmpty()) {
         currentScript.clear();
-        codeEditor->clear();
+        if (codeEditor)
+            codeEditor->clear();
         statusLabel->clear();
         updateButtons();
         return;
@@ -324,7 +356,8 @@ void ScriptsWidget::onRenameScript()
     scriptEngine->enableScript(newName, autorun);
     scriptEngine->unloadScript(currentScript);
 
-    codeEditor->renameDocument(currentScript, newName);
+    if (codeEditor)
+        codeEditor->renameDocument(currentScript, newName);
     if (modifiedScripts.remove(currentScript))
         modifiedScripts.insert(newName);
 
@@ -358,7 +391,8 @@ void ScriptsWidget::onDeleteScript()
         QString botName = scriptEngine->getScopeName();
         ScriptFileManager::deleteScript(botName, deleted);
         modifiedScripts.remove(deleted);
-        codeEditor->closeDocument(deleted);
+        if (codeEditor)
+            codeEditor->closeDocument(deleted);
         currentScript.clear();
         refreshScriptList();
         statusLabel->setText("Script deleted");
@@ -368,7 +402,7 @@ void ScriptsWidget::onDeleteScript()
 
 void ScriptsWidget::onSaveScript()
 {
-    if (currentScript.isEmpty()) {
+    if (currentScript.isEmpty() || !codeEditor) {
         return;
     }
 
@@ -494,7 +528,8 @@ void ScriptsWidget::updateButtons()
     saveButton->setEnabled(hasScript && modifiedScripts.contains(currentScript));
     runButton->setEnabled(hasScript && !isRunning);
     stopButton->setEnabled(hasScript && isRunning);
-    codeEditor->setReadOnly(isRunning);
+    if (codeEditor)
+        codeEditor->setReadOnly(isRunning);
 }
 
 void ScriptsWidget::reloadTheme()
@@ -519,8 +554,30 @@ QStringList ScriptsWidget::getAvailableThemes()
     return {"Dark", "Light"};
 }
 
-void ScriptsWidget::setupEditor()
+void ScriptsWidget::reserveEditorSurface(QWidget *topLevel)
 {
+    // The editor is a web view, so the window holding it has to flush through QRhi
+    // instead of a raster backing store. Qt picks the surface type when the platform
+    // window is created, and a web view turning up afterwards makes it destroy and
+    // recreate that window - the manager blinks away and comes back. Editors are only
+    // built once their tab is shown, so claim the OpenGL surface here with a child
+    // that is never shown and draws nothing.
+    QOpenGLWidget *anchor = new QOpenGLWidget(topLevel);
+    anchor->resize(0, 0);
+    anchor->hide();
+}
+
+void ScriptsWidget::ensureEditor()
+{
+    // Bringing up the web view spins the event loop, and a show event still queued
+    // for this widget re-enters here before codeEditor is assigned.
+    if (codeEditor || editorCreating)
+        return;
+    // Creation is deferred past the show event, so the tab can be gone again by now.
+    if (!isVisible())
+        return;
+    editorCreating = true;
+
     QSettings settings;
     QString theme = settings.value("editor/theme", "Follow System").toString();
     bool dark;
@@ -531,13 +588,19 @@ void ScriptsWidget::setupEditor()
     }
 
     codeEditor = new MonacoWidget(this);
+    editorCreating = false;
     codeEditor->setDarkMode(dark);
+    editorPlaceholder->hide();
+    editorHostLayout->addWidget(codeEditor, 1);
 
     if (scriptEngine) {
         codeEditor->loadEventData(scriptEngine->loadEventData());
 
-        zubanClient = new ZubanClient(this);
-        connect(zubanClient, &ZubanClient::diagnosticsReceived,
+        // No QObject parent: a deleteLater from whichever thread drops the last
+        // reference must be the only delete.
+        zubanClient = std::shared_ptr<ZubanClient>(new ZubanClient(),
+                                                   [](ZubanClient *z) { z->deleteLater(); });
+        connect(zubanClient.get(), &ZubanClient::diagnosticsReceived,
                 codeEditor, &MonacoWidget::setDiagnostics);
 
         QString scriptsDir = AppPaths::scriptsDir();
@@ -555,4 +618,30 @@ void ScriptsWidget::setupEditor()
             return zuban->hover(code, line, col);
         });
     }
+
+    connect(codeEditor, &MonacoWidget::textChanged,
+            this, [this](const QString &filename) {
+                // Compared against the saved code, so undoing back to it clears
+                // the unsaved marker again.
+                ScriptContext *ctx = scriptEngine ? scriptEngine->getScript(filename) : nullptr;
+                setScriptModified(filename, !ctx || codeEditor->documentText(filename) != ctx->code);
+            });
+
+    if (!currentScript.isEmpty())
+        loadScript(currentScript);
+    updateButtons();
+}
+
+void ScriptsWidget::releaseEditor()
+{
+    // Unsaved edits and their undo history live only in the page.
+    if (!codeEditor || !modifiedScripts.isEmpty())
+        return;
+
+    if (zubanClient) {
+        zubanClient->stop();
+        zubanClient.reset();
+    }
+    delete codeEditor;
+    codeEditor = nullptr;
 }
