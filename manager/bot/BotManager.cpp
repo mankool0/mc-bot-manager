@@ -909,12 +909,27 @@ void BotManager::armStartupTimeoutImpl(const QString &botName)
 {
     QTimer::singleShot(120000, this, [this, botName]() {
         BotInstance *bot = getBotByNameImpl(botName);
-        if (bot && bot->status == BotStatus::Starting) {
-            LogManager::log(QString("[%1] Startup timed out (no connection after 2 minutes)")
-                                .arg(botName), LogManager::Error);
-            bot->status = BotStatus::Error;
-            emit botUpdated(botName);
+        if (!bot || bot->status != BotStatus::Starting) return;
+
+        // A connection tells the two failures apart: with one, the game came up and then hung
+        // (usually on its server connection). Left running it holds the Prism instance, which
+        // silently swallows every later launch for that bot.
+        const bool connected = bot->connectionId >= 0;
+        LogManager::log(connected
+                            ? QString("[%1] Startup timed out (connected, but never came up)").arg(botName)
+                            : QString("[%1] Startup timed out (no connection after 2 minutes)").arg(botName),
+                        LogManager::Error);
+        bot->status = BotStatus::Error;
+
+        // Only a pid from a live connection: one left over from an earlier run may name anything.
+        if (connected && bot->minecraftPid != 0) {
+            LogManager::log(QString("[%1] Stopping the Minecraft process it left behind (pid %2) so "
+                                    "instance '%3' can be launched again")
+                                .arg(botName).arg(bot->minecraftPid).arg(bot->instance),
+                            LogManager::Warning);
+            PrismLauncherManager::stopBot(bot->minecraftPid);
         }
+        emit botUpdated(botName);
     });
 }
 
@@ -3659,12 +3674,14 @@ void BotManager::handleCanReachBlocksResponseImpl(int connectionId, const mankoo
     });
 }
 
-void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks)
+void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks,
+                                const std::optional<mankool::mcbot::protocol::BlockPos> &target)
 {
-    instance().sendHoldAttackImpl(botName, enabled, durationTicks);
+    instance().sendHoldAttackImpl(botName, enabled, durationTicks, target);
 }
 
-void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks)
+void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks,
+                                    const std::optional<mankool::mcbot::protocol::BlockPos> &target)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot || bot->connectionId <= 0) {
@@ -3675,6 +3692,8 @@ void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int du
     mankool::mcbot::protocol::HoldAttackCommand cmd;
     cmd.setEnabled(enabled);
     cmd.setDurationTicks(durationTicks);
+    if (target)
+        cmd.setTarget(*target);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setHoldAttack(cmd);

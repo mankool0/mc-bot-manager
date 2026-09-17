@@ -18,8 +18,6 @@ import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.network.chat.Component;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.resources.Identifier;
@@ -110,10 +108,6 @@ public class VersionCompat {
 
     public static int getContainerId(ClientboundContainerSetContentPacket packet) {
         return packet.containerId();
-    }
-
-    public static void addBreakingBlockEffect(ClientLevel level, BlockPos pos, Direction face) {
-        level.addBreakingBlockEffect(pos, face);
     }
 
     public static LevelSummary getLevelSummary(WorldSelectionList.WorldListEntry entry) {

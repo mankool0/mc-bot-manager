@@ -501,7 +501,8 @@ public:
 
     static ReachBatchResult sendCanReachBlocks(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs = 5000);
     static void handleCanReachBlocksResponse(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response);
-    static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0);
+    static void sendHoldAttack(const QString &botName, bool enabled, int durationTicks = 0,
+                               const std::optional<mankool::mcbot::protocol::BlockPos> &target = std::nullopt);
     static bool getHoldAttackStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldAttackStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
     static void sendHoldUse(const QString &botName, bool enabled, int durationTicks = 0);
@@ -650,7 +651,8 @@ private:
     void handleTabListRemoveImpl(int connectionId, const mankool::mcbot::protocol::TabListPlayerRemove &remove);
     ReachBatchResult sendCanReachBlocksImpl(const QString &botName, const QList<ReachQuery> &queries, int timeoutMs);
     void handleCanReachBlocksResponseImpl(int connectionId, const mankool::mcbot::protocol::CanReachBlocksResponse &response);
-    void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks);
+    void sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks,
+                            const std::optional<mankool::mcbot::protocol::BlockPos> &target);
     bool getHoldAttackStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldAttackStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldAttackStatusResponse &response);
     void sendHoldUseImpl(const QString &botName, bool enabled, int durationTicks);
