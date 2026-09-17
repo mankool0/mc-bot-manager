@@ -139,6 +139,22 @@ void PrismLauncherManager::launchBotImpl(BotInstance *bot)
         return;
     }
 
+    // Prism silently absorbs a launch for an instance that is already running: it exits 0 like a
+    // real launch and logs nothing, so a still-connected bot would report a launch that never
+    // happens.
+    if (bot->connectionId >= 0) {
+        LogManager::log(QString("[%1] Already connected - not launching: instance '%2' is still "
+                                "running and PrismLauncher would drop the command. Stop the bot first.")
+                            .arg(bot->name, bot->instance),
+                        LogManager::Warning);
+        // The caller set Starting on the way in; leaving it would just wait out the timeout.
+        if (bot->status == BotStatus::Starting) {
+            bot->status = BotStatus::Online;
+            emit BotManager::instance().botUpdated(bot->name);
+        }
+        return;
+    }
+
     // Before either branch below, so it covers the launch that starts the GUI
     // and the ones that queue behind a running one.
     syncClientMod(bot);
