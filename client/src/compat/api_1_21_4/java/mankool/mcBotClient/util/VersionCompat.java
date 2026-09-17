@@ -13,8 +13,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
 import net.minecraft.resources.ResourceKey;
@@ -106,10 +104,6 @@ public class VersionCompat {
 
     public static int getContainerId(ClientboundContainerSetContentPacket packet) {
         return packet.getContainerId();
-    }
-
-    public static void addBreakingBlockEffect(ClientLevel level, BlockPos pos, Direction face) {
-        level.addDestroyBlockEffect(pos, level.getBlockState(pos));
     }
 
     public static LevelSummary getLevelSummary(WorldSelectionList.WorldListEntry entry) {

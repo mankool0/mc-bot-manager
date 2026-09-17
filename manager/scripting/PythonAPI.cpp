@@ -3170,11 +3170,24 @@ py::list PythonAPI::canReachBlocks(const py::sequence &queries, bool sneak, Bloc
     return out;
 }
 
-void PythonAPI::holdAttack(bool enabled, int durationTicks, const std::string &botName)
+void PythonAPI::holdAttack(bool enabled, int durationTicks, const std::optional<std::vector<int>> &target,
+                           const std::string &botName)
 {
     QString name = resolveBotName(botName);
     ensureBotOnline(name);
-    BotManager::sendHoldAttack(name, enabled, durationTicks);
+
+    std::optional<mankool::mcbot::protocol::BlockPos> targetPos;
+    if (target) {
+        if (target->size() != 3)
+            throw std::invalid_argument("hold_attack target must be (x, y, z)");
+        mankool::mcbot::protocol::BlockPos pos;
+        pos.setX((*target)[0]);
+        pos.setY((*target)[1]);
+        pos.setZ((*target)[2]);
+        targetPos = pos;
+    }
+
+    BotManager::sendHoldAttack(name, enabled, durationTicks, targetPos);
 }
 
 bool PythonAPI::getHoldAttack(const std::string &botName)

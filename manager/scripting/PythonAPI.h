@@ -360,7 +360,9 @@ public:
     static py::bytes exportSections(const py::sequence &keys, const std::string &bot = "", const std::string &dimension = "");
 
     // World interaction
-    static void holdAttack(bool enabled, int durationTicks = 0, const std::string &botName = "");
+    static void holdAttack(bool enabled, int durationTicks = 0,
+                           const std::optional<std::vector<int>> &target = std::nullopt,
+                           const std::string &botName = "");
     static bool getHoldAttack(const std::string &botName = "");
     static void holdUse(bool enabled, int durationTicks = 0, const std::string &botName = "");
     static bool getHoldUse(const std::string &botName = "");

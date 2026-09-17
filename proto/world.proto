@@ -143,6 +143,7 @@ message HoldAttackStatusResponse {
 message HoldAttackCommand {
   bool enabled = 1;
   int32 duration_ticks = 2;
+  optional BlockPos target = 3;
 }
 
 // Query the current hold-use state from the client

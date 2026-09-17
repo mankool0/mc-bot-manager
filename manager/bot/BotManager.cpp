@@ -3659,12 +3659,14 @@ void BotManager::handleCanReachBlocksResponseImpl(int connectionId, const mankoo
     });
 }
 
-void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks)
+void BotManager::sendHoldAttack(const QString &botName, bool enabled, int durationTicks,
+                                const std::optional<mankool::mcbot::protocol::BlockPos> &target)
 {
-    instance().sendHoldAttackImpl(botName, enabled, durationTicks);
+    instance().sendHoldAttackImpl(botName, enabled, durationTicks, target);
 }
 
-void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks)
+void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int durationTicks,
+                                    const std::optional<mankool::mcbot::protocol::BlockPos> &target)
 {
     BotInstance *bot = getBotByNameImpl(botName);
     if (!bot || bot->connectionId <= 0) {
@@ -3675,6 +3677,8 @@ void BotManager::sendHoldAttackImpl(const QString &botName, bool enabled, int du
     mankool::mcbot::protocol::HoldAttackCommand cmd;
     cmd.setEnabled(enabled);
     cmd.setDurationTicks(durationTicks);
+    if (target)
+        cmd.setTarget(*target);
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setHoldAttack(cmd);

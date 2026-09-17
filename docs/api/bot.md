@@ -170,14 +170,17 @@ if bot.get_hold_use():
     utils.log("Still eating")
 ```
 
-### `hold_attack(enabled, duration_ticks=0, bot_name="")`
+### `hold_attack(enabled, duration_ticks=0, target=None, bot_name="")`
 
-Hold or release the left-click attack button in-game. While enabled, the client drives `continueDestroyBlock` every game tick against whatever block the crosshair is currently targeting.
+Hold or release the left-click attack button in-game. While enabled, the game breaks whatever block the crosshair is on. Like a real button it only works while no screen is open.
+
+With `target` set, the hold only attacks that one block and releases itself the tick the block turns to air. Use it to break a single block: a release sent from a script instead cannot arrive before the round trip is over, and the game spends that time starting on whatever block was behind the one just broken.
 
 **Parameters:**
 
 - `enabled` (`bool`) - `True` to start holding attack, `False` to release
 - `duration_ticks` (`int`, optional) - Auto-release after this many game ticks. `0` holds indefinitely until an explicit `False` call (default: `0`)
+- `target` (`tuple[int, int, int]`, optional) - Block to break. Ticks where the crosshair is on another block are skipped, and the hold releases itself once this block is gone (default: `None`, attack whatever is targeted)
 - `bot_name` (`str`, optional) - Bot name, defaults to current bot
 
 ```python
@@ -188,6 +191,12 @@ bot.hold_attack(True, duration_ticks=100)
 bot.hold_attack(True)
 # ... later:
 bot.hold_attack(False)
+
+# Break one block and nothing else
+world.look_at(x, y, z)
+bot.hold_attack(True, target=(x, y, z))
+while world.get_block(x, y, z) != "minecraft:air":
+    time.sleep(0.1)
 ```
 
 ### `get_hold_attack(bot_name="")`

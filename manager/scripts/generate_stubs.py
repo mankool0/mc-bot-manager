@@ -27,12 +27,13 @@ def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None)
 
     m = re.match(r'std::optional<(.+)>$', t)
     if m:
-        return cpp_to_py_type(m.group(1), enum_map=enum_map) + ' | None'
+        return cpp_to_py_type(m.group(1), is_param=is_param, enum_map=enum_map) + ' | None'
 
     m = re.match(r'std::vector<(.+)>$', t)
     if m:
         inner = cpp_to_py_type(m.group(1).strip(), enum_map=enum_map)
-        return f'list[{inner}]'
+        # pybind accepts any sequence for a vector parameter, but always returns a list.
+        return f'Sequence[{inner}]' if is_param else f'list[{inner}]'
 
     m = re.match(r'std::map<(.+),\s*(.+)>$', t)
     if m:

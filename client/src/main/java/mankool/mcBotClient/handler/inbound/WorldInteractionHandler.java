@@ -33,11 +33,20 @@ public class WorldInteractionHandler extends BaseInboundHandler {
 
     private boolean holdingAttack = false;
     private int holdAttackTicksRemaining = 0;  // 0 = indefinite
+    private BlockPos attackTarget = null;  // null = whatever the crosshair is on
     private boolean holdingUse = false;
     private int holdUseTicksRemaining = 0;  // 0 = indefinite
 
+    // Called from HeldAttackMixin, so the target is matched against the hit result vanilla is
+    // about to dig rather than last tick's.
     public static boolean isHoldingAttack() {
-        return instance != null && instance.holdingAttack;
+        return instance != null && instance.attackPressed();
+    }
+
+    private boolean attackPressed() {
+        if (!holdingAttack) return false;
+        if (attackTarget == null) return true;
+        return client.hitResult instanceof BlockHitResult bhr && bhr.getBlockPos().equals(attackTarget);
     }
 
     public WorldInteractionHandler(Minecraft client, PipeConnection connection) {
@@ -59,9 +68,25 @@ public class WorldInteractionHandler extends BaseInboundHandler {
     }
 
     public void handleHoldAttack(World.HoldAttackCommand command) {
-        holdingAttack = command.getEnabled();
+        if (!command.getEnabled()) {
+            releaseAttack();
+            return;
+        }
+        holdingAttack = true;
         holdAttackTicksRemaining = command.getDurationTicks();
-        if (!holdingAttack && client.gameMode != null) {
+        attackTarget = command.hasTarget()
+            ? new BlockPos(command.getTarget().getX(), command.getTarget().getY(), command.getTarget().getZ())
+            : null;
+        // Grabbing the mouse parks missTime at 10000 and only a button-up tick clears it, which a
+        // hold never has.
+        client.missTime = 0;
+    }
+
+    private void releaseAttack() {
+        holdingAttack = false;
+        holdAttackTicksRemaining = 0;
+        attackTarget = null;
+        if (client.gameMode != null) {
             client.gameMode.stopDestroyBlock();
         }
     }
@@ -115,28 +140,21 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         client.options.keyUse.setDown(true);
     }
 
+    // Vanilla does the digging (see HeldAttackMixin); this only decides when the hold ends.
     private void tickHoldAttack() {
         if (holdAttackTicksRemaining > 0) {
             holdAttackTicksRemaining--;
             if (holdAttackTicksRemaining == 0) {
-                holdingAttack = false;
-                if (client.gameMode != null) client.gameMode.stopDestroyBlock();
+                releaseAttack();
                 return;
             }
         }
-        if (!holdingAttack || client.player == null || client.gameMode == null || client.level == null) return;
-        if (client.hitResult instanceof BlockHitResult bhr) {
-            BlockPos pos = bhr.getBlockPos();
-            if (!client.level.getBlockState(pos).isAir()) {
-                Direction face = bhr.getDirection();
-                if (client.gameMode.continueDestroyBlock(pos, face)) {
-                    VersionCompat.addBreakingBlockEffect(client.level, pos, face);
-                    client.player.swing(InteractionHand.MAIN_HAND);
-                }
-                return;
-            }
+        if (!holdingAttack || attackTarget == null) return;
+        // Releasing here rather than waiting for the manager to notice the break: that round trip
+        // is time vanilla spends starting on the block behind it.
+        if (client.level == null || client.level.getBlockState(attackTarget).isAir()) {
+            releaseAttack();
         }
-        client.gameMode.stopDestroyBlock();
     }
 
     public void handleInteractWithBlock(String messageId, World.InteractWithBlockCommand command) {

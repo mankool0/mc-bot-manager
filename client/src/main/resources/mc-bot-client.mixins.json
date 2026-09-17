@@ -18,7 +18,8 @@
     "GlfwInitMixin",
     "WindowMixin",
     "MinecraftTitleMixin",
-    "ProjectileOwnerMixin"
+    "ProjectileOwnerMixin",
+    "HeldAttackMixin"
   ],
   "injectors": {
     "defaultRequire": 1

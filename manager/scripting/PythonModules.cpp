@@ -142,9 +142,13 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                "currently being held, False otherwise. Blocks until the client responds.",
                py::arg("bot_name") = "");
     def_action("hold_attack", &PythonAPI::holdAttack,
-               "Hold or release left-click attack in-game.",
+               "Hold or release left-click attack in-game: the game breaks whatever the crosshair "
+               "is on, exactly as for a player holding the button. With target=(x, y, z) it only "
+               "attacks that block and releases itself once it breaks, so the dig cannot carry "
+               "over onto the block behind it. duration_ticks=0 holds until an explicit release.",
                py::arg("enabled"),
                py::arg("duration_ticks") = 0,
+               py::arg("target") = py::none(),
                py::arg("bot_name") = "");
     def_action("get_hold_attack", &PythonAPI::getHoldAttack,
                "Query the current hold-attack state from the client. Returns True if attack is "
