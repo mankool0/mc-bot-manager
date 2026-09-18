@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Raw keyboard input the mod watches on the manager's behalf.
+
+message HotkeyWatch {
+  string hotkey_id = 1;  // echoed back on a press; the script's own name for the key
+  int32 key_code = 2;    // GLFW keysym, as world.Key.*
+  // GLFW modifier bitmask, as world.KeyMod.*. Every bit set must be held for a match, and bits
+  // left clear are not looked at. Only SHIFT/CONTROL/ALT/SUPER are honoured: the lock flags are
+  // toggle state rather than a key being held.
+  int32 modifiers = 3;
+  // Whether the key also fires while a screen is open (chat, inventory, the pause menu)
+  bool in_screens = 4;
+}
+
+// Manager -> Client: the whole set of keys to watch, replacing whatever was set before. An empty
+// list stops all watching. The mod holds no state across reconnects, so the manager re-sends this
+// on every handshake.
+message SetHotkeysCommand {
+  repeated HotkeyWatch hotkeys = 1;
+}
+
+// Client -> Manager: a watched key went down. Sent once per press, on the edge, never repeated
+// while the key is held. Keyboard state only reaches the focused window, so the press is reported
+// by the one game the player was actually looking at.
+message HotkeyPressed {
+  string hotkey_id = 1;  // the watch's id
+  int32 key_code = 2;    // what matched, as world.Key.*
+  int32 modifiers = 3;   // the modifiers the watch asked for
+}

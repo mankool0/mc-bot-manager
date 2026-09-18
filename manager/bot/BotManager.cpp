@@ -1015,6 +1015,11 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
             sendProxyConfig(bot->name);
         }
 
+        // A script set these once; the mod starts with none.
+        if (!bot->hotkeys.isEmpty()) {
+            sendHotkeys(bot->name);
+        }
+
         // Notify scripts: the bot's own engine and the global engine.
         if (bot->scriptEngine)
             bot->scriptEngine->fireEvent(QStringLiteral("bot_connected"), {bot->name});
@@ -2337,6 +2342,37 @@ void BotManager::handleBaritoneLogImpl(int connectionId, const mankool::mcbot::p
     }
 }
 
+void BotManager::handleHotkeyPressed(int connectionId, const mankool::mcbot::protocol::HotkeyPressed &event)
+{
+    instance().handleHotkeyPressedImpl(connectionId, event);
+}
+
+void BotManager::handleHotkeyPressedImpl(int connectionId, const mankool::mcbot::protocol::HotkeyPressed &event)
+{
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot || !bot->scriptEngine) return;
+
+    QVariantMap data;
+    data["id"] = event.hotkeyId();
+    data["key"] = static_cast<int>(event.keyCode());
+    data["modifiers"] = static_cast<int>(event.modifiers());
+    // Redundant for per-bot scripts, essential for the global-scope copy.
+    data["bot_name"] = bot->name;
+
+    QVariantList args;
+    args << data;
+    bot->scriptEngine->fireEvent("hotkey_pressed", args);
+    ScriptMessageBus::instance().fireEventForScope(
+        QStringLiteral("_global"), QStringLiteral("hotkey_pressed"), args);
+
+    if (bot->debugLogging) {
+        LogManager::log(QString("[%1] Hotkey '%2' pressed (key %3, mods %4)")
+                        .arg(bot->name, event.hotkeyId())
+                        .arg(static_cast<int>(event.keyCode()))
+                        .arg(static_cast<int>(event.modifiers())), LogManager::Debug);
+    }
+}
+
 // Block Registry Handlers
 
 void BotManager::handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query)
@@ -2695,6 +2731,43 @@ void BotManager::setMeteorModuleEnabled(const QString &botName, const QString &m
 
     mankool::mcbot::protocol::ManagerToClientMessage msg;
     msg.setSetModuleConfig(setModuleCmd);
+    instance().sendOutboundMessage(bot->connectionId, msg);
+}
+
+void BotManager::setHotkeys(const QString &botName, const QList<mankool::mcbot::protocol::HotkeyWatch> &hotkeys)
+{
+    BotInstance *bot = instance().getBotByNameImpl(botName);
+    if (!bot) return;
+
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->hotkeys = hotkeys;
+    }
+    sendHotkeys(botName);
+}
+
+QList<mankool::mcbot::protocol::HotkeyWatch> BotManager::getHotkeys(const QString &botName)
+{
+    BotInstance *bot = instance().getBotByNameImpl(botName);
+    if (!bot) return {};
+
+    QMutexLocker locker(bot->dataMutex.get());
+    return bot->hotkeys;
+}
+
+void BotManager::sendHotkeys(const QString &botName)
+{
+    BotInstance *bot = instance().getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0) return;
+
+    mankool::mcbot::protocol::SetHotkeysCommand cmd;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        cmd.setHotkeys(bot->hotkeys);
+    }
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setSetHotkeys(cmd);
     instance().sendOutboundMessage(bot->connectionId, msg);
 }
 

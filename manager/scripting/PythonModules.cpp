@@ -81,6 +81,12 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .def_readonly("focused", &PyWindowState::focused)
         .def_readonly("monitors", &PyWindowState::monitors);
 
+    py::class_<PyHotkey>(m, "Hotkey")
+        .def_readonly("id", &PyHotkey::id)
+        .def_readonly("key", &PyHotkey::key)
+        .def_readonly("modifiers", &PyHotkey::modifiers)
+        .def_readonly("in_screens", &PyHotkey::in_screens);
+
     py::enum_<PythonAPI::Hand>(m, "Hand")
         .value("MAIN", PythonAPI::Hand::MAIN)
         .value("OFF", PythonAPI::Hand::OFF)
@@ -210,6 +216,21 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
               py::arg("bot_name") = "");
     def_action("list_all", &PythonAPI::listAllBots,
                "List all bot names");
+
+    def_action("set_hotkeys", &PythonAPI::setHotkeys,
+               "Set which keys this bot's game reports as `hotkey_pressed` events, replacing whatever "
+               "was set before (an empty dict stops all of them). `keys` maps an id of your own - "
+               "echoed back on the event - to a key: a world.Key value on its own, or a sequence of "
+               "it and the world.KeyMod values it must be held with, in either order, e.g. "
+               "{\"pull\": world.Key.G, \"stash\": (world.Key.K, world.KeyMod.CONTROL)}. With "
+               "in_screens=True the keys also fire while a screen is open (chat, inventory). Only the "
+               "focused game reports a press.",
+               py::arg("keys"),
+               py::arg("in_screens") = false,
+               py::arg("bot_name") = "");
+    def_action("hotkeys", &PythonAPI::getHotkeys,
+               "The keys this bot is watching, as a list of Hotkey (id, key, modifiers, in_screens)",
+               py::arg("bot_name") = "");
 
     def_action("window", &PythonAPI::getWindow,
                "Get window placement as a WindowState (frame rect relative to the monitor work area, "
@@ -890,7 +911,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
         .value("MENU", PythonAPI::Key::MENU)
         .export_values();
 
-    py::enum_<PythonAPI::KeyMod>(m, "KeyMod")
+    py::enum_<PythonAPI::KeyMod>(m, "KeyMod", py::arithmetic())
         .value("SHIFT", PythonAPI::KeyMod::SHIFT)
         .value("CONTROL", PythonAPI::KeyMod::CONTROL)
         .value("ALT", PythonAPI::KeyMod::ALT)

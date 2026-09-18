@@ -572,6 +572,98 @@ py::object PythonAPI::getWindow(const std::string &botName)
     return py::cast(windowStateToPy(*state));
 }
 
+static bool isWorldEnum(const py::handle &value, const char *typeName)
+{
+    return py::isinstance(value, py::module_::import("world").attr(typeName));
+}
+
+static mankool::mcbot::protocol::HotkeyWatch parseHotkeySpec(const QString &id, const py::object &spec)
+{
+    const std::string where = "hotkey '" + id.toStdString() + "': ";
+    auto codeOf = [&where](const py::handle &value) {
+        try {
+            return value.cast<int>();
+        } catch (const py::cast_error &) {
+            throw py::value_error(where + "expected world.Key or world.KeyMod, got "
+                                  + py::str(py::type::handle_of(value)).cast<std::string>());
+        }
+    };
+
+    py::list parts;
+    if (py::isinstance<py::str>(spec)) {
+        throw py::value_error(where + "keys are world.Key values, not names");
+    } else if (py::isinstance<py::sequence>(spec)) {
+        parts = py::list(spec);
+    } else {
+        parts.append(spec);
+    }
+
+    // world.Key and world.KeyMod are separate types, so which is which does not depend on where it
+    // sits: (Key.G, KeyMod.CONTROL) and (KeyMod.CONTROL, Key.G) both mean ctrl+G.
+    std::optional<int> keyCode;
+    int modifiers = 0;
+    for (const py::handle &part : parts) {
+        if (isWorldEnum(part, "KeyMod")) {
+            modifiers |= codeOf(part);
+            continue;
+        }
+        int code = codeOf(part);
+        if (keyCode.has_value()) {
+            throw py::value_error(where + "more than one key; only world.KeyMod values may accompany it");
+        }
+        if (code < static_cast<int>(PythonAPI::Key::SPACE) || code > static_cast<int>(PythonAPI::Key::MENU)) {
+            throw py::value_error(where + std::to_string(code) + " is not a key code; use world.Key.*");
+        }
+        keyCode = code;
+    }
+    if (!keyCode.has_value()) {
+        throw py::value_error(where + "no key, only modifiers");
+    }
+
+    mankool::mcbot::protocol::HotkeyWatch watch;
+    watch.setHotkeyId(id);
+    watch.setKeyCode(*keyCode);
+    watch.setModifiers(modifiers);
+    return watch;
+}
+
+void PythonAPI::setHotkeys(const py::dict &keys, bool inScreens, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    if (!BotManager::getBotByName(name)) {
+        throw std::runtime_error("Bot '" + name.toStdString() + "' not found");
+    }
+
+    QList<mankool::mcbot::protocol::HotkeyWatch> watches;
+    for (auto item : keys) {
+        auto watch = parseHotkeySpec(QString::fromStdString(py::str(item.first).cast<std::string>()),
+                                     py::reinterpret_borrow<py::object>(item.second));
+        watch.setInScreens(inScreens);
+        watches.append(watch);
+    }
+
+    py::gil_scoped_release release;
+    BotManager::setHotkeys(name, watches);
+}
+
+std::vector<PyHotkey> PythonAPI::getHotkeys(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    py::gil_scoped_release release;
+
+    std::vector<PyHotkey> result;
+    for (const auto &watch : BotManager::getHotkeys(name)) {
+        PyHotkey hotkey;
+        hotkey.id = watch.hotkeyId().toStdString();
+        hotkey.key = watch.keyCode();
+        hotkey.modifiers = watch.modifiers();
+        hotkey.in_screens = watch.inScreens();
+        result.push_back(hotkey);
+    }
+    return result;
+}
+
 py::object PythonAPI::setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
                                 const std::string &monitor, const py::object &minimized, const py::object &visible,
                                 const std::string &botName)

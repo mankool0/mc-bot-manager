@@ -92,6 +92,13 @@ struct PyMonitor {
     int work_x = 0, work_y = 0, work_width = 0, work_height = 0;
 };
 
+struct PyHotkey {
+    std::string id;
+    int key = 0;
+    int modifiers = 0;
+    bool in_screens = false;
+};
+
 struct PyWindowState {
     std::string platform;
     bool can_move = false;
@@ -394,6 +401,8 @@ public:
 
     // Game window. Optional ints/bools default to None in the module registration.
     static py::object getWindow(const std::string &botName = "");
+    static void setHotkeys(const py::dict &keys, bool inScreens, const std::string &botName);
+    static std::vector<PyHotkey> getHotkeys(const std::string &botName);
     static py::object setWindow(const py::object &x, const py::object &y, const py::object &width, const py::object &height,
                                 const std::string &monitor, const py::object &minimized, const py::object &visible,
                                 const std::string &botName);

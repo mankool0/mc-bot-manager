@@ -164,7 +164,7 @@ endforeach()
 file(APPEND "${STUBS_QRC}" "  </qresource>\n</RCC>\n")
 
 # Generate QtProtobuf files from proto directory
-file(GLOB PROTO_FILES
+file(GLOB PROTO_FILES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../proto/*.proto
 )
 

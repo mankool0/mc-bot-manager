@@ -508,6 +508,68 @@ for b in bots:
     print(f"{b['name']}: {b['status']}")
 ```
 
+## Hotkeys
+
+Keys pressed in a bot's game can be turned into [`hotkey_pressed`](../events.md#hotkey_pressed)
+script events.
+
+Only the **focused** game reports a press, so the same key can be watched on every bot and still
+act on the one being played by hand. The key is not reserved - it keeps whatever meaning it already
+had in the game or in Meteor, so both things happen when it is pressed. Pick a key you do not otherwise use.
+
+### `set_hotkeys(keys, in_screens=False, bot_name="")`
+
+Set which keys this bot's game reports, replacing whatever was set before.
+
+**Parameters:**
+
+- `keys` (`dict`) - Maps an id of your own, echoed back on the event, to the key that fires it:
+    - a [`world.Key`](world.md#press_keyscreen_id-key_code-modifiers0-bot_name) value on its own -
+      `{"pull": world.Key.G}`
+    - a sequence of the key and the [`world.KeyMod`](world.md#press_keyscreen_id-key_code-modifiers0-bot_name)
+      values it must be held with, in either order -
+      `{"stash": (world.Key.K, world.KeyMod.CONTROL, world.KeyMod.SHIFT)}`
+    - an empty dict, which stops all watching
+- `in_screens` (`bool`, optional) - Also fire while a screen is open (chat, inventory, the pause
+  menu). Off by default, because a hotkey letter is one somebody will type into chat sooner or later.
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+Modifiers must be *held* for a match, and ones you do not ask for are not looked at: a watch on
+`world.Key.G` also fires while ctrl is down, so ask for `CONTROL` explicitly when you need the two
+told apart. `KeyMod.CAPS_LOCK` and `KeyMod.NUM_LOCK` are toggle state rather than a held key and
+are ignored here.
+
+**Raises:** `RuntimeError` if the bot is not found, `ValueError` for an entry with no key, with
+more than one key, or with a value outside the `world.Key` range.
+
+The list survives reconnects: the manager re-sends it at every handshake, so a script sets it once
+and a bot that crashes and comes back is still watching.
+
+```python
+bot.set_hotkeys({"pull": world.Key.G}, bot_name="MyAccount")
+
+# With modifiers, and firing even with chat open
+bot.set_hotkeys({
+    "pull": world.Key.G,
+    "stash": (world.Key.K, world.KeyMod.CONTROL, world.KeyMod.SHIFT),
+}, in_screens=True, bot_name="MyAccount")
+
+# Stop watching
+bot.set_hotkeys({})
+```
+
+### `hotkeys(bot_name="")`
+
+The keys this bot is watching.
+
+**Returns:** `list[Hotkey]` - each with `id`, `key` (the `world.Key` code), `modifiers` (the
+`world.KeyMod` bitmask) and `in_screens`.
+
+```python
+for k in bot.hotkeys("MyAccount"):
+    utils.log(f"{k.id}: key {k.key} mods {k.modifiers}")
+```
+
 ## Game Window
 
 The manager can tile bot windows automatically (Settings -> Bots -> Game Windows); these calls give

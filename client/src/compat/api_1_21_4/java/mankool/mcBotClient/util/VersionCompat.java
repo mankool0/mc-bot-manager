@@ -1,5 +1,6 @@
 package mankool.mcBotClient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
@@ -158,5 +159,9 @@ public class VersionCompat {
     /** Native GLFW handle of the game window. */
     public static long windowHandle(Window window) {
         return window.getWindow();
+    }
+
+    public static boolean isKeyDown(Window window, int keyCode) {
+        return InputConstants.isKeyDown(window.getWindow(), keyCode);
     }
 }
