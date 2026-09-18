@@ -7,6 +7,7 @@ import "connection.proto";
 import "player.proto";
 import "chat.proto";
 import "commands.proto";
+import "input.proto";
 import "inventory.proto";
 import "meteor.proto";
 import "baritone.proto";
@@ -106,6 +107,9 @@ message ClientToManagerMessage {
 
     // Game window geometry (post-handshake report and replies to window commands)
     WindowStateResponse window_state = 41;
+
+    // A watched key was pressed in game
+    HotkeyPressed hotkey_pressed = 45;
   }
 }
 
@@ -199,5 +203,8 @@ message ManagerToClientMessage {
     // Game window placement
     SetWindowCommand set_window = 38;
     GetWindowStateCommand get_window_state = 39;
+
+    // Which raw keys the mod reports as hotkey presses
+    SetHotkeysCommand set_hotkeys = 44;
   }
 }

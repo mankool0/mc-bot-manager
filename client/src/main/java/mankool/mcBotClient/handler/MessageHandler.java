@@ -54,6 +54,7 @@ public class MessageHandler {
     private final TabListOutbound tabListOutbound;
     private final StatsOutbound statsOutbound;
     private final WindowOutbound windowOutbound;
+    private final HotkeyOutbound hotkeyOutbound;
 
     public MessageHandler(PipeConnection connection, Minecraft client) {
         this.connection = connection;
@@ -78,12 +79,13 @@ public class MessageHandler {
         this.tabListOutbound = new TabListOutbound(this.client, connection);
         this.statsOutbound = new StatsOutbound(this.client, connection);
         this.windowOutbound = new WindowOutbound(this.client, connection);
+        this.hotkeyOutbound = new HotkeyOutbound(this.client, connection);
         this.screenInteractionHandler = new ScreenInteractionHandler(this.client, connection, this.screenOutbound);
 
         // Ticked from onClientTick below, in construction order
         this.outbounds = List.of(serverOutbound, playerOutbound, inventoryOutbound,
                                  worldOutbound, containerOutbound, screenOutbound, entityOutbound,
-                                 tabListOutbound, statsOutbound, windowOutbound);
+                                 tabListOutbound, statsOutbound, windowOutbound, hotkeyOutbound);
 
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
@@ -206,6 +208,8 @@ public class MessageHandler {
             msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_STATISTICS,
             msg -> statsOutbound.handleRequestStatistics(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_HOTKEYS,
+            msg -> hotkeyOutbound.handleSetHotkeys(msg.getSetHotkeys()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_WINDOW,
             msg -> windowOutbound.handleSetWindow(msg.getMessageId(), msg.getSetWindow()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_WINDOW_STATE,

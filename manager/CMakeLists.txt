@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.17.2 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.18.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -164,7 +164,7 @@ endforeach()
 file(APPEND "${STUBS_QRC}" "  </qresource>\n</RCC>\n")
 
 # Generate QtProtobuf files from proto directory
-file(GLOB PROTO_FILES
+file(GLOB PROTO_FILES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../proto/*.proto
 )
 

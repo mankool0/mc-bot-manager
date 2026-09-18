@@ -233,6 +233,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleBaritoneProcessStatus(connectionId, clientMsg.baritoneProcessStatus());
         } else if (clientMsg.hasBaritoneLog()) {
             BotManager::handleBaritoneLog(connectionId, clientMsg.baritoneLog());
+        } else if (clientMsg.hasHotkeyPressed()) {
+            BotManager::handleHotkeyPressed(connectionId, clientMsg.hotkeyPressed());
         } else if (clientMsg.hasChunkData()) {
             BotManager::handleChunkData(connectionId, clientMsg.chunkData());
         } else if (clientMsg.hasBlockUpdate()) {

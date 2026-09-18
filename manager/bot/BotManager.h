@@ -23,6 +23,7 @@
 #include "inventory.qpb.h"
 #include "chat.qpb.h"
 #include "commands.qpb.h"
+#include "input.qpb.h"
 #include "common.qpb.h"
 #include "meteor.qpb.h"
 #include "baritone.qpb.h"
@@ -318,6 +319,8 @@ struct BotInstance : public BotConfig {
     QStringList meteorFriends;
     bool meteorFriendsKnown = false;
 
+    QList<mankool::mcbot::protocol::HotkeyWatch> hotkeys;
+
     // Baritone data
     QMap<QString, BaritoneSettingData> baritoneSettings;
     QMap<QString, BaritoneCommandData> baritoneCommands;
@@ -436,6 +439,8 @@ public:
     static void handleBaritoneSettingUpdate(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
     static void handleBaritoneProcessStatus(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
     static void handleBaritoneLog(int connectionId, const mankool::mcbot::protocol::BaritoneLogMessage &log);
+
+    static void handleHotkeyPressed(int connectionId, const mankool::mcbot::protocol::HotkeyPressed &event);
 
     // Block registry handlers
     static void handleQueryRegistry(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
@@ -564,6 +569,10 @@ public:
     static void sendMeteorFriendChange(const QString &botName, const QStringList &add, const QStringList &remove);
     static void sendProxyConfig(const QString &botName);
 
+    static void setHotkeys(const QString &botName, const QList<mankool::mcbot::protocol::HotkeyWatch> &hotkeys);
+    static QList<mankool::mcbot::protocol::HotkeyWatch> getHotkeys(const QString &botName);
+    static void sendHotkeys(const QString &botName);
+
     static QString getSettingPath(const mankool::mcbot::protocol::SettingInfo &setting);
 
 signals:
@@ -612,6 +621,7 @@ private:
     void handleBaritoneSettingUpdateImpl(int connectionId, const mankool::mcbot::protocol::BaritoneSettingUpdate &update);
     void handleBaritoneProcessStatusImpl(int connectionId, const mankool::mcbot::protocol::BaritoneProcessStatusUpdate &status);
     void handleBaritoneLogImpl(int connectionId, const mankool::mcbot::protocol::BaritoneLogMessage &log);
+    void handleHotkeyPressedImpl(int connectionId, const mankool::mcbot::protocol::HotkeyPressed &event);
     void handleQueryRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryBlockRegistryMessage &query);
     void handleBlockRegistryImpl(int connectionId, const mankool::mcbot::protocol::BlockRegistryMessage &registry);
     void handleQueryItemRegistryImpl(int connectionId, const mankool::mcbot::protocol::QueryItemRegistryMessage &query);

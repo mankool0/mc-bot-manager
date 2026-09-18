@@ -295,6 +295,38 @@ def on_baritone_log(log):
         utils.log("Pathfinding gave up, trying a different goal")
 ```
 
+### `hotkey_pressed`
+
+Fired when a key the bot was told to watch goes down in game. The keys are chosen from a
+script with [`bot.set_hotkeys`](api/bot.md#set_hotkeyskeys-in_screensfalse-bot_name).
+
+Only the **focused** game reports a press, so the same key can be watched on every bot and still
+act on the one being played. By default a press while a screen is open (chat, inventory, the
+pause menu) is not reported; `in_screens=True` lifts that.
+
+This event is also delivered to **global scripts**.
+
+**Parameters:**
+
+- `key` (`dict`) - Press details with keys:
+  - `id` (`str`) - The watch's id, as given to `bot.set_hotkeys`
+  - `key` (`int`) - The `world.Key` code that matched
+  - `modifiers` (`int`) - The `world.KeyMod` bitmask the watch asked for
+  - `bot_name` (`str`) - Which bot's game the key was pressed in
+
+Presses are reported on the edge, once per press, never repeated while the key is held. A press
+shorter than one game tick (50 ms) can be missed.
+
+```python
+bot.set_hotkeys({"pull": world.Key.G,
+                 "stash": (world.Key.K, world.KeyMod.CONTROL)}, bot_name="MyAccount")
+
+@on("hotkey_pressed")
+def on_hotkey(key):
+    if key["id"] == "pull":
+        world.interact_block(100, 64, 200, bot_name="StasisBot")
+```
+
 ### `script_message`
 
 Fired when another script sends this script a message via

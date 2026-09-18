@@ -49,6 +49,12 @@ class ContainerUpdate:
     z: int
     properties: dict
 
+class Hotkey:
+    id: str
+    key: int
+    modifiers: int
+    bot_name: str
+
 class ScriptMessage:
     topic: str
     data: object
@@ -70,6 +76,7 @@ EVENT_HANDLER_PARAMS = {
     'multi_block_update': 'count: int',
     'container_update': 'container: ContainerUpdate',
     'screen_updated': 'screen: ScreenState',
+    'hotkey_pressed': 'key: Hotkey',
     'script_message': 'msg: ScriptMessage',
     'bot_connected': 'bot_name: str',
     'bot_disconnected': 'bot_name: str, uptime_seconds: float',
