@@ -14,11 +14,34 @@ import org.slf4j.LoggerFactory;
 public class ConnectionHandler extends BaseInboundHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionHandler.class);
 
+    private String pendingConnectMessageId;
+    private Commands.ConnectToServerCommand pendingConnect;
+
     public ConnectionHandler(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
 
+    public void tick() {
+        if (pendingConnect == null || !client.isGameLoadFinished()) return;
+        Commands.ConnectToServerCommand command = pendingConnect;
+        pendingConnect = null;
+        handleConnectToServer(pendingConnectMessageId, command);
+    }
+
     public void handleConnectToServer(String messageId, Commands.ConnectToServerCommand command) {
+        // The manager auto-connects right after the handshake, which lands while the loading
+        // overlay is still up; connecting then would have the initial title screen replace the
+        // connect screen once loading ends.
+        if (!client.isGameLoadFinished()) {
+            if (pendingConnect != null) {
+                sendFailure(pendingConnectMessageId, "Superseded by a newer connect command");
+            }
+            LOGGER.info("Game still loading, deferring connect to {}", command.getServerAddress());
+            pendingConnectMessageId = messageId;
+            pendingConnect = command;
+            return;
+        }
+
         String serverAddress = command.getServerAddress();
         LOGGER.info("Connect to server: {}", serverAddress);
 

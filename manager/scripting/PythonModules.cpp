@@ -92,6 +92,15 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .value("OFF", PythonAPI::Hand::OFF)
         .export_values();
 
+    py::enum_<PythonAPI::HeldKey>(m, "HeldKey")
+        .value("JUMP", PythonAPI::HeldKey::JUMP)
+        .value("SNEAK", PythonAPI::HeldKey::SNEAK)
+        .value("SPRINT", PythonAPI::HeldKey::SPRINT)
+        .value("FORWARD", PythonAPI::HeldKey::FORWARD)
+        .value("BACK", PythonAPI::HeldKey::BACK)
+        .value("LEFT", PythonAPI::HeldKey::LEFT)
+        .value("RIGHT", PythonAPI::HeldKey::RIGHT);
+
     def_state("position", &PythonAPI::getPosition,
               "Get position as dict {x, y, z}",
               py::arg("bot_name") = "");
@@ -159,6 +168,19 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     def_action("get_hold_attack", &PythonAPI::getHoldAttack,
                "Query the current hold-attack state from the client. Returns True if attack is "
                "currently being held, False otherwise. Blocks until the client responds.",
+               py::arg("bot_name") = "");
+    def_action("hold_key", &PythonAPI::holdKey,
+               "Hold or release one key binding in-game (bot.HeldKey: JUMP, SNEAK, SPRINT, FORWARD, "
+               "BACK, LEFT, RIGHT). The client keeps the binding pressed every tick, so the game "
+               "jumps, crouches, sprints or walks exactly as for a player holding the key. "
+               "duration_ticks=0 holds until an explicit release.",
+               py::arg("key"),
+               py::arg("enabled"),
+               py::arg("duration_ticks") = 0,
+               py::arg("bot_name") = "");
+    def_action("get_held_keys", &PythonAPI::getHeldKeys,
+               "The key bindings the client is holding for hold_key, as a list of bot.HeldKey, or "
+               "None if the client did not answer in time. Blocks until the client responds.",
                py::arg("bot_name") = "");
     def_action("drop_item", &PythonAPI::dropItem,
                "Drop the selected hotbar item: one item, or the whole stack with drop_all=True",

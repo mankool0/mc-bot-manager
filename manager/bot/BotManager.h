@@ -248,6 +248,8 @@ struct BotInstance : public BotConfig {
     bool proxyDisabledAutoReconnect = false;
 
     bool manualStop = false;
+    // Set by a launch that should join bot->server, consumed at that launch's handshake.
+    bool joinServerOnConnect = false;
     QDateTime startTime;
 
     QString playerUuid;
@@ -513,6 +515,11 @@ public:
     static void sendHoldUse(const QString &botName, bool enabled, int durationTicks = 0);
     static bool getHoldUseStatus(const QString &botName, int timeoutMs = 3000);
     static void handleHoldUseStatusResponse(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response);
+    static void sendHoldKey(const QString &botName, mankool::mcbot::protocol::HeldKeyGadget::HeldKey key,
+                            bool enabled, int durationTicks = 0);
+    // nullopt when the bot is offline or did not answer in time.
+    static std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> getHeldKeys(const QString &botName, int timeoutMs = 3000);
+    static void handleHeldKeysResponse(int connectionId, const mankool::mcbot::protocol::HeldKeysResponse &response);
     static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
     static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
 
@@ -668,6 +675,9 @@ private:
     void sendHoldUseImpl(const QString &botName, bool enabled, int durationTicks);
     bool getHoldUseStatusImpl(const QString &botName, int timeoutMs);
     void handleHoldUseStatusResponseImpl(int connectionId, const mankool::mcbot::protocol::HoldUseStatusResponse &response);
+    void sendHoldKeyImpl(const QString &botName, mankool::mcbot::protocol::HeldKeyGadget::HeldKey key, bool enabled, int durationTicks);
+    std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> getHeldKeysImpl(const QString &botName, int timeoutMs);
+    void handleHeldKeysResponseImpl(int connectionId, const mankool::mcbot::protocol::HeldKeysResponse &response);
     std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
     void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     std::optional<mankool::mcbot::protocol::WindowStateResponse> requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs);
@@ -722,6 +732,7 @@ private:
     PendingRequestMap<QList<bool>> m_pendingCanReachBlocks;
     PendingRequestMap<bool> m_pendingHoldAttackStatus;
     PendingRequestMap<bool> m_pendingHoldUseStatus;
+    PendingRequestMap<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> m_pendingHeldKeys;
     // Payload is unused: the reply is merged into m_statsCache by the handler before the wake.
     PendingRequestMap<bool> m_pendingStatistics;
     QMutex m_statsCacheMutex;

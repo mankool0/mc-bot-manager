@@ -263,6 +263,8 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleHoldAttackStatusResponse(connectionId, clientMsg.holdAttackStatusResponse());
         } else if (clientMsg.hasHoldUseStatusResponse()) {
             BotManager::handleHoldUseStatusResponse(connectionId, clientMsg.holdUseStatusResponse());
+        } else if (clientMsg.hasHeldKeysResponse()) {
+            BotManager::handleHeldKeysResponse(connectionId, clientMsg.heldKeysResponse());
         } else if (clientMsg.hasEntityUpdate()) {
             BotManager::handleEntityUpdate(connectionId, clientMsg.entityUpdate());
         } else if (clientMsg.hasWeatherUpdate()) {

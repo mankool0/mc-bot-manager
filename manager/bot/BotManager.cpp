@@ -1028,6 +1028,13 @@ void BotManager::handleConnectionInfoImpl(int connectionId, const mankool::mcbot
 
         LogManager::log(QString("[%1] Connected as '%2' (Connection ID: %3)")
                        .arg(bot->name, playerName).arg(connectionId), LogManager::Success);
+
+        // Sent after the proxy config on the same pipe, so the proxy is in place first.
+        if (bot->joinServerOnConnect) {
+            bot->joinServerOnConnect = false;
+            LogManager::log(QString("[%1] Auto-connecting to %2").arg(bot->name, bot->server), LogManager::Info);
+            sendConnectToServerImpl(bot->name, bot->server, true);
+        }
     } else {
         LogManager::log(QString("Received ConnectionInfo for unknown bot '%1'")
                        .arg(playerName), LogManager::Warning);
@@ -3859,6 +3866,65 @@ void BotManager::handleHoldUseStatusResponseImpl(int connectionId, const mankool
     Q_UNUSED(connectionId);
     m_pendingHoldUseStatus.complete(response.requestId(), [&](bool &enabled) {
         enabled = response.enabled();
+    });
+}
+
+void BotManager::sendHoldKey(const QString &botName, mankool::mcbot::protocol::HeldKeyGadget::HeldKey key,
+                             bool enabled, int durationTicks)
+{
+    instance().sendHoldKeyImpl(botName, key, enabled, durationTicks);
+}
+
+void BotManager::sendHoldKeyImpl(const QString &botName, mankool::mcbot::protocol::HeldKeyGadget::HeldKey key,
+                                 bool enabled, int durationTicks)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "hold_key");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::HoldKeyCommand cmd;
+    cmd.setKey(key);
+    cmd.setEnabled(enabled);
+    cmd.setDurationTicks(durationTicks);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setHoldKey(cmd);
+    sendOutboundMessage(bot->connectionId, msg);
+}
+
+std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> BotManager::getHeldKeys(const QString &botName, int timeoutMs)
+{
+    return instance().getHeldKeysImpl(botName, timeoutMs);
+}
+
+std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> BotManager::getHeldKeysImpl(const QString &botName, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>>::Request pending(m_pendingHeldKeys, msgId);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setGetHeldKeys(mankool::mcbot::protocol::GetHeldKeysCommand{});
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
+        return std::nullopt;
+
+    if (!pending.wait(timeoutMs))
+        return std::nullopt;
+    return pending.value();
+}
+
+void BotManager::handleHeldKeysResponse(int connectionId, const mankool::mcbot::protocol::HeldKeysResponse &response)
+{
+    instance().handleHeldKeysResponseImpl(connectionId, response);
+}
+
+void BotManager::handleHeldKeysResponseImpl(int connectionId, const mankool::mcbot::protocol::HeldKeysResponse &response)
+{
+    Q_UNUSED(connectionId);
+    m_pendingHeldKeys.complete(response.requestId(), [&](QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey> &keys) {
+        keys = response.keys();
     });
 }
 

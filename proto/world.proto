@@ -160,6 +160,33 @@ message HoldUseCommand {
   int32 duration_ticks = 2; // 0 = until an explicit release
 }
 
+// A key binding the client holds down on the manager's behalf: the movement and
+// posture keys the game reads every tick. Attack and use have their own commands.
+enum HeldKey {
+  KEY_JUMP = 0;
+  KEY_SNEAK = 1;
+  KEY_SPRINT = 2;
+  KEY_FORWARD = 3;
+  KEY_BACK = 4;
+  KEY_LEFT = 5;
+  KEY_RIGHT = 6;
+}
+
+// Hold or release one key binding in-game.
+message HoldKeyCommand {
+  HeldKey key = 1;
+  bool enabled = 2;
+  int32 duration_ticks = 3; // 0 = until an explicit release
+}
+
+// Query which key bindings the client is holding
+message GetHeldKeysCommand {}
+
+message HeldKeysResponse {
+  string request_id = 1; // Echoes the request's message_id for correlation
+  repeated HeldKey keys = 2;
+}
+
 // Weather state update (Client -> Manager)
 message WeatherUpdate {
   bool is_raining = 1;       // True if it is raining

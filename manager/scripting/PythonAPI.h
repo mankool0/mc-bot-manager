@@ -193,6 +193,17 @@ public:
         OFF = 1
     };
 
+    // Same values as the protocol's HeldKey.
+    enum class HeldKey {
+        JUMP = 0,
+        SNEAK = 1,
+        SPRINT = 2,
+        FORWARD = 3,
+        BACK = 4,
+        LEFT = 5,
+        RIGHT = 6
+    };
+
     enum class ContainerClickType {
         PICKUP = 0,
         QUICK_MOVE = 1,
@@ -373,6 +384,8 @@ public:
     static bool getHoldAttack(const std::string &botName = "");
     static void holdUse(bool enabled, int durationTicks = 0, const std::string &botName = "");
     static bool getHoldUse(const std::string &botName = "");
+    static void holdKey(HeldKey key, bool enabled, int durationTicks = 0, const std::string &botName = "");
+    static py::object getHeldKeys(const std::string &botName = "");
     static void lookAt(double x, double y, double z, BlockFace face = BlockFace::AUTO, bool sneak = false, const std::string &botName = "");
     static void lookAtEntity(int entityId, bool sneak = false, const std::string &botName = "");
     static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");
