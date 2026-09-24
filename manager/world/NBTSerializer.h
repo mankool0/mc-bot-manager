@@ -51,7 +51,6 @@ private:
     // Builds {id, count, components} without a Slot field. Used for equipment compound and as base for itemStackToNBT.
     static nbt::tag_compound buildItemNBT(const mankool::mcbot::protocol::ItemStack& item);
 
-    static int findHighestBlock(const ChunkData& chunk, int x, int z);  // x, z: 0-15; returns Y or minY if all air
     static void setPackedValue(std::vector<int64_t>& data, int index, int value, int bitsPerEntry);
     static std::vector<nbt::tag_compound> convertPalette(const QVector<QString>& palette);
 };
