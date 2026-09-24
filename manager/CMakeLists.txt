@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.19.0 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.20.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -316,6 +316,32 @@ if(BUNDLE_CLIENT_MOD)
 endif()
 
 qt_finalize_executable(mc-bot-manager)
+
+# Benchmark and self-checks for world.changed_sections / export_sections. Not part of the
+# default build: cmake --build <build dir> --target section_bench
+add_executable(section_bench EXCLUDE_FROM_ALL
+    bench/SectionBench.cpp
+    bot/SectionObservation.cpp
+    bot/WorldData.cpp
+    world/SectionCodec.cpp
+    logging/LogManager.cpp
+    logging/LogFileSink.cpp
+)
+target_link_libraries(section_bench PRIVATE
+    Qt6::Widgets
+    Qt6::Concurrent
+    Qt6::Protobuf
+    mc-bot-manager-proto
+    pybind11::embed
+    Python3::Python
+    nbt++
+)
+target_compile_options(section_bench PRIVATE ${PROJECT_WARNING_FLAGS})
+target_include_directories(section_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
+)
 
 # Prism hook shared library
 FetchContent_Declare(

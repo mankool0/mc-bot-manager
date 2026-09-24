@@ -22,6 +22,37 @@ def build_global_enum_map(cpp_text: str) -> dict:
     return result
 
 
+def split_template_args(text: str) -> list:
+    """Split template arguments on the commas at the outermost level."""
+    parts, depth, current = [], 0, ''
+    for ch in text:
+        if ch == '<':
+            depth += 1
+        elif ch == '>':
+            depth -= 1
+        if ch == ',' and depth == 0:
+            parts.append(current)
+            current = ''
+        else:
+            current += ch
+    parts.append(current)
+    return [p.strip() for p in parts]
+
+
+def mask_template_commas(text: str) -> str:
+    """Hide commas inside <...> as NUL so a comma-separated declaration list can be split with a
+    regex: std::tuple<int, int> x would otherwise read as the declarations 'std::tuple<int' and
+    'int> x'."""
+    out, depth = [], 0
+    for ch in text:
+        if ch == '<':
+            depth += 1
+        elif ch == '>':
+            depth -= 1
+        out.append('\x00' if ch == ',' and depth > 0 else ch)
+    return ''.join(out)
+
+
 def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None) -> str:
     t = re.sub(r'\bconst\b', '', cpp_type).replace('&', '').strip()
 
@@ -34,6 +65,11 @@ def cpp_to_py_type(cpp_type: str, is_param: bool = False, enum_map: dict = None)
         inner = cpp_to_py_type(m.group(1).strip(), enum_map=enum_map)
         # pybind accepts any sequence for a vector parameter, but always returns a list.
         return f'Sequence[{inner}]' if is_param else f'list[{inner}]'
+
+    m = re.match(r'std::tuple<(.+)>$', t)
+    if m:
+        inner = ', '.join(cpp_to_py_type(a, enum_map=enum_map) for a in split_template_args(m.group(1)))
+        return f'tuple[{inner}]'
 
     m = re.match(r'std::map<(.+),\s*(.+)>$', t)
     if m:
@@ -109,10 +145,11 @@ def parse_header(header_text: str, enum_map: dict = None):
             if not line or line.startswith('//') or line in ('public:', 'private:', 'protected:'):
                 continue
             # Handle multi-var: "int x = 0, y = 0, width = 0" -> type is first token(s)
-            tm = re.match(r'^([\w:<>,\s]+?)\s+(\w+)(?:\s*=\s*[^,;]+)?(?:,(.*))?$', line)
+            line = mask_template_commas(line)
+            tm = re.match(r'^([\w:<>,\s\x00]+?)\s+(\w+)(?:\s*=\s*[^,;]+)?(?:,(.*))?$', line)
             if not tm:
                 continue
-            base_type = tm.group(1).strip()
+            base_type = tm.group(1).strip().replace('\x00', ',')
             py_type = cpp_to_py_type(base_type, enum_map=enum_map)
             # First variable
             fields[tm.group(2)] = py_type

@@ -994,6 +994,16 @@ block entity changes do not count.
 - `.truncated` (`bool`) - `limit` was hit and more sections are pending
 - `.sections` (`list[SectionChange]`) - Iterating the `SectionChanges` directly
   iterates these
+- `.dropped` (`list[tuple[int, int, int]]`) - Keys `(chunk_x, chunk_z, section_y)`
+  that changed after `since` but whose chunk unloaded before they could be
+  listed (or, in practice never, that the manager could not encode), so this
+  caller will never see them unless the chunk loads again. Each key appears
+  once however often it changed. At most 4096 keys; see
+  [Token semantics](#token-semantics)
+- `.dropped_total` (`int`) - How many keys were dropped, uncapped
+- `.dropped_incomplete` (`bool`) - `True` when some drops may be missing from
+  `.dropped` and `.dropped_total`: `since` is older than the manager's record of
+  dropped sections still reaches, or it is not a token from this bot
 
 Each `SectionChange` has `.chunk_x`, `.chunk_z`, `.section_y`, `.key` (the three
 as a tuple, ready to pass to `export_sections`) and `.digest` - 32 `bytes` when
@@ -1008,6 +1018,10 @@ digest, and palette ordering never matters. That is what lets a content-addresse
 store keep one copy, and what makes the digest usable as a cache key for content
 rather than for a place.
 
+The work runs with the GIL released and the hashing is spread over worker
+threads, so a script that polls several bots from its own threads, one per bot,
+polls them in parallel.
+
 **Raises:** `RuntimeError` if bot not found or not online
 
 ```python
@@ -1017,6 +1031,8 @@ while True:
     token = changes.token
     for section in changes:
         rescan(section.chunk_x, section.chunk_z, section.section_y)
+    if changes.dropped_total or changes.dropped_incomplete:
+        utils.log(f"missed {changes.dropped_total} sections, e.g. {changes.dropped[:3]}")
     if not changes.truncated:
         time.sleep(1)
 ```
@@ -1025,18 +1041,40 @@ while True:
 
 Tokens are per-bot. Passing one bot's token to another bot returns a full
 snapshot rather than a wrong delta, and so does a token from a bot that was
-removed and re-added. Tokens stay valid across a reconnect: the world clears,
-and the sections re-report as chunks load again.
+removed and re-added (with `.dropped_incomplete` set, since there is no telling
+what it missed). Tokens stay valid across a reconnect: the world clears, the
+sections still pending at the disconnect come back in `.dropped`, and the
+sections re-report as chunks load again.
 
 Reading never consumes, so any number of independent pollers can each hold their
-own token without affecting each other.
+own token without affecting each other - each gets its own `.sections` and its
+own `.dropped`.
 
 The report is deliberately conservative in one direction only: it can tell you a
 section changed when the content happens to be identical (a chunk reload
 re-reports every section), so compare digests if that matters. It will not miss
 a change to a section that is still loaded. A section whose chunk unloads before
-you poll is dropped rather than reported - its content is gone from memory
-anyway - and reloading that chunk marks all of it again.
+you poll cannot be listed - its content is gone from memory - so it is reported
+in `.dropped` instead, and reloading that chunk marks all of it again. So a
+poller that falls behind learns exactly what it missed:
+
+- A section is dropped for you only if it changed after your `since` and its
+  chunk unloaded before this call. One you were already given (it changed at or
+  before `since`) is never reported as dropped, even when its chunk unloads
+  later.
+- A section that changed again (a block update) before its chunk unloaded is
+  reported once.
+- A chunk that unloaded and then loaded again before you polled is not dropped:
+  its sections are in `.sections`.
+- With `limit`, drops belong to the call whose token range covers them, so
+  paging never loses or repeats one.
+- With `dimension`, only that dimension's drops are reported.
+- `since=None` reports no unloaded sections: there is no earlier poll to have
+  missed anything since.
+
+The manager keeps the drops of roughly the last 32,000 sections per bot, which
+at a flying bot's rate is about 15 seconds. A poller whose token is older than
+that gets `.dropped_incomplete = True`: the count it gets is a lower bound.
 
 ### `get_section(chunk_x, chunk_z, section_y, bot_name="", dimension="", digest_prefix=b"")`
 
