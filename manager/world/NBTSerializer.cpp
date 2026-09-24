@@ -2,10 +2,12 @@
 #include <io/stream_reader.h>
 #include <QRegularExpression>
 #include <QStringList>
+#include <QVarLengthArray>
 #include <sstream>
 #include <ctime>
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 nbt::tag_compound NBTSerializer::chunkToNBT(const ChunkData& chunk, int dataVersion,
                                              const QVector<BlockEntityData>& blockEntities) {
@@ -363,12 +365,60 @@ nbt::tag_compound NBTSerializer::createHeightmaps(const ChunkData& chunk) {
 
     std::vector<int64_t> motionBlocking(longCount, 0);
 
-    for (int z = 0; z < 16; z++) {
-        for (int x = 0; x < 16; x++) {
-            int height = findHighestBlock(chunk, x, z);
-            int index = z * 16 + x;
-            setPackedValue(motionBlocking, index, height, bitsPerEntry);
+    // Scans section data top-down instead of calling ChunkData::getBlock per block, which
+    // copies a QString per call and walked 128+ blocks of empty nether sky per column; that
+    // was most of the world saver's per-chunk cost. Missing sections, empty uniform sections
+    // and out-of-range indices read as air, the same as getBlock reads them.
+    int heights[256];
+    std::fill(std::begin(heights), std::end(heights), -1);
+    int remaining = 256;
+    const int topY = chunk.maxY - 1;
+    for (int sectionY = topY >> 4; sectionY >= (chunk.minY >> 4) && remaining > 0; --sectionY) {
+        auto it = chunk.sections.constFind(sectionY);
+        if (it == chunk.sections.constEnd()) {
+            continue;
         }
+        const ChunkSection& section = it.value();
+        const int yHi = std::min(15, topY - sectionY * 16);
+        const int yLo = std::max(0, chunk.minY - sectionY * 16);
+
+        const qsizetype paletteSize = section.palette.size();
+        QVarLengthArray<bool, 64> solid(paletteSize);
+        for (qsizetype i = 0; i < paletteSize; ++i) {
+            solid[i] = !section.palette[i].contains("air");
+        }
+
+        if (section.uniform) {
+            if (paletteSize == 0 || !solid[0]) {
+                continue;
+            }
+            for (int& height : heights) {
+                if (height < 0) {
+                    height = sectionY * 16 + yHi - chunk.minY;
+                }
+            }
+            break;
+        }
+
+        const uint32_t* indices = section.blockIndices.constData();
+        const qsizetype indexCount = section.blockIndices.size();
+        for (int localY = yHi; localY >= yLo && remaining > 0; --localY) {
+            for (int column = 0; column < 256; ++column) {
+                const int cell = localY * 256 + column;
+                if (heights[column] >= 0 || cell >= indexCount) {
+                    continue;
+                }
+                const uint32_t paletteIndex = indices[cell];
+                if (paletteIndex < static_cast<uint32_t>(paletteSize) && solid[paletteIndex]) {
+                    heights[column] = sectionY * 16 + localY - chunk.minY;
+                    --remaining;
+                }
+            }
+        }
+    }
+
+    for (int column = 0; column < 256; ++column) {
+        setPackedValue(motionBlocking, column, std::max(heights[column], 0), bitsPerEntry);
     }
 
     maps.insert("MOTION_BLOCKING", nbt::tag_long_array(std::move(motionBlocking)));
@@ -409,17 +459,6 @@ nbt::tag_compound NBTSerializer::blockStateToNBT(const QString& blockState) {
     tag.insert("Name", nbt::tag_string(blockName.toStdString()));
 
     return tag;
-}
-
-int NBTSerializer::findHighestBlock(const ChunkData& chunk, int x, int z) {
-    // Search from top to bottom for first non-air block
-    for (int y = chunk.maxY - 1; y >= chunk.minY; y--) {
-        auto block = chunk.getBlock(x, y, z);
-        if (block.has_value() && !block->contains("air")) {
-            return y - chunk.minY;  // Return relative height
-        }
-    }
-    return 0;  // All air
 }
 
 void NBTSerializer::setPackedValue(std::vector<int64_t>& data, int index, int value, int bitsPerEntry) {
