@@ -498,6 +498,9 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
         .def_readonly("token", &PySectionChanges::token)
         .def_readonly("truncated", &PySectionChanges::truncated)
         .def_readonly("sections", &PySectionChanges::sections)
+        .def_readonly("dropped", &PySectionChanges::dropped)
+        .def_readonly("dropped_total", &PySectionChanges::droppedTotal)
+        .def_readonly("dropped_incomplete", &PySectionChanges::droppedIncomplete)
         .def("__len__", [](const PySectionChanges &c) { return c.sections.size(); })
         .def("__iter__", [](py::object self) {
             return py::iter(self.attr("sections"));
@@ -615,7 +618,11 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                "digest_prefix + the blocks alone. digest_prefix is your domain-separation tag "
                "(empty = bare content hash); digests only compare equal when computed with the "
                "same prefix. limit caps how many sections come back; .truncated says more are "
-               "pending and .token resumes where this call stopped.",
+               "pending and .token resumes where this call stopped. .dropped lists the keys "
+               "(chunk_x, chunk_z, section_y) marked after `since` whose column unloaded before "
+               "they could be listed (at most 4096; .dropped_total counts all of them). "
+               ".dropped_incomplete is True when `since` is too old, or not this bot's, for "
+               "that count to be complete.",
                py::arg("bot_name") = "",
                py::arg("since") = py::none(),
                py::arg("dimension") = "",

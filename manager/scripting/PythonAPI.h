@@ -10,6 +10,7 @@
 #include <map>
 #include <optional>
 #include <memory>
+#include <tuple>
 #include "world/BlockRegistry.h"
 #include <tag_compound.h>
 
@@ -67,10 +68,14 @@ struct PySectionChange {
     bool hasDigest = false;
 };
 
+// dropped is capped (SectionObservation::kMaxDroppedKeys); droppedTotal is the full count.
 struct PySectionChanges {
     unsigned long long token = 0;
     bool truncated = false;
     std::vector<PySectionChange> sections;
+    std::vector<std::tuple<int, int, int>> dropped;
+    size_t droppedTotal = 0;
+    bool droppedIncomplete = false;
 };
 
 // Format-neutral view of one section's blocks, for scripts that want to work with the

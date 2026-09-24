@@ -651,11 +651,15 @@ void BotManager::resetWorldState(BotInstance* bot)
     }
 
     {
+        // Under the write lock, like unloadColumn: every pending section is logged as dropped
+        // with its column's dimension while the chunks are still there to say what it is.
         QWriteLocker locker(bot->worldDataLock.get());
+        bot->sectionDirty->clear([bot](qint32 chunkX, qint32 chunkZ) {
+            const ChunkData *chunk = bot->worldData.getChunk(chunkX, chunkZ);
+            return chunk ? chunk->dimension.toUtf8() : QByteArray();
+        });
         bot->worldData.clearWorldState();
     }
-
-    bot->sectionDirty->clear();
 
     {
         QMutexLocker statsLocker(&m_statsCacheMutex);
@@ -2835,12 +2839,13 @@ void BotManager::unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ)
         bot->worldAutoSaver->flushBlockChunk(chunkX, chunkZ, bot->dimension);
     }
 
-    {
-        QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.unloadChunk(chunkX, chunkZ);
-    }
-
-    bot->sectionDirty->dropColumn(chunkX, chunkZ);
+    // The tracker drop happens under the same write lock as the unload, so a poll (which reads
+    // the tracker under the read lock) never sees the tracker and the world disagree about
+    // whether the column is there.
+    QWriteLocker locker(bot->worldDataLock.get());
+    const ChunkData *chunk = bot->worldData.getChunk(chunkX, chunkZ);
+    bot->sectionDirty->dropColumn(chunkX, chunkZ, chunk ? chunk->dimension.toUtf8() : QByteArray());
+    bot->worldData.unloadChunk(chunkX, chunkZ);
 }
 
 void BotManager::handleChunkData(int connectionId, const mankool::mcbot::protocol::ChunkDataMessage &chunkData)

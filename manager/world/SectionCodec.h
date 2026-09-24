@@ -58,11 +58,29 @@ std::optional<CanonicalSection> canonicalize(const ChunkSection &section);
 // u32le(palette_len) || [u16le(name_len) || utf8_name]* || u16le(index)*4096
 QByteArray encodeBlob(const CanonicalSection &section);
 
+// encodeBlob's length, and the same bytes written through a raw pointer (returns the end),
+// for callers laying several blobs out in one buffer.
+qsizetype blobSize(const CanonicalSection &section);
+char *writeBlob(char *out, const CanonicalSection &section);
+
+// An upper bound on blobSize(*canonicalize(section)) from the raw palette alone, so a buffer
+// can be laid out before anything is canonicalized.
+qsizetype maxBlobSize(const ChunkSection &section);
+
 // BLAKE2b-256(prefix || blob). Returns 32 bytes. The digest covers content and
 // nothing else, so identical terrain shares a digest wherever it occurs - which
 // is what lets a content-addressed store hold one copy. `prefix` is the
 // caller's format/domain tag; an empty prefix hashes the bare blob.
 QByteArray digest(const CanonicalSection &section, QByteArrayView prefix);
+
+// digest() of the uniform section of one block, memoized: a uniform section's canonical form
+// depends only on its block name, so its digest depends only on (name, prefix).
+QByteArray uniformDigest(const QByteArray &nameUtf8, const QByteArray &prefix);
+
+// Same bytes as digest(*canonicalize(section), prefix), std::nullopt where canonicalize
+// fails. Uniform sections - most of every nether column is the air above the roof - cost a
+// memo lookup rather than a hash.
+std::optional<QByteArray> sectionDigest(const ChunkSection &section, const QByteArray &prefix);
 
 struct SectionFrame {
     QByteArray dimensionUtf8;
@@ -78,6 +96,13 @@ struct SectionFrame {
 // location beside the canonical blob, so a content-addressed receiver can store
 // the blob by digest and record the location separately.
 QByteArray encodeExport(const QVector<SectionFrame> &frames);
+
+// The pieces of that framing, for a caller assembling a payload in place: the u32le(n) count,
+// and a frame's header up to and including u32le(blob_len), which its blob then follows.
+char *writeExportCount(char *out, quint32 frameCount);
+qsizetype exportFrameHeaderSize(QByteArrayView dimensionUtf8);
+char *writeExportFrameHeader(char *out, QByteArrayView dimensionUtf8, qint32 chunkX, qint32 chunkZ,
+                             qint32 sectionY, quint32 blobSize);
 
 }
 
