@@ -4,6 +4,7 @@ import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcbot.protocol.Common;
 import mankool.mcbot.protocol.Protocol;
 import mankool.mcbot.protocol.World;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -21,7 +22,10 @@ import mankool.mcBotClient.util.VersionCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.EnumMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,6 +40,8 @@ public class WorldInteractionHandler extends BaseInboundHandler {
     private BlockPos attackTarget = null;  // null = whatever the crosshair is on
     private boolean holdingUse = false;
     private int holdUseTicksRemaining = 0;  // 0 = indefinite
+    // Key bindings held for the manager, each with its ticks remaining (0 = indefinite).
+    private final Map<World.HeldKey, Integer> heldKeys = new EnumMap<>(World.HeldKey.class);
 
     // Called from HeldAttackMixin, so the target is matched against the hit result vanilla is
     // about to dig rather than last tick's.
@@ -119,9 +125,75 @@ public class WorldInteractionHandler extends BaseInboundHandler {
         }
     }
 
+    public void handleHoldKey(World.HoldKeyCommand command) {
+        KeyMapping mapping = mappingFor(command.getKey());
+        if (mapping == null) {
+            LOGGER.warn("Unknown key to hold: {}", command.getKey());
+            return;
+        }
+        if (!command.getEnabled()) {
+            heldKeys.remove(command.getKey());
+            mapping.setDown(false);
+            return;
+        }
+        heldKeys.put(command.getKey(), command.getDurationTicks());
+    }
+
+    public void handleGetHeldKeys(String messageId) {
+        World.HeldKeysResponse response = World.HeldKeysResponse.newBuilder()
+            .setRequestId(messageId)
+            .addAllKeys(heldKeys.keySet())
+            .build();
+        Protocol.ClientToManagerMessage msg = Protocol.ClientToManagerMessage.newBuilder()
+            .setMessageId(UUID.randomUUID().toString())
+            .setTimestamp(System.currentTimeMillis())
+            .setHeldKeysResponse(response)
+            .build();
+        connection.sendMessage(msg);
+    }
+
+    // Sneak and sprint are ToggleKeyMappings: with the game's toggle option on, setDown(true)
+    // flips the state and setDown(false) does nothing. Both options are off by default and
+    // nothing here turns them on, so they are driven like plain keys.
+    private KeyMapping mappingFor(World.HeldKey key) {
+        return switch (key) {
+            case KEY_JUMP -> client.options.keyJump;
+            case KEY_SNEAK -> client.options.keyShift;
+            case KEY_SPRINT -> client.options.keySprint;
+            case KEY_FORWARD -> client.options.keyUp;
+            case KEY_BACK -> client.options.keyDown;
+            case KEY_LEFT -> client.options.keyLeft;
+            case KEY_RIGHT -> client.options.keyRight;
+            default -> null;
+        };
+    }
+
     public void tick() {
         tickHoldAttack();
         tickHoldUse();
+        tickHeldKeys();
+    }
+
+    // Same shape as tickHoldUse: re-asserted every tick because opening a screen releases every
+    // binding, and a duration counts down to a release.
+    private void tickHeldKeys() {
+        if (heldKeys.isEmpty()) return;
+        Iterator<Map.Entry<World.HeldKey, Integer>> it = heldKeys.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<World.HeldKey, Integer> entry = it.next();
+            KeyMapping mapping = mappingFor(entry.getKey());
+            int left = entry.getValue();
+            if (left > 0) {
+                left--;
+                if (left == 0) {
+                    it.remove();
+                    mapping.setDown(false);
+                    continue;
+                }
+                entry.setValue(left);
+            }
+            if (client.player != null) mapping.setDown(true);
+        }
     }
 
     // Drives the real use key. With it down, vanilla's handleKeybinds starts the use, keeps it

@@ -3315,6 +3315,33 @@ bool PythonAPI::getHoldUse(const std::string &botName)
     return result;
 }
 
+void PythonAPI::holdKey(HeldKey key, bool enabled, int durationTicks, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendHoldKey(name,
+                            static_cast<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>(static_cast<int>(key)),
+                            enabled, durationTicks);
+}
+
+py::object PythonAPI::getHeldKeys(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+
+    std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::getHeldKeys(name);
+    }
+    if (!result)
+        return py::none();
+    py::list keys;
+    for (auto key : *result)
+        keys.append(static_cast<HeldKey>(static_cast<int>(key)));
+    return keys;
+}
+
 void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak, const std::string &botName)
 {
     QString name = resolveBotName(botName);

@@ -214,6 +214,46 @@ if bot.get_hold_attack():
     utils.log("Currently mining")
 ```
 
+### `hold_key(key, enabled, duration_ticks=0, bot_name="")`
+
+Hold or release one of the game's key bindings: jump, sneak, sprint, or forward, back, left and right. While enabled the client keeps the binding pressed every tick, so the game itself does what it does for a player holding that key: a held forward walks, a held sneak crouches, and a held jump keeps jumping. The hold survives a screen opening and closing, which in-game releases every binding.
+
+Baritone's own key overrides win while it is pathing, so cancel it first. Sneak and sprint assume the game's toggle options (`toggleCrouch`, `toggleSprint`) are off, which is their default.
+
+**Parameters:**
+
+- `key` (`bot.HeldKey`) - `JUMP`, `SNEAK`, `SPRINT`, `FORWARD`, `BACK`, `LEFT` or `RIGHT`
+- `enabled` (`bool`) - `True` to start holding, `False` to release
+- `duration_ticks` (`int`, optional) - Auto-release after this many game ticks. `0` holds until an explicit `False` call (default: `0`)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+# Walk forward for two seconds
+bot.hold_key(bot.HeldKey.FORWARD, True, duration_ticks=40)
+
+# Keep jump held for an elytra take-off, release once flying
+bot.hold_key(bot.HeldKey.JUMP, True)
+# ... later:
+bot.hold_key(bot.HeldKey.JUMP, False)
+```
+
+### `get_held_keys(bot_name="")`
+
+Query which bindings the client is holding for `hold_key`.
+
+**Returns:** `list[bot.HeldKey]`, or `None` if the client did not answer in time
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+```python
+if bot.HeldKey.JUMP in (bot.get_held_keys() or []):
+    utils.log("Still holding jump")
+```
+
 ### `drop_item(drop_all=False, bot_name="")`
 
 Drop the item in the selected hotbar slot: one item, or the whole stack with `drop_all=True`. Same as pressing Q (or Ctrl+Q) in-game. When the slot is empty the client replies `No item to drop` in the bot console; nothing is raised.

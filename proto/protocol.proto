@@ -82,6 +82,7 @@ message ClientToManagerMessage {
     CanReachBlocksResponse can_reach_blocks_response = 29;
     HoldAttackStatusResponse hold_attack_status_response = 34;
     HoldUseStatusResponse hold_use_status_response = 43;
+    HeldKeysResponse held_keys_response = 46;
 
     // Entity tracking
     EntityUpdate entity_update = 30;
@@ -193,6 +194,8 @@ message ManagerToClientMessage {
     // In-game use (right-click) hold toggle and status query
     HoldUseCommand hold_use = 40;
     GetHoldUseStatusCommand get_hold_use_status = 41;
+    HoldKeyCommand hold_key = 45;
+    GetHeldKeysCommand get_held_keys = 46;
 
     // Force a full inventory resync from the server
     RequestInventoryResyncCommand request_inventory_resync = 35;

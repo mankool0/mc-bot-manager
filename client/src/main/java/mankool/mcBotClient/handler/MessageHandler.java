@@ -204,6 +204,10 @@ public class MessageHandler {
             msg -> worldInteractionHandler.handleHoldUse(msg.getHoldUse()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HOLD_USE_STATUS,
             msg -> worldInteractionHandler.handleGetHoldUseStatus(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HOLD_KEY,
+            msg -> worldInteractionHandler.handleHoldKey(msg.getHoldKey()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.GET_HELD_KEYS,
+            msg -> worldInteractionHandler.handleGetHeldKeys(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_INVENTORY_RESYNC,
             msg -> inventoryHandler.handleRequestInventoryResync(msg.getMessageId()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.REQUEST_STATISTICS,
@@ -282,6 +286,7 @@ public class MessageHandler {
         while ((message = connection.receiveMessage()) != null) {
             handleMessage(message);
         }
+        connectionHandler.tick();
 
         // Send heartbeat every second (20 ticks)
         if (tick % 20 == 0) {

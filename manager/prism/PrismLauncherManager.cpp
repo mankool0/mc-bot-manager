@@ -687,11 +687,12 @@ void PrismLauncherManager::sendLaunchCommandImpl(BotInstance *bot)
     arguments << "-l" << bot->instance;
     arguments << "-a" << bot->account;
 
+    bot->joinServerOnConnect = false;
     if (!bot->server.isEmpty() && bot->autoConnect) {
         if (bot->proxySettings.enabled && bot->proxyHealth == BotInstance::ProxyHealth::Dead) {
             LogManager::log(QString("Skipping auto-connect for bot '%1': proxy is unreachable").arg(bot->name), LogManager::Warning);
         } else {
-            arguments << "-s" << bot->server;
+            bot->joinServerOnConnect = true;
         }
     }
 
