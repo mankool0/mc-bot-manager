@@ -21,6 +21,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QCoreApplication>
 #include <QThread>
 #include <QReadWriteLock>
@@ -1306,12 +1307,20 @@ void PythonAPI::restartBot(const std::string &reason, const std::string &botName
     BotManager::sendShutdownCommand(name, qReason);
 }
 
+// Plain arg(double) keeps 6 significant digits: -1234567 becomes "-1.23457e+06", which
+// Baritone's coordinate parser rejects, and 123456.5 silently becomes the next block over.
+static QString baritoneCoordinate(double value)
+{
+    return QString::number(value, 'f', QLocale::FloatingPointShortest);
+}
+
 void PythonAPI::baritoneGoto(double x, double y, double z, const std::string &bot)
 {
     QString name = resolveBotName(bot);
     ensureBotCapability(name, "baritone");
 
-    BotManager::sendBaritoneCommand(name, QString("goto %1 %2 %3").arg(x).arg(y).arg(z));
+    BotManager::sendBaritoneCommand(name, QString("goto %1 %2 %3")
+        .arg(baritoneCoordinate(x), baritoneCoordinate(y), baritoneCoordinate(z)));
 }
 
 void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
@@ -1319,7 +1328,7 @@ void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
     QString name = resolveBotName(bot);
     ensureBotCapability(name, "baritone");
 
-    BotManager::sendBaritoneCommand(name, QString("goto %1 %2").arg(x).arg(z));
+    BotManager::sendBaritoneCommand(name, QString("goto %1 %2").arg(baritoneCoordinate(x), baritoneCoordinate(z)));
 }
 
 void PythonAPI::baritoneFollow(const std::string &player, const std::string &bot)
