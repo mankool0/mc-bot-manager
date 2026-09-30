@@ -658,6 +658,8 @@ void BotManager::resetWorldState(BotInstance* bot)
             const ChunkData *chunk = bot->worldData.getChunk(chunkX, chunkZ);
             return chunk ? chunk->dimension.toUtf8() : QByteArray();
         });
+        // Otherwise a poll after the reconnect would read the previous world's sections.
+        bot->retainedSections->clear();
         bot->worldData.clearWorldState();
     }
 
@@ -2844,7 +2846,17 @@ void BotManager::unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ)
     // whether the column is there.
     QWriteLocker locker(bot->worldDataLock.get());
     const ChunkData *chunk = bot->worldData.getChunk(chunkX, chunkZ);
-    bot->sectionDirty->dropColumn(chunkX, chunkZ, chunk ? chunk->dimension.toUtf8() : QByteArray());
+    const QByteArray dimension = chunk ? chunk->dimension.toUtf8() : QByteArray();
+    if (chunk) {
+        const qint64 now = RetainedSections::nowMs();
+        for (const auto &[sectionY, seq] : bot->sectionDirty->marked(chunkX, chunkZ)) {
+            auto it = chunk->sections.constFind(sectionY);
+            if (it != chunk->sections.constEnd()) {
+                bot->retainedSections->retain({chunkX, chunkZ, sectionY}, seq, dimension, *it, now);
+            }
+        }
+    }
+    bot->sectionDirty->dropColumn(chunkX, chunkZ, dimension);
     bot->worldData.unloadChunk(chunkX, chunkZ);
 }
 

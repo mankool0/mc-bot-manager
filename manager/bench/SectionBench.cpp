@@ -17,6 +17,7 @@
 // per column, non-uniform ones below the roof with 5-20 palette entries, the uniform air
 // above it, and a share of uniform netherrack and lava.
 
+#include "bot/RetainedSections.h"
 #include "bot/SectionDirtyTracker.h"
 #include "bot/SectionObservation.h"
 #include "bot/WorldData.h"
@@ -233,6 +234,7 @@ struct Bot {
     BotWorldData world;
     QReadWriteLock lock;
     SectionDirtyTracker tracker;
+    RetainedSections kept;
     QVector<SectionColumnKey> columns;
     int nextColumn = 0;
     std::optional<quint64> token;
@@ -272,6 +274,14 @@ SectionObservation::Changes list(Bot &bot, std::optional<quint64> since, const Q
                                  bool digest = true, int limit = 0)
 {
     return SectionObservation::listChanges(bot.tracker, bot.world, bot.lock, since, dimension, digest, limit, kPrefix);
+}
+
+// The same with the copies kept at unload, as PythonAPI calls it.
+SectionObservation::Changes listKept(Bot &bot, std::optional<quint64> since, const QByteArray &dimension = kNether,
+                                     bool digest = true, int limit = 0)
+{
+    return SectionObservation::listChanges(bot.tracker, bot.world, bot.lock, since, dimension, digest, limit, kPrefix,
+                                           &bot.kept);
 }
 
 // ---------------------------------------------------------------------------
@@ -646,7 +656,8 @@ void checkExport(const QVector<ChunkData> &pool)
           "a dimension that does not match exports zero frames");
 }
 
-// What BotManager does on a chunk load and a chunk unload.
+// What BotManager does on a chunk load and a chunk unload; `keep` also retains the
+// sections, as BotManager does.
 void loadColumn(Bot &bot, ChunkData chunk, qint32 chunkX, qint32 chunkZ)
 {
     chunk.chunkX = chunkX;
@@ -662,11 +673,21 @@ void loadColumn(Bot &bot, ChunkData chunk, qint32 chunkX, qint32 chunkZ)
     bot.tracker.markAll(keys);
 }
 
-void unloadColumn(Bot &bot, qint32 chunkX, qint32 chunkZ)
+void unloadColumn(Bot &bot, qint32 chunkX, qint32 chunkZ, bool keep = false)
 {
     QWriteLocker locker(&bot.lock);
     const ChunkData *chunk = bot.world.getChunk(chunkX, chunkZ);
-    bot.tracker.dropColumn(chunkX, chunkZ, chunk ? chunk->dimension.toUtf8() : QByteArray());
+    const QByteArray dimension = chunk ? chunk->dimension.toUtf8() : QByteArray();
+    if (keep && chunk) {
+        const qint64 now = RetainedSections::nowMs();
+        for (const auto &[sectionY, seq] : bot.tracker.marked(chunkX, chunkZ)) {
+            auto it = chunk->sections.constFind(sectionY);
+            if (it != chunk->sections.constEnd()) {
+                bot.kept.retain({chunkX, chunkZ, sectionY}, seq, dimension, *it, now);
+            }
+        }
+    }
+    bot.tracker.dropColumn(chunkX, chunkZ, dimension);
     bot.world.unloadChunk(chunkX, chunkZ);
 }
 
@@ -812,12 +833,128 @@ void checkDropped(const QVector<ChunkData> &pool)
     check(!r.droppedIncomplete && r.droppedTotal == 16, "a token newer than the evicted entries is exact again");
 }
 
+QHash<SectionKey, QByteArray> digests(const SectionObservation::Changes &r)
+{
+    QHash<SectionKey, QByteArray> out;
+    for (const SectionObservation::Change &c : r.sections) {
+        out.insert(c.key, c.digest);
+    }
+    return out;
+}
+
+// A column that loads and unloads between two polls is listed and exported from its
+// retained copy as if it were still loaded.
+void checkRetained(const QVector<ChunkData> &pool)
+{
+    std::printf("sections kept past an unload:\n");
+    Bot bot;
+    Bot still;  // the same columns, never unloaded: what the copies must match
+    const ChunkData nether = pool[0];
+    Rng rng(11);
+    const ChunkData overworld = makeColumn(rng, kOverworld);
+    auto t = listKept(bot, std::nullopt).token;
+
+    loadColumn(bot, nether, 1, 0);
+    loadColumn(still, nether, 1, 0);
+    unloadColumn(bot, 1, 0, true);
+    auto r = listKept(bot, t);
+    const auto want = digests(list(still, std::nullopt));
+    check(r.dropped.isEmpty() && r.droppedTotal == 0 && asSet([&] {
+              QVector<SectionKey> keys;
+              for (const auto &c : r.sections) keys.append(c.key);
+              return keys;
+          }()) == columnKeys(1, 0),
+          "marked then unloaded before the poll: its 16 sections listed from the copy, none dropped");
+    check(digests(r) == want, "with the digests the loaded column gives");
+    const QVector<SectionKey> keys(columnKeys(1, 0).cbegin(), columnKeys(1, 0).cend());
+    check(SectionObservation::exportSections(bot.world, bot.lock, keys, kNether, &bot.kept)
+              == SectionObservation::exportSections(still.world, still.lock, keys, kNether),
+          "and exported from it byte for byte");
+    check(SectionObservation::readSection(bot.world, bot.lock, {1, 0, 3}, kNether, &bot.kept).has_value(),
+          "get_section reads it too");
+    check(SectionObservation::exportSections(bot.world, bot.lock, keys, kOverworld, &bot.kept).size() == 4,
+          "a kept nether section exports nothing to an overworld caller");
+    t = r.token;
+    check(listKept(bot, t).sections.isEmpty(), "listed once: the next poll is clean");
+
+    loadColumn(bot, nether, 2, 0);
+    loadColumn(still, nether, 2, 0);
+    t = listKept(bot, t).token;
+    const qsizetype before = bot.kept.size();
+    unloadColumn(bot, 2, 0, true);
+    check(bot.kept.size() == before + 16 && listKept(bot, t).sections.isEmpty(),
+          "a column already listed is kept too, and not listed again");
+    const QVector<SectionKey> keys2(columnKeys(2, 0).cbegin(), columnKeys(2, 0).cend());
+    check(SectionObservation::exportSections(bot.world, bot.lock, keys2, kNether, &bot.kept)
+              == SectionObservation::exportSections(still.world, still.lock, keys2, kNether),
+          "so the export it was listed for still reads it");
+
+    t = listKept(bot, std::nullopt).token;
+    loadColumn(bot, nether, 3, 0);
+    unloadColumn(bot, 3, 0, true);
+    loadColumn(bot, nether, 3, 0);
+    r = listKept(bot, t);
+    check(r.sections.size() == 16 && r.dropped.isEmpty(),
+          "dropped and reloaded before the poll: listed once, from the live column");
+
+    t = listKept(bot, std::nullopt).token;
+    loadColumn(bot, overworld, 4, 0);
+    unloadColumn(bot, 4, 0, true);
+    check(listKept(bot, t, kNether).sections.isEmpty() && listKept(bot, t, kNether).dropped.isEmpty(),
+          "a kept overworld column is nothing to a nether poll");
+    check(listKept(bot, t, kOverworld).sections.size() == 16, "and listed to an overworld one");
+
+    // A second poller behind the first: what the first read before the unload is kept all the
+    // same, so the second lists it from the copy instead of hearing it as dropped.
+    const quint64 slow = listKept(bot, std::nullopt).token;
+    loadColumn(bot, nether, 5, 0);
+    const quint64 fast = listKept(bot, slow).token;
+    unloadColumn(bot, 5, 0, true);
+    r = listKept(bot, slow);
+    check(r.dropped.isEmpty() && asSet([&] {
+              QVector<SectionKey> keys;
+              for (const auto &c : r.sections) keys.append(c.key);
+              return keys;
+          }()) == columnKeys(5, 0)
+              && listKept(bot, fast).sections.isEmpty() && listKept(bot, fast).dropped.isEmpty(),
+          "a slower poller lists what the faster one read from the copy, nothing dropped");
+
+    // Past the byte cap the oldest copies go, and those are dropped again.
+    Bot full;
+    full.kept.maxBytes = 2 * 1024 * 1024;
+    t = listKept(full, std::nullopt).token;
+    int columns = 0;
+    do {
+        loadColumn(full, nether, 100 + columns, 0);
+        unloadColumn(full, 100 + columns, 0, true);
+        ++columns;
+    } while (full.kept.size() == static_cast<qsizetype>(columns) * 16);
+    for (int c = 0; c < 8; ++c, ++columns) {
+        loadColumn(full, nether, 100 + columns, 0);
+        unloadColumn(full, 100 + columns, 0, true);
+    }
+    r = listKept(full, t);
+    check(full.kept.bytes() <= full.kept.maxBytes && full.kept.size() < static_cast<qsizetype>(columns) * 16
+              && r.sections.size() == full.kept.size()
+              && r.droppedTotal == static_cast<qsizetype>(columns) * 16 - full.kept.size()
+              && asSet(r.dropped).contains(columnKeys(100, 0)),
+          "past maxBytes the oldest copies are evicted and reported dropped");
+
+    const qint64 now = RetainedSections::nowMs();
+    check(full.kept.latest({100 + columns - 1, 0, 0}, now) != nullptr
+              && full.kept.latest({100 + columns - 1, 0, 0}, now + RetainedSections::kMaxAgeMs + 1) == nullptr,
+          "a copy older than kMaxAgeMs is not read");
+    full.kept.clear();
+    check(listKept(full, t).droppedTotal == static_cast<qsizetype>(columns) * 16,
+          "cleared with the world: everything owed is dropped again");
+}
+
 // The promise under races: with a writer loading, updating and unloading columns while a
 // poller polls, every section marked after the poller's first token reaches it, in
-// `sections` or in `dropped`.
-void checkNoSilentDrops(const QVector<ChunkData> &pool)
+// `sections` or in `dropped` - and with copies kept, most of it in `sections`.
+void checkNoSilentDrops(const QVector<ChunkData> &pool, bool keep)
 {
-    std::printf("no silent drops under concurrent loads and unloads:\n");
+    std::printf("no silent drops under concurrent loads and unloads%s:\n", keep ? ", copies kept" : "");
     bool allSeen = true;
     bool neverIncomplete = true;
     qsizetype droppedSeen = 0;
@@ -842,7 +979,7 @@ void checkNoSilentDrops(const QVector<ChunkData> &pool)
                     loaded.append(next++);
                 } else if (roll < 8) {
                     const int at = rng.below(loaded.size());
-                    unloadColumn(bot, loaded[at], round);
+                    unloadColumn(bot, loaded[at], round, keep);
                     loaded.remove(at);
                 } else {
                     bot.tracker.mark(loaded[rng.below(loaded.size())], round, rng.below(16));
@@ -859,7 +996,8 @@ void checkNoSilentDrops(const QVector<ChunkData> &pool)
         int polls = 0;
         while (!last) {
             last = !writing.load();
-            const SectionObservation::Changes r = list(bot, token, kNether, polls % 2 == 0);
+            const SectionObservation::Changes r = keep ? listKept(bot, token, kNether, polls % 2 == 0)
+                                                       : list(bot, token, kNether, polls % 2 == 0);
             for (const SectionObservation::Change &c : r.sections) {
                 seen.insert(c.key);
             }
@@ -874,7 +1012,7 @@ void checkNoSilentDrops(const QVector<ChunkData> &pool)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         writer.join();
-        const SectionObservation::Changes r = list(bot, token);
+        const SectionObservation::Changes r = keep ? listKept(bot, token) : list(bot, token);
         for (const SectionObservation::Change &c : r.sections) {
             seen.insert(c.key);
         }
@@ -1253,7 +1391,9 @@ int main(int argc, char **argv)
     checkEquivalence(pool);
     checkExport(pool);
     checkDropped(pool);
-    checkNoSilentDrops(pool);
+    checkRetained(pool);
+    checkNoSilentDrops(pool, false);
+    checkNoSilentDrops(pool, true);
     if (g_failures > 0) {
         std::printf("\n%d check(s) failed\n", g_failures);
         return 1;

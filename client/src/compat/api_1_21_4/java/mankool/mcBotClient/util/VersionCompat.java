@@ -150,7 +150,7 @@ public class VersionCompat {
             player.containerMenu.getStateId() - 1,
             -999,
             0,
-            ClickType.PICKUP,
+            ClickType.THROW,
             ItemStack.EMPTY,
             new Int2ObjectArrayMap<>()
         ));

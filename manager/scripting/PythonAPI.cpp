@@ -21,6 +21,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QCoreApplication>
 #include <QThread>
 #include <QReadWriteLock>
@@ -1306,12 +1307,20 @@ void PythonAPI::restartBot(const std::string &reason, const std::string &botName
     BotManager::sendShutdownCommand(name, qReason);
 }
 
+// Plain arg(double) keeps 6 significant digits: -1234567 becomes "-1.23457e+06", which
+// Baritone's coordinate parser rejects, and 123456.5 silently becomes the next block over.
+static QString baritoneCoordinate(double value)
+{
+    return QString::number(value, 'f', QLocale::FloatingPointShortest);
+}
+
 void PythonAPI::baritoneGoto(double x, double y, double z, const std::string &bot)
 {
     QString name = resolveBotName(bot);
     ensureBotCapability(name, "baritone");
 
-    BotManager::sendBaritoneCommand(name, QString("goto %1 %2 %3").arg(x).arg(y).arg(z));
+    BotManager::sendBaritoneCommand(name, QString("goto %1 %2 %3")
+        .arg(baritoneCoordinate(x), baritoneCoordinate(y), baritoneCoordinate(z)));
 }
 
 void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
@@ -1319,7 +1328,7 @@ void PythonAPI::baritoneGoto(double x, double z, const std::string &bot)
     QString name = resolveBotName(bot);
     ensureBotCapability(name, "baritone");
 
-    BotManager::sendBaritoneCommand(name, QString("goto %1 %2").arg(x).arg(z));
+    BotManager::sendBaritoneCommand(name, QString("goto %1 %2").arg(baritoneCoordinate(x), baritoneCoordinate(z)));
 }
 
 void PythonAPI::baritoneFollow(const std::string &player, const std::string &bot)
@@ -2866,6 +2875,7 @@ PySectionChanges PythonAPI::changedSections(const std::string &bot, const py::ob
     // The world read still goes through botInstance, under the same lifetime assumption the
     // rest of PythonAPI makes.
     const std::shared_ptr<SectionDirtyTracker> tracker = botInstance->sectionDirty;
+    const std::shared_ptr<RetainedSections> retained = botInstance->retainedSections;
 
     PySectionChanges result;
     {
@@ -2873,7 +2883,7 @@ PySectionChanges PythonAPI::changedSections(const std::string &bot, const py::ob
 
         const SectionObservation::Changes changes = SectionObservation::listChanges(
             *tracker, botInstance->worldData, *botInstance->worldDataLock, sinceSeq, dimensionFilter, digest,
-            limit, digestPrefixBytes);
+            limit, digestPrefixBytes, retained.get());
         result.token = changes.token;
         result.truncated = changes.truncated;
         result.droppedTotal = static_cast<size_t>(changes.droppedTotal);
@@ -2914,7 +2924,8 @@ std::optional<PySection> PythonAPI::getSection(int chunkX, int chunkZ, int secti
         py::gil_scoped_release release;
 
         const std::optional<SectionObservation::Section> read = SectionObservation::readSection(
-            botInstance->worldData, *botInstance->worldDataLock, {chunkX, chunkZ, sectionY}, dimensionFilter);
+            botInstance->worldData, *botInstance->worldDataLock, {chunkX, chunkZ, sectionY}, dimensionFilter,
+            botInstance->retainedSections.get());
         if (!read) {
             return std::nullopt;
         }
@@ -2968,7 +2979,7 @@ py::bytes PythonAPI::exportSections(const py::sequence &keys, const std::string 
     {
         py::gil_scoped_release release;
         payload = SectionObservation::exportSections(botInstance->worldData, *botInstance->worldDataLock, parsed,
-                                                     dimensionFilter);
+                                                     dimensionFilter, botInstance->retainedSections.get());
     }
 
     return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));

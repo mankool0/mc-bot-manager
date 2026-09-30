@@ -44,11 +44,9 @@ void ZubanClient::start(const QString &scriptsDir, const QString &stubsDir, cons
                << appBinDir;
 
     QString zubanPath = QStandardPaths::findExecutable("zuban", extraPaths);
-#ifndef NDEBUG
     if (zubanPath.isEmpty()) {
         zubanPath = QStandardPaths::findExecutable("zuban");
     }
-#endif
     if (zubanPath.isEmpty()) {
         static bool s_warned = false;
         if (!s_warned) {
