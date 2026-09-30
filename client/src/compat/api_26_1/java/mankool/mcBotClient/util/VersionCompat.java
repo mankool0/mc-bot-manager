@@ -148,7 +148,7 @@ public class VersionCompat {
             player.containerMenu.getStateId() - 1,
             (short) -999,
             (byte) 0,
-            ContainerInput.PICKUP,
+            ContainerInput.THROW,
             new Int2ObjectArrayMap<>(),
             HashedStack.EMPTY
         ));
