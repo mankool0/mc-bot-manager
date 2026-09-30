@@ -1,4 +1,5 @@
 #include "SectionObservation.h"
+#include "bot/RetainedSections.h"
 #include "bot/WorldData.h"
 
 #include <QReadWriteLock>
@@ -72,7 +73,7 @@ struct DimensionCache {
 
 Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &world, QReadWriteLock &worldLock,
                     std::optional<quint64> since, const QByteArray &dimension, bool digest, int limit,
-                    const QByteArray &digestPrefix)
+                    const QByteArray &digestPrefix, const RetainedSections *retained)
 {
     Changes result;
     QVector<SectionKey> keys;
@@ -91,6 +92,8 @@ Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &worl
         result.droppedIncomplete = snap.droppedIncomplete;
 
         DimensionCache dims;
+        const qint64 now = RetainedSections::nowMs();
+        QSet<SectionKey> fromCopies;
         jobs.reserve(keys.size());
         for (const SectionKey &key : std::as_const(keys)) {
             const ChunkData *chunk = world.getChunk(key.chunkX, key.chunkZ);
@@ -123,6 +126,17 @@ Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &worl
                     && (d.dimension.isEmpty() || dims.of(chunk) == d.dimension)) {
                     continue;
                 }
+            }
+            // Listed once from the retained copy, even if it dropped several times. A copy
+            // older than this mark predates the change, so it does not count.
+            const RetainedSections::Entry *kept = retained ? retained->latest(d.key, now) : nullptr;
+            if (kept && kept->seq >= d.seq
+                && (d.dimension.isEmpty() || kept->dimension.isEmpty() || kept->dimension == d.dimension)) {
+                if (!fromCopies.contains(d.key)) {
+                    fromCopies.insert(d.key);
+                    jobs.append({d.key, kept->section, {}, false});
+                }
+                continue;
             }
             lost.append(d.key);
         }
@@ -163,27 +177,29 @@ Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &worl
 }
 
 QByteArray exportSections(const BotWorldData &world, QReadWriteLock &worldLock, const QVector<SectionKey> &keys,
-                          const QByteArray &dimension)
+                          const QByteArray &dimension, const RetainedSections *retained)
 {
     QVector<ExportJob> jobs;
     jobs.reserve(keys.size());
     {
         QReadLocker locker(&worldLock);
         DimensionCache dims;
+        const qint64 now = RetainedSections::nowMs();
         for (const SectionKey &key : keys) {
             const ChunkData *chunk = world.getChunk(key.chunkX, key.chunkZ);
-            if (!chunk) {
-                continue;
+            if (chunk) {
+                const QByteArray &dim = dims.of(chunk);
+                auto it = chunk->sections.constFind(key.sectionY);
+                if ((dimension.isEmpty() || dim == dimension) && it != chunk->sections.constEnd()) {
+                    jobs.append({key, dim, *it});
+                    continue;
+                }
             }
-            const QByteArray &dim = dims.of(chunk);
-            if (!dimension.isEmpty() && dim != dimension) {
-                continue;
+            // Not loaded: the retained copy, which is what was listed.
+            const RetainedSections::Entry *kept = retained ? retained->latest(key, now) : nullptr;
+            if (kept && (dimension.isEmpty() || kept->dimension == dimension)) {
+                jobs.append({key, kept->dimension, kept->section});
             }
-            auto it = chunk->sections.constFind(key.sectionY);
-            if (it == chunk->sections.constEnd()) {
-                continue;
-            }
-            jobs.append({key, dim, *it});
         }
     }
 
@@ -231,25 +247,31 @@ QByteArray exportSections(const BotWorldData &world, QReadWriteLock &worldLock, 
 }
 
 std::optional<Section> readSection(const BotWorldData &world, QReadWriteLock &worldLock, const SectionKey &key,
-                                   const QByteArray &dimension)
+                                   const QByteArray &dimension, const RetainedSections *retained)
 {
     ChunkSection section;
     QByteArray sectionDimension;
     {
         QReadLocker locker(&worldLock);
         const ChunkData *chunk = world.getChunk(key.chunkX, key.chunkZ);
-        if (!chunk) {
-            return std::nullopt;
+        bool found = false;
+        if (chunk) {
+            sectionDimension = chunk->dimension.toUtf8();
+            auto it = chunk->sections.constFind(key.sectionY);
+            if ((dimension.isEmpty() || sectionDimension == dimension) && it != chunk->sections.constEnd()) {
+                section = *it;
+                found = true;
+            }
         }
-        sectionDimension = chunk->dimension.toUtf8();
-        if (!dimension.isEmpty() && sectionDimension != dimension) {
-            return std::nullopt;
+        if (!found) {
+            const RetainedSections::Entry *kept =
+                retained ? retained->latest(key, RetainedSections::nowMs()) : nullptr;
+            if (!kept || (!dimension.isEmpty() && kept->dimension != dimension)) {
+                return std::nullopt;
+            }
+            section = kept->section;
+            sectionDimension = kept->dimension;
         }
-        auto it = chunk->sections.constFind(key.sectionY);
-        if (it == chunk->sections.constEnd()) {
-            return std::nullopt;
-        }
-        section = *it;
     }
     auto canon = SectionCodec::canonicalize(section);
     if (!canon) {

@@ -36,6 +36,7 @@
 #include "WindowLayout.h"
 #include "WorldData.h"
 #include "SectionDirtyTracker.h"
+#include "RetainedSections.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
@@ -389,6 +390,9 @@ struct BotInstance : public BotConfig {
     // BotManager::markWorldDirty, never marked from handlers directly. shared_ptr so a
     // script thread can copy it out and keep polling safely after dropping the GIL.
     std::shared_ptr<SectionDirtyTracker> sectionDirty = std::make_shared<SectionDirtyTracker>();
+    // Sections of unloaded columns, still readable by the section API for a while.
+    // Under worldDataLock.
+    std::shared_ptr<RetainedSections> retainedSections = std::make_shared<RetainedSections>();
 
     // Recipe registry
     RecipeRegistry recipeRegistry;

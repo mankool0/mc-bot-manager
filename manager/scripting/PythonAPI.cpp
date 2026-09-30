@@ -2875,6 +2875,7 @@ PySectionChanges PythonAPI::changedSections(const std::string &bot, const py::ob
     // The world read still goes through botInstance, under the same lifetime assumption the
     // rest of PythonAPI makes.
     const std::shared_ptr<SectionDirtyTracker> tracker = botInstance->sectionDirty;
+    const std::shared_ptr<RetainedSections> retained = botInstance->retainedSections;
 
     PySectionChanges result;
     {
@@ -2882,7 +2883,7 @@ PySectionChanges PythonAPI::changedSections(const std::string &bot, const py::ob
 
         const SectionObservation::Changes changes = SectionObservation::listChanges(
             *tracker, botInstance->worldData, *botInstance->worldDataLock, sinceSeq, dimensionFilter, digest,
-            limit, digestPrefixBytes);
+            limit, digestPrefixBytes, retained.get());
         result.token = changes.token;
         result.truncated = changes.truncated;
         result.droppedTotal = static_cast<size_t>(changes.droppedTotal);
@@ -2923,7 +2924,8 @@ std::optional<PySection> PythonAPI::getSection(int chunkX, int chunkZ, int secti
         py::gil_scoped_release release;
 
         const std::optional<SectionObservation::Section> read = SectionObservation::readSection(
-            botInstance->worldData, *botInstance->worldDataLock, {chunkX, chunkZ, sectionY}, dimensionFilter);
+            botInstance->worldData, *botInstance->worldDataLock, {chunkX, chunkZ, sectionY}, dimensionFilter,
+            botInstance->retainedSections.get());
         if (!read) {
             return std::nullopt;
         }
@@ -2977,7 +2979,7 @@ py::bytes PythonAPI::exportSections(const py::sequence &keys, const std::string 
     {
         py::gil_scoped_release release;
         payload = SectionObservation::exportSections(botInstance->worldData, *botInstance->worldDataLock, parsed,
-                                                     dimensionFilter);
+                                                     dimensionFilter, botInstance->retainedSections.get());
     }
 
     return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));

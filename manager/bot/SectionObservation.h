@@ -10,6 +10,7 @@
 
 class BotWorldData;
 class QReadWriteLock;
+class RetainedSections;
 
 // The work behind world.changed_sections / world.export_sections / world.get_section, kept
 // free of Python so it runs with the GIL released and can be driven directly by the section
@@ -30,20 +31,24 @@ struct Changes {
     bool truncated = false;
     QVector<Change> sections;
     // Sections this listing will never return because their content is gone: marked after
-    // `since` and unloaded before they could be read (reported only when there is a `since`
-    // to be after), or, in practice never, listed but impossible to encode. Deduplicated, and
-    // filtered by the dimension where it is known.
+    // `since` and unloaded before they could be read, with no copy of them left in
+    // `retained` (reported only when there is a `since` to be after), or, in practice never,
+    // listed but impossible to encode. Deduplicated, and filtered by the dimension where it
+    // is known.
     QVector<SectionKey> dropped;
     qsizetype droppedTotal = 0;
     bool droppedIncomplete = false;
 };
 
+// `retained`, read under `worldLock` like the world, holds sections of unloaded columns: a
+// dropped section with a copy there is listed from the copy instead, and exported from it.
+// Null lists and exports only what is loaded.
 Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &world, QReadWriteLock &worldLock,
                     std::optional<quint64> since, const QByteArray &dimension, bool digest, int limit,
-                    const QByteArray &digestPrefix);
+                    const QByteArray &digestPrefix, const RetainedSections *retained = nullptr);
 
 QByteArray exportSections(const BotWorldData &world, QReadWriteLock &worldLock, const QVector<SectionKey> &keys,
-                          const QByteArray &dimension);
+                          const QByteArray &dimension, const RetainedSections *retained = nullptr);
 
 struct Section {
     QByteArray dimension;
@@ -51,7 +56,7 @@ struct Section {
 };
 
 std::optional<Section> readSection(const BotWorldData &world, QReadWriteLock &worldLock, const SectionKey &key,
-                                   const QByteArray &dimension);
+                                   const QByteArray &dimension, const RetainedSections *retained = nullptr);
 
 }
 

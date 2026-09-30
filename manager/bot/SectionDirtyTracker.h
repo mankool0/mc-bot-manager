@@ -80,6 +80,7 @@ public:
         SectionKey key;
         QByteArray dimension;  // UTF-8; empty when not known
         bool remarked = false;  // tracked again since, so its column may have come back
+        quint64 seq = 0;        // the sequence it was last marked with before it dropped
     };
 
     SectionDirtyTracker()
@@ -102,6 +103,23 @@ public:
         for (const SectionKey &key : keys) {
             markLocked(key);
         }
+    }
+
+    // A column's tracked sections as (sectionY, seq), read just before dropColumn so
+    // their content can be retained.
+    std::vector<std::pair<qint32, quint64>> marked(qint32 chunkX, qint32 chunkZ) const
+    {
+        QMutexLocker locker(&mutex);
+        std::vector<std::pair<qint32, quint64>> out;
+        auto columnIt = byColumn.constFind({chunkX, chunkZ});
+        if (columnIt == byColumn.cend()) {
+            return out;
+        }
+        out.reserve(static_cast<size_t>(columnIt->size()));
+        for (auto it = columnIt->cbegin(); it != columnIt->cend(); ++it) {
+            out.emplace_back(it.key(), it.value());
+        }
+        return out;
     }
 
     // The contents are gone from memory, so the column's sections move to the dropped
@@ -198,7 +216,7 @@ public:
                 result.droppedIncomplete = from < droppedFloor;
                 for (const DroppedEntry &entry : droppedLog) {
                     if (entry.seq > from && entry.seq <= to) {
-                        dropped->append({entry.key, dimensions[entry.dimension], isTracked(entry.key)});
+                        dropped->append({entry.key, dimensions[entry.dimension], isTracked(entry.key), entry.seq});
                     }
                 }
             }
