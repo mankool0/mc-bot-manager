@@ -1170,6 +1170,7 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
         }
         bot->yaw   = state.yaw();
         bot->pitch = state.pitch();
+        bot->cameraType = state.cameraType();
         if (!state.dimension().isEmpty()) {
             bot->dimension = state.dimension();
         }
@@ -4546,6 +4547,24 @@ void BotManager::sendSetRotationImpl(const QString &botName, float yaw, float pi
 
     mankool::mcbot::protocol::ManagerToClientMessage message;
     message.setSetRotation(command);
+    sendOutboundMessage(bot->connectionId, message, silent);
+}
+
+void BotManager::sendSetCameraType(const QString &botName, mankool::mcbot::protocol::CameraTypeGadget::CameraType cameraType, bool silent)
+{
+    instance().sendSetCameraTypeImpl(botName, cameraType, silent);
+}
+
+void BotManager::sendSetCameraTypeImpl(const QString &botName, mankool::mcbot::protocol::CameraTypeGadget::CameraType cameraType, bool silent)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "set_perspective");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::SetCameraTypeCommand command;
+    command.setCameraType(cameraType);
+
+    mankool::mcbot::protocol::ManagerToClientMessage message;
+    message.setSetCameraType(command);
     sendOutboundMessage(bot->connectionId, message, silent);
 }
 

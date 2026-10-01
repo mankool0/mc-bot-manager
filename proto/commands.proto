@@ -57,6 +57,10 @@ message SetRotationCommand {
   float pitch = 2;
 }
 
+message SetCameraTypeCommand {
+  CameraType camera_type = 1;
+}
+
 // Item/hotbar commands
 message SwitchHotbarSlotCommand {
   int32 slot = 1;              // Target slot (0-8)

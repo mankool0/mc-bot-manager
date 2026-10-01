@@ -2,6 +2,7 @@ package mankool.mcBotClient.util;
 
 import com.google.protobuf.ByteString;
 import mankool.mcbot.protocol.Common;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
@@ -116,5 +117,13 @@ public class ProtoUtil {
             .setY(y)
             .setZ(z)
             .build();
+    }
+
+    public static Common.CameraType toProtoCameraType(CameraType cameraType) {
+        return switch (cameraType) {
+            case FIRST_PERSON -> Common.CameraType.FIRST_PERSON;
+            case THIRD_PERSON_BACK -> Common.CameraType.THIRD_PERSON_BACK;
+            case THIRD_PERSON_FRONT -> Common.CameraType.THIRD_PERSON_FRONT;
+        };
     }
 }

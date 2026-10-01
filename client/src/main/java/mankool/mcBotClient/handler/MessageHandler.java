@@ -164,6 +164,8 @@ public class MessageHandler {
             msg -> playerActionHandler.handleLookAt(msg.getMessageId(), msg.getLookAt()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_ROTATION,
             msg -> playerActionHandler.handleSetRotation(msg.getMessageId(), msg.getSetRotation()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SET_CAMERA_TYPE,
+            msg -> playerActionHandler.handleSetCameraType(msg.getMessageId(), msg.getSetCameraType()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.SWITCH_HOTBAR,
             msg -> inventoryHandler.handleSwitchHotbar(msg.getMessageId(), msg.getSwitchHotbar()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.USE_ITEM,

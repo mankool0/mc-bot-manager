@@ -817,6 +817,29 @@ void PythonAPI::rotate(float yaw, float pitch, const std::string &botName)
     BotManager::sendSetRotation(name, yaw, pitch);
 }
 
+std::optional<PythonAPI::Perspective> PythonAPI::getPerspective(const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+
+    py::gil_scoped_release release;
+
+    BotInstance *bot = BotManager::getBotByName(name);
+    if (!bot || bot->status != BotStatus::Online) {
+        return std::nullopt;
+    }
+
+    QMutexLocker locker(bot->dataMutex.get());
+    return static_cast<Perspective>(static_cast<int>(bot->cameraType));
+}
+
+void PythonAPI::setPerspective(Perspective perspective, const std::string &botName)
+{
+    QString name = resolveBotName(botName);
+    ensureBotOnline(name);
+    BotManager::sendSetCameraType(name,
+                                  static_cast<mankool::mcbot::protocol::CameraTypeGadget::CameraType>(static_cast<int>(perspective)));
+}
+
 void PythonAPI::useItem(Hand hand, const std::string &botName)
 {
     QString name = resolveBotName(botName);

@@ -50,6 +50,7 @@ public class PlayerOutbound extends BaseOutbound {
             .setAbsorption(player.getAbsorptionAmount())
             .setDimension(VersionCompat.keyId(player.level().dimension()))
             .setEntityId(player.getId())
+            .setCameraType(ProtoUtil.toProtoCameraType(client.options.getCameraType()))
             .build();
 
         Protocol.ClientToManagerMessage message = Protocol.ClientToManagerMessage.newBuilder()

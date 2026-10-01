@@ -101,11 +101,19 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
         .value("LEFT", PythonAPI::HeldKey::LEFT)
         .value("RIGHT", PythonAPI::HeldKey::RIGHT);
 
+    py::enum_<PythonAPI::Perspective>(m, "Perspective")
+        .value("FIRST_PERSON", PythonAPI::Perspective::FIRST_PERSON)
+        .value("THIRD_PERSON_BACK", PythonAPI::Perspective::THIRD_PERSON_BACK)
+        .value("THIRD_PERSON_FRONT", PythonAPI::Perspective::THIRD_PERSON_FRONT);
+
     def_state("position", &PythonAPI::getPosition,
               "Get position as dict {x, y, z}",
               py::arg("bot_name") = "");
     def_state("rotation", &PythonAPI::getRotation,
               "Get view rotation as dict {yaw, pitch} in degrees, or None if the bot is offline",
+              py::arg("bot_name") = "");
+    def_state("perspective", &PythonAPI::getPerspective,
+              "Get the camera perspective (the F5 view) as a Perspective, or None if the bot is offline",
               py::arg("bot_name") = "");
     def_state("dimension", &PythonAPI::getDimension,
               "Get dimension name",
@@ -138,6 +146,11 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
     def_action("rotate", &PythonAPI::rotate,
                "Set view rotation in degrees",
                py::arg("yaw"), py::arg("pitch"),
+               py::arg("bot_name") = "");
+    def_action("set_perspective", &PythonAPI::setPerspective,
+               "Set the camera perspective. "
+               "raises if bot is not online",
+               py::arg("perspective"),
                py::arg("bot_name") = "");
     def_action("use_item", &PythonAPI::useItem,
                "Use the item in the given hand once, like a single tap of right-click: throw, cast, "

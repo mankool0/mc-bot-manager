@@ -139,6 +139,7 @@ message ManagerToClientMessage {
     // Movement/actions
     LookAtCommand look_at = 8;
     SetRotationCommand set_rotation = 9;
+    SetCameraTypeCommand set_camera_type = 47;
 
     // Inventory
     SwitchHotbarSlotCommand switch_hotbar = 10;

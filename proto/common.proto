@@ -49,3 +49,10 @@ enum Hand {
   MAIN_HAND = 0;
   OFF_HAND = 1;
 }
+
+// The game's view perspective
+enum CameraType {
+  FIRST_PERSON = 0;
+  THIRD_PERSON_BACK = 1;
+  THIRD_PERSON_FRONT = 2;
+}
