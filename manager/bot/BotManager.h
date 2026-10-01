@@ -259,6 +259,7 @@ struct BotInstance : public BotConfig {
     bool positionKnown = false;
     float yaw = 0.0f;
     float pitch = 0.0f;
+    mankool::mcbot::protocol::CameraTypeGadget::CameraType cameraType = mankool::mcbot::protocol::CameraTypeGadget::CameraType::FIRST_PERSON;
     QString dimension;
 
     float health = 0.0f;
@@ -562,6 +563,7 @@ public:
                            bool sneak = false);
     static void sendLookAtEntity(const QString &botName, int entityId, bool sneak = false, bool silent = false);
     static void sendSetRotation(const QString &botName, float yaw, float pitch, bool silent = false);
+    static void sendSetCameraType(const QString &botName, mankool::mcbot::protocol::CameraTypeGadget::CameraType cameraType, bool silent = false);
     static void sendUseItem(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent = false);
     static void sendDropItem(const QString &botName, bool dropAll, bool silent = false);
     // Returns false without sending when the bot is unknown, not connected, or its proxy is dead.
@@ -705,6 +707,7 @@ private:
                         mankool::mcbot::protocol::BlockFaceGadget::BlockFace face, bool sneak);
     void sendLookAtEntityImpl(const QString &botName, int entityId, bool sneak, bool silent);
     void sendSetRotationImpl(const QString &botName, float yaw, float pitch, bool silent);
+    void sendSetCameraTypeImpl(const QString &botName, mankool::mcbot::protocol::CameraTypeGadget::CameraType cameraType, bool silent);
     void sendUseItemImpl(const QString &botName, mankool::mcbot::protocol::HandGadget::Hand hand, bool silent);
     void sendDropItemImpl(const QString &botName, bool dropAll, bool silent);
     bool sendConnectToServerImpl(const QString &botName, const QString &address, bool silent);

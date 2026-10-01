@@ -28,6 +28,21 @@ if rot:
     utils.log(f"yaw={rot['yaw']:.1f} pitch={rot['pitch']:.1f}")
 ```
 
+### `perspective(bot_name="")`
+
+Get the camera perspective the game window shows, the view F5 cycles through. Refreshed every tick while the bot is in a world.
+
+**Parameters:**
+
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `bot.Perspective` (`FIRST_PERSON`, `THIRD_PERSON_BACK` or `THIRD_PERSON_FRONT`), or `None` if bot is offline
+
+```python
+if bot.perspective() != bot.Perspective.FIRST_PERSON:
+    utils.log("Bot is in third person")
+```
+
 ### `health(bot_name="")`
 
 Get bot health.
@@ -105,6 +120,28 @@ bot.rotate(0, 90)  # Look straight down
 # Turn 45 degrees to the right of the current heading
 rot = bot.rotation()
 bot.rotate(rot["yaw"] + 45, rot["pitch"])
+```
+
+### `set_perspective(perspective, bot_name="")`
+
+Set the camera perspective, like pressing F5 until the wanted view comes up. This only changes what the game window shows: the server never sees it, and aiming, reach and block interaction still work from the player's eyes in every view.
+
+Minecraft does not save the perspective, so the game starts in first person after every restart; it does survive leaving and joining servers. Another mod can refuse the change, in which case the bot console logs a failed command and `perspective()` keeps reporting the actual view.
+
+**Parameters:**
+
+- `perspective` (`bot.Perspective`) - `FIRST_PERSON`, `THIRD_PERSON_BACK` (behind the player) or `THIRD_PERSON_FRONT` (facing the player)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Raises:** `RuntimeError` if bot not found or not online
+
+```python
+bot.set_perspective(bot.Perspective.THIRD_PERSON_BACK)
+
+# Keep third person across game restarts
+@on("bot_connected")
+def keep_third_person(bot_name):
+    bot.set_perspective(bot.Perspective.THIRD_PERSON_BACK, bot_name=bot_name)
 ```
 
 ### `use_item(hand=bot.Hand.MAIN, bot_name="")`

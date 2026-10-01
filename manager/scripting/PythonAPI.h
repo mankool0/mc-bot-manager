@@ -209,6 +209,13 @@ public:
         RIGHT = 6
     };
 
+    // Same values as the protocol's CameraType.
+    enum class Perspective {
+        FIRST_PERSON = 0,
+        THIRD_PERSON_BACK = 1,
+        THIRD_PERSON_FRONT = 2
+    };
+
     enum class ContainerClickType {
         PICKUP = 0,
         QUICK_MOVE = 1,
@@ -251,6 +258,8 @@ public:
     static void selectSlot(int slot, const std::string &botName = "");
     static py::object getRotation(const std::string &botName = "");
     static void rotate(float yaw, float pitch, const std::string &botName = "");
+    static std::optional<Perspective> getPerspective(const std::string &botName = "");
+    static void setPerspective(Perspective perspective, const std::string &botName = "");
     static void useItem(Hand hand = Hand::MAIN, const std::string &botName = "");
     static void dropItem(bool dropAll = false, const std::string &botName = "");
     static std::optional<std::string> getServer(const std::string &botName = "");

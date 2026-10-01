@@ -2,6 +2,7 @@ package mankool.mcBotClient.handler.inbound;
 
 import mankool.mcbot.protocol.Commands;
 import mankool.mcbot.protocol.Common;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -114,5 +115,35 @@ public class PlayerActionHandler extends BaseInboundHandler {
         } catch (Exception e) {
             sendFailure(messageId, "Failed to set rotation: " + e.getMessage());
         }
+    }
+
+    public void handleSetCameraType(String messageId, Commands.SetCameraTypeCommand command) {
+        CameraType target = switch (command.getCameraType()) {
+            case FIRST_PERSON -> CameraType.FIRST_PERSON;
+            case THIRD_PERSON_BACK -> CameraType.THIRD_PERSON_BACK;
+            case THIRD_PERSON_FRONT -> CameraType.THIRD_PERSON_FRONT;
+            case UNRECOGNIZED -> null;
+        };
+        if (target == null) {
+            sendFailure(messageId, "Unknown perspective " + command.getCameraTypeValue());
+            return;
+        }
+
+        CameraType previous = client.options.getCameraType();
+        client.options.setCameraType(target);
+        CameraType current = client.options.getCameraType();
+        // Mods can cancel setCameraType, so trust the read-back rather than the request.
+        if (current != target) {
+            sendFailure(messageId, "Perspective change was blocked, still " + current);
+            return;
+        }
+
+        // The rest of what the toggle-perspective key does in Minecraft.handleKeybinds: spectator
+        // shaders (creeper, spider, enderman) only apply in first person.
+        if (previous.isFirstPerson() != current.isFirstPerson()) {
+            client.gameRenderer.checkEntityPostEffect(current.isFirstPerson() ? client.getCameraEntity() : null);
+        }
+        client.levelRenderer.needsUpdate();
+        sendSuccess(messageId, "Perspective set to " + current);
     }
 }
