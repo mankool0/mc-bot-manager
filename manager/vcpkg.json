@@ -1,6 +1,5 @@
 {
   "dependencies": [
-    "zlib",
-    "protobuf"
+    "zlib"
   ]
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.21.1 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.21.2 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -288,9 +288,10 @@ target_include_directories(mc-bot-manager PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
 )
 
-# Define version for use in code
-target_compile_definitions(mc-bot-manager PRIVATE
-    APP_VERSION="${PROJECT_VERSION}"
+# Only on the files that print it: as a target-wide define, a version bump changes every
+# compile command, so everything recompiles locally and misses CI's compiler cache.
+set_source_files_properties(main.cpp ui/ManagerMainWindow.cpp PROPERTIES
+    COMPILE_DEFINITIONS APP_VERSION="${PROJECT_VERSION}"
 )
 
 set_target_properties(mc-bot-manager PROPERTIES
