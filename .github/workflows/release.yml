@@ -18,6 +18,11 @@ env:
   QT_VERSION: 6.11.1
   APPIMAGE_ARTIFACT: mc-bot-manager-x86_64.AppImage
   WINDOWS_ARTIFACT: mc-bot-manager-windows.zip
+  # Only the protoc executable is needed (Qt Protobuf has its own runtime). A prebuilt one keeps
+  # Windows from building all of protobuf and abseil from source through vcpkg.
+  PROTOC_VERSION: '36.2'
+  PROTOC_LINUX_SHA256: 121f6c7afe1d4d0e3ea6aab9432038599250134cbf4474cb1167d2c7decd4278
+  PROTOC_WIN64_SHA256: f0c128dc0d8492eceece83bb459a4c0e316764b929ffbf1aa416357fd644edd3
 
 jobs:
   build-client:
@@ -134,9 +139,20 @@ jobs:
           restore-keys: |
             fetchcontent-linux-
 
-      - name: Install protobuf compiler and esbuild
+      # One cache blob per run, restored from the newest, rather than an entry per object
+      - name: Set up sccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          variant: sccache
+          key: linux
+
+      - name: Install protoc and esbuild
         run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          curl -fsSL --retry 5 -o "$RUNNER_TEMP/protoc.zip" \
+            "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip"
+          echo "$PROTOC_LINUX_SHA256  $RUNNER_TEMP/protoc.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
           npm install -g esbuild
 
       - name: Download linuxdeploy tools
@@ -152,6 +168,7 @@ jobs:
           mkdir -p build-appimage
           cd build-appimage
           cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_APPIMAGE=ON -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
             -DCLIENT_MOD_JARS_DIR="$GITHUB_WORKSPACE/client-mod"
 
       - name: Install zuban into bundled Python
@@ -205,21 +222,25 @@ jobs:
           choco install ninja -y
           npm install -g esbuild
 
+      - name: Install protoc
+        shell: pwsh
+        run: |
+          $zip = "$env:RUNNER_TEMP\protoc.zip"
+          Invoke-WebRequest -MaximumRetryCount 5 -OutFile $zip `
+            "https://github.com/protocolbuffers/protobuf/releases/download/v$env:PROTOC_VERSION/protoc-$env:PROTOC_VERSION-win64.zip"
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $env:PROTOC_WIN64_SHA256) { throw "protoc checksum mismatch" }
+          Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP\protoc"
+          "$env:RUNNER_TEMP\protoc\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      # vcpkg's ABI hash covers the runner's compiler and ports tree, which change with every image
+      # update, so a fixed key would pin archives that stop matching and never get replaced.
       - name: Cache vcpkg binary archives
         uses: actions/cache@v6
         with:
           path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
-          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}-${{ github.run_id }}
           restore-keys: |
-            vcpkg-archives-${{ runner.os }}-
-
-      - name: Cache vcpkg installed
-        uses: actions/cache@v6
-        with:
-          path: manager\build\vcpkg_installed
-          key: vcpkg-installed-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}
-          restore-keys: |
-            vcpkg-installed-${{ runner.os }}-
+            vcpkg-archives-${{ runner.os }}-${{ hashFiles('manager/vcpkg.json') }}-
 
       - name: Cache CMake FetchContent deps
         uses: actions/cache@v6
@@ -228,6 +249,12 @@ jobs:
           key: fetchcontent-windows-${{ hashFiles('manager/CMakeLists.txt') }}
           restore-keys: |
             fetchcontent-windows-
+
+      - name: Set up sccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          variant: sccache
+          key: windows
 
       - name: Set up Visual Studio shell
         uses: ilammy/msvc-dev-cmd@v1
@@ -240,7 +267,7 @@ jobs:
           cd manager
           mkdir build
           cd build
-          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_POLICY_CMP0141=NEW -DCLIENT_MOD_JARS_DIR=%GITHUB_WORKSPACE%/client-mod
+          cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_POLICY_CMP0141=NEW -DCLIENT_MOD_JARS_DIR=%GITHUB_WORKSPACE%/client-mod
           cmake --build . --config Release --parallel
 
       - name: Install zuban into bundled Python
