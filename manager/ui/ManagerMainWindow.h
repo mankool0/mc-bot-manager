@@ -143,6 +143,7 @@ private:
     void checkBotUptimes();
     void checkBotProxyHealth(const QString &botName);
 
+    void saveWindowState();
     void saveColumnVisibility();
     void loadColumnVisibility();
     void applyColumnState(int fromColumn = 0);
