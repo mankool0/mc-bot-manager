@@ -49,7 +49,7 @@ cd client
 ./gradlew build -Pminecraft_version=1.21.11            # or specify a version
 ```
 
-Place the resulting `.jar` from `client/build/libs/` into your Minecraft mods folder alongside Meteor Client and Baritone.
+Place the resulting `.jar` from `client/build/<minecraft version>/libs/` into your Minecraft mods folder alongside Meteor Client and Baritone.
 
 ## Prism Launcher Integration
 

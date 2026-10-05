@@ -21,11 +21,13 @@ else()
     foreach(mc_version ${MC_VERSION_LIST})
         message(STATUS "Building client mod for Minecraft ${mc_version}")
         # mod_version is passed rather than read from gradle.properties so the
-        # jar always carries the manager's version
+        # jar always carries the manager's version. The cache is per version
+        # because a shared one makes every version rebuild from scratch each pass.
         execute_process(
             COMMAND "${GRADLEW}" build
                     "-Pminecraft_version=${mc_version}"
                     "-Pmod_version=${MANAGER_VERSION}"
+                    "--project-cache-dir=${CLIENT_DIR}/.gradle/mc-${mc_version}"
             WORKING_DIRECTORY "${CLIENT_DIR}"
             RESULT_VARIABLE gradle_result
         )
@@ -36,8 +38,6 @@ else()
                 "or with -DCLIENT_MOD_JARS_DIR=<dir> to use prebuilt jars.")
         endif()
     endforeach()
-
-    set(JAR_SOURCE_DIR "${CLIENT_DIR}/build/libs")
 endif()
 
 # Jars from an earlier manager version are ignored at runtime
@@ -48,6 +48,9 @@ endforeach()
 file(MAKE_DIRECTORY "${OUT_DIR}")
 
 foreach(mc_version ${MC_VERSION_LIST})
+    if(NOT JARS_DIR)
+        set(JAR_SOURCE_DIR "${CLIENT_DIR}/build/${mc_version}/libs")
+    endif()
     set(jar_name "mc-bot-client-${mc_version}-${MANAGER_VERSION}.jar")
     set(jar_path "${JAR_SOURCE_DIR}/${jar_name}")
     if(NOT EXISTS "${jar_path}")

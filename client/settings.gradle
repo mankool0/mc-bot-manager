@@ -22,3 +22,10 @@ if (!mcVersion.startsWith('1.')) {
         project.ext['fabric.loom.disableObfuscation'] = 'true'
     }
 }
+// Per-version build directory, so building the versions back to back does not overwrite each
+// other's output and force a full rebuild. Set here so Loom sees it when it is applied.
+if (mcVersion) {
+    gradle.beforeProject { project ->
+        project.layout.buildDirectory = project.layout.projectDirectory.dir("build/${mcVersion}")
+    }
+}

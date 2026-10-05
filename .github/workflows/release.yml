@@ -59,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: client-mod-${{ matrix.mc_version }}
-          path: client/build/libs/*.jar
+          path: client/build/${{ matrix.mc_version }}/libs/*.jar
           if-no-files-found: error
 
   # Releases always ship the full build; these reduced builds just keep the optional-integration
