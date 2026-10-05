@@ -240,6 +240,7 @@ void ManagerMainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_columnComputeTimer)
         m_columnComputeTimer->stop();
+    saveWindowState();
     saveColumnVisibility();
 
     // Release providers and stop the compute worker while the interpreter is
@@ -1609,17 +1610,23 @@ void ManagerMainWindow::saveSettings()
     }
     settings.endGroup();
 
-    // Save window state
+    saveWindowState();
+    saveColumnVisibility();
+
+    LogManager::log(QString("Configuration saved successfully (%1 bots)").arg(bots.size()), LogManager::Success);
+}
+
+// Called on close as well as on an explicit save: layout changes the user never
+// "saved" (a resize, a pinned details pane) should still survive a restart.
+void ManagerMainWindow::saveWindowState()
+{
+    QSettings settings("MCBotManager", "MCBotManager");
     settings.beginGroup("Window");
     settings.setValue("geometry", saveGeometry());
     settings.setValue("windowState", saveState());
     settings.setValue("detailsPinned", detailsPinned);
     settings.setValue("networkStatsVisible", ui->actionNetworkStats->isChecked());
     settings.endGroup();
-
-    saveColumnVisibility();
-
-    LogManager::log(QString("Configuration saved successfully (%1 bots)").arg(bots.size()), LogManager::Success);
 }
 
 void ManagerMainWindow::loadSettings()
