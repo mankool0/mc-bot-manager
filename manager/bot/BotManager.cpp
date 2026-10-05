@@ -1930,8 +1930,14 @@ void BotManager::sendCommandImpl(const QString &botName, const QString &commandT
                 LogManager::log("Usage: meteor toggle <module>", LogManager::Warning);
                 return;
             }
+            auto it = bot->meteorModules.constFind(parts[2]);
+            if (it == bot->meteorModules.constEnd()) {
+                LogManager::log(QString("[%1] Unknown Meteor module: %2").arg(bot->name, parts[2]), LogManager::Warning);
+                return;
+            }
             mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
             setModuleCmd.setModuleName(parts[2]);
+            setModuleCmd.setEnabled(!it->enabled);
             msg.setSetModuleConfig(setModuleCmd);
         }
         else if (subCmd == "set") {
