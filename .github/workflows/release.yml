@@ -277,7 +277,7 @@ jobs:
           $pyExe = (Get-ChildItem -Path "_deps/python_standalone-src" -Recurse -Filter "python.exe" | Select-Object -First 1).FullName
           & $pyExe -m pip install zuban --quiet
 
-      - name: Deploy Qt dependencies
+      - name: Deploy runtime dependencies
         working-directory: manager/build
         shell: pwsh
         run: |
@@ -289,6 +289,25 @@ jobs:
           if ($zuban) { Copy-Item $zuban.FullName mc-bot-manager\ }
           Copy-Item client-mods mc-bot-manager\client-mods -Recurse
           windeployqt mc-bot-manager\mc-bot-manager.exe --release
+
+          Copy-Item vcpkg_installed\x64-windows\bin\*.dll mc-bot-manager\
+          # With Lib\os.py next to the exe, the embedded interpreter finds its home without PYTHONHOME
+          $pyHome = (Get-ChildItem -Path "_deps/python_standalone-src" -Recurse -Filter "python.exe" |
+            Where-Object { Test-Path "$($_.DirectoryName)\Lib\os.py" } | Select-Object -First 1).DirectoryName
+          Copy-Item "$pyHome\python3*.dll" mc-bot-manager\
+          Copy-Item "$pyHome\Lib", "$pyHome\DLLs" mc-bot-manager\ -Recurse
+          Get-ChildItem mc-bot-manager\Lib, mc-bot-manager\DLLs -Recurse -File -Include *.pdb, _tkinter.pyd, tcl86t.dll, tk86t.dll |
+            Remove-Item
+
+          # Windeployqt only covers Qt, so catch any other load-time import the package lacks here
+          # rather than as a "DLL was not found" dialog on a user's machine
+          $missing = foreach ($bin in 'mc-bot-manager.exe', 'mc-bot-manager-proto.dll', 'prismhook.dll') {
+            dumpbin /nologo /dependents "mc-bot-manager\$bin" | ForEach-Object { $_.Trim() } |
+              Where-Object { $_ -match '^[\w.-]+\.dll$' -and $_ -notmatch '^(api|ext)-ms-' } |
+              Where-Object { -not (Test-Path "mc-bot-manager\$_") -and -not (Test-Path "$env:SystemRoot\System32\$_") } |
+              ForEach-Object { "$bin -> $_" }
+          }
+          if ($missing) { $missing; throw "DLLs missing from the package" }
 
       - name: Package Windows build
         working-directory: manager/build
