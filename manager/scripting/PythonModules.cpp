@@ -195,6 +195,38 @@ PYBIND11_EMBEDDED_MODULE(bot, m) {
                "The key bindings the client is holding for hold_key, as a list of bot.HeldKey, or "
                "None if the client did not answer in time. Blocks until the client responds.",
                py::arg("bot_name") = "");
+    def_action("load_plugin", &PythonAPI::loadPlugin,
+               "Compile Java source in the client and load it as a plugin: sources maps a path "
+               "(e.g. 'demo/SetBacks.java') to its code, main_class names the class implementing "
+               "ClientPlugin. A name already loaded is replaced once the new source compiles. "
+               "Returns {ok, error, diagnostics}, or None if the client did not answer in time.",
+               py::arg("name"),
+               py::arg("sources"),
+               py::arg("main_class"),
+               py::arg("timeout_ms") = 120000,
+               py::arg("bot_name") = "");
+    def_action("unload_plugin", &PythonAPI::unloadPlugin,
+               "Unload a plugin by name.",
+               py::arg("name"),
+               py::arg("bot_name") = "");
+    def_action("list_plugins", &PythonAPI::listPlugins,
+               "The client's plugins as a list of {name, state, error}, or None if the client did "
+               "not answer in time.",
+               py::arg("bot_name") = "");
+    def_action("plugin_send", &PythonAPI::pluginSend,
+               "Send data (anything json.dumps takes) to a plugin's handler on channel.",
+               py::arg("plugin"),
+               py::arg("channel"),
+               py::arg("data") = py::none(),
+               py::arg("bot_name") = "");
+    def_action("plugin_request", &PythonAPI::pluginRequest,
+               "Send data to a plugin's handler on channel and return its reply, decoded from "
+               "JSON, or None if no reply came in time.",
+               py::arg("plugin"),
+               py::arg("channel"),
+               py::arg("data") = py::none(),
+               py::arg("timeout_ms") = 3000,
+               py::arg("bot_name") = "");
     def_action("drop_item", &PythonAPI::dropItem,
                "Drop the selected hotbar item: one item, or the whole stack with drop_all=True",
                py::arg("drop_all") = false,
@@ -398,7 +430,6 @@ PYBIND11_EMBEDDED_MODULE(baritone, m) {
     def_state("get_process_status", &PythonAPI::baritoneGetProcessStatus,
               "Get current process status and pathfinding state",
               py::arg("bot_name") = "");
-
     m.attr("__debug_state__") = debugState;
     m.attr("__debug_query__") = debugQuery;
 }

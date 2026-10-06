@@ -265,6 +265,14 @@ bool PipeServer::processMessage(int connectionId, const QByteArray &data)
             BotManager::handleHoldUseStatusResponse(connectionId, clientMsg.holdUseStatusResponse());
         } else if (clientMsg.hasHeldKeysResponse()) {
             BotManager::handleHeldKeysResponse(connectionId, clientMsg.heldKeysResponse());
+        } else if (clientMsg.hasPluginLoadResult()) {
+            BotManager::handlePluginLoadResult(connectionId, clientMsg.pluginLoadResult());
+        } else if (clientMsg.hasPluginListResponse()) {
+            BotManager::handlePluginListResponse(connectionId, clientMsg.pluginListResponse());
+        } else if (clientMsg.hasPluginMessage()) {
+            BotManager::handlePluginMessage(connectionId, clientMsg.pluginMessage());
+        } else if (clientMsg.hasMojangMappingsRequest()) {
+            BotManager::handleMojangMappingsRequest(connectionId, clientMsg.mojangMappingsRequest());
         } else if (clientMsg.hasEntityUpdate()) {
             BotManager::handleEntityUpdate(connectionId, clientMsg.entityUpdate());
         } else if (clientMsg.hasWeatherUpdate()) {

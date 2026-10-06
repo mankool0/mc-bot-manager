@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package mankool.mcbot.protocol;
+
+// Client plugins: Java source the manager sends, compiled and loaded by the client at runtime.
+// A plugin implements mankool.mcBotClient.plugin.ClientPlugin and talks to scripts over
+// PluginMessage, a JSON payload on a channel of its own choosing.
+
+message PluginSource {
+  string path = 1;                  // e.g. "demo/SetBacks.java", reported back in diagnostics
+  string code = 2;
+}
+
+// Compile and load a plugin (Manager -> Client). A name already loaded is replaced once the
+// new source compiles; until then the old one keeps running.
+message LoadPluginCommand {
+  string name = 1;
+  repeated PluginSource sources = 2;
+  string main_class = 3;            // Fully qualified; implements ClientPlugin, no-arg constructor
+}
+
+// Mojang's mappings for the client's game version (Client -> Manager), to compile plugins on a game
+// that runs under intermediary names. The manager downloads them once per machine and keeps them.
+message MojangMappingsRequest {
+  string request_id = 1;
+  string version = 2;               // e.g. "1.21.4"
+}
+
+message MojangMappingsResponse {
+  string request_id = 1;
+  bytes mappings = 2;               // client.txt as Qt's qCompress writes it: 4-byte big-endian length, then zlib
+  string error = 3;
+}
+
+message UnloadPluginCommand {
+  string name = 1;
+}
+
+message ListPluginsCommand {}
+
+message PluginDiagnostic {
+  string kind = 1;                  // ERROR, WARNING, NOTE, ...
+  string path = 2;
+  int64 line = 3;
+  int64 column = 4;
+  string message = 5;
+}
+
+// Reply to LoadPluginCommand (Client -> Manager).
+message PluginLoadResult {
+  string request_id = 1;
+  string name = 2;
+  bool ok = 3;
+  repeated PluginDiagnostic diagnostics = 4;
+  string error = 5;                 // A failure other than a compile error
+}
+
+message PluginInfo {
+  string name = 1;
+  string state = 2;                 // "running" or "failed"
+  string error = 3;
+}
+
+message PluginListResponse {
+  string request_id = 1;
+  repeated PluginInfo plugins = 2;
+}
+
+// A plugin's own message, either way. A message sent with a request_id expects one back with
+// the same id in reply_to. A failing plugin is reported on channel "mcbot:failed".
+message PluginMessage {
+  string plugin = 1;
+  string channel = 2;
+  string payload = 3;               // JSON
+  string request_id = 4;
+  string reply_to = 5;
+}

@@ -10,6 +10,7 @@
 #include "scripting/ScriptMessageBus.h"
 #include "ui/ScriptsWidget.h"
 #include "scripting/PythonAPI.h"
+#include "world/MojangMappings.h"
 #include <io/stream_reader.h>
 #include <nbt_tags.h>
 #include <optional>
@@ -3949,6 +3950,206 @@ void BotManager::handleHeldKeysResponseImpl(int connectionId, const mankool::mcb
     Q_UNUSED(connectionId);
     m_pendingHeldKeys.complete(response.requestId(), [&](QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey> &keys) {
         keys = response.keys();
+    });
+}
+
+std::optional<mankool::mcbot::protocol::PluginLoadResult> BotManager::loadPlugin(const QString &botName, const QString &name,
+    const QList<mankool::mcbot::protocol::PluginSource> &sources, const QString &mainClass, int timeoutMs)
+{
+    return instance().loadPluginImpl(botName, name, sources, mainClass, timeoutMs);
+}
+
+std::optional<mankool::mcbot::protocol::PluginLoadResult> BotManager::loadPluginImpl(const QString &botName, const QString &name,
+    const QList<mankool::mcbot::protocol::PluginSource> &sources, const QString &mainClass, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<mankool::mcbot::protocol::PluginLoadResult>::Request pending(m_pendingPluginLoad, msgId);
+
+    mankool::mcbot::protocol::LoadPluginCommand cmd;
+    cmd.setName(name);
+    cmd.setSources(sources);
+    cmd.setMainClass(mainClass);
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setLoadPlugin(cmd);
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
+        return std::nullopt;
+
+    if (!pending.wait(timeoutMs))
+        return std::nullopt;
+    return pending.value();
+}
+
+void BotManager::unloadPlugin(const QString &botName, const QString &name)
+{
+    instance().unloadPluginImpl(botName, name);
+}
+
+void BotManager::unloadPluginImpl(const QString &botName, const QString &name)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "unload_plugin");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::UnloadPluginCommand cmd;
+    cmd.setName(name);
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setUnloadPlugin(cmd);
+    sendOutboundMessage(bot->connectionId, msg);
+}
+
+std::optional<mankool::mcbot::protocol::PluginListResponse> BotManager::listPlugins(const QString &botName, int timeoutMs)
+{
+    return instance().listPluginsImpl(botName, timeoutMs);
+}
+
+std::optional<mankool::mcbot::protocol::PluginListResponse> BotManager::listPluginsImpl(const QString &botName, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<mankool::mcbot::protocol::PluginListResponse>::Request pending(m_pendingPluginList, msgId);
+
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setListPlugins(mankool::mcbot::protocol::ListPluginsCommand{});
+    if (!sendOutboundMessage(bot->connectionId, msg, false, msgId))
+        return std::nullopt;
+
+    if (!pending.wait(timeoutMs))
+        return std::nullopt;
+    return pending.value();
+}
+
+void BotManager::sendPluginMessage(const QString &botName, const QString &plugin, const QString &channel, const QString &payload)
+{
+    instance().sendPluginMessageImpl(botName, plugin, channel, payload);
+}
+
+void BotManager::sendPluginMessageImpl(const QString &botName, const QString &plugin, const QString &channel, const QString &payload)
+{
+    BotInstance *bot = connectedBotForCommand(botName, "plugin_send");
+    if (!bot) return;
+
+    mankool::mcbot::protocol::PluginMessage pm;
+    pm.setPlugin(plugin);
+    pm.setChannel(channel);
+    pm.setPayload(payload);
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setPluginMessage(pm);
+    sendOutboundMessage(bot->connectionId, msg);
+}
+
+std::optional<QString> BotManager::requestPluginMessage(const QString &botName, const QString &plugin, const QString &channel,
+                                                        const QString &payload, int timeoutMs)
+{
+    return instance().requestPluginMessageImpl(botName, plugin, channel, payload, timeoutMs);
+}
+
+std::optional<QString> BotManager::requestPluginMessageImpl(const QString &botName, const QString &plugin, const QString &channel,
+                                                            const QString &payload, int timeoutMs)
+{
+    BotInstance *bot = getBotByNameImpl(botName);
+    if (!bot || bot->connectionId <= 0)
+        return std::nullopt;
+
+    QString requestId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    PendingRequestMap<QString>::Request pending(m_pendingPluginReply, requestId);
+
+    mankool::mcbot::protocol::PluginMessage pm;
+    pm.setPlugin(plugin);
+    pm.setChannel(channel);
+    pm.setPayload(payload);
+    pm.setRequestId(requestId);
+    mankool::mcbot::protocol::ManagerToClientMessage msg;
+    msg.setPluginMessage(pm);
+    if (!sendOutboundMessage(bot->connectionId, msg))
+        return std::nullopt;
+
+    if (!pending.wait(timeoutMs))
+        return std::nullopt;
+    return pending.value();
+}
+
+void BotManager::handlePluginLoadResult(int connectionId, const mankool::mcbot::protocol::PluginLoadResult &result)
+{
+    instance().handlePluginLoadResultImpl(connectionId, result);
+}
+
+void BotManager::handlePluginLoadResultImpl(int connectionId, const mankool::mcbot::protocol::PluginLoadResult &result)
+{
+    Q_UNUSED(connectionId);
+    m_pendingPluginLoad.complete(result.requestId(), [&](mankool::mcbot::protocol::PluginLoadResult &value) {
+        value = result;
+    });
+}
+
+void BotManager::handlePluginListResponse(int connectionId, const mankool::mcbot::protocol::PluginListResponse &response)
+{
+    instance().handlePluginListResponseImpl(connectionId, response);
+}
+
+void BotManager::handlePluginListResponseImpl(int connectionId, const mankool::mcbot::protocol::PluginListResponse &response)
+{
+    Q_UNUSED(connectionId);
+    m_pendingPluginList.complete(response.requestId(), [&](mankool::mcbot::protocol::PluginListResponse &value) {
+        value = response;
+    });
+}
+
+void BotManager::handlePluginMessage(int connectionId, const mankool::mcbot::protocol::PluginMessage &message)
+{
+    instance().handlePluginMessageImpl(connectionId, message);
+}
+
+void BotManager::handlePluginMessageImpl(int connectionId, const mankool::mcbot::protocol::PluginMessage &message)
+{
+    if (!message.replyTo().isEmpty()) {
+        m_pendingPluginReply.complete(message.replyTo(), [&](QString &value) {
+            value = message.payload();
+        });
+        return;
+    }
+    BotInstance *bot = getBotByConnectionIdImpl(connectionId);
+    if (!bot)
+        return;
+
+    // Wrapped in an array: QJsonDocument parses an object or an array, not a bare value.
+    QJsonDocument doc = QJsonDocument::fromJson("[" + message.payload().toUtf8() + "]");
+    QVariantMap data;
+    data["bot_name"] = bot->name;
+    data["plugin"] = message.plugin();
+    data["channel"] = message.channel();
+    data["payload"] = message.payload();
+    data["data"] = doc.isArray() && !doc.array().isEmpty() ? doc.array().at(0).toVariant() : QVariant();
+    QVariantList args;
+    args << data;
+    if (bot->scriptEngine)
+        bot->scriptEngine->fireEvent("plugin_message", args);
+    ScriptMessageBus::instance().fireEventForScope(QStringLiteral("_global"), QStringLiteral("plugin_message"), args);
+}
+
+void BotManager::handleMojangMappingsRequest(int connectionId, const mankool::mcbot::protocol::MojangMappingsRequest &request)
+{
+    instance().handleMojangMappingsRequestImpl(connectionId, request);
+}
+
+void BotManager::handleMojangMappingsRequestImpl(int connectionId, const mankool::mcbot::protocol::MojangMappingsRequest &request)
+{
+    const QString requestId = request.requestId();
+    MojangMappings::fetch(request.version(), this, [this, connectionId, requestId](const QByteArray &mappings, const QString &error) {
+        mankool::mcbot::protocol::MojangMappingsResponse response;
+        response.setRequestId(requestId);
+        // Compressed: about 2 MB of the 10 the text takes, well under the client's message cap.
+        if (error.isEmpty())
+            response.setMappings(qCompress(mappings));
+        response.setError(error);
+        mankool::mcbot::protocol::ManagerToClientMessage msg;
+        msg.setMojangMappings(response);
+        sendOutboundMessage(connectionId, msg);
     });
 }
 

@@ -71,6 +71,21 @@ def health_monitor(old_health, new_health):
         utils.log("Low health warning!")
 ```
 
+### `plugin_message`
+
+Fired when a client plugin sends a message (`PluginContext.sendMessage`), and when a plugin fails (channel `mcbot:failed`). Global scripts get it too.
+
+**Parameters:**
+
+- `message` (`dict`) - `bot_name`, `plugin`, `channel`, `data` (the payload decoded from JSON) and `payload` (the raw JSON)
+
+```python
+@on("plugin_message")
+def on_plugin(message):
+    if message["channel"] == "mcbot:failed":
+        utils.log("%s's plugin %s failed: %s" % (message["bot_name"], message["plugin"], message["data"]["error"]))
+```
+
 ### `hunger_change`
 
 Fired when bot hunger changes.

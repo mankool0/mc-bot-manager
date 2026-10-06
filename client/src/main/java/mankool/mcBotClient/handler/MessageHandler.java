@@ -7,6 +7,7 @@ import mankool.mcBotClient.handler.outbound.*;
 import mankool.mcBotClient.integration.ClientIntegration;
 import mankool.mcBotClient.integration.ConnectionContext;
 import mankool.mcBotClient.integration.IntegrationRegistry;
+import mankool.mcBotClient.plugin.PluginHost;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
@@ -90,6 +91,7 @@ public class MessageHandler {
         // Register message handlers
         this.handlers = new EnumMap<>(Protocol.ManagerToClientMessage.PayloadCase.class);
         registerHandlers();
+        PluginHost.get().attach(connection);
 
         setupIntegrations(connection);
 
@@ -152,6 +154,16 @@ public class MessageHandler {
     }
 
     private void registerHandlers() {
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.LOAD_PLUGIN,
+            msg -> PluginHost.get().load(msg.getMessageId(), msg.getLoadPlugin()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.UNLOAD_PLUGIN,
+            msg -> PluginHost.get().unload(msg.getUnloadPlugin().getName()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.LIST_PLUGINS,
+            msg -> PluginHost.get().list(msg.getMessageId()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.PLUGIN_MESSAGE,
+            msg -> PluginHost.get().message(msg.getPluginMessage()));
+        handlers.put(Protocol.ManagerToClientMessage.PayloadCase.MOJANG_MAPPINGS,
+            msg -> PluginHost.get().mappings(msg.getMojangMappings()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.HANDSHAKE_REJECT,
             msg -> connectionHandler.handleHandshakeReject(msg.getHandshakeReject()));
         handlers.put(Protocol.ManagerToClientMessage.PayloadCase.CONNECT_SERVER,

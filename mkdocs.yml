@@ -37,6 +37,7 @@ nav:
     - Your First Script: first-script.md
     - Event Handlers: event-handlers.md
     - Bot Windows: bot-windows.md
+    - Client Plugins: plugins.md
   - API Reference:
     - Overview: api/index.md
     - bot: api/bot.md

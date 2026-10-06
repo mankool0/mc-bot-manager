@@ -291,6 +291,47 @@ if bot.HeldKey.JUMP in (bot.get_held_keys() or []):
     utils.log("Still holding jump")
 ```
 
+### `load_plugin(name, sources, main_class, timeout_ms=120000, bot_name="")`
+
+Compile Java source in the client and load it as a plugin (see [Client Plugins](../plugins.md)). A name already loaded is replaced once the new source compiles.
+
+**Parameters:**
+
+- `name` (`str`) - The plugin's name, for messages and unloading
+- `sources` (`dict[str, str]`) - Path (e.g. `"demo/SetBacks.java"`) to source code
+- `main_class` (`str`) - Fully qualified class implementing `ClientPlugin`
+- `timeout_ms` (`int`, optional) - How long to wait; the first load on a 1.21.x instance takes seconds (default: `120000`)
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+
+**Returns:** `{"ok": bool, "error": str, "diagnostics": [{"kind", "path", "line", "column", "message"}]}`, or `None` if the client did not answer in time
+
+### `unload_plugin(name, bot_name="")`
+
+Unload a plugin by name.
+
+### `list_plugins(bot_name="")`
+
+**Returns:** `list[dict]` with `name`, `state` (`"running"` or `"failed"`) and `error`, or `None` if the client did not answer in time
+
+### `plugin_send(plugin, channel, data=None, bot_name="")`
+
+Send `data` (anything `json.dumps` takes) to a plugin's handler on `channel`.
+
+### `plugin_request(plugin, channel, data=None, timeout_ms=3000, bot_name="")`
+
+Send `data` to a plugin's handler on `channel` and wait for its reply.
+
+**Returns:** the reply decoded from JSON, or `None` if none came in time
+
+With the `SetBacks` plugin from [Client Plugins](../plugins.md#writing-one) loaded as `"setbacks"`:
+
+```python
+status = bot.plugin_request("setbacks", "count")
+if status is not None:
+    utils.log("set back %d times" % status["count"])
+bot.plugin_send("setbacks", "reset")
+```
+
 ### `drop_item(drop_all=False, bot_name="")`
 
 Drop the item in the selected hotbar slot: one item, or the whole stack with `drop_all=True`. Same as pressing Q (or Ctrl+Q) in-game. When the slot is empty the client replies `No item to drop` in the bot console; nothing is raised.
