@@ -3330,6 +3330,101 @@ py::object PythonAPI::getHeldKeys(const std::string &botName)
     return keys;
 }
 
+py::object PythonAPI::loadPlugin(const std::string &name, const py::dict &sources, const std::string &mainClass,
+                                 int timeoutMs, const std::string &botName)
+{
+    QString bot = resolveBotName(botName);
+    ensureBotOnline(bot);
+
+    QList<mankool::mcbot::protocol::PluginSource> list;
+    for (auto item : sources) {
+        mankool::mcbot::protocol::PluginSource source;
+        source.setPath(QString::fromStdString(py::str(item.first).cast<std::string>()));
+        source.setCode(QString::fromStdString(py::str(item.second).cast<std::string>()));
+        list.append(source);
+    }
+    std::optional<mankool::mcbot::protocol::PluginLoadResult> result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::loadPlugin(bot, QString::fromStdString(name), list, QString::fromStdString(mainClass), timeoutMs);
+    }
+    if (!result)
+        return py::none();
+    py::list diagnostics;
+    for (const auto &d : result->diagnostics()) {
+        py::dict entry;
+        entry["kind"] = d.kind().toStdString();
+        entry["path"] = d.path().toStdString();
+        entry["line"] = static_cast<long long>(d.line());
+        entry["column"] = static_cast<long long>(d.column());
+        entry["message"] = d.message().toStdString();
+        diagnostics.append(entry);
+    }
+    py::dict out;
+    out["ok"] = result->ok();
+    out["error"] = result->error().toStdString();
+    out["diagnostics"] = diagnostics;
+    return out;
+}
+
+void PythonAPI::unloadPlugin(const std::string &name, const std::string &botName)
+{
+    QString bot = resolveBotName(botName);
+    ensureBotOnline(bot);
+    BotManager::unloadPlugin(bot, QString::fromStdString(name));
+}
+
+py::object PythonAPI::listPlugins(const std::string &botName)
+{
+    QString bot = resolveBotName(botName);
+    ensureBotOnline(bot);
+
+    std::optional<mankool::mcbot::protocol::PluginListResponse> result;
+    {
+        py::gil_scoped_release release;
+        result = BotManager::listPlugins(bot);
+    }
+    if (!result)
+        return py::none();
+    py::list plugins;
+    for (const auto &p : result->plugins()) {
+        py::dict entry;
+        entry["name"] = p.name().toStdString();
+        entry["state"] = p.state().toStdString();
+        entry["error"] = p.error().toStdString();
+        plugins.append(entry);
+    }
+    return plugins;
+}
+
+void PythonAPI::pluginSend(const std::string &plugin, const std::string &channel, const py::object &data,
+                           const std::string &botName)
+{
+    QString bot = resolveBotName(botName);
+    ensureBotOnline(bot);
+    std::string payload = py::module_::import("json").attr("dumps")(data).cast<std::string>();
+    BotManager::sendPluginMessage(bot, QString::fromStdString(plugin), QString::fromStdString(channel),
+                                  QString::fromStdString(payload));
+}
+
+py::object PythonAPI::pluginRequest(const std::string &plugin, const std::string &channel, const py::object &data,
+                                    int timeoutMs, const std::string &botName)
+{
+    QString bot = resolveBotName(botName);
+    ensureBotOnline(bot);
+    std::string payload = py::module_::import("json").attr("dumps")(data).cast<std::string>();
+
+    std::optional<QString> reply;
+    {
+        py::gil_scoped_release release;
+        reply = BotManager::requestPluginMessage(bot, QString::fromStdString(plugin), QString::fromStdString(channel),
+                                                 QString::fromStdString(payload), timeoutMs);
+    }
+    if (!reply)
+        return py::none();
+    return py::module_::import("json").attr("loads")(reply->toStdString());
+}
+
 void PythonAPI::lookAt(double x, double y, double z, BlockFace face, bool sneak, const std::string &botName)
 {
     QString name = resolveBotName(botName);

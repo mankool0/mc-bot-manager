@@ -3,6 +3,7 @@ package mankool.mcBotClient;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.handler.MessageHandler;
 import mankool.mcBotClient.integration.IntegrationRegistry;
+import mankool.mcBotClient.plugin.PluginHost;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -25,6 +26,7 @@ public class McBotClient implements ClientModInitializer {
         LOGGER.info("Initializing Minecraft Bot Client");
 
         IntegrationRegistry.initializeAll(Minecraft::getInstance);
+        PluginHost.get().install();
 
         // Register lifecycle events
         ClientLifecycleEvents.CLIENT_STARTED.register(this::onClientStarted);

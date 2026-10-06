@@ -17,6 +17,7 @@ import "registry.proto";
 import "entities.proto";
 import "stats.proto";
 import "window.proto";
+import "plugin.proto";
 
 // Main protocol definition that ties everything together
 
@@ -83,6 +84,12 @@ message ClientToManagerMessage {
     HoldAttackStatusResponse hold_attack_status_response = 34;
     HoldUseStatusResponse hold_use_status_response = 43;
     HeldKeysResponse held_keys_response = 46;
+
+    // Client plugins
+    PluginLoadResult plugin_load_result = 47;
+    PluginListResponse plugin_list_response = 48;
+    PluginMessage plugin_message = 49;
+    MojangMappingsRequest mojang_mappings_request = 50;
 
     // Entity tracking
     EntityUpdate entity_update = 30;
@@ -160,6 +167,13 @@ message ManagerToClientMessage {
     GetBaritoneCommandsRequest get_baritone_commands = 17;
     SetBaritoneSettingsCommand set_baritone_settings = 18;
     ExecuteBaritoneCommand execute_baritone_command = 19;
+
+    // Client plugins
+    LoadPluginCommand load_plugin = 48;
+    UnloadPluginCommand unload_plugin = 49;
+    ListPluginsCommand list_plugins = 50;
+    PluginMessage plugin_message = 51;
+    MojangMappingsResponse mojang_mappings = 52;
 
     // World interaction
     InteractWithBlockCommand interact_with_block = 20;

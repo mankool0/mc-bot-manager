@@ -33,6 +33,7 @@
 #include "entities.qpb.h"
 #include "stats.qpb.h"
 #include "window.qpb.h"
+#include "plugin.qpb.h"
 #include "WindowLayout.h"
 #include "WorldData.h"
 #include "SectionDirtyTracker.h"
@@ -525,6 +526,18 @@ public:
     // nullopt when the bot is offline or did not answer in time.
     static std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> getHeldKeys(const QString &botName, int timeoutMs = 3000);
     static void handleHeldKeysResponse(int connectionId, const mankool::mcbot::protocol::HeldKeysResponse &response);
+    static std::optional<mankool::mcbot::protocol::PluginLoadResult> loadPlugin(const QString &botName, const QString &name,
+        const QList<mankool::mcbot::protocol::PluginSource> &sources, const QString &mainClass, int timeoutMs = 120000);
+    static void unloadPlugin(const QString &botName, const QString &name);
+    static std::optional<mankool::mcbot::protocol::PluginListResponse> listPlugins(const QString &botName, int timeoutMs = 3000);
+    static void sendPluginMessage(const QString &botName, const QString &plugin, const QString &channel, const QString &payload);
+    // The reply's JSON; nullopt when the bot is offline or did not answer in time.
+    static std::optional<QString> requestPluginMessage(const QString &botName, const QString &plugin, const QString &channel,
+                                                       const QString &payload, int timeoutMs = 3000);
+    static void handlePluginLoadResult(int connectionId, const mankool::mcbot::protocol::PluginLoadResult &result);
+    static void handlePluginListResponse(int connectionId, const mankool::mcbot::protocol::PluginListResponse &response);
+    static void handlePluginMessage(int connectionId, const mankool::mcbot::protocol::PluginMessage &message);
+    static void handleMojangMappingsRequest(int connectionId, const mankool::mcbot::protocol::MojangMappingsRequest &request);
     static std::optional<QMap<QString, QMap<QString, qint64>>> getStatistics(const QString &botName, int timeoutMs = 5000);
     static void handlePlayerStatisticsResponse(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
 
@@ -684,6 +697,17 @@ private:
     void sendHoldKeyImpl(const QString &botName, mankool::mcbot::protocol::HeldKeyGadget::HeldKey key, bool enabled, int durationTicks);
     std::optional<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> getHeldKeysImpl(const QString &botName, int timeoutMs);
     void handleHeldKeysResponseImpl(int connectionId, const mankool::mcbot::protocol::HeldKeysResponse &response);
+    std::optional<mankool::mcbot::protocol::PluginLoadResult> loadPluginImpl(const QString &botName, const QString &name,
+        const QList<mankool::mcbot::protocol::PluginSource> &sources, const QString &mainClass, int timeoutMs);
+    void unloadPluginImpl(const QString &botName, const QString &name);
+    std::optional<mankool::mcbot::protocol::PluginListResponse> listPluginsImpl(const QString &botName, int timeoutMs);
+    void sendPluginMessageImpl(const QString &botName, const QString &plugin, const QString &channel, const QString &payload);
+    std::optional<QString> requestPluginMessageImpl(const QString &botName, const QString &plugin, const QString &channel,
+                                                    const QString &payload, int timeoutMs);
+    void handlePluginLoadResultImpl(int connectionId, const mankool::mcbot::protocol::PluginLoadResult &result);
+    void handlePluginListResponseImpl(int connectionId, const mankool::mcbot::protocol::PluginListResponse &response);
+    void handlePluginMessageImpl(int connectionId, const mankool::mcbot::protocol::PluginMessage &message);
+    void handleMojangMappingsRequestImpl(int connectionId, const mankool::mcbot::protocol::MojangMappingsRequest &request);
     std::optional<QMap<QString, QMap<QString, qint64>>> getStatisticsImpl(const QString &botName, int timeoutMs);
     void handlePlayerStatisticsResponseImpl(int connectionId, const mankool::mcbot::protocol::PlayerStatisticsResponse &response);
     std::optional<mankool::mcbot::protocol::WindowStateResponse> requestWindowStateImpl(const QString &botName, mankool::mcbot::protocol::ManagerToClientMessage &msg, int timeoutMs);
@@ -740,6 +764,9 @@ private:
     PendingRequestMap<bool> m_pendingHoldAttackStatus;
     PendingRequestMap<bool> m_pendingHoldUseStatus;
     PendingRequestMap<QList<mankool::mcbot::protocol::HeldKeyGadget::HeldKey>> m_pendingHeldKeys;
+    PendingRequestMap<mankool::mcbot::protocol::PluginLoadResult> m_pendingPluginLoad;
+    PendingRequestMap<mankool::mcbot::protocol::PluginListResponse> m_pendingPluginList;
+    PendingRequestMap<QString> m_pendingPluginReply;
     // Payload is unused: the reply is merged into m_statsCache by the handler before the wake.
     PendingRequestMap<bool> m_pendingStatistics;
     QMutex m_statsCacheMutex;

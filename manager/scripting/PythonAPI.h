@@ -400,6 +400,14 @@ public:
     static bool getHoldUse(const std::string &botName = "");
     static void holdKey(HeldKey key, bool enabled, int durationTicks = 0, const std::string &botName = "");
     static py::object getHeldKeys(const std::string &botName = "");
+    static py::object loadPlugin(const std::string &name, const py::dict &sources, const std::string &mainClass,
+                                 int timeoutMs = 120000, const std::string &botName = "");
+    static void unloadPlugin(const std::string &name, const std::string &botName = "");
+    static py::object listPlugins(const std::string &botName = "");
+    static void pluginSend(const std::string &plugin, const std::string &channel, const py::object &data,
+                           const std::string &botName = "");
+    static py::object pluginRequest(const std::string &plugin, const std::string &channel, const py::object &data,
+                                    int timeoutMs = 3000, const std::string &botName = "");
     static void lookAt(double x, double y, double z, BlockFace face = BlockFace::AUTO, bool sneak = false, const std::string &botName = "");
     static void lookAtEntity(int entityId, bool sneak = false, const std::string &botName = "");
     static bool canReachBlock(int x, int y, int z, bool sneak = false, BlockFace face = BlockFace::AUTO, double timeout = 3.0, const std::string &bot = "");

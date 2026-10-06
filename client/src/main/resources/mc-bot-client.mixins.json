@@ -19,7 +19,11 @@
     "WindowMixin",
     "MinecraftTitleMixin",
     "ProjectileOwnerMixin",
-    "HeldAttackMixin"
+    "HeldAttackMixin",
+    "LocalPlayerMoveMixin",
+    "PacketReceiveMixin",
+    "PacketBundleMixin",
+    "PacketSendMixin"
   ],
   "injectors": {
     "defaultRequire": 1
