@@ -637,7 +637,7 @@ Get the currently open container. Returns `None` if no container is open or bot 
 | `id` | `int` | Container ID |
 | `type` | `ContainerType` | Container type enum value |
 | `position` | `tuple[int, int, int]` | Block position of the container. Only present when the client could attribute the open screen to a block (the block was opened by interacting with it shortly before), so use `container.get('position')`. |
-| `items` | `list` | List of [item dicts](bot.md#item-dict) for all slots |
+| `items` | `list` | [Item dicts](bot.md#item-dict) for the filled slots only, in slot order. Empty slots are not listed, so check `slot` rather than the list index. |
 
 **Note:** Only works for external containers (chests, barrels, etc.). For the player's own inventory use `bot.inventory()`.
 
@@ -655,8 +655,7 @@ if container:
         raise RuntimeError(f"Opened the wrong block: {container['position']}")
     print(f"Container type: {container['type']}")
     for item in container['items']:
-        if item['item_id'] != 'minecraft:air':
-            print(f"  Slot {item['slot']}: {item['count']}x {item['item_id']}")
+        print(f"  Slot {item['slot']}: {item['count']}x {item['item_id']}")
 ```
 
 ---

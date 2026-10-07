@@ -1524,7 +1524,8 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    bot->meteorModules.clear();
+    // Scripts read these from their own thread, so the map is built aside and swapped in under the lock.
+    QMap<QString, MeteorModuleData> modules;
     for (const auto &protoModule : response.modules()) {
         MeteorModuleData moduleData;
         moduleData.name = protoModule.name();
@@ -1552,7 +1553,12 @@ void BotManager::handleModulesResponseImpl(int connectionId, const mankool::mcbo
             moduleData.settings.insert(settingPath, settingData);
         }
 
-        bot->meteorModules.insert(moduleData.name, moduleData);
+        modules.insert(moduleData.name, moduleData);
+    }
+
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->meteorModules = std::move(modules);
     }
 
     silentMessageIds.remove(response.requestId());
@@ -1579,33 +1585,36 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
         const auto &protoModule = response.updatedModule();
         updatedModuleName = protoModule.name();
 
-        if (bot->meteorModules.contains(protoModule.name())) {
-            MeteorModuleData &moduleData = bot->meteorModules[protoModule.name()];
-            moduleData.enabled = protoModule.enabled();
-            moduleData.category = protoModule.category();
-            moduleData.description = protoModule.description();
-
-            moduleData.settings.clear();
-            for (const auto &protoSetting : protoModule.settings()) {
-                MeteorSettingData settingData;
-                settingData.name = protoSetting.name();
-                settingData.groupName = protoSetting.hasGroupName() ? protoSetting.groupName() : QString();
-                settingData.currentValue = meteorProtoToVariant(protoSetting.currentValue(), protoSetting.type());
-                settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
-                settingData.type = protoSetting.type();
-                settingData.hasMin = protoSetting.hasMinValue();
-                settingData.hasMax = protoSetting.hasMaxValue();
-                settingData.minValue = protoSetting.hasMinValue() ? protoSetting.minValue() : 0.0;
-                settingData.maxValue = protoSetting.hasMaxValue() ? protoSetting.maxValue() : 0.0;
-                settingData.possibleValues = QStringList();
-                for (const auto &val : protoSetting.possibleValues()) {
-                    settingData.possibleValues.append(val);
-                }
-
-                QString settingPath = getSettingPath(protoSetting);
-                moduleData.settings.insert(settingPath, settingData);
+        QMap<QString, MeteorSettingData> settings;
+        for (const auto &protoSetting : protoModule.settings()) {
+            MeteorSettingData settingData;
+            settingData.name = protoSetting.name();
+            settingData.groupName = protoSetting.hasGroupName() ? protoSetting.groupName() : QString();
+            settingData.currentValue = meteorProtoToVariant(protoSetting.currentValue(), protoSetting.type());
+            settingData.description = protoSetting.hasDescription() ? protoSetting.description() : QString();
+            settingData.type = protoSetting.type();
+            settingData.hasMin = protoSetting.hasMinValue();
+            settingData.hasMax = protoSetting.hasMaxValue();
+            settingData.minValue = protoSetting.hasMinValue() ? protoSetting.minValue() : 0.0;
+            settingData.maxValue = protoSetting.hasMaxValue() ? protoSetting.maxValue() : 0.0;
+            settingData.possibleValues = QStringList();
+            for (const auto &val : protoSetting.possibleValues()) {
+                settingData.possibleValues.append(val);
             }
-            moduleFound = true;
+
+            settings.insert(getSettingPath(protoSetting), settingData);
+        }
+
+        {
+            QMutexLocker locker(bot->dataMutex.get());
+            auto moduleIt = bot->meteorModules.find(protoModule.name());
+            if (moduleIt != bot->meteorModules.end()) {
+                moduleIt->enabled = protoModule.enabled();
+                moduleIt->category = protoModule.category();
+                moduleIt->description = protoModule.description();
+                moduleIt->settings = std::move(settings);
+                moduleFound = true;
+            }
         }
 
         QString statusIcon = protoModule.enabled() ? "[✓]" : "[ ]";
@@ -1665,26 +1674,29 @@ void BotManager::handleModuleStateChangedImpl(int connectionId, const mankool::m
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    if (bot->meteorModules.contains(stateChange.moduleName())) {
-        MeteorModuleData &moduleData = bot->meteorModules[stateChange.moduleName()];
+    bool moduleFound = false;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        auto moduleIt = bot->meteorModules.find(stateChange.moduleName());
+        if (moduleIt != bot->meteorModules.end()) {
+            MeteorModuleData &moduleData = *moduleIt;
+            moduleFound = true;
 
-        if (stateChange.hasEnabled()) {
-            moduleData.enabled = stateChange.enabled();
-        }
+            if (stateChange.hasEnabled()) {
+                moduleData.enabled = stateChange.enabled();
+            }
 
-        if (!stateChange.changedSettings().isEmpty()) {
             for (auto it = stateChange.changedSettings().constBegin();
                  it != stateChange.changedSettings().constEnd(); ++it) {
-                const QString &settingPath = it.key();
-                const mankool::mcbot::protocol::MeteorSettingValue &protoValue = it.value();
-
-                if (moduleData.settings.contains(settingPath)) {
-                    SettingType type = moduleData.settings[settingPath].type;
-                    moduleData.settings[settingPath].currentValue = meteorProtoToVariant(protoValue, type);
+                auto settingIt = moduleData.settings.find(it.key());
+                if (settingIt != moduleData.settings.end()) {
+                    settingIt->currentValue = meteorProtoToVariant(it.value(), settingIt->type);
                 }
             }
         }
+    }
 
+    if (moduleFound) {
         emit meteorSingleModuleUpdated(bot->name, stateChange.moduleName());
     }
 }
@@ -2061,7 +2073,7 @@ void BotManager::handleBaritoneSettingsResponseImpl(int connectionId, const mank
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    bot->baritoneSettings.clear();
+    QMap<QString, BaritoneSettingData> settings;
     for (const auto &protoSetting : response.settings()) {
         BaritoneSettingData settingData;
         settingData.name = protoSetting.name();
@@ -2080,7 +2092,12 @@ void BotManager::handleBaritoneSettingsResponseImpl(int connectionId, const mank
             settingData.mapMetadata.possibleValues = protoMetadata.possibleListValues();
         }
 
-        bot->baritoneSettings.insert(settingData.name, settingData);
+        settings.insert(settingData.name, settingData);
+    }
+
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->baritoneSettings = std::move(settings);
     }
 
     LogManager::log(QString("[%1] Received %2 Baritone settings").arg(bot->name).arg(response.settings().size()), LogManager::Info);
@@ -2144,9 +2161,14 @@ void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const m
             output = QString("Baritone settings updated: %1").arg(response.result());
         }
 
-        for (const auto &protoSetting : response.updatedSettings()) {
-            if (bot->baritoneSettings.contains(protoSetting.name())) {
-                BaritoneSettingData &settingData = bot->baritoneSettings[protoSetting.name()];
+        QStringList updatedNames;
+        {
+            QMutexLocker locker(bot->dataMutex.get());
+            for (const auto &protoSetting : response.updatedSettings()) {
+                auto settingIt = bot->baritoneSettings.find(protoSetting.name());
+                if (settingIt == bot->baritoneSettings.end()) continue;
+
+                BaritoneSettingData &settingData = *settingIt;
                 settingData.currentValue = baritoneProtoToVariant(protoSetting.currentValue(), protoSetting.type());
                 if (protoSetting.hasDefaultValue()) {
                     settingData.defaultValue = baritoneProtoToVariant(protoSetting.defaultValue(), protoSetting.type());
@@ -2161,8 +2183,11 @@ void BotManager::handleBaritoneSettingsSetResponseImpl(int connectionId, const m
                     settingData.mapMetadata.possibleKeys = protoMetadata.possibleKeys();
                     settingData.mapMetadata.possibleValues = protoMetadata.possibleListValues();
                 }
-                emit baritoneSingleSettingUpdated(bot->name, protoSetting.name());
+                updatedNames.append(protoSetting.name());
             }
+        }
+        for (const QString &settingName : std::as_const(updatedNames)) {
+            emit baritoneSingleSettingUpdated(bot->name, settingName);
         }
     } else {
         output = QString("Error: %1").arg(response.result());
@@ -2202,9 +2227,17 @@ void BotManager::handleBaritoneSettingUpdateImpl(int connectionId, const mankool
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    if (bot->baritoneSettings.contains(update.settingName())) {
-        BaritoneSettingType type = bot->baritoneSettings[update.settingName()].type;
-        bot->baritoneSettings[update.settingName()].currentValue = baritoneProtoToVariant(update.newValue(), type);
+    bool found = false;
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        auto settingIt = bot->baritoneSettings.find(update.settingName());
+        if (settingIt != bot->baritoneSettings.end()) {
+            settingIt->currentValue = baritoneProtoToVariant(update.newValue(), settingIt->type);
+            found = true;
+        }
+    }
+
+    if (found) {
         emit baritoneSingleSettingUpdated(bot->name, update.settingName());
     }
 }
@@ -2219,72 +2252,70 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
 
-    // Update the baritone process status
-    bot->baritoneProcessStatus.eventType = status.eventType();
-    bot->baritoneProcessStatus.isPathing = status.isPathing();
-    bot->baritoneProcessStatus.isCalculating = status.hasIsCalculating() && status.isCalculating();
+    BaritoneProcessStatus newStatus;
+    newStatus.eventType = status.eventType();
+    newStatus.isPathing = status.isPathing();
+    newStatus.isCalculating = status.hasIsCalculating() && status.isCalculating();
 
     if (status.hasGoalDescription()) {
-        bot->baritoneProcessStatus.goalDescription = status.goalDescription();
-    } else {
-        bot->baritoneProcessStatus.goalDescription.clear();
+        newStatus.goalDescription = status.goalDescription();
     }
 
     if (status.hasActiveProcess()) {
         const auto &procInfo = status.activeProcess();
-        bot->baritoneProcessStatus.activeProcess.processName = procInfo.processName();
-        bot->baritoneProcessStatus.activeProcess.displayName = procInfo.displayName();
-        bot->baritoneProcessStatus.activeProcess.priority = procInfo.priority();
-        bot->baritoneProcessStatus.activeProcess.isActive = procInfo.isActive();
-        bot->baritoneProcessStatus.activeProcess.isTemporary = procInfo.isTemporary();
-        bot->baritoneProcessStatus.hasActiveProcess = true;
-    } else {
-        bot->baritoneProcessStatus.hasActiveProcess = false;
+        newStatus.activeProcess.processName = procInfo.processName();
+        newStatus.activeProcess.displayName = procInfo.displayName();
+        newStatus.activeProcess.priority = procInfo.priority();
+        newStatus.activeProcess.isActive = procInfo.isActive();
+        newStatus.activeProcess.isTemporary = procInfo.isTemporary();
+        newStatus.hasActiveProcess = true;
     }
 
     if (status.hasEstimatedTicksToGoal()) {
-        bot->baritoneProcessStatus.estimatedTicksToGoal = status.estimatedTicksToGoal();
-        bot->baritoneProcessStatus.hasEstimatedTicks = true;
-    } else {
-        bot->baritoneProcessStatus.hasEstimatedTicks = false;
+        newStatus.estimatedTicksToGoal = status.estimatedTicksToGoal();
+        newStatus.hasEstimatedTicks = true;
     }
 
     if (status.hasTicksRemainingInSegment()) {
-        bot->baritoneProcessStatus.ticksRemainingInSegment = status.ticksRemainingInSegment();
-        bot->baritoneProcessStatus.hasTicksRemaining = true;
-    } else {
-        bot->baritoneProcessStatus.hasTicksRemaining = false;
+        newStatus.ticksRemainingInSegment = status.ticksRemainingInSegment();
+        newStatus.hasTicksRemaining = true;
+    }
+
+    {
+        QMutexLocker locker(bot->dataMutex.get());
+        bot->baritoneProcessStatus = newStatus;
     }
 
     // Fire script event
     if (bot->scriptEngine) {
         QVariantMap statusData;
-        statusData["is_pathing"] = bot->baritoneProcessStatus.isPathing;
-        statusData["is_calculating"] = bot->baritoneProcessStatus.isCalculating;
-        statusData["event_type"] = static_cast<int>(bot->baritoneProcessStatus.eventType);
+        statusData["is_pathing"] = newStatus.isPathing;
+        statusData["is_calculating"] = newStatus.isCalculating;
+        // Carried as the scripting enum so handlers can compare against baritone.PathEventType.
+        statusData["event_type"] = QVariant::fromValue(static_cast<PythonAPI::PathEventType>(newStatus.eventType));
         // Redundant for per-bot scripts, essential for the global-scope copy.
         statusData["bot_name"] = bot->name;
 
-        if (!bot->baritoneProcessStatus.goalDescription.isEmpty()) {
-            statusData["goal_description"] = bot->baritoneProcessStatus.goalDescription;
+        if (!newStatus.goalDescription.isEmpty()) {
+            statusData["goal_description"] = newStatus.goalDescription;
         }
 
-        if (bot->baritoneProcessStatus.hasActiveProcess) {
+        if (newStatus.hasActiveProcess) {
             QVariantMap procInfo;
-            procInfo["process_name"] = bot->baritoneProcessStatus.activeProcess.processName;
-            procInfo["display_name"] = bot->baritoneProcessStatus.activeProcess.displayName;
-            procInfo["priority"] = bot->baritoneProcessStatus.activeProcess.priority;
-            procInfo["is_active"] = bot->baritoneProcessStatus.activeProcess.isActive;
-            procInfo["is_temporary"] = bot->baritoneProcessStatus.activeProcess.isTemporary;
+            procInfo["process_name"] = newStatus.activeProcess.processName;
+            procInfo["display_name"] = newStatus.activeProcess.displayName;
+            procInfo["priority"] = newStatus.activeProcess.priority;
+            procInfo["is_active"] = newStatus.activeProcess.isActive;
+            procInfo["is_temporary"] = newStatus.activeProcess.isTemporary;
             statusData["active_process"] = procInfo;
         }
 
-        if (bot->baritoneProcessStatus.hasEstimatedTicks) {
-            statusData["estimated_ticks_to_goal"] = bot->baritoneProcessStatus.estimatedTicksToGoal;
+        if (newStatus.hasEstimatedTicks) {
+            statusData["estimated_ticks_to_goal"] = newStatus.estimatedTicksToGoal;
         }
 
-        if (bot->baritoneProcessStatus.hasTicksRemaining) {
-            statusData["ticks_remaining_in_segment"] = bot->baritoneProcessStatus.ticksRemainingInSegment;
+        if (newStatus.hasTicksRemaining) {
+            statusData["ticks_remaining_in_segment"] = newStatus.ticksRemainingInSegment;
         }
 
         QVariantList args;
@@ -2653,12 +2684,17 @@ void BotManager::sendBaritoneSettingChangeImpl(const QString &botName, const QSt
         return;
     }
 
-    if (!bot->baritoneSettings.contains(settingName)) {
+    // Scripts call this from their thread while replies rebuild the map on the main one.
+    QMutexLocker locker(bot->dataMutex.get());
+    auto settingIt = bot->baritoneSettings.constFind(settingName);
+    if (settingIt == bot->baritoneSettings.constEnd()) {
+        locker.unlock();
         LogManager::log(QString("Unknown Baritone setting '%1' for bot '%2'").arg(settingName, botName), LogManager::Warning);
         return;
     }
 
-    BaritoneSettingType type = bot->baritoneSettings[settingName].type;
+    BaritoneSettingType type = settingIt->type;
+    locker.unlock();
 
     mankool::mcbot::protocol::SetBaritoneSettingsCommand setCmd;
     QHash<QString, mankool::mcbot::protocol::BaritoneSettingValue> settings;
@@ -2688,18 +2724,24 @@ void BotManager::sendMeteorSettingChangeImpl(const QString &botName, const QStri
         return;
     }
 
-    if (!bot->meteorModules.contains(moduleName)) {
+    // Scripts call this from their thread while replies rebuild the map on the main one.
+    QMutexLocker locker(bot->dataMutex.get());
+    auto moduleIt = bot->meteorModules.constFind(moduleName);
+    if (moduleIt == bot->meteorModules.constEnd()) {
+        locker.unlock();
         LogManager::log(QString("Unknown Meteor module '%1' for bot '%2'").arg(moduleName, botName), LogManager::Warning);
         return;
     }
 
-    const MeteorModuleData &module = bot->meteorModules[moduleName];
-    if (!module.settings.contains(settingPath)) {
+    auto settingIt = moduleIt->settings.constFind(settingPath);
+    if (settingIt == moduleIt->settings.constEnd()) {
+        locker.unlock();
         LogManager::log(QString("Unknown setting '%1' in module '%2' for bot '%3'").arg(settingPath, moduleName, botName), LogManager::Warning);
         return;
     }
 
-    SettingType type = module.settings[settingPath].type;
+    SettingType type = settingIt->type;
+    locker.unlock();
 
     mankool::mcbot::protocol::SetModuleConfigCommand setModuleCmd;
     setModuleCmd.setModuleName(moduleName);
