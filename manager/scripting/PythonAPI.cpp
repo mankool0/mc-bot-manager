@@ -1413,12 +1413,17 @@ py::object PythonAPI::baritoneGetSetting(const std::string &setting, const std::
     }
 
     QString qSetting = QString::fromStdString(setting);
-    if (botInst->baritoneSettings.contains(qSetting)) {
-        const BaritoneSettingData &data = botInst->baritoneSettings[qSetting];
-        return qVariantToPyObject(data.currentValue);
+    std::optional<QVariant> value;
+    {
+        py::gil_scoped_release release;
+        QMutexLocker locker(botInst->dataMutex.get());
+        auto it = botInst->baritoneSettings.constFind(qSetting);
+        if (it != botInst->baritoneSettings.constEnd()) {
+            value = it->currentValue;
+        }
     }
 
-    return py::none();
+    return value ? qVariantToPyObject(*value) : py::none();
 }
 
 py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
@@ -1430,7 +1435,12 @@ py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
         return py::dict();
     }
 
-    const BaritoneProcessStatus &status = botInst->baritoneProcessStatus;
+    BaritoneProcessStatus status;
+    {
+        py::gil_scoped_release release;
+        QMutexLocker locker(botInst->dataMutex.get());
+        status = botInst->baritoneProcessStatus;
+    }
 
     py::dict result;
     result["is_pathing"] = status.isPathing;
@@ -1468,12 +1478,20 @@ void PythonAPI::meteorToggle(const std::string &module, const std::string &bot)
     BotInstance *botInst = ensureBotCapability(name, "meteor");
 
     QString qModule = QString::fromStdString(module);
-    if (botInst->meteorModules.contains(qModule)) {
-        bool currentState = botInst->meteorModules[qModule].enabled;
-        BotManager::sendCommand(name, QString("meteor set %1 enabled %2").arg(qModule, !currentState ? "true" : "false"), true);
-    } else {
+    std::optional<bool> enabled;
+    {
+        py::gil_scoped_release release;
+        QMutexLocker locker(botInst->dataMutex.get());
+        auto it = botInst->meteorModules.constFind(qModule);
+        if (it != botInst->meteorModules.constEnd()) {
+            enabled = it->enabled;
+        }
+    }
+
+    if (!enabled) {
         throw py::value_error("Module not found");
     }
+    BotManager::sendCommand(name, QString("meteor set %1 enabled %2").arg(qModule, *enabled ? "false" : "true"), true);
 }
 
 void PythonAPI::meteorEnable(const std::string &module, const std::string &bot)
@@ -1514,15 +1532,20 @@ py::object PythonAPI::meteorGetSetting(const std::string &module, const std::str
 
     QString qModule = QString::fromStdString(module);
     QString qSetting = QString::fromStdString(setting);
-    if (botInst->meteorModules.contains(qModule)) {
-        const MeteorModuleData &moduleData = botInst->meteorModules[qModule];
-        if (moduleData.settings.contains(qSetting)) {
-            const MeteorSettingData &settingData = moduleData.settings[qSetting];
-            return qVariantToPyObject(settingData.currentValue);
+    std::optional<QVariant> value;
+    {
+        py::gil_scoped_release release;
+        QMutexLocker locker(botInst->dataMutex.get());
+        auto moduleIt = botInst->meteorModules.constFind(qModule);
+        if (moduleIt != botInst->meteorModules.constEnd()) {
+            auto settingIt = moduleIt->settings.constFind(qSetting);
+            if (settingIt != moduleIt->settings.constEnd()) {
+                value = settingIt->currentValue;
+            }
         }
     }
 
-    return py::none();
+    return value ? qVariantToPyObject(*value) : py::none();
 }
 
 py::dict PythonAPI::meteorGetModule(const std::string &module, const std::string &bot)
@@ -1536,21 +1559,30 @@ py::dict PythonAPI::meteorGetModule(const std::string &module, const std::string
     }
 
     QString qModule = QString::fromStdString(module);
-    if (botInst->meteorModules.contains(qModule)) {
-        const MeteorModuleData &moduleData = botInst->meteorModules[qModule];
-        result["name"] = moduleData.name.toStdString();
-        result["category"] = moduleData.category.toStdString();
-        result["description"] = moduleData.description.toStdString();
-        result["enabled"] = moduleData.enabled;
-
-        py::dict settings;
-        for (auto it = moduleData.settings.begin(); it != moduleData.settings.end(); ++it) {
-            const QString &settingName = it.key();
-            const MeteorSettingData &settingData = it.value();
-            settings[settingName.toStdString().c_str()] = qVariantToPyObject(settingData.currentValue);
+    std::optional<MeteorModuleData> moduleData;
+    {
+        py::gil_scoped_release release;
+        QMutexLocker locker(botInst->dataMutex.get());
+        auto it = botInst->meteorModules.constFind(qModule);
+        if (it != botInst->meteorModules.constEnd()) {
+            moduleData = *it;
         }
-        result["settings"] = settings;
     }
+
+    if (!moduleData) {
+        return result;
+    }
+
+    result["name"] = moduleData->name.toStdString();
+    result["category"] = moduleData->category.toStdString();
+    result["description"] = moduleData->description.toStdString();
+    result["enabled"] = moduleData->enabled;
+
+    py::dict settings;
+    for (auto it = moduleData->settings.constBegin(); it != moduleData->settings.constEnd(); ++it) {
+        settings[it.key().toStdString().c_str()] = qVariantToPyObject(it.value().currentValue);
+    }
+    result["settings"] = settings;
 
     return result;
 }
