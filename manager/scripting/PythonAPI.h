@@ -507,4 +507,6 @@ private:
     static QPointer<BotConsoleWidget> globalConsole;
 };
 
+Q_DECLARE_METATYPE(PythonAPI::PathEventType)
+
 #endif // PYTHONAPI_H

@@ -1,4 +1,5 @@
 from bot import ScreenState
+from baritone import PathEventType
 
 class ChatMessage:
     sender: str
@@ -27,7 +28,7 @@ class BaritoneActiveProcess:
 
 class BaritoneStatus:
     is_pathing: bool
-    event_type: int
+    event_type: PathEventType
     goal_description: str
     active_process: BaritoneActiveProcess
     estimated_ticks_to_goal: int

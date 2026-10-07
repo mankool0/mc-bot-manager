@@ -2291,7 +2291,8 @@ void BotManager::handleBaritoneProcessStatusImpl(int connectionId, const mankool
         QVariantMap statusData;
         statusData["is_pathing"] = newStatus.isPathing;
         statusData["is_calculating"] = newStatus.isCalculating;
-        statusData["event_type"] = static_cast<int>(newStatus.eventType);
+        // Carried as the scripting enum so handlers can compare against baritone.PathEventType.
+        statusData["event_type"] = QVariant::fromValue(static_cast<PythonAPI::PathEventType>(newStatus.eventType));
         // Redundant for per-bot scripts, essential for the global-scope copy.
         statusData["bot_name"] = bot->name;
 

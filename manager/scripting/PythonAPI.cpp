@@ -279,6 +279,14 @@ py::dict PythonAPI::espBlockDataToDict(const ESPBlockData &data)
     return dict;
 }
 
+// A script that only listens for baritone_status_update may never have imported the module
+// that registers the enum with pybind11, so the import comes first.
+static py::object pathEventTypeToPy(PythonAPI::PathEventType type)
+{
+    py::module_::import("baritone");
+    return py::cast(type);
+}
+
 py::object PythonAPI::qVariantToPyObject(const QVariant &value)
 {
     switch (value.typeId()) {
@@ -321,6 +329,10 @@ py::object PythonAPI::qVariantToPyObject(const QVariant &value)
         default: {
             // Handle custom metatypes
             int typeId = value.userType();
+
+            if (typeId == qMetaTypeId<PythonAPI::PathEventType>()) {
+                return pathEventTypeToPy(value.value<PythonAPI::PathEventType>());
+            }
 
             if (typeId == qMetaTypeId<RGBColor>()) {
                 RGBColor color = value.value<RGBColor>();
@@ -1445,7 +1457,7 @@ py::dict PythonAPI::baritoneGetProcessStatus(const std::string &bot)
     py::dict result;
     result["is_pathing"] = status.isPathing;
     result["is_calculating"] = status.isCalculating;
-    result["event_type"] = static_cast<int>(status.eventType);
+    result["event_type"] = pathEventTypeToPy(static_cast<PathEventType>(status.eventType));
 
     if (!status.goalDescription.isEmpty()) {
         result["goal_description"] = status.goalDescription.toStdString();
