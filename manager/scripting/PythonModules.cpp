@@ -890,7 +890,7 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                "Open player inventory",
                py::arg("bot_name") = "");
     def_state("get_container", &PythonAPI::getContainer,
-              "Get current open container info (None if no container open)",
+              "Get current open container info (None if no container open). items lists filled slots only.",
               py::arg("bot_name") = "");
     def_action("click_widget", &PythonAPI::clickScreenWidget,
                "Click a widget on the current screen by index from bot.get_screen(). Raises if screen_id doesn't match.",
