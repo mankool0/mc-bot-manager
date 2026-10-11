@@ -25,10 +25,16 @@ message EntityData {
   string player_name = 18;
   int32  owner_entity_id = 19; // Projectiles only
   string owner_uuid      = 20;
+  // Items, XP orbs, projectiles and the like: rarely still there once out of view.
+  bool short_lived = 21;
+  string custom_name = 22; // Plain text, empty when unnamed
 }
 
 message EntityUpdate {
   string              dimension    = 1;
   repeated EntityData upserted     = 2;
-  repeated int32      removed_ids  = 3 [packed = true];
+  // Out of tracking range, chunk unloaded, level left: the entity may still exist.
+  repeated int32 gone_from_view_ids = 3 [packed = true];
+  // Its last reported health was 0; the server removes a dying entity a second later.
+  repeated int32 died_ids = 4 [packed = true];
 }

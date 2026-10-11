@@ -1,5 +1,7 @@
 #include "NBTSerializer.h"
 #include <io/stream_reader.h>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRegularExpression>
 #include <QStringList>
 #include <QVarLengthArray>
@@ -102,7 +104,7 @@ nbt::tag_compound NBTSerializer::blockEntityToNBT(const BlockEntityData& be) {
     return nbt::tag_compound{};
 }
 
-nbt::tag_compound NBTSerializer::entityToNBT(const EntityData& e) {
+nbt::tag_compound NBTSerializer::entityToNBT(const EntityData& e, int dataVersion) {
     nbt::tag_compound tag;
 
     tag.insert("id", nbt::tag_string(e.type.toStdString()));
@@ -146,6 +148,14 @@ nbt::tag_compound NBTSerializer::entityToNBT(const EntityData& e) {
         tag.insert("Health", nbt::tag_float(e.health));
     }
 
+    if (!e.customName.isEmpty()) {
+        // A plain string is a text component since 1.21.5; before, the tag held JSON.
+        const QString name = dataVersion >= DATA_VERSION_1_21_5
+            ? e.customName
+            : QString::fromUtf8(QJsonDocument(QJsonObject{{"text", e.customName}}).toJson(QJsonDocument::Compact));
+        tag.insert("CustomName", nbt::tag_string(name.toStdString()));
+    }
+
     if (e.isItem) {
         nbt::tag_compound itemTag;
         itemTag.insert("id",    nbt::tag_string(e.itemStack.itemId().toStdString()));
@@ -157,7 +167,7 @@ nbt::tag_compound NBTSerializer::entityToNBT(const EntityData& e) {
 }
 
 nbt::tag_compound NBTSerializer::entitiesToNBT(int chunkX, int chunkZ, const QVector<EntityData>& entities,
-                                                int dataVersion, bool saveItemEntities) {
+                                                int dataVersion, nbt::tag_list kept) {
     nbt::tag_compound root;
     root.insert("DataVersion", nbt::tag_int(dataVersion));
 
@@ -165,13 +175,11 @@ nbt::tag_compound NBTSerializer::entitiesToNBT(int chunkX, int chunkZ, const QVe
     std::vector<int32_t> posVec = {chunkX, chunkZ};
     root.insert("Position", nbt::tag_int_array(std::move(posVec)));
 
-    nbt::tag_list entityList(nbt::tag_type::Compound);
     for (const auto& e : entities) {
         if (e.isPlayer) continue;
-        if (!saveItemEntities && e.isItem) continue;
-        entityList.push_back(entityToNBT(e));
+        kept.push_back(entityToNBT(e, dataVersion));
     }
-    root.insert("Entities", std::move(entityList));
+    root.insert("Entities", std::move(kept));
 
     return root;
 }

@@ -35,10 +35,11 @@ public:
     static nbt::tag_compound blockEntityToNBT(const BlockEntityData& be);
     static nbt::tag_compound itemStackToNBT(const mankool::mcbot::protocol::ItemStack& item);
 
-    // Entity region NBT (entities/ subdirectory)
+    // Entity region NBT (entities/ subdirectory); `kept` are entries already on disk, written first.
     static nbt::tag_compound entitiesToNBT(int chunkX, int chunkZ, const QVector<EntityData>& entities,
-                                           int dataVersion, bool saveItemEntities = true);
-    static nbt::tag_compound entityToNBT(const EntityData& e);
+                                           int dataVersion,
+                                           nbt::tag_list kept = nbt::tag_list(nbt::tag_type::Compound));
+    static nbt::tag_compound entityToNBT(const EntityData& e, int dataVersion);
 
     // Player data NBT ({worldPath}/playerdata/{uuid}.dat)
     static nbt::tag_compound playerToNBT(const PlayerSaveData& data, int dataVersion);

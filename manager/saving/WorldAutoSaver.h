@@ -38,8 +38,8 @@ public:
     void markBlockChunkDirty(int chunkX, int chunkZ, const QString& dimension);
 
     void flushBlockChunk(int chunkX, int chunkZ, const QString& dimension);
-    void onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
-                           const QString& dimension);
+    void onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& goneFromView,
+                           const QVector<int>& died, const QString& dimension);
     void setPlayerData(const PlayerSaveData& data);
     void flushPlayerData();
     // Merges map packet data into the accumulated map state and marks it dirty for saving.
@@ -53,9 +53,6 @@ public:
     const WorldSaveSettings& getSaveSettings() const { return m_saveSettings; }
 
 signals:
-    void entityChunkReadyForSaving(int chunkX, int chunkZ, const QString& dimension,
-                                   const QVector<EntityData>& entities,
-                                   const QString& worldPath, int dataVersion);
     void playerDataReadyForSaving(const PlayerSaveData& data, const QString& worldPath, int dataVersion);
     void mapDataReadyForSaving(int32_t mapId, MapData data, QString worldPath, int dataVersion);
     void idCountsReadyForSaving(int32_t maxMapId, QString worldPath, int dataVersion);
@@ -79,6 +76,8 @@ private:
     struct TrackedEntity {
         EntityData data;
         QString dimension;
+        // Out of view: its copy stays on disk, and memory keeps it only until that copy is written.
+        bool departed = false;
     };
     // Keyed by uuid, not entity id: the server reassigns network ids whenever an
     // entity's chunk reloads, so id keys saved one entity once per id it had held.
@@ -86,7 +85,9 @@ private:
     QHash<QString, TrackedEntity> m_trackedEntities;
     QHash<int, QString> m_entityIdToUuid;
     QSet<DimChunkPos> m_dirtyEntityChunks;
-    void markEntityChunkDirty(const EntityData& entity, const QString& dimension);
+    // Gone for good since the last flush; their saved copies are dropped wherever they are.
+    QSet<QString> m_deadEntities;
+    void onEntityRemoved(int entityId, bool died);
     QTimer* m_periodicFlushTimer;
 
     // Player data (per-UUID to support multiple bots on the same server)

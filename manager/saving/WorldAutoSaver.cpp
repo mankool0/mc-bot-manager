@@ -6,6 +6,7 @@
 #include "ui/ManagerMainWindow.h"
 #include <QDir>
 #include <cmath>
+#include <utility>
 
 WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& version,
                                const WorldSaveSettings& settings)
@@ -26,7 +27,6 @@ WorldAutoSaver::WorldAutoSaver(const QString& serverIp, const MinecraftVersion& 
     m_worker->moveToThread(m_workerThread);
 
     connect(m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
-    connect(this, &WorldAutoSaver::entityChunkReadyForSaving, m_worker, &ChunkSavingWorker::processEntityChunk, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::playerDataReadyForSaving, m_worker, &ChunkSavingWorker::processPlayerData, Qt::QueuedConnection);
     connect(this, &WorldAutoSaver::mapDataReadyForSaving, m_worker,
         [](int32_t mapId, MapData data, QString worldPath, int dataVersion) {
@@ -128,63 +128,66 @@ void WorldAutoSaver::flushBlockChunk(int chunkX, int chunkZ, const QString& dime
     }
 }
 
-// Falls back to the network id so a report without a uuid stays its own record.
-static QString trackedEntityKey(const EntityData& entity) {
-    return entity.uuid.isEmpty() ? QStringLiteral("#%1").arg(entity.entityId) : entity.uuid;
+static DimChunkPos entityChunk(const EntityData& entity, const QString& dimension) {
+    return {dimension, static_cast<int>(std::floor(entity.x / 16.0)), static_cast<int>(std::floor(entity.z / 16.0))};
 }
 
-void WorldAutoSaver::markEntityChunkDirty(const EntityData& entity, const QString& dimension) {
-    int chunkX = static_cast<int>(std::floor(entity.x / 16.0));
-    int chunkZ = static_cast<int>(std::floor(entity.z / 16.0));
-    m_dirtyEntityChunks.insert({dimension, chunkX, chunkZ});
-}
-
-void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& removed,
-                                       const QString& dimension) {
+// Where the entity was saved before needs no marking: the worker knows each uuid's chunk on
+// disk and drops the old copy when it writes the new one.
+void WorldAutoSaver::onEntitiesUpdated(const QVector<EntityData>& upserted, const QVector<int>& goneFromView,
+                                       const QVector<int>& died, const QString& dimension) {
     if (!m_saveSettings.saveEntities) return;
 
     for (const auto& e : upserted) {
         if (e.isPlayer) continue;  // Players are saved in playerdata/
         if (!m_saveSettings.saveItemEntities && e.isItem) continue;
+        // Copies on disk are matched by uuid; one without could never be replaced.
+        if (e.uuid.isEmpty()) continue;
 
-        const QString key = trackedEntityKey(e);
-
-        // This id may have been reused for a different entity since it was last seen.
+        // A reused id means the entity that held it left view without a report.
         auto previous = m_entityIdToUuid.constFind(e.entityId);
-        if (previous != m_entityIdToUuid.constEnd() && *previous != key) {
-            auto stale = m_trackedEntities.constFind(*previous);
-            if (stale != m_trackedEntities.constEnd()) {
-                markEntityChunkDirty(stale->data, stale->dimension);
-                m_trackedEntities.remove(*previous);
-            }
+        if (previous != m_entityIdToUuid.constEnd() && *previous != e.uuid) {
+            onEntityRemoved(e.entityId, false);
         }
-        // Where this entity was last saved has to be rewritten as well, or the copy
-        // left in that chunk survives on disk.
-        auto existing = m_trackedEntities.constFind(key);
+        auto existing = m_trackedEntities.constFind(e.uuid);
         if (existing != m_trackedEntities.constEnd()) {
             m_entityIdToUuid.remove(existing->data.entityId);
-            markEntityChunkDirty(existing->data, existing->dimension);
         }
 
-        m_trackedEntities[key] = {e, dimension};
-        m_entityIdToUuid[e.entityId] = key;
-        markEntityChunkDirty(e, dimension);
+        m_trackedEntities[e.uuid] = {e, dimension};
+        m_entityIdToUuid[e.entityId] = e.uuid;
+        m_deadEntities.remove(e.uuid);
+        m_dirtyEntityChunks.insert(entityChunk(e, dimension));
     }
 
-    for (int id : removed) {
-        auto it = m_entityIdToUuid.constFind(id);
-        if (it == m_entityIdToUuid.constEnd()) {
-            continue;
-        }
-        const QString key = *it;
-        m_entityIdToUuid.erase(it);
-        // A re-created entity has already pointed its uuid at a newer id, and that
-        // record has to survive this removal.
-        auto tracked = m_trackedEntities.constFind(key);
-        if (tracked != m_trackedEntities.constEnd() && tracked->data.entityId == id) {
-            markEntityChunkDirty(tracked->data, tracked->dimension);
-            m_trackedEntities.remove(key);
-        }
+    for (int id : goneFromView) {
+        onEntityRemoved(id, false);
+    }
+    for (int id : died) {
+        onEntityRemoved(id, true);
+    }
+}
+
+void WorldAutoSaver::onEntityRemoved(int entityId, bool died) {
+    auto it = m_entityIdToUuid.constFind(entityId);
+    if (it == m_entityIdToUuid.constEnd()) {
+        return;
+    }
+    const QString uuid = *it;
+    m_entityIdToUuid.erase(it);
+    // A re-created entity has already pointed its uuid at a newer id, and that
+    // record has to survive this removal.
+    auto tracked = m_trackedEntities.find(uuid);
+    if (tracked == m_trackedEntities.end() || tracked->data.entityId != entityId) {
+        return;
+    }
+    // An item, XP orb or projectile out of view has almost always been picked up, despawned or
+    // spent, so a copy kept for it would be a ghost.
+    if (died || tracked->data.shortLived) {
+        m_trackedEntities.erase(tracked);
+        m_deadEntities.insert(uuid);
+    } else {
+        tracked->departed = true;
     }
 }
 
@@ -240,23 +243,27 @@ void WorldAutoSaver::flushPeriodic() {
     if (!m_isInitialized) return;
 
     // Flush entities
-    if (m_saveSettings.saveEntities && !m_dirtyEntityChunks.isEmpty()) {
-        QSet<DimChunkPos> dirtyChunks = m_dirtyEntityChunks;
+    if (m_saveSettings.saveEntities && (!m_dirtyEntityChunks.isEmpty() || !m_deadEntities.isEmpty())) {
+        // A dirty chunk left with nothing in it still goes: the worker drops copies there that
+        // now belong elsewhere.
+        QHash<DimChunkPos, QVector<EntityData>> chunks;
+        for (const DimChunkPos& key : std::as_const(m_dirtyEntityChunks)) {
+            chunks.insert(key, {});
+        }
+        for (const auto& tracked : std::as_const(m_trackedEntities)) {
+            auto chunk = chunks.find(entityChunk(tracked.data, tracked.dimension));
+            if (chunk != chunks.end()) {
+                chunk->append(tracked.data);
+            }
+        }
         m_dirtyEntityChunks.clear();
 
-        // Group entities by chunk
-        QHash<DimChunkPos, QVector<EntityData>> chunkEntityMap;
-        for (const auto& tracked : std::as_const(m_trackedEntities)) {
-            int chunkX = static_cast<int>(std::floor(tracked.data.x / 16.0));
-            int chunkZ = static_cast<int>(std::floor(tracked.data.z / 16.0));
-            chunkEntityMap[{tracked.dimension, chunkX, chunkZ}].append(tracked.data);
-        }
-
-        for (const DimChunkPos& key : dirtyChunks) {
-            QVector<EntityData> entities = chunkEntityMap.value(key);
-            emit entityChunkReadyForSaving(key.chunkX, key.chunkZ, key.dimension, entities, m_worldPath, m_version.dataVersion);
-        }
+        QMetaObject::invokeMethod(m_worker,
+            [worker = m_worker, chunks = std::move(chunks), dead = std::exchange(m_deadEntities, {})] {
+                worker->processEntityFlush(chunks, dead);
+            }, Qt::QueuedConnection);
     }
+    m_trackedEntities.removeIf([](QHash<QString, TrackedEntity>::iterator it) { return it->departed; });
 
     // Flush dirty block chunks
     if (!m_dirtyBlockChunks.isEmpty() && m_chunkProvider) {

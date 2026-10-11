@@ -3,6 +3,7 @@
 
 #include "bot/WorldData.h"
 #include "world/RegionFile.h"
+#include <tag_list.h>
 #include <QHash>
 #include <QString>
 #include <QVector>
@@ -66,7 +67,8 @@ public:
                                    const QVector<EntityData>& entities,
                                    const QString& worldPath, int dataVersion);
     static bool exportEntityChunk(int chunkX, int chunkZ, const QVector<EntityData>& entities,
-                                   RegionFile& regionFile, int dataVersion);
+                                   RegionFile& regionFile, int dataVersion,
+                                   nbt::tag_list kept = nbt::tag_list(nbt::tag_type::Compound));
     static std::tuple<int, int, int, int> getChunkBounds(const BotWorldData& worldData);  // Returns (minX, maxX, minZ, maxZ)
     static bool createWorldDirectories(const QString& outputPath, int dataVersion);
 
