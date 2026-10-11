@@ -3609,14 +3609,13 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
         e.playerName = proto.playerName();
         e.ownerEntityId = proto.ownerEntityId();
         e.ownerUuid = proto.ownerUuid();
+        e.shortLived = proto.shortLived();
+        e.customName = proto.customName();
         upserted.append(e);
     }
 
-    QVector<int> removed;
-    removed.reserve(batch.removedIds().size());
-    for (int id : batch.removedIds()) {
-        removed.append(id);
-    }
+    QVector<int> goneFromView(batch.goneFromViewIds().cbegin(), batch.goneFromViewIds().cend());
+    QVector<int> died(batch.diedIds().cbegin(), batch.diedIds().cend());
 
     // The batch names the level the client observed these in; the bot's own dimension
     // is a separate report that can lag a step behind during a dimension change.
@@ -3627,11 +3626,11 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
 
     {
         QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.updateEntities(upserted, removed, dimension);
+        bot->worldData.updateEntities(upserted, goneFromView + died, dimension);
     }
 
     if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.saveEntities) {
-        bot->worldAutoSaver->onEntitiesUpdated(upserted, removed, dimension);
+        bot->worldAutoSaver->onEntitiesUpdated(upserted, goneFromView, died, dimension);
     }
 }
 

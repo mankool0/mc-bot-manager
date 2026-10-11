@@ -26,10 +26,13 @@ public:
 
     // localX, localZ must be in range [0, 31]
     bool writeChunk(int localX, int localZ, const nbt::tag_compound& chunkNBT);
+    // Frees the chunk's sectors for reuse; the file does not shrink.
+    bool removeChunk(int localX, int localZ);
     nbt::tag_compound readChunk(int localX, int localZ);
     // The chunk's NBT bytes, decompressed but not parsed; empty when absent or unreadable.
     std::vector<uint8_t> readChunkRaw(int localX, int localZ);
     bool hasChunk(int localX, int localZ) const;
+    bool isEmpty() const;
 
     bool isValid() const { return file.isOpen(); }
     void flush();

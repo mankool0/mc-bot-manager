@@ -181,12 +181,13 @@ bool WorldExporter::exportEntityChunk(int chunkX, int chunkZ, const QString& dim
 }
 
 bool WorldExporter::exportEntityChunk(int chunkX, int chunkZ, const QVector<EntityData>& entities,
-                                       RegionFile& regionFile, int dataVersion) {
+                                       RegionFile& regionFile, int dataVersion, nbt::tag_list kept) {
     if (!regionFile.isValid()) {
         return false;
     }
 
-    nbt::tag_compound entityNBT = NBTSerializer::entitiesToNBT(chunkX, chunkZ, entities, dataVersion);
+    nbt::tag_compound entityNBT = NBTSerializer::entitiesToNBT(chunkX, chunkZ, entities, dataVersion,
+                                                               std::move(kept));
 
     int localX = chunkX & 31;
     int localZ = chunkZ & 31;

@@ -70,6 +70,8 @@ struct EntityData {
     mankool::mcbot::protocol::ItemStack itemStack;  // only populated when isItem == true
     int ownerEntityId = 0;
     QString ownerUuid;
+    bool shortLived = false;
+    QString customName;
 };
 
 // Hash function for ChunkPos to use in QHash

@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QDataStream>
 #include <QtEndian>
+#include <algorithm>
 #include <io/stream_writer.h>
 #include <io/stream_reader.h>
 #include <io/ozlibstream.h>
@@ -281,6 +282,30 @@ bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chu
     timestamps[index] = static_cast<uint32_t>(std::time(nullptr));
 
     return saveHeaders();
+}
+
+bool RegionFile::removeChunk(int localX, int localZ) {
+    if (readOnly || !isValid() || !headersLoaded) {
+        return false;
+    }
+
+    const int index = getHeaderIndex(localX, localZ);
+    const uint32_t location = locations[index];
+    if (location == 0) {
+        return true;
+    }
+    const uint32_t offset = (location >> 8) & 0xFFFFFF;
+    const uint32_t sectorCount = location & 0xFF;
+    if (offset >= 2 && sectorCount > 0) {
+        markSectorsFree(offset, sectorCount);
+    }
+    locations[index] = 0;
+    timestamps[index] = 0;
+    return saveHeaders();
+}
+
+bool RegionFile::isEmpty() const {
+    return std::all_of(locations.begin(), locations.end(), [](uint32_t location) { return location == 0; });
 }
 
 bool RegionFile::hasChunk(int localX, int localZ) const {

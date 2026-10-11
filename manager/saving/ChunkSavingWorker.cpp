@@ -6,7 +6,9 @@
 #include <QDir>
 #include <QFile>
 #include <QMetaObject>
+#include <QSaveFile>
 #include <QSet>
+#include <QtEndian>
 #include <algorithm>
 #include <io/stream_reader.h>
 #include <io/stream_writer.h>
@@ -67,6 +69,32 @@ static bool blockEntityHoldsItems(const QString& type) {
     };
     return kTypes.contains(type) || type.endsWith(QLatin1String("_shulker_box"));
 }
+
+static const QString kEntityDimensions[] = {
+    QStringLiteral("minecraft:overworld"), QStringLiteral("minecraft:the_nether"), QStringLiteral("minecraft:the_end"),
+};
+
+static int entityDimensionIndex(const QString& dimension) {
+    const auto it = std::find(std::begin(kEntityDimensions), std::end(kEntityDimensions), dimension);
+    return it == std::end(kEntityDimensions) ? -1 : static_cast<int>(it - std::begin(kEntityDimensions));
+}
+
+static QUuid uuidFromNbt(const nbt::tag_compound& entity) {
+    if (!entity.has_key("UUID", nbt::tag_type::Int_Array)) return {};
+    const auto& ints = static_cast<const nbt::tag_int_array&>(entity.at("UUID").get());
+    if (ints.size() != 4) return {};
+    char bytes[16];
+    for (int i = 0; i < 4; ++i) {
+        qToBigEndian<qint32>(ints.at(i), bytes + i * 4);
+    }
+    return QUuid::fromRfc4122(QByteArrayView(bytes, sizeof(bytes)));
+}
+
+// Entity index file: the magic, then records appended per flush. A set record is
+// 1, the uuid (16 bytes), dimension (1), chunk x and z (4 each, big-endian); a removal is 0, the uuid.
+static const QByteArray kEntityIndexMagic = QByteArrayLiteral("MCBMEIX1");
+static constexpr int kEntityIndexSetSize = 26;
+static constexpr int kEntityIndexRemoveSize = 17;
 
 static constexpr int kMaxOpenRegions = 16;
 static constexpr int kBacklogWarnChunks = 1000;
@@ -157,6 +185,12 @@ RegionFile* ChunkSavingWorker::openRegion(const QString& path) {
     }
     m_openRegions.emplace_back(path, std::move(region));
     return m_openRegions.back().second.get();
+}
+
+void ChunkSavingWorker::closeRegion(const QString& path) {
+    m_openRegions.erase(std::remove_if(m_openRegions.begin(), m_openRegions.end(),
+                                       [&path](const auto& open) { return open.first == path; }),
+                        m_openRegions.end());
 }
 
 void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities) {
@@ -259,25 +293,226 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
     region->flush();
 }
 
-void ChunkSavingWorker::processEntityChunk(int chunkX, int chunkZ, const QString& dimension,
-                                            const QVector<EntityData>& entities,
-                                            const QString& worldPath, int dataVersion) {
-    // Determine entities directory (version-aware: 26.1+ uses dimensions/ subdirectory)
-    if (dimension != "minecraft:the_nether" && dimension != "minecraft:overworld" && dimension != "minecraft:the_end") {
-        LogManager::log(QString("Cannot save entities with unknown dimension: %1").arg(dimension), LogManager::Warning);
+void ChunkSavingWorker::processEntityFlush(const QHash<DimChunkPos, QVector<EntityData>>& chunks,
+                                            const QSet<QString>& dead) {
+    if (!m_entityIndexLoaded) {
+        loadEntityIndex();
+    }
+
+    QSet<DimChunkPos> rewrite;
+    for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ++chunk) {
+        rewrite.insert(chunk.key());
+        const int dimension = entityDimensionIndex(chunk.key().dimension);
+        if (dimension < 0) continue;
+        const EntityChunkRef here{chunk.key().chunkX, chunk.key().chunkZ, static_cast<quint8>(dimension)};
+        for (const EntityData& entity : chunk.value()) {
+            const QUuid uuid = QUuid::fromString(entity.uuid);
+            if (uuid.isNull()) continue;
+            auto saved = m_entityIndex.constFind(uuid);
+            if (saved != m_entityIndex.constEnd()) {
+                if (*saved == here) continue;
+                rewrite.insert({kEntityDimensions[saved->dimension], saved->chunkX, saved->chunkZ});
+            }
+            setEntityLocation(uuid, &here);
+        }
+    }
+
+    QSet<QUuid> deadUuids;
+    for (const QString& id : dead) {
+        const QUuid uuid = QUuid::fromString(id);
+        deadUuids.insert(uuid);
+        auto saved = m_entityIndex.constFind(uuid);
+        if (saved != m_entityIndex.constEnd()) {
+            rewrite.insert({kEntityDimensions[saved->dimension], saved->chunkX, saved->chunkZ});
+            setEntityLocation(uuid, nullptr);
+        }
+    }
+
+    for (const DimChunkPos& pos : std::as_const(rewrite)) {
+        rewriteEntityChunk(pos, chunks.value(pos), deadUuids);
+    }
+    saveEntityIndex();
+}
+
+void ChunkSavingWorker::rewriteEntityChunk(const DimChunkPos& pos, const QVector<EntityData>& entities,
+                                           const QSet<QUuid>& dead) {
+    const int dimension = entityDimensionIndex(pos.dimension);
+    if (dimension < 0) {
+        LogManager::log(QString("Cannot save entities with unknown dimension: %1").arg(pos.dimension), LogManager::Warning);
         return;
     }
-    QString entitiesDir = WorldExporter::getDimensionPath(worldPath, dimension, dataVersion) + "/entities";
+    const EntityChunkRef here{pos.chunkX, pos.chunkZ, static_cast<quint8>(dimension)};
 
-    RegionFile* region = openRegion(QString("%1/r.%2.%3.mca").arg(entitiesDir).arg(chunkX >> 5).arg(chunkZ >> 5));
+    const QString path = QString("%1/entities/r.%2.%3.mca")
+        .arg(WorldExporter::getDimensionPath(m_worldPath, pos.dimension, m_dataVersion))
+        .arg(pos.chunkX >> 5).arg(pos.chunkZ >> 5);
+    if (entities.isEmpty() && !QFile::exists(path)) return;
+    RegionFile* region = openRegion(path);
     if (!region) {
-        LogManager::log(QString("Failed to open entity region for chunk (%1, %2) in %3")
-                       .arg(chunkX).arg(chunkZ).arg(entitiesDir), LogManager::Error);
+        LogManager::log(QString("Failed to open entity region %1 for chunk (%2, %3)")
+                       .arg(path).arg(pos.chunkX).arg(pos.chunkZ), LogManager::Error);
         return;
     }
 
-    WorldExporter::exportEntityChunk(chunkX, chunkZ, entities, *region, dataVersion);
+    QSet<QUuid> written;
+    for (const EntityData& entity : entities) {
+        written.insert(QUuid::fromString(entity.uuid));
+    }
+
+    const int localX = pos.chunkX & 31;
+    const int localZ = pos.chunkZ & 31;
+    nbt::tag_list kept(nbt::tag_type::Compound);
+    size_t onDisk = 0;
+    const bool hadRecord = region->hasChunk(localX, localZ);
+    if (hadRecord) {
+        nbt::tag_compound record = region->readChunk(localX, localZ);
+        if (record.has_key("Entities", nbt::tag_type::List)) {
+            auto& list = static_cast<nbt::tag_list&>(record.at("Entities").get());
+            if (list.el_type() == nbt::tag_type::Compound) {
+                onDisk = list.size();
+                for (auto& value : list) {
+                    auto& entity = static_cast<nbt::tag_compound&>(value.get());
+                    const QUuid uuid = uuidFromNbt(entity);
+                    if (!uuid.isNull()) {
+                        if (dead.contains(uuid) || written.contains(uuid)) continue;
+                        auto saved = m_entityIndex.constFind(uuid);
+                        if (saved == m_entityIndex.constEnd()) {
+                            // Saved before the index knew it; from now on this is its copy.
+                            setEntityLocation(uuid, &here);
+                        } else if (!(*saved == here)) {
+                            continue;
+                        }
+                    }
+                    kept.push_back(std::move(entity));
+                }
+            }
+        }
+    }
+
+    // Like vanilla, an emptied chunk loses its record: an empty list still costs a 4 KiB sector,
+    // and a region with nothing left costs its 8 KiB header.
+    if (entities.isEmpty() && kept.size() == 0) {
+        if (!hadRecord) return;
+        region->removeChunk(localX, localZ);
+        if (region->isEmpty()) {
+            closeRegion(path);
+            QFile::remove(path);
+        } else {
+            region->flush();
+        }
+        return;
+    }
+    if (entities.isEmpty() && kept.size() == onDisk) return;
+    WorldExporter::exportEntityChunk(pos.chunkX, pos.chunkZ, entities, *region, m_dataVersion, std::move(kept));
     region->flush();
+}
+
+void ChunkSavingWorker::setEntityLocation(const QUuid& uuid, const EntityChunkRef* where) {
+    m_entityIndexPending.append(char(where ? 1 : 0));
+    m_entityIndexPending.append(uuid.toRfc4122());
+    if (where) {
+        m_entityIndex.insert(uuid, *where);
+        char chunk[8];
+        qToBigEndian<qint32>(where->chunkX, chunk);
+        qToBigEndian<qint32>(where->chunkZ, chunk + 4);
+        m_entityIndexPending.append(char(where->dimension));
+        m_entityIndexPending.append(chunk, sizeof(chunk));
+    } else {
+        m_entityIndex.remove(uuid);
+    }
+    ++m_entityIndexPendingRecords;
+}
+
+void ChunkSavingWorker::loadEntityIndex() {
+    m_entityIndexLoaded = true;
+    QFile file(m_worldPath + "/mcbm_entity_index.bin");
+    if (!file.open(QIODevice::ReadOnly)) return;
+    const QByteArray data = file.readAll();
+
+    bool damaged = !data.startsWith(kEntityIndexMagic);
+    const char* p = data.constData() + kEntityIndexMagic.size();
+    const char* end = data.constData() + data.size();
+    while (!damaged && p < end) {
+        const bool set = *p == 1;
+        if ((*p != 0 && !set) || end - p < (set ? kEntityIndexSetSize : kEntityIndexRemoveSize)) {
+            damaged = true;
+            break;
+        }
+        const QUuid uuid = QUuid::fromRfc4122(QByteArrayView(p + 1, 16));
+        if (set) {
+            const quint8 dimension = static_cast<quint8>(p[17]);
+            if (dimension >= std::size(kEntityDimensions)) {
+                damaged = true;
+                break;
+            }
+            m_entityIndex.insert(uuid, {qFromBigEndian<qint32>(p + 18), qFromBigEndian<qint32>(p + 22), dimension});
+            p += kEntityIndexSetSize;
+        } else {
+            m_entityIndex.remove(uuid);
+            p += kEntityIndexRemoveSize;
+        }
+        ++m_entityIndexFileRecords;
+    }
+
+    // A crash mid-append leaves a partial record, and appending after it would misalign the rest.
+    if (damaged) {
+        LogManager::log(QString("Entity index for %1 is damaged; keeping the %2 entries read before the damage")
+                       .arg(m_worldPath).arg(m_entityIndex.size()), LogManager::Warning);
+        compactEntityIndex();
+    }
+}
+
+void ChunkSavingWorker::saveEntityIndex() {
+    if (m_entityIndexPendingRecords == 0) return;
+    if (m_entityIndexFileRecords + m_entityIndexPendingRecords > 2 * m_entityIndex.size() + 4096) {
+        compactEntityIndex();
+        return;
+    }
+
+    QFile file(m_worldPath + "/mcbm_entity_index.bin");
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        LogManager::log(QString("Failed to append to the entity index for %1: %2")
+                       .arg(m_worldPath, file.errorString()), LogManager::Error);
+        return;
+    }
+    if (file.size() == 0) {
+        file.write(kEntityIndexMagic);
+    }
+    if (file.write(m_entityIndexPending) != m_entityIndexPending.size()) {
+        LogManager::log(QString("Failed to append to the entity index for %1: %2")
+                       .arg(m_worldPath, file.errorString()), LogManager::Error);
+        file.close();
+        // The tail is now partial; the next load would stop there, so start the file over.
+        compactEntityIndex();
+        return;
+    }
+    m_entityIndexFileRecords += m_entityIndexPendingRecords;
+    m_entityIndexPending.clear();
+    m_entityIndexPendingRecords = 0;
+}
+
+void ChunkSavingWorker::compactEntityIndex() {
+    QByteArray data = kEntityIndexMagic;
+    data.reserve(kEntityIndexMagic.size() + m_entityIndex.size() * kEntityIndexSetSize);
+    char chunk[8];
+    for (auto it = m_entityIndex.cbegin(); it != m_entityIndex.cend(); ++it) {
+        data.append(char(1));
+        data.append(it.key().toRfc4122());
+        data.append(char(it->dimension));
+        qToBigEndian<qint32>(it->chunkX, chunk);
+        qToBigEndian<qint32>(it->chunkZ, chunk + 4);
+        data.append(chunk, sizeof(chunk));
+    }
+
+    QSaveFile file(m_worldPath + "/mcbm_entity_index.bin");
+    if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit()) {
+        LogManager::log(QString("Failed to write the entity index for %1: %2")
+                       .arg(m_worldPath, file.errorString()), LogManager::Error);
+        return;
+    }
+    m_entityIndexFileRecords = m_entityIndex.size();
+    m_entityIndexPending.clear();
+    m_entityIndexPendingRecords = 0;
 }
 
 void ChunkSavingWorker::processPlayerData(const PlayerSaveData& data, const QString& worldPath, int dataVersion) {
