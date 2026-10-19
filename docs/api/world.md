@@ -1229,6 +1229,34 @@ dimension filter) are omitted.
 **Raises:** `RuntimeError` if bot not found or not online, if a key is not a
 2-tuple, or if more than 4096 keys are passed in one call.
 
+## Entity NBT and Maps
+
+### `entity_nbt(bot_name="", since=0)`
+
+Entities whose full NBT changed since `since`, a token from a previous call (`0`:
+every entity that has any). The client saves an entity's NBT when it first sees
+it and looks again every second for everything that is not alive (item frames,
+paintings, armor stands, vehicles, displays) and every 10 s for mobs, sending it
+only when it changed. Players and short-lived entities (items, XP orbs,
+projectiles) carry none.
+
+**Returns:** `dict` with `token` (pass as `since` next time), `dimension`,
+`entities` - each a dict with `uuid`, `type`, `x`, `y`, `z`, `living` and `nbt`
+(`bytes`: the compound as the client saved it, no root header and no `"id"`) -
+and `died`, the uuids seen dying since `since`.
+
+### `maps(bot_name="", since=0)`
+
+Map items whose data reached this bot since `since` (`0`: all of them): maps it
+holds and maps in item frames near it.
+
+**Returns:** `dict` with `token` and `maps` - each a dict with `map_id`,
+`scale`, `locked`, `dimension`, `colors` (`bytes`, 16384, 128x128) and
+`center`: `(x, z)`, or `None`. The server never sends a map's centre; it is
+worked out when a bot holding the map sees its own player marker on it (and only
+when that is the one player marker shown). Without it, `dimension` is the one the
+bot was in when the map arrived, not necessarily the map's.
+
 ## Usage Examples
 
 ### Mining Helper

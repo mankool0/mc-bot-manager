@@ -207,4 +207,16 @@ message MapDataMessage {
   int32 patch_width = 8;
   int32 patch_height = 9;
   bytes patch_colors = 10;    // patch_width * patch_height color bytes
+  // The packet carried a marker list; without it the markers are as before.
+  bool has_decorations = 11;
+  repeated MapDecoration decorations = 12;
+}
+
+// One marker on a map, as ClientboundMapItemDataPacket carries it.
+message MapDecoration {
+  string type = 1;            // "minecraft:player", "minecraft:frame", ...
+  int32 x = 2;                // -128..127, half-pixels from the map's centre
+  int32 z = 3;
+  int32 rot = 4;              // 0-15
+  string name = 5;            // Plain text, empty when unnamed
 }

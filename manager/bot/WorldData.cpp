@@ -3,6 +3,7 @@
 #include <QtMath>
 #include <QRegularExpression>
 #include <algorithm>
+#include <cmath>
 
 // ============================================================================
 // ChunkSection Implementation
@@ -474,8 +475,19 @@ static QString entityKey(const EntityData& e)
 }
 
 void BotWorldData::updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed,
-                                  const QString& dimension)
+                                  const QString& dimension, const QVector<int>& died)
 {
+    // Named before anything is removed: the id only means something while it is tracked.
+    for (int id : died) {
+        auto it = entityIdToUuid.constFind(id);
+        if (it != entityIdToUuid.constEnd()) {
+            diedLog.emplace_back(++entityNbtSeq, *it);
+        }
+    }
+    while (diedLog.size() > 4096) {
+        diedLog.pop_front();
+    }
+
     // A client tracks exactly one level, so a batch from another dimension means
     // everything cached belongs to the one the bot just left.
     if (!dimension.isEmpty() && dimension != entityDimension) {
@@ -497,7 +509,15 @@ void BotWorldData::updateEntities(const QVector<EntityData>& upserted, const QVe
             entityIdToUuid.remove(existing->entityId);
         }
 
-        entities[key] = e;
+        EntityData stored = e;
+        if (!stored.rawNbt.isEmpty()) {
+            stored.nbtSeq = ++entityNbtSeq;
+        } else if (existing != entities.constEnd()) {
+            // The client sends NBT only when it changed: the last one still stands.
+            stored.rawNbt = existing->rawNbt;
+            stored.nbtSeq = existing->nbtSeq;
+        }
+        entities[key] = stored;
         entityIdToUuid[e.entityId] = key;
     }
 
@@ -542,6 +562,87 @@ QVector<EntityData> BotWorldData::findEntitiesNear(double x, double y, double z,
     return result;
 }
 
+BotWorldData::EntityNbtChanges BotWorldData::entityNbtSince(quint64 since) const
+{
+    EntityNbtChanges out;
+    out.token = entityNbtSeq;
+    out.dimension = entityDimension;
+    for (const auto& e : entities) {
+        if (e.nbtSeq > since && !e.rawNbt.isEmpty()) {
+            out.entities.append(e);
+        }
+    }
+    for (const auto& [seq, uuid] : diedLog) {
+        if (seq > since) {
+            out.died.append(uuid);
+        }
+    }
+    return out;
+}
+
+void BotWorldData::updateMap(int mapId, int scale, bool locked, const QString& dimension, int patchX, int patchZ,
+                             int patchW, int patchH, const QByteArray& patch,
+                             const QVector<MapDecorationData>* decorations, std::optional<QVector3D> holder)
+{
+    MapData& m = maps[mapId];
+    m.scale = scale;
+    m.locked = locked;
+    if (!m.center && !dimension.isEmpty()) {
+        m.dimension = dimension;
+    }
+    if (!patch.isEmpty()) {
+        if (m.colors.size() != 16384) {
+            m.colors = QByteArray(16384, 0);
+        }
+        for (int dz = 0; dz < patchH; ++dz) {
+            for (int dx = 0; dx < patchW; ++dx) {
+                const int src = dz * patchW + dx;
+                const int dst = (patchZ + dz) * 128 + (patchX + dx);
+                if (src < patch.size() && dst >= 0 && dst < 16384) {
+                    m.colors[dst] = patch[src];
+                }
+            }
+        }
+    }
+    // A player marker is only drawn for a player standing on the map in its dimension, and
+    // each player carrying the map gets one - so only a lone marker is certainly this bot's.
+    // Vanilla puts it at round((pos - centre) * 2 / 2^scale) and centres every map on a grid
+    // of 128 * 2^scale offset by half a map less 64, which the estimate snaps to exactly.
+    if (decorations && holder && !m.center) {
+        const MapDecorationData* own = nullptr;
+        int players = 0;
+        for (const auto& d : *decorations) {
+            if (d.type == QLatin1String("minecraft:player")) {
+                ++players;
+                own = &d;
+            }
+        }
+        if (players == 1) {
+            const int unit = 1 << std::clamp(scale, 0, 4);
+            const int span = 128 * unit;
+            auto snap = [&](double pos, int marker) {
+                const double estimate = pos - marker * unit / 2.0;
+                const double k = std::round((estimate - (span / 2 - 64)) / span);
+                return static_cast<int>(k) * span + span / 2 - 64;
+            };
+            m.center = QPoint(snap(holder->x(), own->x), snap(holder->z(), own->z));
+        }
+    }
+    m.seq = ++mapSeq;
+}
+
+BotWorldData::MapChanges BotWorldData::mapsSince(quint64 since) const
+{
+    MapChanges out;
+    out.token = mapSeq;
+    for (auto it = maps.cbegin(); it != maps.cend(); ++it) {
+        if (it->seq > since && it->colors.size() == 16384) {
+            out.maps.append({it.key(), *it});
+        }
+    }
+    return out;
+}
+
 void BotWorldData::clearEntities()
 {
     entities.clear();
@@ -554,6 +655,9 @@ void BotWorldData::clearWorldState()
     chunks.clear();
     clearEntities();
     blockEntities.clear();
+    // Another server's maps share ids with this one's.
+    maps.clear();
+    diedLog.clear();
 }
 
 void BotWorldData::updateBlockEntity(const BlockEntityData& be)

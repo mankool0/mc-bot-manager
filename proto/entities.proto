@@ -28,6 +28,10 @@ message EntityData {
   // Items, XP orbs, projectiles and the like: rarely still there once out of view.
   bool short_lived = 21;
   string custom_name = 22; // Plain text, empty when unnamed
+  // The entity's full NBT as the client holds it (saveWithoutId: no "id"), a compound payload
+  // with no root header. Only when it changed since the last one sent for this entity, so
+  // empty means "as before"; never for players or short-lived entities.
+  bytes nbt = 23;
 }
 
 message EntityUpdate {

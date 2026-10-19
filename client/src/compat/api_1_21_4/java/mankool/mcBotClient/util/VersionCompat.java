@@ -1,5 +1,7 @@
 package mankool.mcBotClient.util;
 
+import net.minecraft.world.entity.Entity;
+import net.minecraft.nbt.CompoundTag;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.authlib.GameProfile;
@@ -163,5 +165,10 @@ public class VersionCompat {
 
     public static boolean isKeyDown(Window window, int keyCode) {
         return InputConstants.isKeyDown(window.getWindow(), keyCode);
+    }
+
+    /** The entity's NBT as the client holds it, without its "id", like a save of a passenger. */
+    public static CompoundTag saveEntity(Entity entity) {
+        return entity.saveWithoutId(new CompoundTag());
     }
 }

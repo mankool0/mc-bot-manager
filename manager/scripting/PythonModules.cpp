@@ -774,6 +774,23 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
               py::arg("bot_name") = "",
               py::arg("dimension") = "",
               py::arg("digest_prefix") = py::bytes());
+    def_action("entity_nbt", &PythonAPI::entityNbt,
+               "Entities whose full NBT changed since `since` (a token from a previous call; 0 "
+               "means every entity that has any). Returns a dict: token, dimension, entities - a "
+               "list of dicts with uuid, type, x, y, z, living and nbt (the compound as the "
+               "client saved it, no root header and no \"id\") - and died, the uuids seen dying "
+               "since. Players and short-lived entities (items, XP, projectiles) carry none; "
+               "mobs' is refreshed every 10 s, everything else's every second.",
+               py::arg("bot_name") = "",
+               py::arg("since") = 0);
+    def_action("maps", &PythonAPI::getMaps,
+               "Map items whose data reached this bot since `since` (a token; 0 means all). "
+               "Returns a dict: token, maps - a list of dicts with map_id, scale, locked, "
+               "dimension, colors (16384 bytes, 128x128) and center ((x, z), or None until a bot "
+               "holding the map has seen its own marker on it; the server never sends it). "
+               "Without a center, dimension is where the map was seen, not where it is.",
+               py::arg("bot_name") = "",
+               py::arg("since") = 0);
     def_action("export_extras", &PythonAPI::exportExtras,
                "Serialize chunk columns' extras into one uncompressed export payload: u32 frame "
                "count, then per column u16 dimension length, dimension, i32 chunk_x, i32 "
