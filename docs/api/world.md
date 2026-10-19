@@ -966,7 +966,8 @@ Get the chunk sections whose content changed since a previous call.
 
 Change tracking is fed by chunk loads, block updates and chunk unloads. A
 freshly loaded chunk counts as changed in all its sections; light, biome and
-block entity changes do not count.
+block entity changes do not count (`changed_extras` reports biomes and block
+entities).
 
 **Parameters:**
 
@@ -1125,9 +1126,11 @@ content and prefix.
 - `dimension` (`str`, optional) - Only export chunks of this dimension. Empty
   string exports all
 
-**Returns:** `bytes` - The framed payload. Sections that are no longer loaded
-(or fail the dimension filter) are silently omitted, so the frame count can be
-lower than `len(keys)`; callers that need exactness should compare counts
+**Returns:** `bytes` - The framed payload. A section whose chunk has unloaded is
+exported from the copy kept at the unload (for about 30 s); sections with no
+copy left (or that fail the dimension filter) are silently omitted, so the frame
+count can be lower than `len(keys)`; callers that need exactness should compare
+counts
 
 **Raises:** `RuntimeError` if bot not found or not online, if a key is not a
 3-tuple, or if more than 4096 keys are passed in one call (batch instead - one
@@ -1138,6 +1141,93 @@ changes = world.changed_sections("MyBot", digest=True, limit=4096)
 payload = world.export_sections([s.key for s in changes], bot_name="MyBot")
 # POST payload wherever it needs to go
 ```
+
+## Column Extras
+
+What a section blob leaves out, per chunk column: the biomes of each of its
+sections and the NBT of every block entity in it - sign text, banner patterns,
+heads, spawners, and container contents a bot has seen. The three functions
+mirror the section ones, keyed by `(chunk_x, chunk_z)`.
+
+A column's extras change when it loads, when a block entity's data arrives or
+changes (an edited sign), when a block entity is removed (its block broken or
+replaced by another block), and when a bot opens a container. Block changes that
+leave the block entities alone do not count.
+
+**Canonical form**, frozen like the section blob's (a receiver can re-derive
+and check the digest):
+
+```
+u8 format (1)
+u8 section_count
+per section, ascending section_y; a section with no biome data is left out:
+  i8 section_y
+  u8 biome_count                                   1..64
+  [u16le name_len, utf8 name] * biome_count        referenced only, sorted bytewise
+  u8 index * 64, only when biome_count > 1         index = y*16 + z*4 + x
+u32le block_entity_count
+per block entity, sorted by (y, z, x):
+  i32le x, i32le y, i32le z
+  u8 flags                                         bit 0: contents seen
+  u32le nbt_len, nbt                               compound payload, no root header
+```
+
+The NBT is the client's copy of the block entity, re-serialized so its keys are
+sorted bytewise at every level, with `Items` replaced by what a bot saw when it
+opened it. *Contents seen* means a bot opened it, so `Items` is everything in it
+and an empty list means empty; without the flag a container's contents are not
+known (the server never sends them in chunk data).
+
+### `changed_extras(bot_name="", since=None, dimension="", digest=False, limit=0, digest_prefix=b"")`
+
+Get the chunk columns whose extras changed since a previous call. Parameters,
+tokens and `.dropped` work exactly as in `changed_sections`, with column keys.
+
+**Returns:** `ColumnChanges` with `.token`, `.truncated`, `.columns` (iterating
+the `ColumnChanges` iterates these), `.dropped` (`list[tuple[int, int]]`, at most
+4096), `.dropped_total` and `.dropped_incomplete`. Each `ColumnChange` has
+`.chunk_x`, `.chunk_z`, `.key` (`(chunk_x, chunk_z)`) and `.digest` (32 bytes,
+BLAKE2b-256 of `digest_prefix` + the canonical form; `None` without
+`digest=True`).
+
+### `get_extras(chunk_x, chunk_z, bot_name="", dimension="", digest_prefix=b"")`
+
+Get one column's extras in canonical form, or `None` if the column is not loaded
+and no copy of it was kept at its unload.
+
+**Returns:** `ColumnExtras` with:
+
+- `.blob` (`bytes`) - The canonical encoding, as `export_extras` frames it
+- `.digest` (`bytes`) - BLAKE2b-256 of `digest_prefix` + `.blob`
+- `.dimension` (`str`)
+- `.biomes` (`list[tuple[int, list[str], bytes]]`) - `(section_y, palette,
+  indices)`; `indices` is 64 bytes, or empty for a one-biome section
+- `.block_entities` (`list[tuple[int, int, int, bool, bytes]]`) - `(x, y, z,
+  contents_seen, nbt)`
+
+```python
+extras = world.get_extras(10, -3)
+for x, y, z, seen, nbt in extras.block_entities:
+    print(x, y, z, "opened" if seen else "", len(nbt), "bytes of NBT")
+```
+
+### `export_extras(keys, bot_name="", dimension="")`
+
+Serialize columns' extras into one upload payload: `u32le` frame count, then per
+column `u16le` dimension length, dimension, `i32le chunk_x`, `i32le chunk_z`,
+`u32le` blob length and the canonical blob. Uncompressed.
+
+**Parameters:**
+
+- `keys` (`list[tuple]`) - Columns, as `(chunk_x, chunk_z)`
+- `bot_name` (`str`, optional) - Bot name, defaults to current bot
+- `dimension` (`str`, optional) - Only export chunks of this dimension
+
+**Returns:** `bytes`. Columns not loaded and with no kept copy (or that fail the
+dimension filter) are omitted.
+
+**Raises:** `RuntimeError` if bot not found or not online, if a key is not a
+2-tuple, or if more than 4096 keys are passed in one call.
 
 ## Usage Examples
 

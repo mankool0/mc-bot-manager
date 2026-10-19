@@ -10,6 +10,7 @@
 #include "scripting/ScriptMessageBus.h"
 #include "ui/ScriptsWidget.h"
 #include "scripting/PythonAPI.h"
+#include "bot/ColumnExtrasObservation.h"
 #include "world/MojangMappings.h"
 #include <io/stream_reader.h>
 #include <nbt_tags.h>
@@ -659,8 +660,13 @@ void BotManager::resetWorldState(BotInstance* bot)
             const ChunkData *chunk = bot->worldData.getChunk(chunkX, chunkZ);
             return chunk ? chunk->dimension.toUtf8() : QByteArray();
         });
+        bot->extrasDirty->clear([bot](qint32 chunkX, qint32 chunkZ) {
+            const ChunkData *chunk = bot->worldData.getChunk(chunkX, chunkZ);
+            return chunk ? chunk->dimension.toUtf8() : QByteArray();
+        });
         // Otherwise a poll after the reconnect would read the previous world's sections.
         bot->retainedSections->clear();
+        bot->retainedExtras->clear();
         bot->worldData.clearWorldState();
     }
 
@@ -2869,13 +2875,28 @@ void BotManager::markWorldDirty(BotInstance *bot, WorldChange kind, const QVecto
     }
 
     // Block entity NBT is excluded from the section encoding, so it never invalidates a digest.
-    if (kind != WorldChange::BlockEntity) {
+    if (kind == WorldChange::Blocks || kind == WorldChange::ChunkLoad) {
         bot->sectionDirty->markAll(sections);
+    }
+
+    // A block change alone leaves the extras as they were: where it adds or removes a block
+    // entity, the handler reports that as a BlockEntity change of its own.
+    if (kind != WorldChange::Blocks) {
+        QVector<SectionKey> columns;
+        QSet<SectionColumnKey> seen;
+        for (const SectionKey &key : sections) {
+            if (!seen.contains({key.chunkX, key.chunkZ})) {
+                seen.insert({key.chunkX, key.chunkZ});
+                columns.append({key.chunkX, key.chunkZ, 0});
+            }
+        }
+        bot->extrasDirty->markAll(columns);
     }
 
     // A chunk load hands the saver the full column directly (saveChunkAsync), so routing it
     // through the deferred dirty set as well would only save the same data twice.
-    if (kind != WorldChange::ChunkLoad && bot->saveWorldToDisk && bot->worldAutoSaver) {
+    if (kind != WorldChange::ChunkLoad && kind != WorldChange::Contents && bot->saveWorldToDisk
+        && bot->worldAutoSaver) {
         for (const SectionKey &key : sections) {
             bot->worldAutoSaver->markBlockChunkDirty(key.chunkX, key.chunkZ, bot->dimension);
         }
@@ -2906,7 +2927,10 @@ void BotManager::unloadColumn(BotInstance *bot, qint32 chunkX, qint32 chunkZ)
             }
         }
     }
+    ColumnExtrasObservation::retainOnUnload(*bot->extrasDirty, bot->worldData, *bot->retainedExtras, chunkX, chunkZ,
+                                            RetainedSections::nowMs());
     bot->sectionDirty->dropColumn(chunkX, chunkZ, dimension);
+    bot->extrasDirty->dropColumn(chunkX, chunkZ, dimension);
     bot->worldData.unloadChunk(chunkX, chunkZ);
 }
 
@@ -3023,13 +3047,14 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
 
                 // If we already have items for this block entity (container opened earlier this
                 // session), preserve them. The server never sends container contents in chunk data.
+                // Serialization patches them into this fresh rawNbt; with none known,
+                // processChunk checks disk.
                 auto existingIt = existingMap.find(posKey);
-                if (existingIt != existingMap.end() && !existingIt->items.isEmpty()) {
+                if (existingIt != existingMap.end() && (existingIt->contentsSeen || !existingIt->items.isEmpty())) {
                     be.items = existingIt->items;
-                    // rawNbt stays empty so the structured items path is used in serialization
-                } else {
-                    be.rawNbt = beBytes;  // No known items; processChunk will check disk
+                    be.contentsSeen = existingIt->contentsSeen;
                 }
+                be.rawNbt = beBytes;
 
                 bot->worldData.updateBlockEntity(be);
             } catch (...) {}
@@ -3093,6 +3118,27 @@ static bool isAirState(const QString &blockState)
         || blockState == QLatin1String("minecraft:void_air");
 }
 
+static QStringView blockName(const QString &blockState)
+{
+    const qsizetype bracket = blockState.indexOf(QLatin1Char('['));
+    return bracket >= 0 ? QStringView(blockState).left(bracket) : QStringView(blockState);
+}
+
+// Under the world write lock, after setBlock: a block entity outlives a change of state (a
+// chest becoming a double chest, a furnace lighting) but not a change of block. Air removes
+// it; so does another block, which the client follows with a block entity update of its own
+// if the new block has one. True when one was removed.
+static bool dropReplacedBlockEntity(BotInstance *bot, int x, int y, int z, const std::optional<QString> &before,
+                                    const QString &after)
+{
+    const bool gone = isAirState(after) || (before && blockName(*before) != blockName(after));
+    if (!gone || !bot->worldData.getBlockEntity(x, y, z, bot->dimension)) {
+        return false;
+    }
+    bot->worldData.removeBlockEntity(x, y, z, bot->dimension);
+    return true;
+}
+
 void BotManager::handleBlockUpdate(int connectionId, const mankool::mcbot::protocol::BlockUpdateMessage &blockUpdate)
 {
     instance().handleBlockUpdateImpl(connectionId, blockUpdate);
@@ -3114,6 +3160,7 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
     int y = blockUpdate.position().y();
     int z = blockUpdate.position().z();
     uint32_t stateId = blockUpdate.stateId();
+    bool blockEntityGone = false;
     auto blockState = bot->blockRegistry->getBlockState(stateId);
 
     QString blockStr = blockState.value_or("minecraft:air");
@@ -3130,10 +3177,9 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
         // overwrites the real chunk on disk.
         chunkLoaded = bot->worldData.isChunkLoaded(x >> 4, z >> 4);
         if (chunkLoaded) {
+            const std::optional<QString> before = bot->worldData.getBlock(x, y, z);
             bot->worldData.setBlock(x, y, z, blockStr);
-            if (isAirState(blockStr)) {
-                bot->worldData.removeBlockEntity(x, y, z, bot->dimension);
-            }
+            blockEntityGone = dropReplacedBlockEntity(bot, x, y, z, before, blockStr);
         }
     }
 
@@ -3146,6 +3192,9 @@ void BotManager::handleBlockUpdateImpl(int connectionId, const mankool::mcbot::p
     }
 
     markWorldDirty(bot, WorldChange::Blocks, {{x >> 4, z >> 4, y >> 4}});
+    if (blockEntityGone) {
+        markWorldDirty(bot, WorldChange::BlockEntity, {{x >> 4, z >> 4, y >> 4}});
+    }
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Block update at (%2, %3, %4): %5")
@@ -3200,8 +3249,9 @@ void BotManager::handleBlockEntityUpdateImpl(int connectionId, const mankool::mc
         // Items known from a container open stay: they come from the container packet and are
         // fresher than anything in this snapshot.
         auto existing = bot->worldData.getBlockEntity(be.x, be.y, be.z, be.dimension);
-        if (existing.has_value() && !existing->items.isEmpty()) {
+        if (existing.has_value() && (existing->contentsSeen || !existing->items.isEmpty())) {
             be.items = existing->items;
+            be.contentsSeen = existing->contentsSeen;
         }
         bot->worldData.updateBlockEntity(be);
     }
@@ -3238,6 +3288,7 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
 
     QVector<SectionKey> changed;
     changed.reserve(updateCount);
+    QVector<SectionKey> blockEntitiesGone;
     {
         QWriteLocker locker(bot->worldDataLock.get());
         for (int i = 0; i < updateCount; ++i) {
@@ -3252,18 +3303,19 @@ void BotManager::handleMultiBlockUpdateImpl(int connectionId, const mankool::mcb
             if (!blockState) {
                 LogManager::log(QString("[%1] Unknown block state ID %2 in multi-block update, defaulting to air")
                                .arg(bot->name).arg(stateId), LogManager::Warning);
-                bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), "minecraft:air");
-            } else {
-                bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), *blockState);
             }
-            if (!blockState || isAirState(*blockState)) {
-                bot->worldData.removeBlockEntity(pos.x(), pos.y(), pos.z(), bot->dimension);
+            const QString blockStr = blockState.value_or(QStringLiteral("minecraft:air"));
+            const std::optional<QString> before = bot->worldData.getBlock(pos.x(), pos.y(), pos.z());
+            bot->worldData.setBlock(pos.x(), pos.y(), pos.z(), blockStr);
+            if (dropReplacedBlockEntity(bot, pos.x(), pos.y(), pos.z(), before, blockStr)) {
+                blockEntitiesGone.append({pos.x() >> 4, pos.z() >> 4, pos.y() >> 4});
             }
             changed.append({pos.x() >> 4, pos.z() >> 4, pos.y() >> 4});
         }
     }
 
     markWorldDirty(bot, WorldChange::Blocks, changed);
+    markWorldDirty(bot, WorldChange::BlockEntity, blockEntitiesGone);
 
     if (bot->debugLogging) {
         LogManager::log(QString("[%1] Multi-block update: %2 blocks")
@@ -3348,12 +3400,15 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
         }
     }
 
-    // Save block entity or ender chest contents when container opens
-    if (isOpen && bot->saveWorldToDisk && bot->worldAutoSaver) {
+    // An open container's contents: into its block entity in world data, where
+    // world.changed_extras reads them, and to disk when the world is being saved. The ender
+    // chest is the bot's own, so it only goes to disk.
+    const bool savingWorld = bot->saveWorldToDisk && bot->worldAutoSaver;
+    if (isOpen) {
         CT type = containerUpdate.type();
 
         // Handle ender chest separately (stored in player data)
-        if (type == CT::ENDER_CHEST && bot->worldSaveSettings.savePlayerData) {
+        if (savingWorld && type == CT::ENDER_CHEST && bot->worldSaveSettings.savePlayerData) {
             QVector<mankool::mcbot::protocol::ItemStack> items;
             for (const auto& item : containerUpdate.items()) {
                 if (item.slot() < 27) {
@@ -3366,7 +3421,8 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
         }
 
         // Handle block entities (containers with a world position)
-        if (bot->worldSaveSettings.saveBlockEntities && containerUpdate.hasPosition()) {
+        if (containerUpdate.hasPosition()) {
+            const bool saveToDisk = savingWorld && bot->worldSaveSettings.saveBlockEntities;
             // Map container type to block entity id and slot count
             struct ContainerInfo { QString id; int maxSlots; };
             static const QHash<int, ContainerInfo> containerMap = {
@@ -3382,15 +3438,17 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
                 {static_cast<int>(CT::BEACON),        {"minecraft:beacon",        1}},
             };
 
-            // Helper: update a block entity and re-save its chunk
-            auto saveBlockEntity = [&](const BlockEntityData& be) {
+            // Helper: update a block entity and re-save its chunk. The items are everything in it:
+            // the client sends every non-empty stack, so none means empty.
+            auto saveBlockEntity = [&](BlockEntityData be) {
+                be.contentsSeen = true;
                 int chunkX = be.x >> 4;
                 int chunkZ = be.z >> 4;
                 {
                     QWriteLocker locker(bot->worldDataLock.get());
                     bot->worldData.updateBlockEntity(be);
                 }
-                {
+                if (saveToDisk) {
                     QReadLocker locker(bot->worldDataLock.get());
                     const ChunkData* chunk = bot->worldData.getChunk(chunkX, chunkZ);
                     if (chunk) {
@@ -3398,6 +3456,7 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
                         bot->worldAutoSaver->saveChunkAsync(*chunk, bes);
                     }
                 }
+                markWorldDirty(bot, WorldChange::Contents, {{chunkX, chunkZ, be.y >> 4}});
             };
 
             auto it = containerMap.find(static_cast<int>(type));

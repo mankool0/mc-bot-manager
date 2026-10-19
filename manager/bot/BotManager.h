@@ -38,6 +38,7 @@
 #include "WorldData.h"
 #include "SectionDirtyTracker.h"
 #include "RetainedSections.h"
+#include "RetainedExtras.h"
 #include "world/BlockRegistry.h"
 #include "world/ItemRegistry.h"
 #include "saving/WorldAutoSaver.h"
@@ -395,6 +396,11 @@ struct BotInstance : public BotConfig {
     // Sections of unloaded columns, still readable by the section API for a while.
     // Under worldDataLock.
     std::shared_ptr<RetainedSections> retainedSections = std::make_shared<RetainedSections>();
+    // Which columns' extras (biomes, block entities) changed, for world.changed_extras(); one
+    // entry per column, at section_y 0. Same rules as sectionDirty.
+    std::shared_ptr<SectionDirtyTracker> extrasDirty = std::make_shared<SectionDirtyTracker>();
+    // Extras of unloaded columns, under worldDataLock.
+    std::shared_ptr<RetainedExtras> retainedExtras = std::make_shared<RetainedExtras>();
 
     // Recipe registry
     RecipeRegistry recipeRegistry;
@@ -663,12 +669,14 @@ private:
     void handleScreenUpdateImpl(int connectionId, const mankool::mcbot::protocol::ScreenDump &screen);
 
     // What a world mutation invalidates. Block entities are not part of the section
-    // digest, and a chunk load hands the saver the whole column directly instead of
-    // going through its dirty set, so the two trackers do not always both apply.
+    // digest but are part of the column's extras, and a chunk load hands the saver the whole
+    // column directly instead of going through its dirty set, so the trackers do not always
+    // all apply.
     enum class WorldChange {
         Blocks,       // block states changed: section digests and the on-disk column both go stale
-        BlockEntity,  // block entity NBT only: resave the column, digests are unaffected
-        ChunkLoad,    // column (re)loaded: every section is stale, the saver got the chunk directly
+        BlockEntity,  // block entity NBT only: resave the column and its extras, digests are unaffected
+        ChunkLoad,    // column (re)loaded: every section and its extras are stale, the saver got the chunk directly
+        Contents,     // a container's contents were seen: its extras are stale, the saver got the chunk directly
     };
 
     // Single funnel for world mutations. Every dirty-tracking consumer is marked here so

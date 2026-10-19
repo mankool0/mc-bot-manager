@@ -2,6 +2,7 @@
 #define WORLDDATA_H
 
 #include <QHash>
+#include <QSet>
 #include <QMap>
 #include <QByteArray>
 #include <QString>
@@ -17,6 +18,9 @@ struct BlockEntityData {
     QString type;                                        // e.g. "minecraft:chest"
     QVector<mankool::mcbot::protocol::ItemStack> items;
     QByteArray rawNbt;  // Full binary compound payload from chunk load; patched with items if container was opened
+    // A bot opened it, so `items` is its whole contents and an empty list means empty. Without
+    // it, no items means not known: the server never sends a container's contents in chunk data.
+    bool contentsSeen = false;
 };
 
 struct MapData {
@@ -180,6 +184,10 @@ public:
     std::optional<BlockEntityData> getBlockEntity(int x, int y, int z, const QString& dimension) const;
     QVector<BlockEntityData> getBlockEntitiesInChunk(int chunkX, int chunkZ, const QString& dimension) const;
     QVector<BlockEntityData> getBlockEntitiesInDimension(const QString& dimension) const;
+    // One pass over every block entity for a whole batch of columns, where getBlockEntitiesInChunk
+    // would scan them all once per column.
+    QHash<ChunkPos, QVector<BlockEntityData>> getBlockEntitiesInColumns(const QSet<ChunkPos>& columns,
+                                                                        const QString& dimension) const;
 
 private:
     QHash<ChunkPos, ChunkData> chunks;

@@ -562,8 +562,8 @@ void BotWorldData::updateBlockEntity(const BlockEntityData& be)
 
     // When a container is opened we get items but no rawNbt. Preserve the rawNbt that
     // arrived with the chunk load so blockEntityToNBT can patch items into it rather
-    // than falling back to the stripped structured path.
-    if (!be.items.isEmpty() && be.rawNbt.isEmpty()) {
+    // than falling back to the stripped structured path - an empty one included.
+    if ((be.contentsSeen || !be.items.isEmpty()) && be.rawNbt.isEmpty()) {
         auto it = blockEntities.find(key);
         if (it != blockEntities.end() && !it->rawNbt.isEmpty()) {
             BlockEntityData merged = be;
@@ -593,6 +593,22 @@ QVector<BlockEntityData> BotWorldData::getBlockEntitiesInDimension(const QString
     QVector<BlockEntityData> result;
     for (const auto& be : blockEntities) {
         if (be.dimension == dimension) result.append(be);
+    }
+    return result;
+}
+
+QHash<ChunkPos, QVector<BlockEntityData>> BotWorldData::getBlockEntitiesInColumns(const QSet<ChunkPos>& columns,
+                                                                                 const QString& dimension) const
+{
+    QHash<ChunkPos, QVector<BlockEntityData>> result;
+    if (columns.isEmpty()) {
+        return result;
+    }
+    for (const auto& be : blockEntities) {
+        const ChunkPos column(be.x >> 4, be.z >> 4);
+        if (be.dimension == dimension && columns.contains(column)) {
+            result[column].append(be);
+        }
     }
     return result;
 }

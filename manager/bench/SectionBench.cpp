@@ -17,10 +17,13 @@
 // per column, non-uniform ones below the roof with 5-20 palette entries, the uniform air
 // above it, and a share of uniform netherrack and lava.
 
+#include "bot/ColumnExtrasObservation.h"
+#include "bot/RetainedExtras.h"
 #include "bot/RetainedSections.h"
 #include "bot/SectionDirtyTracker.h"
 #include "bot/SectionObservation.h"
 #include "bot/WorldData.h"
+#include "world/ColumnExtrasCodec.h"
 #include "world/SectionCodec.h"
 #include "world/SectionCodecPrimitives.h"
 #include "scripting/PythonAPI.h"
@@ -1365,6 +1368,233 @@ results = [(t,) + run(t) for t in (1, 10)]
     g_pyBots = nullptr;
 }
 
+// ---------------------------------------------------------------- column extras
+
+const QByteArray kExtrasPrefix = QByteArray("hiveext1\0", 9);
+
+// Big-endian NBT payload pieces, to hand the codec bytes in a chosen key order the way the
+// client's HashMap order would.
+struct NbtWriter {
+    QByteArray out;
+
+    void name(char type, const char *key)
+    {
+        out.append(type);
+        const quint16 n = static_cast<quint16>(std::strlen(key));
+        out.append(static_cast<char>(n >> 8));
+        out.append(static_cast<char>(n & 0xff));
+        out.append(key);
+    }
+    NbtWriter &str(const char *key, const char *value)
+    {
+        name(8, key);
+        const quint16 n = static_cast<quint16>(std::strlen(value));
+        out.append(static_cast<char>(n >> 8));
+        out.append(static_cast<char>(n & 0xff));
+        out.append(value);
+        return *this;
+    }
+    NbtWriter &i32(const char *key, qint32 v)
+    {
+        name(3, key);
+        for (int shift = 24; shift >= 0; shift -= 8) {
+            out.append(static_cast<char>((static_cast<quint32>(v) >> shift) & 0xff));
+        }
+        return *this;
+    }
+    NbtWriter &i8(const char *key, qint8 v)
+    {
+        name(1, key);
+        out.append(static_cast<char>(v));
+        return *this;
+    }
+    QByteArray end()
+    {
+        out.append('\0');
+        return out;
+    }
+};
+
+BlockEntityData signAt(qint32 x, qint32 y, qint32 z, bool sortedOrder)
+{
+    BlockEntityData be;
+    be.x = x;
+    be.y = y;
+    be.z = z;
+    be.dimension = QString::fromUtf8(kNether);
+    be.type = QStringLiteral("minecraft:sign");
+    be.rawNbt = sortedOrder
+        ? NbtWriter().str("id", "minecraft:sign").i8("is_waxed", 0).i32("x", x).i32("y", y).i32("z", z).end()
+        : NbtWriter().str("id", "minecraft:sign").i32("x", x).i32("y", y).i32("z", z).i8("is_waxed", 0).end();
+    return be;
+}
+
+ChunkData extrasColumn()
+{
+    ChunkData chunk;
+    chunk.dimension = QString::fromUtf8(kNether);
+    chunk.minY = 0;
+    chunk.maxY = 256;
+    ChunkSection s0 = uniformSection(0, QStringLiteral("minecraft:netherrack"));
+    s0.biomeUniform = true;
+    s0.biomePalette = {QStringLiteral("minecraft:nether_wastes")};
+    ChunkSection s1 = uniformSection(1, QStringLiteral("minecraft:netherrack"));
+    s1.biomePalette = {QStringLiteral("minecraft:soul_sand_valley"), QStringLiteral("minecraft:basalt_deltas")};
+    s1.biomeIndices.resize(ColumnExtrasCodec::kBiomeCells);
+    for (int i = 0; i < ColumnExtrasCodec::kBiomeCells; ++i) {
+        s1.biomeIndices[i] = static_cast<uint32_t>(i % 2);
+    }
+    chunk.sections.insert(0, s0);
+    chunk.sections.insert(1, s1);
+    return chunk;
+}
+
+struct ExtrasBot {
+    BotWorldData world;
+    QReadWriteLock lock;
+    SectionDirtyTracker tracker;
+    RetainedExtras kept;
+};
+
+void loadExtras(ExtrasBot &bot, ChunkData chunk, qint32 chunkX, qint32 chunkZ, const QVector<BlockEntityData> &bes)
+{
+    chunk.chunkX = chunkX;
+    chunk.chunkZ = chunkZ;
+    {
+        QWriteLocker locker(&bot.lock);
+        bot.world.loadChunk(chunk);
+        for (const BlockEntityData &be : bes) {
+            bot.world.updateBlockEntity(be);
+        }
+    }
+    bot.tracker.mark(chunkX, chunkZ, 0);
+}
+
+// BotManager::unloadColumn's extras half.
+void unloadExtras(ExtrasBot &bot, qint32 chunkX, qint32 chunkZ)
+{
+    QWriteLocker locker(&bot.lock);
+    const ChunkData *chunk = bot.world.getChunk(chunkX, chunkZ);
+    const QByteArray dimension = chunk ? chunk->dimension.toUtf8() : QByteArray();
+    ColumnExtrasObservation::retainOnUnload(bot.tracker, bot.world, bot.kept, chunkX, chunkZ, RetainedSections::nowMs());
+    bot.tracker.dropColumn(chunkX, chunkZ, dimension);
+    bot.world.unloadChunk(chunkX, chunkZ);
+}
+
+ColumnExtrasObservation::Changes listExtras(ExtrasBot &bot, std::optional<quint64> since)
+{
+    return ColumnExtrasObservation::listChanges(bot.tracker, bot.world, bot.lock, since, kNether, true, 0,
+                                                kExtrasPrefix, &bot.kept);
+}
+
+QByteArray extrasDigest(const ChunkData &chunk, const QVector<BlockEntityData> &bes)
+{
+    return ColumnExtrasCodec::digest(
+        ColumnExtrasCodec::encodeBlob(ColumnExtrasCodec::canonicalize(0, 0, chunk.sections, bes)), kExtrasPrefix);
+}
+
+void checkColumnExtras()
+{
+    std::printf("column extras (prefix \"hiveext1\\0\"):\n");
+    const ChunkData chunk = extrasColumn();
+    const BlockEntityData sign = signAt(1, 20, 2, false);
+
+    const QByteArray vector = "ae0e002e93a457cefea6c7c4ac40560bddc819223bbb7de533ad6939b8e80dfb";
+    const QByteArray got = hex(extrasDigest(chunk, {sign}));
+    std::printf("  known-answer digest: %s\n", got.constData());
+    check(got == vector, "two sections of biomes and one sign, known-answer vector");
+    check(extrasDigest(chunk, {signAt(1, 20, 2, true)}) == extrasDigest(chunk, {sign}),
+          "the sign's NBT keys in another order digest the same");
+
+    const auto canon = ColumnExtrasCodec::canonicalize(0, 0, chunk.sections, {sign});
+    check(canon.sections.size() == 2 && canon.sections[0].indices.isEmpty()
+              && canon.sections[1].palette
+                     == QVector<QByteArray>{"minecraft:basalt_deltas", "minecraft:soul_sand_valley"}
+              && canon.sections[1].indices.size() == 64 && canon.sections[1].indices[0] == 1
+              && canon.sections[1].indices[1] == 0,
+          "biome palettes sorted, a one-biome section carries no indices");
+    check(canon.blockEntities.size() == 1 && canon.blockEntities[0].nbt == signAt(1, 20, 2, true).rawNbt,
+          "block entity NBT re-serialized with its keys sorted");
+
+    ChunkData reordered = chunk;
+    reordered.sections[1].biomePalette = {QStringLiteral("minecraft:basalt_deltas"),
+                                          QStringLiteral("minecraft:soul_sand_valley"),
+                                          QStringLiteral("minecraft:crimson_forest")};
+    for (int i = 0; i < ColumnExtrasCodec::kBiomeCells; ++i) {
+        reordered.sections[1].biomeIndices[i] = static_cast<uint32_t>(1 - i % 2);
+    }
+    check(extrasDigest(reordered, {sign}) == extrasDigest(chunk, {sign}),
+          "a palette grown in another order, with an unreferenced entry, digests the same");
+
+    ChunkData noBiomes = chunk;
+    noBiomes.sections[0].biomePalette.clear();
+    noBiomes.sections[0].biomeUniform = false;
+    check(ColumnExtrasCodec::canonicalize(0, 0, noBiomes.sections, {}).sections.size() == 1,
+          "a section with no biome data is left out");
+
+    check(ColumnExtrasCodec::canonicalize(0, 0, chunk.sections, {signAt(17, 20, 2, false)}).blockEntities.isEmpty(),
+          "a block entity outside the column is dropped");
+
+    BlockEntityData chest;
+    chest.x = 3;
+    chest.y = 30;
+    chest.z = 4;
+    chest.dimension = QString::fromUtf8(kNether);
+    chest.type = QStringLiteral("minecraft:chest");
+    chest.rawNbt = NbtWriter().str("id", "minecraft:chest").i32("x", 3).i32("y", 30).i32("z", 4).end();
+    const auto unseen = ColumnExtrasCodec::canonicalize(0, 0, {}, {chest});
+    BlockEntityData opened = chest;
+    opened.contentsSeen = true;
+    const auto seen = ColumnExtrasCodec::canonicalize(0, 0, {}, {opened});
+    check(unseen.blockEntities.size() == 1 && unseen.blockEntities[0].flags == 0
+              && !unseen.blockEntities[0].nbt.contains("Items"),
+          "a chest nobody opened: no flag, no Items written");
+    check(seen.blockEntities.size() == 1 && seen.blockEntities[0].flags == ColumnExtrasCodec::kContentsSeen
+              && seen.blockEntities[0].nbt.contains("Items"),
+          "opened and empty: flagged, with an empty Items list");
+    BlockEntityData bare;
+    bare.x = 3;
+    bare.y = 30;
+    bare.z = 4;
+    bare.type = QStringLiteral("minecraft:barrel");
+    bare.contentsSeen = true;
+    const auto synthesized = ColumnExtrasCodec::canonicalize(0, 0, {}, {bare});
+    check(synthesized.blockEntities.size() == 1 && synthesized.blockEntities[0].nbt.contains("minecraft:barrel"),
+          "opened where no block entity had arrived: id and position written, not an empty compound");
+
+    // Through the tracker, past an unload.
+    ExtrasBot bot;
+    ExtrasBot still;
+    auto t = listExtras(bot, std::nullopt).token;
+    loadExtras(bot, chunk, 0, 0, {sign});
+    loadExtras(still, chunk, 0, 0, {sign});
+    const auto live = listExtras(bot, t);
+    check(live.columns.size() == 1 && live.columns[0].digest == extrasDigest(chunk, {sign}),
+          "a loaded column listed with the digest of its canonical form");
+    unloadExtras(bot, 0, 0);
+    const auto afterUnload = listExtras(bot, t);
+    check(afterUnload.dropped.isEmpty() && afterUnload.columns.size() == 1
+              && afterUnload.columns[0].digest == live.columns[0].digest,
+          "unloaded before the poll: listed from the copy, same digest, none dropped");
+    check(ColumnExtrasObservation::exportColumns(bot.world, bot.lock, {{0, 0}}, kNether, &bot.kept)
+              == ColumnExtrasObservation::exportColumns(still.world, still.lock, {{0, 0}}, kNether),
+          "and exported from it byte for byte");
+    check(ColumnExtrasObservation::exportColumns(bot.world, bot.lock, {{0, 0}}, kOverworld, &bot.kept).size() == 4,
+          "a kept nether column exports nothing to an overworld caller");
+    t = afterUnload.token;
+    check(listExtras(bot, t).columns.isEmpty(), "listed once: the next poll is clean");
+
+    {
+        QWriteLocker locker(&still.lock);
+        still.world.removeBlockEntity(1, 20, 2, QString::fromUtf8(kNether));
+    }
+    still.tracker.mark(0, 0, 0);
+    const auto broken = ColumnExtrasObservation::listChanges(still.tracker, still.world, still.lock, std::nullopt,
+                                                             kNether, true, 0, kExtrasPrefix);
+    check(broken.columns.size() == 1 && broken.columns[0].digest == extrasDigest(chunk, {}),
+          "the sign broken: the column digests as one with no block entities");
+}
+
 }
 
 int main(int argc, char **argv)
@@ -1394,6 +1624,7 @@ int main(int argc, char **argv)
     checkRetained(pool);
     checkNoSilentDrops(pool, false);
     checkNoSilentDrops(pool, true);
+    checkColumnExtras();
     if (g_failures > 0) {
         std::printf("\n%d check(s) failed\n", g_failures);
         return 1;
