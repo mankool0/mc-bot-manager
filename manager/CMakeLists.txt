@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mc-bot-manager VERSION 1.22.2 LANGUAGES CXX)
+project(mc-bot-manager VERSION 1.23.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -322,8 +322,11 @@ qt_finalize_executable(mc-bot-manager)
 # default build: cmake --build <build dir> --target section_bench
 add_executable(section_bench EXCLUDE_FROM_ALL
     bench/SectionBench.cpp
+    bot/ColumnExtrasObservation.cpp
     bot/SectionObservation.cpp
     bot/WorldData.cpp
+    world/ColumnExtrasCodec.cpp
+    world/NBTSerializer.cpp
     world/SectionCodec.cpp
     logging/LogManager.cpp
     logging/LogFileSink.cpp

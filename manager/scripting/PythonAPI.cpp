@@ -15,6 +15,8 @@
 #include "world/SavedWorldScan.h"
 #include "world/SectionCodec.h"
 #include "bot/SectionObservation.h"
+#include "bot/ColumnExtrasObservation.h"
+#include "world/ColumnExtrasCodec.h"
 #include <QDebug>
 #include <QFile>
 #include <QDeadlineTimer>
@@ -3047,6 +3049,133 @@ py::bytes PythonAPI::exportSections(const py::sequence &keys, const std::string 
         py::gil_scoped_release release;
         payload = SectionObservation::exportSections(botInstance->worldData, *botInstance->worldDataLock, parsed,
                                                      dimensionFilter, botInstance->retainedSections.get());
+    }
+
+    return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));
+}
+
+PyColumnChanges PythonAPI::changedExtras(const std::string &bot, const py::object &since,
+                                         const std::string &dimension, bool digest, int limit,
+                                         const py::bytes &digestPrefix)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    std::optional<quint64> sinceSeq;
+    if (!since.is_none()) {
+        sinceSeq = since.cast<quint64>();
+    }
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+    const QByteArray digestPrefixBytes = QByteArray::fromStdString(digestPrefix.cast<std::string>());
+    const std::shared_ptr<SectionDirtyTracker> tracker = botInstance->extrasDirty;
+    const std::shared_ptr<RetainedExtras> retained = botInstance->retainedExtras;
+
+    PyColumnChanges result;
+    {
+        py::gil_scoped_release release;
+
+        const ColumnExtrasObservation::Changes changes = ColumnExtrasObservation::listChanges(
+            *tracker, botInstance->worldData, *botInstance->worldDataLock, sinceSeq, dimensionFilter, digest,
+            limit, digestPrefixBytes, retained.get());
+        result.token = changes.token;
+        result.truncated = changes.truncated;
+        result.droppedTotal = static_cast<size_t>(changes.droppedTotal);
+        result.droppedIncomplete = changes.droppedIncomplete;
+        result.dropped.reserve(static_cast<size_t>(changes.dropped.size()));
+        for (const SectionColumnKey &key : changes.dropped) {
+            result.dropped.emplace_back(key.chunkX, key.chunkZ);
+        }
+        result.columns.reserve(static_cast<size_t>(changes.columns.size()));
+        for (const ColumnExtrasObservation::Change &c : changes.columns) {
+            PyColumnChange change;
+            change.chunkX = c.key.chunkX;
+            change.chunkZ = c.key.chunkZ;
+            if (digest) {
+                change.digestBytes = toStdBytes(c.digest);
+                change.hasDigest = true;
+            }
+            result.columns.push_back(std::move(change));
+        }
+    }
+
+    return result;
+}
+
+std::optional<PyColumnExtras> PythonAPI::getExtras(int chunkX, int chunkZ, const std::string &bot,
+                                                   const std::string &dimension, const py::bytes &digestPrefix)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+    const QByteArray digestPrefixBytes = QByteArray::fromStdString(digestPrefix.cast<std::string>());
+
+    std::optional<PyColumnExtras> result;
+    {
+        py::gil_scoped_release release;
+
+        const std::optional<ColumnExtrasObservation::Column> read = ColumnExtrasObservation::readColumn(
+            botInstance->worldData, *botInstance->worldDataLock, {chunkX, chunkZ}, dimensionFilter,
+            botInstance->retainedExtras.get());
+        if (!read) {
+            return std::nullopt;
+        }
+        const ColumnExtrasCodec::CanonicalColumn &canon = read->canonical;
+        const QByteArray blob = ColumnExtrasCodec::encodeBlob(canon);
+
+        PyColumnExtras extras;
+        extras.chunkX = chunkX;
+        extras.chunkZ = chunkZ;
+        extras.dimension = toStdBytes(read->dimension);
+        extras.blobBytes = toStdBytes(blob);
+        extras.digestBytes = toStdBytes(ColumnExtrasCodec::digest(blob, digestPrefixBytes));
+        for (const ColumnExtrasCodec::Biomes &b : canon.sections) {
+            std::vector<std::string> palette;
+            for (const QByteArray &name : b.palette) {
+                palette.push_back(toStdBytes(name));
+            }
+            extras.biomes.emplace_back(b.sectionY, std::move(palette),
+                                       std::string(reinterpret_cast<const char *>(b.indices.constData()),
+                                                   static_cast<size_t>(b.indices.size())));
+        }
+        for (const ColumnExtrasCodec::BlockEntity &be : canon.blockEntities) {
+            extras.blockEntities.emplace_back(be.x, be.y, be.z, (be.flags & ColumnExtrasCodec::kContentsSeen) != 0,
+                                              toStdBytes(be.nbt));
+        }
+        result = std::move(extras);
+    }
+
+    return result;
+}
+
+py::bytes PythonAPI::exportExtras(const py::sequence &keys, const std::string &bot, const std::string &dimension)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    const size_t keyCount = py::len(keys);
+    if (keyCount > kMaxExportSections) {
+        throw std::runtime_error("export_extras: " + std::to_string(keyCount)
+                                 + " keys exceeds the " + std::to_string(kMaxExportSections)
+                                 + " per-call limit; batch the upload");
+    }
+
+    QVector<SectionColumnKey> parsed;
+    parsed.reserve(static_cast<int>(keyCount));
+    for (const auto &item : keys) {
+        auto entry = item.cast<py::sequence>();
+        if (py::len(entry) != 2) {
+            throw std::runtime_error("export_extras: each key must be (chunk_x, chunk_z)");
+        }
+        parsed.append({entry[0].cast<qint32>(), entry[1].cast<qint32>()});
+    }
+    const QByteArray dimensionFilter = QByteArray::fromStdString(dimension);
+
+    QByteArray payload;
+    {
+        py::gil_scoped_release release;
+        payload = ColumnExtrasObservation::exportColumns(botInstance->worldData, *botInstance->worldDataLock, parsed,
+                                                         dimensionFilter, botInstance->retainedExtras.get());
     }
 
     return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));

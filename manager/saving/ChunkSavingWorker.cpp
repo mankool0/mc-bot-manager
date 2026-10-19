@@ -222,7 +222,7 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
     // with empty contents on reconnect.
     bool hasUnknownContainers = false;
     for (const auto& be : blockEntities) {
-        if (!be.rawNbt.isEmpty() && be.items.isEmpty() && blockEntityHoldsItems(be.type)) {
+        if (!be.rawNbt.isEmpty() && !be.contentsSeen && be.items.isEmpty() && blockEntityHoldsItems(be.type)) {
             hasUnknownContainers = true;
             break;
         }
@@ -276,7 +276,7 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
 
                     // Inject disk items into block entities we don't know the contents of
                     for (auto& be : effectiveBEs) {
-                        if (!be.rawNbt.isEmpty() && be.items.isEmpty()) {
+                        if (!be.rawNbt.isEmpty() && !be.contentsSeen && be.items.isEmpty()) {
                             auto it = diskBEBytes.find(QString("%1,%2,%3").arg(be.x).arg(be.y).arg(be.z));
                             if (it != diskBEBytes.end()) {
                                 be.rawNbt = *it;  // Replace with disk version which has Items

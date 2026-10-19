@@ -90,6 +90,37 @@ struct PySection {
     std::string digestBytes;
 };
 
+// One chunk column reported by world.changed_extras().
+struct PyColumnChange {
+    int chunkX = 0;
+    int chunkZ = 0;
+    std::string digestBytes;
+    bool hasDigest = false;
+};
+
+struct PyColumnChanges {
+    unsigned long long token = 0;
+    bool truncated = false;
+    std::vector<PyColumnChange> columns;
+    std::vector<std::tuple<int, int>> dropped;
+    size_t droppedTotal = 0;
+    bool droppedIncomplete = false;
+};
+
+// One column's extras in canonical form (world.get_extras): its encoded blob and digest, and
+// the same content unpacked for a script to read.
+struct PyColumnExtras {
+    int chunkX = 0;
+    int chunkZ = 0;
+    std::string dimension;
+    std::string blobBytes;
+    std::string digestBytes;
+    // (section_y, palette, indices): indices are 64 bytes, or empty for a one-biome section
+    std::vector<std::tuple<int, std::vector<std::string>, std::string>> biomes;
+    // (x, y, z, contents_seen, nbt)
+    std::vector<std::tuple<int, int, int, bool, std::string>> blockEntities;
+};
+
 struct PyMonitor {
     std::string name;
     bool primary = false;
@@ -390,6 +421,12 @@ public:
                                                const std::string &bot, const std::string &dimension,
                                                const py::bytes &digestPrefix);
     static py::bytes exportSections(const py::sequence &keys, const std::string &bot = "", const std::string &dimension = "");
+    static PyColumnChanges changedExtras(const std::string &bot, const py::object &since,
+                                         const std::string &dimension, bool digest, int limit,
+                                         const py::bytes &digestPrefix);
+    static std::optional<PyColumnExtras> getExtras(int chunkX, int chunkZ, const std::string &bot,
+                                                   const std::string &dimension, const py::bytes &digestPrefix);
+    static py::bytes exportExtras(const py::sequence &keys, const std::string &bot = "", const std::string &dimension = "");
 
     // World interaction
     static void holdAttack(bool enabled, int durationTicks = 0,

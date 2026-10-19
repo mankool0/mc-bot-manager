@@ -567,6 +567,62 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                    + ", " + std::to_string(s.sectionY) + ") palette=" + std::to_string(s.palette.size()) + ">";
         });
 
+    py::class_<PyColumnChange>(m, "ColumnChange")
+        .def_readonly("chunk_x", &PyColumnChange::chunkX)
+        .def_readonly("chunk_z", &PyColumnChange::chunkZ)
+        .def_property_readonly("digest", [](const PyColumnChange &c) -> py::object {
+            if (!c.hasDigest) return py::none();
+            return py::bytes(c.digestBytes);
+        })
+        .def_property_readonly("key", [](const PyColumnChange &c) {
+            return py::make_tuple(c.chunkX, c.chunkZ);
+        })
+        .def("__repr__", [](const PyColumnChange &c) {
+            return "<ColumnChange (" + std::to_string(c.chunkX) + ", " + std::to_string(c.chunkZ) + ")>";
+        });
+
+    py::class_<PyColumnChanges>(m, "ColumnChanges")
+        .def_readonly("token", &PyColumnChanges::token)
+        .def_readonly("truncated", &PyColumnChanges::truncated)
+        .def_readonly("columns", &PyColumnChanges::columns)
+        .def_readonly("dropped", &PyColumnChanges::dropped)
+        .def_readonly("dropped_total", &PyColumnChanges::droppedTotal)
+        .def_readonly("dropped_incomplete", &PyColumnChanges::droppedIncomplete)
+        .def("__len__", [](const PyColumnChanges &c) { return c.columns.size(); })
+        .def("__iter__", [](py::object self) {
+            return py::iter(self.attr("columns"));
+        }, py::keep_alive<0, 1>());
+
+    py::class_<PyColumnExtras>(m, "ColumnExtras")
+        .def_readonly("chunk_x", &PyColumnExtras::chunkX)
+        .def_readonly("chunk_z", &PyColumnExtras::chunkZ)
+        .def_readonly("dimension", &PyColumnExtras::dimension)
+        .def_property_readonly("blob", [](const PyColumnExtras &e) {
+            return py::bytes(e.blobBytes);
+        })
+        .def_property_readonly("digest", [](const PyColumnExtras &e) {
+            return py::bytes(e.digestBytes);
+        })
+        .def_property_readonly("biomes", [](const PyColumnExtras &e) {
+            py::list out;
+            for (const auto &[sectionY, palette, indices] : e.biomes) {
+                out.append(py::make_tuple(sectionY, palette, py::bytes(indices)));
+            }
+            return out;
+        })
+        .def_property_readonly("block_entities", [](const PyColumnExtras &e) {
+            py::list out;
+            for (const auto &[x, y, z, seen, nbt] : e.blockEntities) {
+                out.append(py::make_tuple(x, y, z, seen, py::bytes(nbt)));
+            }
+            return out;
+        })
+        .def("__repr__", [](const PyColumnExtras &e) {
+            return "<ColumnExtras (" + std::to_string(e.chunkX) + ", " + std::to_string(e.chunkZ) + ") sections="
+                   + std::to_string(e.biomes.size()) + " block_entities=" + std::to_string(e.blockEntities.size())
+                   + ">";
+        });
+
     // World queries
     def_state("get_weather", &PythonAPI::getWeather,
               "Get current weather state as dict with is_raining, is_thundering, rain_level, thunder_level. Returns None if bot offline.",
@@ -688,6 +744,42 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                "count, then per section its dimension, key and canonical blob. keys is a "
                "list of (chunk_x, chunk_z, section_y); sections that are not loaded (or fail the "
                "dimension filter) are omitted. At most 4096 keys per call.",
+               py::arg("keys"),
+               py::arg("bot_name") = "",
+               py::arg("dimension") = "");
+    def_action("changed_extras", &PythonAPI::changedExtras,
+               "Chunk columns whose extras - the biomes of their sections and the NBT of their "
+               "block entities, what a section's blocks leave out - changed since `since`. "
+               "Works like changed_sections, one entry per column: a ColumnChanges with .token, "
+               ".truncated and .columns, each a ColumnChange with .chunk_x/.chunk_z/.key and, "
+               "with digest=True, .digest (BLAKE2b-256 of digest_prefix + the canonical extras "
+               "encoding). .dropped lists (chunk_x, chunk_z) keys whose column unloaded before "
+               "they could be listed (at most 4096; .dropped_total counts all of them); "
+               ".dropped_incomplete as for changed_sections.",
+               py::arg("bot_name") = "",
+               py::arg("since") = py::none(),
+               py::arg("dimension") = "",
+               py::arg("digest") = false,
+               py::arg("limit") = 0,
+               py::arg("digest_prefix") = py::bytes());
+    def_query("get_extras", &PythonAPI::getExtras,
+              "Get one chunk column's extras in canonical form: .blob (the encoding "
+              "export_extras sends), .digest (BLAKE2b-256 of digest_prefix + .blob, matching "
+              "changed_extras), .biomes as (section_y, palette, indices) - indices 64 bytes, "
+              "index = y*16 + z*4 + x, empty for a one-biome section - and .block_entities as "
+              "(x, y, z, contents_seen, nbt), nbt a compound payload with sorted keys and the "
+              "items a bot saw in it. contents_seen means a bot opened it, so its Items are "
+              "everything in it. Returns None if the column is not loaded.",
+              py::arg("chunk_x"), py::arg("chunk_z"),
+              py::arg("bot_name") = "",
+              py::arg("dimension") = "",
+              py::arg("digest_prefix") = py::bytes());
+    def_action("export_extras", &PythonAPI::exportExtras,
+               "Serialize chunk columns' extras into one uncompressed export payload: u32 frame "
+               "count, then per column u16 dimension length, dimension, i32 chunk_x, i32 "
+               "chunk_z, u32 blob length and the canonical blob. keys is a list of (chunk_x, "
+               "chunk_z); columns that are not loaded (or fail the dimension filter) are "
+               "omitted. At most 4096 keys per call.",
                py::arg("keys"),
                py::arg("bot_name") = "",
                py::arg("dimension") = "");

@@ -77,30 +77,42 @@ nbt::tag_compound NBTSerializer::blockEntityToNBT(const BlockEntityData& be) {
     // If raw binary NBT is available (from chunk load), use it as the base.
     // If items are also known (container was opened this session), patch them in
     // so we keep all original fields (lock, custom name, furnace progress, etc.)
-    // while writing the freshest item contents.
+    // while writing the freshest item contents. Seen and empty writes an empty list.
+    auto patchItems = [&be](nbt::tag_compound& compound) {
+        if (!be.contentsSeen && be.items.isEmpty()) {
+            return;
+        }
+        nbt::tag_list items(nbt::tag_type::Compound);
+        for (const auto& item : be.items) {
+            if (!item.itemId().isEmpty() && item.itemId() != "minecraft:air") {
+                items.push_back(itemStackToNBT(item));
+            }
+        }
+        compound["Items"] = nbt::value(std::move(items));
+    };
+
     if (!be.rawNbt.isEmpty()) {
         try {
             std::istringstream ss(std::string(be.rawNbt.constData(), be.rawNbt.size()), std::ios::binary);
             nbt::io::stream_reader reader(ss);
             auto tagPtr = reader.read_payload(nbt::tag_type::Compound);
             auto& compound = static_cast<nbt::tag_compound&>(*tagPtr);
-
-            if (!be.items.isEmpty()) {
-                nbt::tag_list items(nbt::tag_type::Compound);
-                for (const auto& item : be.items) {
-                    if (!item.itemId().isEmpty() && item.itemId() != "minecraft:air") {
-                        items.push_back(itemStackToNBT(item));
-                    }
-                }
-                compound["Items"] = nbt::value(std::move(items));
-            }
-
+            patchItems(compound);
             return std::move(compound);
         } catch (...) {}
     }
 
-    // rawNbt should always be present (set from chunk load and preserved through container opens).
-    // Return an empty compound as a last-resort fallback so callers always get a valid tag.
+    // A container opened where no block entity had arrived yet: what the open told us. Without
+    // an id the game would not load it, so an unknown type stays an empty compound.
+    if (!be.type.isEmpty()) {
+        nbt::tag_compound compound;
+        compound.insert("id", nbt::tag_string(be.type.toStdString()));
+        compound.insert("x", nbt::tag_int(be.x));
+        compound.insert("y", nbt::tag_int(be.y));
+        compound.insert("z", nbt::tag_int(be.z));
+        patchItems(compound);
+        return compound;
+    }
     return nbt::tag_compound{};
 }
 
