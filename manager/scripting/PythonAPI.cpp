@@ -3181,6 +3181,69 @@ py::bytes PythonAPI::exportExtras(const py::sequence &keys, const std::string &b
     return py::bytes(payload.constData(), static_cast<size_t>(payload.size()));
 }
 
+py::dict PythonAPI::entityNbt(const std::string &bot, unsigned long long since)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    BotWorldData::EntityNbtChanges changes;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        changes = botInstance->worldData.entityNbtSince(since);
+    }
+
+    py::list entities;
+    for (const EntityData &e : std::as_const(changes.entities)) {
+        py::dict d;
+        d["uuid"] = e.uuid.toStdString();
+        d["type"] = e.type.toStdString();
+        d["x"] = e.x;
+        d["y"] = e.y;
+        d["z"] = e.z;
+        d["living"] = e.isLiving;
+        d["nbt"] = py::bytes(e.rawNbt.constData(), static_cast<size_t>(e.rawNbt.size()));
+        entities.append(std::move(d));
+    }
+    py::list died;
+    for (const QString &uuid : std::as_const(changes.died)) {
+        died.append(uuid.toStdString());
+    }
+    py::dict out;
+    out["token"] = changes.token;
+    out["dimension"] = changes.dimension.toStdString();
+    out["entities"] = entities;
+    out["died"] = died;
+    return out;
+}
+
+py::dict PythonAPI::getMaps(const std::string &bot, unsigned long long since)
+{
+    QString botName = resolveBotName(bot);
+    BotInstance *botInstance = ensureBotOnline(botName);
+
+    BotWorldData::MapChanges changes;
+    {
+        QReadLocker locker(botInstance->worldDataLock.get());
+        changes = botInstance->worldData.mapsSince(since);
+    }
+
+    py::list maps;
+    for (const auto &[id, m] : std::as_const(changes.maps)) {
+        py::dict d;
+        d["map_id"] = id;
+        d["scale"] = m.scale;
+        d["locked"] = m.locked;
+        d["dimension"] = m.dimension.toStdString();
+        d["colors"] = py::bytes(m.colors.constData(), static_cast<size_t>(m.colors.size()));
+        d["center"] = m.center ? py::object(py::make_tuple(m.center->x(), m.center->y())) : py::object(py::none());
+        maps.append(std::move(d));
+    }
+    py::dict out;
+    out["token"] = changes.token;
+    out["maps"] = maps;
+    return out;
+}
+
 static py::dict buildEntityDict(const EntityData &e)
 {
     py::dict d;

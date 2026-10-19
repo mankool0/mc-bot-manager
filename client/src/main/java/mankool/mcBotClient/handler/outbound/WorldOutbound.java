@@ -1,5 +1,7 @@
 package mankool.mcBotClient.handler.outbound;
 
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.saveddata.maps.MapDecoration;
 import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.util.VersionCompat;
 import net.minecraft.SharedConstants;
@@ -643,6 +645,19 @@ public class WorldOutbound extends BaseOutbound {
             .setScale(packet.scale())
             .setLocked(packet.locked())
             .setDimension(VersionCompat.keyId(client.level.dimension()));
+
+        packet.decorations().ifPresent(decorations -> {
+            builder.setHasDecorations(true);
+            for (MapDecoration d : decorations) {
+                builder.addDecorations(World.MapDecoration.newBuilder()
+                    .setType(d.type().unwrapKey().map(VersionCompat::keyId).orElse(""))
+                    .setX(d.x())
+                    .setZ(d.y())
+                    .setRot(d.rot())
+                    .setName(d.name().map(Component::getString).orElse(""))
+                    .build());
+            }
+        });
 
         if (packet.colorPatch().isPresent()) {
             MapItemSavedData.MapPatch patch = packet.colorPatch().get();

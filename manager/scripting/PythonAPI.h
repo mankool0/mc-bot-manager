@@ -427,6 +427,8 @@ public:
     static std::optional<PyColumnExtras> getExtras(int chunkX, int chunkZ, const std::string &bot,
                                                    const std::string &dimension, const py::bytes &digestPrefix);
     static py::bytes exportExtras(const py::sequence &keys, const std::string &bot = "", const std::string &dimension = "");
+    static py::dict entityNbt(const std::string &bot, unsigned long long since);
+    static py::dict getMaps(const std::string &bot, unsigned long long since);
 
     // World interaction
     static void holdAttack(bool enabled, int durationTicks = 0,

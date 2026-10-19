@@ -3670,6 +3670,7 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
         e.ownerUuid = proto.ownerUuid();
         e.shortLived = proto.shortLived();
         e.customName = proto.customName();
+        e.rawNbt = proto.nbt();
         upserted.append(e);
     }
 
@@ -3685,7 +3686,7 @@ void BotManager::handleEntityUpdateImpl(int connectionId, const mankool::mcbot::
 
     {
         QWriteLocker locker(bot->worldDataLock.get());
-        bot->worldData.updateEntities(upserted, goneFromView + died, dimension);
+        bot->worldData.updateEntities(upserted, goneFromView + died, dimension, died);
     }
 
     if (bot->saveWorldToDisk && bot->worldAutoSaver && bot->worldSaveSettings.saveEntities) {
@@ -5060,7 +5061,26 @@ void BotManager::handleMapData(int connectionId, const mankool::mcbot::protocol:
 void BotManager::handleMapDataImpl(int connectionId, const mankool::mcbot::protocol::MapDataMessage &mapData)
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
-    if (!bot || !bot->worldAutoSaver) return;
+    if (!bot) return;
+
+    // In world data whether or not the world is being saved: world.maps() reads it there.
+    {
+        QVector<MapDecorationData> decorations;
+        for (const auto &d : mapData.decorations()) {
+            decorations.append({d.type(), d.x(), d.z()});
+        }
+        std::optional<QVector3D> holder;
+        if (bot->positionKnown) {
+            holder = bot->position;
+        }
+        QWriteLocker locker(bot->worldDataLock.get());
+        bot->worldData.updateMap(mapData.mapId(), mapData.scale(), mapData.locked(), mapData.dimension(),
+                                 mapData.patchX(), mapData.patchZ(), mapData.patchWidth(), mapData.patchHeight(),
+                                 mapData.hasPatch() ? mapData.patchColors() : QByteArray(),
+                                 mapData.hasDecorations() ? &decorations : nullptr, holder);
+    }
+
+    if (!bot->worldAutoSaver) return;
 
     bot->worldAutoSaver->updateMapData(
         mapData.mapId(),

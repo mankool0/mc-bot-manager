@@ -6,9 +6,11 @@ import mankool.mcBotClient.connection.PipeConnection;
 import mankool.mcBotClient.util.ProjectileOwnerAccess;
 import mankool.mcBotClient.util.ProtoUtil;
 import mankool.mcBotClient.util.VersionCompat;
+import com.google.protobuf.ByteString;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
@@ -21,7 +23,10 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.vehicle.VehicleEntity;
 import net.minecraft.world.phys.Vec3;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,6 +61,20 @@ public class EntityOutbound extends BaseOutbound {
     private ClientLevel snapshotLevel;
     private String snapshotDimension;
 
+    // How often an entity's full NBT is saved again to see whether it changed, in ticks. What
+    // is on a frame or worn by an armor stand changes rarely and is the point of keeping it; a
+    // mob's changes every tick and is kept only as it was last seen.
+    private static final int NBT_FIXTURE_TICKS = 20;
+    private static final int NBT_LIVING_TICKS = 200;
+
+    private static class NbtState {
+        int hash;
+        long due;
+    }
+
+    private final Map<Integer, NbtState> nbtStates = new HashMap<>();
+    private long tick;
+
     public EntityOutbound(Minecraft client, PipeConnection connection) {
         super(client, connection);
     }
@@ -74,7 +93,9 @@ public class EntityOutbound extends BaseOutbound {
             }
             snapshotLevel = level;
             snapshotDimension = level != null ? VersionCompat.keyId(level.dimension()) : null;
+            nbtStates.clear();
         }
+        tick++;
         if (level == null) {
             return;
         }
@@ -98,8 +119,9 @@ public class EntityOutbound extends BaseOutbound {
                      || healthOf(entity) != snap.health;
             }
 
-            if (isNew || changed) {
-                Entities.EntityData data = buildEntityData(entity);
+            byte[] nbt = nbtIfChanged(entity, id);
+            if (isNew || changed || nbt != null) {
+                Entities.EntityData data = buildEntityData(entity, nbt);
                 if (data != null) {
                     builder.addUpserted(data);
                     lastSnapshot.put(id, new EntitySnapshot(entity));
@@ -114,8 +136,52 @@ public class EntityOutbound extends BaseOutbound {
         send(builder);
     }
 
+    // The entity's NBT when it is due a look and differs from what was last sent, else null.
+    // Players and short-lived entities have none: a player's is not the world's, and an item
+    // or an arrow is gone by the time anyone reads it.
+    private byte[] nbtIfChanged(Entity entity, int id) {
+        if (entity instanceof Player || isShortLived(entity)) {
+            return null;
+        }
+        NbtState state = nbtStates.get(id);
+        if (state != null && tick < state.due) {
+            return null;
+        }
+        boolean first = state == null;
+        if (first) {
+            state = new NbtState();
+            nbtStates.put(id, state);
+        }
+        // Due again whether or not this one could be saved: one that cannot is not retried
+        // every tick.
+        state.due = tick + (entity instanceof LivingEntity ? NBT_LIVING_TICKS : NBT_FIXTURE_TICKS);
+        byte[] nbt = saveNbt(entity);
+        if (nbt == null) {
+            return null;
+        }
+        int hash = Arrays.hashCode(nbt);
+        if (!first && hash == state.hash) {
+            return null;
+        }
+        state.hash = hash;
+        return nbt;
+    }
+
+    private static byte[] saveNbt(Entity entity) {
+        try {
+            CompoundTag tag = VersionCompat.saveEntity(entity);
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            tag.write(new DataOutputStream(bytes));
+            return bytes.toByteArray();
+        } catch (Exception e) {
+            // Some entity's client-side state cannot be saved; it goes up without NBT.
+            return null;
+        }
+    }
+
     private void addRemovals(Entities.EntityUpdate.Builder builder, Collection<Integer> ids) {
         for (int id : ids) {
+            nbtStates.remove(id);
             if (lastSnapshot.remove(id).dying()) {
                 builder.addDiedIds(id);
             } else {
@@ -157,7 +223,7 @@ public class EntityOutbound extends BaseOutbound {
         return result;
     }
 
-    private Entities.EntityData buildEntityData(Entity entity) {
+    private Entities.EntityData buildEntityData(Entity entity, byte[] nbt) {
         String typeId = VersionCompat.registryGetKeyId(BuiltInRegistries.ENTITY_TYPE, entity.getType());
         if (typeId == null) {
             return null;
@@ -178,6 +244,9 @@ public class EntityOutbound extends BaseOutbound {
                 .setVelY(vel.y)
                 .setVelZ(vel.z)
                 .setShortLived(isShortLived(entity));
+        if (nbt != null) {
+            builder.setNbt(ByteString.copyFrom(nbt));
+        }
 
         Component customName = entity.getCustomName();
         if (customName != null) {

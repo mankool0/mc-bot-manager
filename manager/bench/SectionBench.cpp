@@ -38,6 +38,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -1493,6 +1494,75 @@ QByteArray extrasDigest(const ChunkData &chunk, const QVector<BlockEntityData> &
         ColumnExtrasCodec::encodeBlob(ColumnExtrasCodec::canonicalize(0, 0, chunk.sections, bes)), kExtrasPrefix);
 }
 
+// Vanilla's own marker arithmetic (MapItemSavedData.addDecoration), for the map checks.
+int vanillaCenter(double pos, int scale)
+{
+    const int span = 128 * (1 << scale);
+    return static_cast<int>(std::floor((pos + 64.0) / span)) * span + span / 2 - 64;
+}
+
+int vanillaMarker(double pos, int center, int scale)
+{
+    const float f = static_cast<float>(pos - center) / static_cast<float>(1 << scale);
+    return static_cast<qint8>(static_cast<int>(static_cast<double>(f * 2.0F) + 0.5));
+}
+
+void checkEntitiesAndMaps()
+{
+    std::printf("entity NBT and maps:\n");
+    BotWorldData world;
+    EntityData frame;
+    frame.entityId = 7;
+    frame.uuid = QStringLiteral("00000000-0000-0000-0000-000000000007");
+    frame.type = QStringLiteral("minecraft:item_frame");
+    frame.rawNbt = QByteArray("\x01\x00\x01a\x05\x00", 7);
+    world.updateEntities({frame}, {}, QStringLiteral("minecraft:the_nether"));
+    auto first = world.entityNbtSince(0);
+    check(first.entities.size() == 1 && first.entities[0].rawNbt == frame.rawNbt && first.token > 0,
+          "an entity's NBT is listed once it arrives");
+    EntityData moved = frame;
+    moved.rawNbt.clear();
+    moved.x = 5;
+    world.updateEntities({moved}, {}, QStringLiteral("minecraft:the_nether"));
+    check(world.entityNbtSince(first.token).entities.isEmpty()
+              && world.entityNbtSince(0).entities.value(0).rawNbt == frame.rawNbt,
+          "an update without NBT keeps the last one and is not listed again");
+    EntityData mob = frame;
+    mob.entityId = 8;
+    mob.uuid = QStringLiteral("00000000-0000-0000-0000-000000000008");
+    mob.type = QStringLiteral("minecraft:zombified_piglin");
+    world.updateEntities({mob}, {}, QStringLiteral("minecraft:the_nether"));
+    const quint64 before = world.entityNbtSince(0).token;
+    world.updateEntities({}, {8}, QStringLiteral("minecraft:the_nether"), {8});
+    auto died = world.entityNbtSince(before);
+    check(died.died == QStringList{mob.uuid}, "a death is reported by uuid, after the token");
+    check(world.entityNbtSince(died.token).died.isEmpty(), "and once");
+
+    for (int scale : {0, 2}) {
+        for (auto [x, z] : {std::pair{1000.0, -300.0}, std::pair{-5000.25, 77.9}}) {
+            const QVector3D at(static_cast<float>(x), 64.0f, static_cast<float>(z));
+            const int cx = vanillaCenter(at.x(), scale), cz = vanillaCenter(at.z(), scale);
+            QVector<MapDecorationData> marks{{QStringLiteral("minecraft:frame"), 3, 4},
+                                             {QStringLiteral("minecraft:player"), vanillaMarker(at.x(), cx, scale),
+                                              vanillaMarker(at.z(), cz, scale)}};
+            BotWorldData w;
+            w.updateMap(42, scale, false, QStringLiteral("minecraft:the_nether"), 0, 0, 2, 1,
+                        QByteArray("\x11\x22", 2), &marks, at);
+            const auto maps = w.mapsSince(0).maps;
+            check(maps.size() == 1 && maps[0].second.center == QPoint(cx, cz),
+                  qPrintable(QString("scale %1 at %2,%3: centred where vanilla put it").arg(scale).arg(x).arg(z)));
+        }
+    }
+    BotWorldData w;
+    QVector<MapDecorationData> two{{QStringLiteral("minecraft:player"), 0, 0}, {QStringLiteral("minecraft:player"), 9, 9}};
+    w.updateMap(1, 0, false, QStringLiteral("minecraft:the_nether"), 0, 0, 128, 128, QByteArray(16384, 5), &two,
+                QVector3D(0, 64, 0));
+    const auto map = w.mapsSince(0).maps.value(0).second;
+    check(!map.center && map.colors == QByteArray(16384, 5), "two players' markers place nothing; the colours land");
+    w.updateMap(1, 0, false, QString(), 4, 2, 1, 1, QByteArray("\x09", 1), nullptr, std::nullopt);
+    check(w.mapsSince(0).maps.value(0).second.colors[2 * 128 + 4] == 9, "a patch lands at its offset");
+}
+
 void checkColumnExtras()
 {
     std::printf("column extras (prefix \"hiveext1\\0\"):\n");
@@ -1625,6 +1695,7 @@ int main(int argc, char **argv)
     checkNoSilentDrops(pool, false);
     checkNoSilentDrops(pool, true);
     checkColumnExtras();
+    checkEntitiesAndMaps();
     if (g_failures > 0) {
         std::printf("\n%d check(s) failed\n", g_failures);
         return 1;

@@ -2,7 +2,9 @@
 #define WORLDDATA_H
 
 #include <QHash>
+#include <QPoint>
 #include <QSet>
+#include <deque>
 #include <QMap>
 #include <QByteArray>
 #include <QString>
@@ -28,6 +30,17 @@ struct MapData {
     bool locked = false;
     QString dimension;
     QByteArray colors; // 16384 bytes (128x128), accumulated from patches
+    // Where it is centred, once a bot holding it has seen its own marker on it; the server
+    // never sends it. With it, `dimension` is the map's own rather than the one it was seen in.
+    std::optional<QPoint> center;
+    quint64 seq = 0;   // BotWorldData's map sequence at its last change
+};
+
+// One marker on a map, as the map packet carries it.
+struct MapDecorationData {
+    QString type;      // "minecraft:player", ...
+    int x = 0;         // half-pixels from the centre, -128..127
+    int z = 0;
 };
 
 struct PlayerSaveData {
@@ -76,6 +89,8 @@ struct EntityData {
     QString ownerUuid;
     bool shortLived = false;
     QString customName;
+    QByteArray rawNbt;    // full NBT as the client saved it (no "id"); empty until it sends one
+    quint64 nbtSeq = 0;   // BotWorldData's entity sequence when rawNbt last changed
 };
 
 // Hash function for ChunkPos to use in QHash
@@ -169,9 +184,30 @@ public:
     QString getCurrentDimension() const { return currentDimension; }
     void setCurrentDimension(const QString& dimension) { currentDimension = dimension; }
 
-    // Entity tracking
+    // Entity tracking. `died` are also removed; they are remembered for entityNbtSince.
     void updateEntities(const QVector<EntityData>& upserted, const QVector<int>& removed,
-                        const QString& dimension);
+                        const QString& dimension, const QVector<int>& died = {});
+
+    // For world.entity_nbt(): entities whose NBT changed after `since`, and the uuids of those
+    // seen dying after it. `token` is the sequence to pass next time.
+    struct EntityNbtChanges {
+        quint64 token = 0;
+        QVector<EntityData> entities;
+        QStringList died;
+        QString dimension;
+    };
+    EntityNbtChanges entityNbtSince(quint64 since) const;
+
+    // Map data from the client: a colour patch, and the markers when the packet carried them.
+    // `holder` is the bot's position, used to place the map when its own marker is on it.
+    void updateMap(int mapId, int scale, bool locked, const QString& dimension, int patchX, int patchZ,
+                   int patchW, int patchH, const QByteArray& patch, const QVector<MapDecorationData>* decorations,
+                   std::optional<QVector3D> holder);
+    struct MapChanges {
+        quint64 token = 0;
+        QVector<QPair<int, MapData>> maps;
+    };
+    MapChanges mapsSince(quint64 since) const;
     QVector<EntityData> getAllEntities() const;
     QVector<EntityData> findEntitiesNear(double x, double y, double z, double radius,
                                          const QString& typeFilter = "") const;
@@ -198,6 +234,11 @@ private:
     QHash<int, QString> entityIdToUuid;
     QString entityDimension;
     QHash<BlockEntityPos, BlockEntityData> blockEntities;
+    // Sequences survive clearWorldState, so a caller's token stays valid across a reconnect.
+    quint64 entityNbtSeq = 0;
+    std::deque<std::pair<quint64, QString>> diedLog;  // (seq, uuid), oldest first, capped
+    QHash<int, MapData> maps;
+    quint64 mapSeq = 0;
 
     bool blockMatches(const QString& blockState, const QStringList& blockTypes) const;  // Handles exact matches and wildcards
 };
