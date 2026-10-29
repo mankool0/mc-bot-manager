@@ -55,6 +55,11 @@ message ContainerUpdate {
 
   // Container-specific progress data
   map<string, int32> properties = 6;  // Flexible for different container types
+
+  // True once the server's full contents for this container (ClientboundContainerSetContentPacket)
+  // have been applied. Until then only the player's own slots show (they wrap the player's
+  // inventory) and the container's read empty.
+  optional bool contents_loaded = 7;
   // Examples:
   // Furnace: "burn_time", "max_burn_time", "cooking_progress", "cooking_total"
   // Brewing: "brew_time", "fuel"

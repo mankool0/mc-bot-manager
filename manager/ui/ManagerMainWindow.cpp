@@ -1850,7 +1850,7 @@ void ManagerMainWindow::stopAllBots()
                 // If no PID, just update status
                 bot->status = BotStatus::Offline;
                 bot->currentMemory = 0;
-                bot->position = QVector3D(0, 0, 0);
+                bot->position = {};
                 bot->dimension = "";
             }
 

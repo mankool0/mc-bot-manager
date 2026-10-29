@@ -1172,7 +1172,7 @@ void BotManager::handlePlayerStateImpl(int connectionId, const mankool::mcbot::p
             bot->playerUuid = state.uuid();
         }
         if (state.hasPosition()) {
-            bot->position = QVector3D(state.position().x(), state.position().y(), state.position().z());
+            bot->position = {state.position().x(), state.position().y(), state.position().z()};
             bot->positionKnown = true;
         }
         bot->yaw   = state.yaw();
@@ -3377,6 +3377,8 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
 
     bool isOpen = containerUpdate.isOpen();
     int containerId = containerUpdate.containerId();
+    // Before its contents land a container reads empty: never record that as what it holds.
+    const bool contentsIn = !containerUpdate.hasContentsLoaded() || containerUpdate.contentsLoaded();
 
     // Update container state
     {
@@ -3395,6 +3397,11 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
             for (const auto &item : containerUpdate.items()) {
                 bot->containerState.items.append(item);
             }
+            if (containerUpdate.hasContentsLoaded()) {
+                bot->containerState.contentsLoaded = containerUpdate.contentsLoaded();
+            } else {
+                bot->containerState.contentsLoaded.reset();
+            }
         } else {
             bot->containerState.clear();
         }
@@ -3404,7 +3411,7 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
     // world.changed_extras reads them, and to disk when the world is being saved. The ender
     // chest is the bot's own, so it only goes to disk.
     const bool savingWorld = bot->saveWorldToDisk && bot->worldAutoSaver;
-    if (isOpen) {
+    if (isOpen && contentsIn) {
         CT type = containerUpdate.type();
 
         // Handle ender chest separately (stored in player data)
@@ -5069,7 +5076,7 @@ void BotManager::handleMapDataImpl(int connectionId, const mankool::mcbot::proto
         for (const auto &d : mapData.decorations()) {
             decorations.append({d.type(), d.x(), d.z()});
         }
-        std::optional<QVector3D> holder;
+        std::optional<WorldPos> holder;
         if (bot->positionKnown) {
             holder = bot->position;
         }
