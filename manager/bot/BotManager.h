@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QVector>
 #include <QString>
-#include <QVector3D>
 #include <QProcess>
 #include <QDateTime>
 #include <QMap>
@@ -257,7 +256,7 @@ struct BotInstance : public BotConfig {
 
     QString playerUuid;
     int ownEntityId = 0; // 0 means unknown
-    QVector3D position;
+    WorldPos position;
     bool positionKnown = false;
     float yaw = 0.0f;
     float pitch = 0.0f;
@@ -289,6 +288,7 @@ struct BotInstance : public BotConfig {
         mankool::mcbot::protocol::ContainerUpdate::ContainerType containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
         std::optional<mankool::mcbot::protocol::BlockPos> position;
         QVector<mankool::mcbot::protocol::ItemStack> items;
+        std::optional<bool> contentsLoaded;   // unset: a mod from before contents_loaded
 
         void clear() {
             isOpen = false;
@@ -296,6 +296,7 @@ struct BotInstance : public BotConfig {
             containerType = mankool::mcbot::protocol::ContainerUpdate::ContainerType::OTHER;
             position.reset();
             items.clear();
+            contentsLoaded.reset();
         }
     } containerState;
 

@@ -26,6 +26,8 @@ public class ContainerOutbound extends BaseOutbound {
 
     private ContainerState currentContainer = null;
     private boolean pendingUpdate = false;
+    // A contents packet seen before its open screen packet, applied to the menu that open makes.
+    private int contentsBeforeOpen = Integer.MIN_VALUE;
 
     private BlockPos lastInteractedBlock = null;
     private long lastInteractionTime = 0;
@@ -83,6 +85,10 @@ public class ContainerOutbound extends BaseOutbound {
         LOGGER.info("Container opened: {} at {} (id={})", containerType, position, containerId);
 
         currentContainer = new ContainerState(containerId, containerType, position);
+        if (containerId == contentsBeforeOpen) {
+            currentContainer.contentsLoaded = true;
+        }
+        contentsBeforeOpen = Integer.MIN_VALUE;
     }
 
     public void onContainerClosed(int containerId) {
@@ -107,11 +113,14 @@ public class ContainerOutbound extends BaseOutbound {
     }
 
 
+    // Called at the tail of handleContainerContent, on the main thread: the slots are filled by now.
     public void onContainerContentSet(int containerId) {
         if (currentContainer != null && currentContainer.containerId == containerId) {
-            pendingUpdate = true;
+            currentContainer.contentsLoaded = true;
+            pendingUpdate = true;   // sent even when the contents match the empty menu
         } else if (currentContainer == null && client.player != null && client.player.containerMenu.containerId == containerId) {
             LOGGER.info("Container content received before open screen packet (id={})", containerId);
+            contentsBeforeOpen = containerId;
         }
     }
 
@@ -131,7 +140,8 @@ public class ContainerOutbound extends BaseOutbound {
         Inventory.ContainerUpdate.Builder containerBuilder = Inventory.ContainerUpdate.newBuilder()
             .setType(mapContainerType(currentContainer.containerType))
             .setContainerId(currentContainer.containerId)
-            .setIsOpen(true);
+            .setIsOpen(true)
+            .setContentsLoaded(currentContainer.contentsLoaded);
 
         if (currentContainer.position != null) {
             containerBuilder.setPosition(Common.BlockPos.newBuilder()
@@ -301,6 +311,7 @@ public class ContainerOutbound extends BaseOutbound {
         final String containerType;
         final BlockPos position;
         final Map<Integer, ItemStack> cachedItems = new HashMap<>();
+        boolean contentsLoaded = false;
 
         ContainerState(int containerId, String containerType, BlockPos position) {
             this.containerId = containerId;

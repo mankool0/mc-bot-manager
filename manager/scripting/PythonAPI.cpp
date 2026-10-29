@@ -2756,7 +2756,7 @@ py::object PythonAPI::findNearestBlock(const py::list &blockTypes, int maxDistan
     {
         py::gil_scoped_release release;
 
-        QVector3D start;
+        WorldPos start;
         {
             QReadLocker locker(botInstance->worldDataLock.get());
             start = botInstance->position;
@@ -3754,6 +3754,9 @@ py::object PythonAPI::getContainer(const std::string &bot)
         items.append(buildItemDict(item));
     }
     result["items"] = items;
+    if (botInstance->containerState.contentsLoaded) {
+        result["contents_loaded"] = *botInstance->containerState.contentsLoaded;
+    }
 
     return result;
 }

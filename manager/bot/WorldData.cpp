@@ -582,7 +582,7 @@ BotWorldData::EntityNbtChanges BotWorldData::entityNbtSince(quint64 since) const
 
 void BotWorldData::updateMap(int mapId, int scale, bool locked, const QString& dimension, int patchX, int patchZ,
                              int patchW, int patchH, const QByteArray& patch,
-                             const QVector<MapDecorationData>* decorations, std::optional<QVector3D> holder)
+                             const QVector<MapDecorationData>* decorations, std::optional<WorldPos> holder)
 {
     MapData& m = maps[mapId];
     m.scale = scale;

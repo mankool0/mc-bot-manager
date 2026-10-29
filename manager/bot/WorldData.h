@@ -43,6 +43,16 @@ struct MapDecorationData {
     int z = 0;
 };
 
+// A position in doubles, as the game keeps it: a QVector3D's floats hold only every other block past
+// 16.7M. Plain values rather than the protobuf Vec3d, which is implicitly shared:
+// BotInstance::position is written with no lock held while script threads read it.
+struct WorldPos {
+    double px = 0, py = 0, pz = 0;
+    double x() const { return px; }
+    double y() const { return py; }
+    double z() const { return pz; }
+};
+
 struct PlayerSaveData {
     QString uuid;
     double x = 0, y = 0, z = 0;
@@ -202,7 +212,7 @@ public:
     // `holder` is the bot's position, used to place the map when its own marker is on it.
     void updateMap(int mapId, int scale, bool locked, const QString& dimension, int patchX, int patchZ,
                    int patchW, int patchH, const QByteArray& patch, const QVector<MapDecorationData>* decorations,
-                   std::optional<QVector3D> holder);
+                   std::optional<WorldPos> holder);
     struct MapChanges {
         quint64 token = 0;
         QVector<QPair<int, MapData>> maps;
