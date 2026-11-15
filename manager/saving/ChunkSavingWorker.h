@@ -51,7 +51,10 @@ private:
         }
     };
 
-    void processChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities);
+    // Where a chunk is written and the block entities it is saved with, their contents read back
+    // off disk where this session never saw them. False for a chunk that cannot be saved.
+    bool prepareChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities, QString& regionPath,
+                      QVector<BlockEntityData>& effectiveBEs);
     RegionFile* openRegion(const QString& path);
     void closeRegion(const QString& path);
     void rewriteEntityChunk(const DimChunkPos& pos, const QVector<EntityData>& entities, const QSet<QUuid>& dead);

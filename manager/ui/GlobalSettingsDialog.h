@@ -39,6 +39,8 @@ private:
     QSpinBox *consoleMaxLinesSpinBox;
     QCheckBox *consoleUnlimitedCheckBox;
     QSpinBox *consolePendingLinesSpinBox;
+    QCheckBox *logModuleChangesCheckBox;
+    QCheckBox *logActionSuccessCheckBox;
     QComboBox *colorSchemeComboBox;
 
     QCheckBox *loggingEnabledCheckBox;

@@ -289,6 +289,7 @@ struct BotInstance : public BotConfig {
         std::optional<mankool::mcbot::protocol::BlockPos> position;
         QVector<mankool::mcbot::protocol::ItemStack> items;
         std::optional<bool> contentsLoaded;   // unset: a mod from before contents_loaded
+        std::optional<int> containerSize;     // unset: a mod from before container_size
 
         void clear() {
             isOpen = false;
@@ -297,6 +298,7 @@ struct BotInstance : public BotConfig {
             position.reset();
             items.clear();
             contentsLoaded.reset();
+            containerSize.reset();
         }
     } containerState;
 
@@ -377,6 +379,9 @@ struct BotInstance : public BotConfig {
     // Game window geometry and monitor list as last reported by the mod (guarded by dataMutex).
     mankool::mcbot::protocol::WindowStateResponse windowState;
     bool windowStateKnown = false;
+    // Auto-tiling cell, main thread only. Held while connected, and kept after a disconnect so a
+    // relaunch can take it back if nobody else has.
+    int windowCell = -1;
     bool isSingleplayer = false;
     QString singleplayerWorld;
     QString serverMotd;
@@ -570,6 +575,10 @@ public:
     static void sendCloseContainer(const QString &botName);
     static void sendOpenInventory(const QString &botName);
     static void sendRequestInventoryResync(const QString &botName);
+
+    // Whether bot consoles show Meteor module changes (the whole module, per change) and the
+    // script actions that succeeded. Failures show either way. From Global Settings > Console.
+    static void setConsoleLogging(bool moduleChanges, bool actionSuccess);
 
     // Screen widget interaction commands
     static void sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button);
@@ -769,6 +778,8 @@ private:
     QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
+    bool m_logModuleChanges = true;
+    bool m_logActionSuccess = true;
     PendingRequestMap<QList<bool>> m_pendingCanReachBlocks;
     PendingRequestMap<bool> m_pendingHoldAttackStatus;
     PendingRequestMap<bool> m_pendingHoldUseStatus;

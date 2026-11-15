@@ -6,6 +6,8 @@
 #include <QDir>
 #include <QFile>
 #include <QMetaObject>
+#include <QThreadPool>
+#include <QtConcurrent/QtConcurrentMap>
 #include <QSaveFile>
 #include <QSet>
 #include <QtEndian>
@@ -100,6 +102,25 @@ static constexpr int kMaxOpenRegions = 16;
 static constexpr int kBacklogWarnChunks = 1000;
 static constexpr qint64 kBacklogWarnIntervalMs = 60000;
 
+// Chunks taken from the queue per event: encoded together on the pool, then written in order.
+static constexpr int kSaveBatchChunks = 64;
+
+namespace {
+
+// NBT and compression are most of a chunk's save. On this thread alone they fell behind some
+// 20 bots flying over new ground; the file writes stay here, in order.
+struct EncodePool : QThreadPool {
+    EncodePool() { setMaxThreadCount(4); }
+};
+
+QThreadPool &encodePool()
+{
+    static EncodePool pool;
+    return pool;
+}
+
+}
+
 ChunkSavingWorker::ChunkSavingWorker(const QString& worldPath, int dataVersion, QObject *parent)
     : QObject(parent), m_worldPath(worldPath), m_dataVersion(dataVersion) {}
 
@@ -142,25 +163,68 @@ int ChunkSavingWorker::pendingChunkCount() const {
     return m_pending.size();
 }
 
-// One chunk per event so entity and player saves on this thread interleave with the drain
+// One batch per event so entity and player saves on this thread interleave with the drain
 // instead of waiting behind a long backlog.
 void ChunkSavingWorker::savePendingChunk() {
-    PendingChunk next;
+    std::vector<PendingChunk> batch;
     {
         QMutexLocker lock(&m_pendingMutex);
-        if (m_pendingOrder.empty()) {
+        while (!m_pendingOrder.empty() && batch.size() < static_cast<size_t>(kSaveBatchChunks)) {
+            DimChunkPos key = std::move(m_pendingOrder.front());
+            m_pendingOrder.pop_front();
+            batch.push_back(m_pending.take(key));
+        }
+        if (batch.empty()) {
             m_drainScheduled = false;
             return;
         }
-        DimChunkPos key = std::move(m_pendingOrder.front());
-        m_pendingOrder.pop_front();
-        next = m_pending.take(key);
         m_drainScheduled = !m_pendingOrder.empty();
         if (m_drainScheduled) {
             QMetaObject::invokeMethod(this, &ChunkSavingWorker::savePendingChunk, Qt::QueuedConnection);
         }
     }
-    processChunk(next.chunk, next.blockEntities);
+
+    struct Job {
+        const ChunkData *chunk = nullptr;
+        QString regionPath;
+        QVector<BlockEntityData> blockEntities;
+        std::vector<uint8_t> encoded;
+    };
+    QVector<Job> jobs;
+    jobs.reserve(static_cast<qsizetype>(batch.size()));
+    for (const PendingChunk &pending : batch) {
+        Job job;
+        job.chunk = &pending.chunk;
+        if (prepareChunk(pending.chunk, pending.blockEntities, job.regionPath, job.blockEntities)) {
+            jobs.append(std::move(job));
+        }
+    }
+
+    const int dataVersion = m_dataVersion;
+    QtConcurrent::blockingMap(&encodePool(), jobs, [dataVersion](Job &job) {
+        try {
+            job.encoded = RegionFile::encodeChunk(NBTSerializer::chunkToNBT(*job.chunk, dataVersion, job.blockEntities));
+        } catch (...) {
+            job.encoded.clear();
+        }
+    });
+
+    // In the order they were queued, a region at a time as openRegion keeps them.
+    for (const Job &job : std::as_const(jobs)) {
+        if (job.encoded.empty()) {
+            LogManager::log(QString("Could not encode chunk (%1, %2) for %3")
+                           .arg(job.chunk->chunkX).arg(job.chunk->chunkZ).arg(m_worldPath), LogManager::Error);
+            continue;
+        }
+        RegionFile* region = openRegion(job.regionPath);
+        if (!region) {
+            LogManager::log(QString("Failed to open %1 for writing").arg(job.regionPath), LogManager::Error);
+            continue;
+        }
+        region->writeEncodedChunk(job.chunk->chunkX & 31, job.chunk->chunkZ & 31, job.encoded);
+        // Readers open their own handle, so what the kernel has is what a scan of the save sees.
+        region->flush();
+    }
 }
 
 RegionFile* ChunkSavingWorker::openRegion(const QString& path) {
@@ -193,7 +257,8 @@ void ChunkSavingWorker::closeRegion(const QString& path) {
                         m_openRegions.end());
 }
 
-void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities) {
+bool ChunkSavingWorker::prepareChunk(const ChunkData& chunk, const QVector<BlockEntityData>& blockEntities,
+                                     QString& regionPath, QVector<BlockEntityData>& effectiveBEs) {
     const QString& worldPath = m_worldPath;
     const int dataVersion = m_dataVersion;
     // Determine dimension path (version-aware: 26.1+ uses dimensions/ subdirectory)
@@ -207,7 +272,7 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
         dimensionName = "End";
     } else {
         LogManager::log(QString("Cannot save chunk with unknown dimension: %1").arg(chunk.dimension), LogManager::Warning);
-        return;
+        return false;
     }
 
     // Ensure dimension directory exists
@@ -230,17 +295,18 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
 
     int regionX = chunk.chunkX >> 5;
     int regionZ = chunk.chunkZ >> 5;
-    RegionFile* region = openRegion(QString("%1/region/r.%2.%3.mca").arg(dimensionPath).arg(regionX).arg(regionZ));
+    regionPath = QString("%1/region/r.%2.%3.mca").arg(dimensionPath).arg(regionX).arg(regionZ);
+    RegionFile* region = openRegion(regionPath);
     if (!region) {
         LogManager::log(QString("Failed to open region r.%1.%2 in %3 for writing")
                        .arg(regionX).arg(regionZ).arg(dimensionPath), LogManager::Error);
-        return;
+        return false;
     }
 
     const int localX = chunk.chunkX & 31;
     const int localZ = chunk.chunkZ & 31;
 
-    QVector<BlockEntityData> effectiveBEs = blockEntities;
+    effectiveBEs = blockEntities;
     if (hasUnknownContainers && region->hasChunk(localX, localZ)) {
         {
             {
@@ -288,9 +354,7 @@ void ChunkSavingWorker::processChunk(const ChunkData& chunk, const QVector<Block
         }
     }
 
-    WorldExporter::exportChunk(chunk, *region, dataVersion, effectiveBEs);
-    // Readers open their own handle, so what the kernel has is what a scan of the save sees.
-    region->flush();
+    return true;
 }
 
 void ChunkSavingWorker::processEntityFlush(const QHash<DimChunkPos, QVector<EntityData>>& chunks,

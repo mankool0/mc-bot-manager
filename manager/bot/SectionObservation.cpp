@@ -69,17 +69,24 @@ struct DimensionCache {
     }
 };
 
-}
-
-Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &world, QReadWriteLock &worldLock,
-                    std::optional<quint64> since, const QByteArray &dimension, bool digest, int limit,
-                    const QByteArray &digestPrefix, const RetainedSections *retained)
-{
-    Changes result;
-    QVector<SectionKey> keys;
-    QVector<SectionDirtyTracker::DroppedSection> dropped;
+// What one listing found under the world lock: the sections to digest, and the keys it lost.
+struct Collected {
+    quint64 token = 0;
+    bool truncated = false;
+    bool droppedIncomplete = false;
     QVector<DigestJob> jobs;
     QVector<SectionKey> lost;
+};
+
+Collected collect(const SectionDirtyTracker &tracker, const BotWorldData &world, QReadWriteLock &worldLock,
+                  std::optional<quint64> since, const QByteArray &dimension, int limit,
+                  const RetainedSections *retained)
+{
+    Collected result;
+    QVector<SectionKey> keys;
+    QVector<SectionDirtyTracker::DroppedSection> dropped;
+    QVector<DigestJob> &jobs = result.jobs;
+    QVector<SectionKey> &lost = result.lost;
     {
         // The tracker is read under the world lock, and BotManager drops an unloading column
         // from the tracker under the write lock, so the two agree: a listed key's column is
@@ -141,73 +148,44 @@ Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &worl
             lost.append(d.key);
         }
     }
+    return result;
+}
 
-    if (digest) {
-        runJobs(jobs, [&digestPrefix](DigestJob &job) {
-            std::optional<QByteArray> d = SectionCodec::sectionDigest(job.section, digestPrefix);
-            if (d) {
-                job.digest = std::move(*d);
-                job.encoded = true;
-            }
-        });
-    }
-
-    result.sections.reserve(jobs.size());
-    for (DigestJob &job : jobs) {
-        if (digest && !job.encoded) {
-            lost.append(job.key);
-            continue;
+void digestJobs(QVector<DigestJob> &jobs, const QByteArray &digestPrefix)
+{
+    runJobs(jobs, [&digestPrefix](DigestJob &job) {
+        std::optional<QByteArray> d = SectionCodec::sectionDigest(job.section, digestPrefix);
+        if (d) {
+            job.digest = std::move(*d);
+            job.encoded = true;
         }
-        result.sections.append({job.key, std::move(job.digest)});
-    }
+    });
+}
 
+// Deduplicated, the first kMaxDroppedKeys named; returns how many there were in all.
+qsizetype nameDropped(const QVector<SectionKey> &lost, QVector<SectionKey> &named)
+{
     QSet<SectionKey> seen;
     seen.reserve(lost.size());
-    for (const SectionKey &key : std::as_const(lost)) {
+    for (const SectionKey &key : lost) {
         if (seen.contains(key)) {
             continue;
         }
         seen.insert(key);
-        if (result.dropped.size() < kMaxDroppedKeys) {
-            result.dropped.append(key);
+        if (named.size() < kMaxDroppedKeys) {
+            named.append(key);
         }
     }
-    result.droppedTotal = seen.size();
-    return result;
+    return seen.size();
 }
 
-QByteArray exportSections(const BotWorldData &world, QReadWriteLock &worldLock, const QVector<SectionKey> &keys,
-                          const QByteArray &dimension, const RetainedSections *retained)
+// Laid out before anything is encoded: each frame gets a slot sized for its worst case, the
+// workers write straight into it, and the slack is closed afterwards. Nothing a worker
+// allocates outlives its job, so no blob is freed on a thread other than the one that made
+// it - glibc serializes those frees on the owning thread's arena, which under ten callers
+// cost more than the parallelism gained.
+QByteArray encodeFrames(QVector<ExportJob> &jobs)
 {
-    QVector<ExportJob> jobs;
-    jobs.reserve(keys.size());
-    {
-        QReadLocker locker(&worldLock);
-        DimensionCache dims;
-        const qint64 now = RetainedSections::nowMs();
-        for (const SectionKey &key : keys) {
-            const ChunkData *chunk = world.getChunk(key.chunkX, key.chunkZ);
-            if (chunk) {
-                const QByteArray &dim = dims.of(chunk);
-                auto it = chunk->sections.constFind(key.sectionY);
-                if ((dimension.isEmpty() || dim == dimension) && it != chunk->sections.constEnd()) {
-                    jobs.append({key, dim, *it});
-                    continue;
-                }
-            }
-            // Not loaded: the retained copy, which is what was listed.
-            const RetainedSections::Entry *kept = retained ? retained->latest(key, now) : nullptr;
-            if (kept && (dimension.isEmpty() || kept->dimension == dimension)) {
-                jobs.append({key, kept->dimension, kept->section});
-            }
-        }
-    }
-
-    // Laid out before anything is encoded: each frame gets a slot sized for its worst case, the
-    // workers write straight into it, and the slack is closed afterwards. Nothing a worker
-    // allocates outlives its job, so no blob is freed on a thread other than the one that made
-    // it - glibc serializes those frees on the owning thread's arena, which under ten callers
-    // cost more than the parallelism gained.
     qsizetype layout = 4;
     for (ExportJob &job : jobs) {
         job.slot = layout;
@@ -244,6 +222,66 @@ QByteArray exportSections(const BotWorldData &world, QReadWriteLock &worldLock, 
     SectionCodec::writeExportCount(base, frames);
     payload.truncate(end);
     return payload;
+}
+
+}
+
+Changes listChanges(const SectionDirtyTracker &tracker, const BotWorldData &world, QReadWriteLock &worldLock,
+                    std::optional<quint64> since, const QByteArray &dimension, bool digest, int limit,
+                    const QByteArray &digestPrefix, const RetainedSections *retained)
+{
+    Collected found = collect(tracker, world, worldLock, since, dimension, limit, retained);
+    Changes result;
+    result.token = found.token;
+    result.truncated = found.truncated;
+    result.droppedIncomplete = found.droppedIncomplete;
+    QVector<SectionKey> &lost = found.lost;
+
+    if (digest) {
+        digestJobs(found.jobs, digestPrefix);
+    }
+
+    result.sections.reserve(found.jobs.size());
+    for (DigestJob &job : found.jobs) {
+        if (digest && !job.encoded) {
+            lost.append(job.key);
+            continue;
+        }
+        result.sections.append({job.key, std::move(job.digest)});
+    }
+
+    result.droppedTotal = nameDropped(lost, result.dropped);
+    return result;
+}
+
+QByteArray exportSections(const BotWorldData &world, QReadWriteLock &worldLock, const QVector<SectionKey> &keys,
+                          const QByteArray &dimension, const RetainedSections *retained)
+{
+    QVector<ExportJob> jobs;
+    jobs.reserve(keys.size());
+    {
+        QReadLocker locker(&worldLock);
+        DimensionCache dims;
+        const qint64 now = RetainedSections::nowMs();
+        for (const SectionKey &key : keys) {
+            const ChunkData *chunk = world.getChunk(key.chunkX, key.chunkZ);
+            if (chunk) {
+                const QByteArray &dim = dims.of(chunk);
+                auto it = chunk->sections.constFind(key.sectionY);
+                if ((dimension.isEmpty() || dim == dimension) && it != chunk->sections.constEnd()) {
+                    jobs.append({key, dim, *it});
+                    continue;
+                }
+            }
+            // Not loaded: the retained copy, which is what was listed.
+            const RetainedSections::Entry *kept = retained ? retained->latest(key, now) : nullptr;
+            if (kept && (dimension.isEmpty() || kept->dimension == dimension)) {
+                jobs.append({key, kept->dimension, kept->section});
+            }
+        }
+    }
+
+    return encodeFrames(jobs);
 }
 
 std::optional<Section> readSection(const BotWorldData &world, QReadWriteLock &worldLock, const SectionKey &key,

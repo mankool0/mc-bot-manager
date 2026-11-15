@@ -638,6 +638,8 @@ Get the currently open container. Returns `None` if no container is open or bot 
 | `type` | `ContainerType` | Container type enum value |
 | `position` | `tuple[int, int, int]` | Block position of the container. Only present when the client could attribute the open screen to a block (the block was opened by interacting with it shortly before), so use `container.get('position')`. |
 | `items` | `list` | [Item dicts](bot.md#item-dict) for the filled slots only, in slot order. Empty slots are not listed, so check `slot` rather than the list index. |
+| `size` | `int` | How many of the slots are the container's own: 27 for a chest, 54 for a double chest, 5 for a hopper. The player's inventory follows them, its three main rows from slot `size`, then the hotbar from `size + 27`. Use this rather than reading the size off `items`: with nothing in a slot past the container's, the list cannot tell a double chest from a single one. Missing with a client mod older than the field. |
+| `contents_loaded` | `bool` | True once the server's contents for the container have arrived; until then its own slots read empty while the player's show. Missing with a client mod older than the field. |
 
 **Note:** Only works for external containers (chests, barrels, etc.). For the player's own inventory use `bot.inventory()`.
 

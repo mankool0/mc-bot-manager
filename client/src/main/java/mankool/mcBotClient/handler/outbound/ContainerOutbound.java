@@ -151,12 +151,17 @@ public class ContainerOutbound extends BaseOutbound {
                 .build());
         }
 
+        int containerSize = 0;
         for (int i = 0; i < menu.slots.size(); i++) {
+            if (menu.getSlot(i).container != client.player.getInventory()) {
+                containerSize++;
+            }
             ItemStack itemStack = menu.getSlot(i).getItem();
             if (!itemStack.isEmpty()) {
                 containerBuilder.addItems(ProtoUtil.buildItemStack(itemStack, i));
             }
         }
+        containerBuilder.setContainerSize(containerSize);
 
         addContainerProperties(menu, containerBuilder);
 

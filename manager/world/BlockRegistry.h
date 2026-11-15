@@ -40,7 +40,7 @@ public:
 
 private:
     int dataVersion = 0;
-    QMap<uint32_t, QString> idToState;
+    QHash<uint32_t, QString> idToState;
     QHash<QString, uint32_t> stateToId;
     QHash<uint32_t, uint8_t> faceMasks;
     mutable QMutex mutex;

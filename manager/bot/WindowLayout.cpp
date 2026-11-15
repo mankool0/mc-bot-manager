@@ -25,6 +25,21 @@ void WindowLayoutSettings::save() const
     settings.setValue("BotWindows/minimized", minimized);
 }
 
+int WindowLayout::pickCell(int cellCount, int previous, int listIndex, const QSet<int> &taken)
+{
+    cellCount = std::max(1, cellCount);
+    if (previous >= 0 && previous < cellCount && !taken.contains(previous))
+        return previous;
+    const int listCell = std::max(0, listIndex) % cellCount;
+    if (!taken.contains(listCell))
+        return listCell;
+    for (int cell = 0; cell < cellCount; ++cell) {
+        if (!taken.contains(cell))
+            return cell;
+    }
+    return listCell;
+}
+
 std::optional<mankool::mcbot::protocol::SetWindowCommand> WindowLayout::commandForCell(
     const WindowLayoutSettings &settings,
     const mankool::mcbot::protocol::WindowStateResponse &state,

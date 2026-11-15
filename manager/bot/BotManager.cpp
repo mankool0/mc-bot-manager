@@ -867,10 +867,6 @@ void BotManager::removeBotImpl(const QString &name)
             }
 
             emit botRemoved(name);
-
-            // Cells are list indices, so every bot after the removed one just moved up a slot.
-            if (i < botInstances.size())
-                reloadWindowLayoutImpl();
             return;
         }
     }
@@ -1509,7 +1505,9 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
 
     QString output = QString("[%1] %2").arg(statusText, response.message());
 
-    if (!isSilent) {
+    // A failure always shows: it is the only place a script's fire-and-forget action says why
+    // it did nothing.
+    if (!isSilent && (!success || m_logActionSuccess)) {
         if (bot->consoleWidget) {
             bot->consoleWidget->appendResponse(success, output);
         }
@@ -1622,7 +1620,15 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
                 moduleFound = true;
             }
         }
+    }
 
+    const bool isSilent = silentMessageIds.remove(response.requestId());
+    // A script sets settings many times a second; each answer is the whole module, so it is only
+    // written out when someone asked to see it. A failure always is.
+    const bool show = !isSilent && (!response.success() || m_logModuleChanges);
+
+    if (show && response.success()) {
+        const auto &protoModule = response.updatedModule();
         QString statusIcon = protoModule.enabled() ? "[✓]" : "[ ]";
         output = QString("Module updated: %1 %2").arg(statusIcon, protoModule.name());
 
@@ -1650,13 +1656,11 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
                 }
             }
         }
-    } else {
+    } else if (show) {
         output = QString("Error: %1").arg(response.errorMessage());
     }
 
-    bool isSilent = silentMessageIds.remove(response.requestId());
-
-    if (!isSilent) {
+    if (show) {
         if (bot->consoleWidget) {
             bot->consoleWidget->appendResponse(response.success(), output);
         }
@@ -2212,6 +2216,12 @@ void BotManager::handleBaritoneCommandResponseImpl(int connectionId, const manko
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
+
+    // A success says only "Command executed successfully": what the command did comes back as
+    // Baritone's own log lines. A failure says why.
+    if (response.success()) {
+        return;
+    }
 
     QString output = response.result();
 
@@ -2957,7 +2967,8 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
     chunk.chunkZ = chunkData.chunkZ();
     chunk.dimension = chunkData.dimension();
     chunk.minY = chunkData.minY();
-    chunk.maxY = chunkData.maxY();
+    // The mod sends getMaxY(), the highest block y (inclusive since 1.21.2); ChunkData's maxY is one past it
+    chunk.maxY = chunkData.maxY() + 1;
 
     // Convert sections
     for (const auto &sectionProto : chunkData.sections()) {
@@ -2977,35 +2988,22 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
             }
         }
 
-        // Copy indices (only if not uniform)
+        // Indices, biomes and light are the message's own lists, shared rather than copied
+        // element by element (only if not uniform)
         if (!section.uniform) {
-            for (uint32_t index : sectionProto.blockIndices()) {
-                section.blockIndices.append(index);
-            }
+            section.blockIndices = sectionProto.blockIndices();
         }
 
-        // Copy biome data
         section.biomeUniform = sectionProto.biomeUniform();
-        for (const auto& biomeId : sectionProto.biomePalette()) {
-            section.biomePalette.append(biomeId);
-        }
+        section.biomePalette = sectionProto.biomePalette();
         if (!section.biomeUniform) {
-            for (uint32_t idx : sectionProto.biomeIndices()) {
-                section.biomeIndices.append(idx);
-            }
+            section.biomeIndices = sectionProto.biomeIndices();
         }
 
-        // Copy light data
-        const auto& bl = sectionProto.blockLight();
-        if (!bl.isEmpty()) {
-            section.blockLight = QByteArray(bl.data(), bl.size());
-        }
-        const auto& sl = sectionProto.skyLight();
-        if (!sl.isEmpty()) {
-            section.skyLight = QByteArray(sl.data(), sl.size());
-        }
+        section.blockLight = sectionProto.blockLight();
+        section.skyLight = sectionProto.skyLight();
 
-        chunk.sections[section.sectionY] = section;
+        chunk.sections[section.sectionY] = std::move(section);
     }
 
     // Load chunk into world data (with write lock), also parse and store block entities
@@ -3401,6 +3399,11 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
                 bot->containerState.contentsLoaded = containerUpdate.contentsLoaded();
             } else {
                 bot->containerState.contentsLoaded.reset();
+            }
+            if (containerUpdate.hasContainerSize()) {
+                bot->containerState.containerSize = static_cast<int>(containerUpdate.containerSize());
+            } else {
+                bot->containerState.containerSize.reset();
             }
         } else {
             bot->containerState.clear();
@@ -4375,9 +4378,25 @@ void BotManager::applyWindowLayoutImpl(BotInstance *bot)
     if (!bot || bot->connectionId <= 0 || !bot->windowStateKnown)
         return;
 
-    int cell = botInstances.indexOf(bot);
-    if (cell < 0)
+    const int listIndex = botInstances.indexOf(bot);
+    if (listIndex < 0)
         return;
+    int cell = -1;
+    if (m_windowLayoutSettings.enabled) {
+        const int cellCount = m_windowLayoutSettings.columns * m_windowLayoutSettings.rows;
+        // Offline bots hold nothing: their remembered cell is only a preference for when they return.
+        QSet<int> taken;
+        for (BotInstance *other : std::as_const(botInstances)) {
+            if (other != bot && other->connectionId > 0 && other->windowCell >= 0)
+                taken.insert(other->windowCell);
+        }
+        cell = WindowLayout::pickCell(cellCount, bot->windowCell, listIndex, taken);
+        bot->windowCell = cell;
+        if (taken.contains(cell)) {
+            LogManager::log(QString("[%1] All %2 window cells are in use, sharing cell %3")
+                                .arg(bot->name).arg(cellCount).arg(cell), LogManager::Warning);
+        }
+    }
     std::optional<mankool::mcbot::protocol::SetWindowCommand> cmd;
     bool hidden = false;
     bool canMove = false;
@@ -4431,6 +4450,20 @@ void BotManager::reloadWindowLayoutImpl()
     m_windowLayoutSettings = WindowLayoutSettings::load();
     if (!m_windowLayoutSettings.enabled)
         return;
+
+    // A smaller grid, or bots that were sharing a cell, leave some bots without a valid cell of
+    // their own. Only those pick again (earlier in the list keeps a shared cell); the rest stay put.
+    const int cellCount = m_windowLayoutSettings.columns * m_windowLayoutSettings.rows;
+    QSet<int> kept;
+    for (BotInstance *bot : std::as_const(botInstances)) {
+        if (bot->connectionId <= 0 || bot->windowCell < 0)
+            continue;
+        if (bot->windowCell >= cellCount || kept.contains(bot->windowCell))
+            bot->windowCell = -1;
+        else
+            kept.insert(bot->windowCell);
+    }
+
     for (BotInstance *bot : std::as_const(botInstances)) {
         if (bot->status == BotStatus::Online)
             applyWindowLayoutImpl(bot);
@@ -4587,6 +4620,12 @@ void BotManager::sendOpenInventoryImpl(const QString &botName)
 void BotManager::sendRequestInventoryResync(const QString &botName)
 {
     instance().sendRequestInventoryResyncImpl(botName);
+}
+
+void BotManager::setConsoleLogging(bool moduleChanges, bool actionSuccess)
+{
+    instance().m_logModuleChanges = moduleChanges;
+    instance().m_logActionSuccess = actionSuccess;
 }
 
 void BotManager::sendRequestInventoryResyncImpl(const QString &botName)
