@@ -72,17 +72,20 @@ Settings -> Bots -> **Game Windows**:
 
 - **Tile bot windows on connect** - when a bot connects, the manager moves and resizes its window
   into its cell of a grid on the chosen monitor. The window is still hidden at that point and
-  appears directly in the cell. A bot's cell is its position in the bot list
-  (first bot = top-left, then row by row), so every bot has a fixed slot: a crashed bot leaves
-  its cell empty and takes it back when it relaunches, and nothing else moves. With more bots
-  than cells the numbering wraps and windows overlap.
+  appears directly in the cell. Cells are numbered row by row from the top-left. A connecting
+  bot takes the cell matching its position in the bot list (wrapping when the list is longer
+  than the grid), or the first free cell if another running bot already has that one, so no two
+  running bots share a cell. A bot that crashes keeps its cell reserved for when it relaunches
+  unless another bot has taken it by then, and placing a bot never moves the others. Windows
+  only overlap when more bots are running than there are cells.
 - **Monitor** - a monitor name as the game reports it. The list holds the names reported by online
   bots plus the desktop's own screen names; "Primary monitor" works without knowing any.
 - **Columns / Rows** - the grid. 3 x 2 on a 1920x1080 work area gives 640x540 windows.
 - **Minimize after placing** - iconify each window once it is in its cell.
 
-Changing the settings re-tiles every online bot immediately, as does removing a bot from the list
-(the bots after it move up a cell). Scripts get the same control through
+Changing the settings re-tiles every online bot immediately. Bots keep their cells where the new
+grid still has them; bots whose cell is gone, or that were sharing one, move to free cells.
+Scripts get the same control through
 [`bot.window()` and `bot.set_window()`](api/bot.md#game-window).
 
 Placement needs a platform where applications may move their own windows: Windows, X11 and

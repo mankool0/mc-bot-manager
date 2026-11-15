@@ -867,10 +867,6 @@ void BotManager::removeBotImpl(const QString &name)
             }
 
             emit botRemoved(name);
-
-            // Cells are list indices, so every bot after the removed one just moved up a slot.
-            if (i < botInstances.size())
-                reloadWindowLayoutImpl();
             return;
         }
     }
@@ -4380,9 +4376,25 @@ void BotManager::applyWindowLayoutImpl(BotInstance *bot)
     if (!bot || bot->connectionId <= 0 || !bot->windowStateKnown)
         return;
 
-    int cell = botInstances.indexOf(bot);
-    if (cell < 0)
+    const int listIndex = botInstances.indexOf(bot);
+    if (listIndex < 0)
         return;
+    int cell = -1;
+    if (m_windowLayoutSettings.enabled) {
+        const int cellCount = m_windowLayoutSettings.columns * m_windowLayoutSettings.rows;
+        // Offline bots hold nothing: their remembered cell is only a preference for when they return.
+        QSet<int> taken;
+        for (BotInstance *other : std::as_const(botInstances)) {
+            if (other != bot && other->connectionId > 0 && other->windowCell >= 0)
+                taken.insert(other->windowCell);
+        }
+        cell = WindowLayout::pickCell(cellCount, bot->windowCell, listIndex, taken);
+        bot->windowCell = cell;
+        if (taken.contains(cell)) {
+            LogManager::log(QString("[%1] All %2 window cells are in use, sharing cell %3")
+                                .arg(bot->name).arg(cellCount).arg(cell), LogManager::Warning);
+        }
+    }
     std::optional<mankool::mcbot::protocol::SetWindowCommand> cmd;
     bool hidden = false;
     bool canMove = false;
@@ -4436,6 +4448,20 @@ void BotManager::reloadWindowLayoutImpl()
     m_windowLayoutSettings = WindowLayoutSettings::load();
     if (!m_windowLayoutSettings.enabled)
         return;
+
+    // A smaller grid, or bots that were sharing a cell, leave some bots without a valid cell of
+    // their own. Only those pick again (earlier in the list keeps a shared cell); the rest stay put.
+    const int cellCount = m_windowLayoutSettings.columns * m_windowLayoutSettings.rows;
+    QSet<int> kept;
+    for (BotInstance *bot : std::as_const(botInstances)) {
+        if (bot->connectionId <= 0 || bot->windowCell < 0)
+            continue;
+        if (bot->windowCell >= cellCount || kept.contains(bot->windowCell))
+            bot->windowCell = -1;
+        else
+            kept.insert(bot->windowCell);
+    }
+
     for (BotInstance *bot : std::as_const(botInstances)) {
         if (bot->status == BotStatus::Online)
             applyWindowLayoutImpl(bot);

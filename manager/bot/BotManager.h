@@ -379,6 +379,9 @@ struct BotInstance : public BotConfig {
     // Game window geometry and monitor list as last reported by the mod (guarded by dataMutex).
     mankool::mcbot::protocol::WindowStateResponse windowState;
     bool windowStateKnown = false;
+    // Auto-tiling cell, main thread only. Held while connected, and kept after a disconnect so a
+    // relaunch can take it back if nobody else has.
+    int windowCell = -1;
     bool isSingleplayer = false;
     QString singleplayerWorld;
     QString serverMotd;
