@@ -1540,7 +1540,7 @@ void checkEntitiesAndMaps()
 
     for (int scale : {0, 2}) {
         for (auto [x, z] : {std::pair{1000.0, -300.0}, std::pair{-5000.25, 77.9}}) {
-            const QVector3D at(static_cast<float>(x), 64.0f, static_cast<float>(z));
+            const WorldPos at{x, 64.0, z};
             const int cx = vanillaCenter(at.x(), scale), cz = vanillaCenter(at.z(), scale);
             QVector<MapDecorationData> marks{{QStringLiteral("minecraft:frame"), 3, 4},
                                              {QStringLiteral("minecraft:player"), vanillaMarker(at.x(), cx, scale),
@@ -1556,7 +1556,7 @@ void checkEntitiesAndMaps()
     BotWorldData w;
     QVector<MapDecorationData> two{{QStringLiteral("minecraft:player"), 0, 0}, {QStringLiteral("minecraft:player"), 9, 9}};
     w.updateMap(1, 0, false, QStringLiteral("minecraft:the_nether"), 0, 0, 128, 128, QByteArray(16384, 5), &two,
-                QVector3D(0, 64, 0));
+                WorldPos{0, 64, 0});
     const auto map = w.mapsSince(0).maps.value(0).second;
     check(!map.center && map.colors == QByteArray(16384, 5), "two players' markers place nothing; the colours land");
     w.updateMap(1, 0, false, QString(), 4, 2, 1, 1, QByteArray("\x09", 1), nullptr, std::nullopt);
