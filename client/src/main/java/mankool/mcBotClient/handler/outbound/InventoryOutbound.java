@@ -16,7 +16,6 @@ public class InventoryOutbound extends BaseOutbound {
     private static final int CURSOR_SLOT = -1;
 
     private static InventoryOutbound instance;
-    private boolean pendingUpdate = false;
 
     private ItemStack[] sentItems = null;
     private ItemStack sentCursor = ItemStack.EMPTY;
@@ -34,37 +33,28 @@ public class InventoryOutbound extends BaseOutbound {
         return instance;
     }
 
+    /**
+     * Every tick, every slot, the way ContainerOutbound reads the open screen. Waiting on the
+     * Inventory setters missed changes Minecraft makes to a stack in place: a shift-click that
+     * merges into a stack already held sets its count and calls only Slot.setChanged
+     * (AbstractContainerMenu.moveItemStackTo), and one that moves part of a stack out of the
+     * inventory leaves the rest the same way (quickMoveStack). The server agrees with the
+     * client's prediction, so no slot packet comes back to set the slot either, and the manager
+     * kept the old count until some other change. A delta with nothing in it is not sent.
+     */
     @Override
     protected void onClientTick(Minecraft client) {
         LocalPlayer player = client.player;
         if (player == null) return;
-
-        if (VersionCompat.getSelectedSlot(player.getInventory()) != sentSelectedSlot) {
-            pendingUpdate = true;
-        }
-
-        if (!ItemStack.matches(sentCursor, player.containerMenu.getCarried())) {
-            pendingUpdate = true;
-        }
-
-        // Send batched inventory update once per tick
-        if (pendingUpdate) {
-            pendingUpdate = false;
-            sendUpdate(player);
-        }
-    }
-
-    public void queueUpdate() {
-        pendingUpdate = true;
+        sendUpdate(player);
     }
 
     /**
-     * Queues an update that is guaranteed to be a full snapshot rather than a delta.
+     * Makes the next tick's update a full snapshot rather than a delta.
      * Used when the manager's view may have drifted and a diff cannot repair it.
      */
     public void queueFullUpdate() {
         forceFull = true;
-        pendingUpdate = true;
     }
 
     private void sendUpdate(LocalPlayer player) {
@@ -131,8 +121,7 @@ public class InventoryOutbound extends BaseOutbound {
             sentCursor = cursor.copy();
         }
 
-        // The change hooks fire on plenty of writes that change nothing (the server resending
-        // identical container contents, for one), so empty deltas are common.
+        // Read every tick, so nearly every delta is empty.
         if (delta.getChangedItemsCount() == 0 && !delta.hasSelectedSlot() && !delta.hasCursorItem()) {
             return;
         }

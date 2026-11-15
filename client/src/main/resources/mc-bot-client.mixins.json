@@ -8,7 +8,6 @@
     "ClientPacketListenerMixin",
     "ClientboundSectionBlocksUpdatePacketAccessor",
     "ContainerMixin",
-    "InventoryMixin",
     "BlockInteractionMixin",
     "AbstractContainerMenuAccessor",
     "EditBoxAccessor",
