@@ -107,6 +107,9 @@ ManagerMainWindow::ManagerMainWindow(QWidget *parent)
             int maxFiles = settings.value("Logging/maxFiles", 0).toInt();
             LogManager::initFileSink(logDir, (qint64)maxSizeMiB * 1024 * 1024, maxFiles);
         }
+        BotManager::setConsoleLogging(settings.value("Console/logModuleChanges", true).toBool(),
+                                      settings.value("Console/logActionSuccess", true).toBool());
+        LogManager::setMaxLines(settings.value("Console/maxLines", 10000).toInt());
     }
 
     PrismLauncherManager::setPrismConfig(&prismConfig);

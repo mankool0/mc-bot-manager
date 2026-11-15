@@ -32,6 +32,14 @@ public:
     static void setPrismLogWidget(QPlainTextEdit *widget) {
         instance().prismLogWidget = widget;
     }
+    // Lines the manager and Prism logs keep on screen, 0 for all of them, as the bot consoles do
+    // (Console/maxLines). The log files keep everything.
+    static void setMaxLines(int maxLines) {
+        if (instance().managerLogWidget)
+            instance().managerLogWidget->setMaximumBlockCount(maxLines);
+        if (instance().prismLogWidget)
+            instance().prismLogWidget->setMaximumBlockCount(maxLines);
+    }
     static void setAutoScroll(bool enabled) {
         instance().autoScroll = enabled;
     }

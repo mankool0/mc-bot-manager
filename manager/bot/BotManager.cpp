@@ -1505,7 +1505,9 @@ void BotManager::handleCommandResponseImpl(int connectionId, const mankool::mcbo
 
     QString output = QString("[%1] %2").arg(statusText, response.message());
 
-    if (!isSilent) {
+    // A failure always shows: it is the only place a script's fire-and-forget action says why
+    // it did nothing.
+    if (!isSilent && (!success || m_logActionSuccess)) {
         if (bot->consoleWidget) {
             bot->consoleWidget->appendResponse(success, output);
         }
@@ -1618,7 +1620,15 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
                 moduleFound = true;
             }
         }
+    }
 
+    const bool isSilent = silentMessageIds.remove(response.requestId());
+    // A script sets settings many times a second; each answer is the whole module, so it is only
+    // written out when someone asked to see it. A failure always is.
+    const bool show = !isSilent && (!response.success() || m_logModuleChanges);
+
+    if (show && response.success()) {
+        const auto &protoModule = response.updatedModule();
         QString statusIcon = protoModule.enabled() ? "[✓]" : "[ ]";
         output = QString("Module updated: %1 %2").arg(statusIcon, protoModule.name());
 
@@ -1646,13 +1656,11 @@ void BotManager::handleModuleConfigResponseImpl(int connectionId, const mankool:
                 }
             }
         }
-    } else {
+    } else if (show) {
         output = QString("Error: %1").arg(response.errorMessage());
     }
 
-    bool isSilent = silentMessageIds.remove(response.requestId());
-
-    if (!isSilent) {
+    if (show) {
         if (bot->consoleWidget) {
             bot->consoleWidget->appendResponse(response.success(), output);
         }
@@ -2208,6 +2216,12 @@ void BotManager::handleBaritoneCommandResponseImpl(int connectionId, const manko
 {
     BotInstance *bot = getBotByConnectionIdImpl(connectionId);
     if (!bot) return;
+
+    // A success says only "Command executed successfully": what the command did comes back as
+    // Baritone's own log lines. A failure says why.
+    if (response.success()) {
+        return;
+    }
 
     QString output = response.result();
 
@@ -4618,6 +4632,12 @@ void BotManager::sendOpenInventoryImpl(const QString &botName)
 void BotManager::sendRequestInventoryResync(const QString &botName)
 {
     instance().sendRequestInventoryResyncImpl(botName);
+}
+
+void BotManager::setConsoleLogging(bool moduleChanges, bool actionSuccess)
+{
+    instance().m_logModuleChanges = moduleChanges;
+    instance().m_logActionSuccess = actionSuccess;
 }
 
 void BotManager::sendRequestInventoryResyncImpl(const QString &botName)

@@ -576,6 +576,10 @@ public:
     static void sendOpenInventory(const QString &botName);
     static void sendRequestInventoryResync(const QString &botName);
 
+    // Whether bot consoles show Meteor module changes (the whole module, per change) and the
+    // script actions that succeeded. Failures show either way. From Global Settings > Console.
+    static void setConsoleLogging(bool moduleChanges, bool actionSuccess);
+
     // Screen widget interaction commands
     static void sendClickScreenWidget(const QString &botName, const QString &screenId, int widgetIndex, int button);
     static void sendClickScreenPosition(const QString &botName, const QString &screenId, double x, double y, int button);
@@ -774,6 +778,8 @@ private:
     QVector<BotInstance*> botInstances;
     QMap<QString, std::shared_ptr<WorldAutoSaver>> m_sharedWorldSavers;
     QSet<QString> silentMessageIds;
+    bool m_logModuleChanges = true;
+    bool m_logActionSuccess = true;
     PendingRequestMap<QList<bool>> m_pendingCanReachBlocks;
     PendingRequestMap<bool> m_pendingHoldAttackStatus;
     PendingRequestMap<bool> m_pendingHoldUseStatus;

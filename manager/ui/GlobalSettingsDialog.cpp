@@ -119,6 +119,18 @@ void GlobalSettingsDialog::setupUI()
                                                "Excess lines are dropped with a notice.");
         consoleLayout->addRow("Max Buffered Lines:", consolePendingLinesSpinBox);
 
+        logModuleChangesCheckBox = new QCheckBox("Log Meteor module changes", this);
+        logModuleChangesCheckBox->setToolTip("Each setting a script or this window changes is answered with the "
+                                             "whole module, written to the bot's console and the manager log. "
+                                             "A change that fails is always shown.");
+        consoleLayout->addRow(logModuleChangesCheckBox);
+
+        logActionSuccessCheckBox = new QCheckBox("Log successful script actions", this);
+        logActionSuccessCheckBox->setToolTip("Clicks, interactions and other actions that succeeded. One that "
+                                             "fails is always shown: it is the only place an action says why it "
+                                             "did nothing.");
+        consoleLayout->addRow(logActionSuccessCheckBox);
+
         layout->addWidget(consoleGroup);
         layout->addStretch();
         sa->setWidget(contents);
@@ -379,6 +391,8 @@ void GlobalSettingsDialog::loadSettings()
     }
 
     consolePendingLinesSpinBox->setValue(settings.value("Console/maxPendingLines", 500).toInt());
+    logModuleChangesCheckBox->setChecked(settings.value("Console/logModuleChanges", true).toBool());
+    logActionSuccessCheckBox->setChecked(settings.value("Console/logActionSuccess", true).toBool());
 
     bool loggingEnabled = settings.value("Logging/enabled", true).toBool();
     loggingEnabledCheckBox->setChecked(loggingEnabled);
@@ -443,6 +457,11 @@ void GlobalSettingsDialog::saveSettings()
             bot->consoleWidget->setRingCapacity(pendingLines);
         }
     }
+
+    LogManager::setMaxLines(maxLines);
+    settings.setValue("Console/logModuleChanges", logModuleChangesCheckBox->isChecked());
+    settings.setValue("Console/logActionSuccess", logActionSuccessCheckBox->isChecked());
+    BotManager::setConsoleLogging(logModuleChangesCheckBox->isChecked(), logActionSuccessCheckBox->isChecked());
 
     bool loggingEnabled = loggingEnabledCheckBox->isChecked();
     QString logDir = logDirEdit->text().trimmed();
