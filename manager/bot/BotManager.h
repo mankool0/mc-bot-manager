@@ -289,6 +289,7 @@ struct BotInstance : public BotConfig {
         std::optional<mankool::mcbot::protocol::BlockPos> position;
         QVector<mankool::mcbot::protocol::ItemStack> items;
         std::optional<bool> contentsLoaded;   // unset: a mod from before contents_loaded
+        std::optional<int> containerSize;     // unset: a mod from before container_size
 
         void clear() {
             isOpen = false;
@@ -297,6 +298,7 @@ struct BotInstance : public BotConfig {
             position.reset();
             items.clear();
             contentsLoaded.reset();
+            containerSize.reset();
         }
     } containerState;
 

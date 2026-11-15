@@ -3402,6 +3402,11 @@ void BotManager::handleContainerUpdateImpl(int connectionId, const mankool::mcbo
             } else {
                 bot->containerState.contentsLoaded.reset();
             }
+            if (containerUpdate.hasContainerSize()) {
+                bot->containerState.containerSize = static_cast<int>(containerUpdate.containerSize());
+            } else {
+                bot->containerState.containerSize.reset();
+            }
         } else {
             bot->containerState.clear();
         }

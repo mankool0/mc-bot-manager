@@ -1000,6 +1000,8 @@ PYBIND11_EMBEDDED_MODULE(world, m) {
                py::arg("bot_name") = "");
     def_state("get_container", &PythonAPI::getContainer,
               "Get current open container info (None if no container open). items lists filled slots only. "
+              "size is how many slots are the container's own (54 for a double chest), the player's 36 "
+              "coming after them. "
               "contents_loaded is True once the server's contents for the container have arrived: until then "
               "its own slots read empty while the player's show.",
               py::arg("bot_name") = "");

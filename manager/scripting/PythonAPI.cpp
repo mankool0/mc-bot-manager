@@ -3754,6 +3754,9 @@ py::object PythonAPI::getContainer(const std::string &bot)
         items.append(buildItemDict(item));
     }
     result["items"] = items;
+    if (botInstance->containerState.containerSize) {
+        result["size"] = *botInstance->containerState.containerSize;
+    }
     if (botInstance->containerState.contentsLoaded) {
         result["contents_loaded"] = *botInstance->containerState.contentsLoaded;
     }
