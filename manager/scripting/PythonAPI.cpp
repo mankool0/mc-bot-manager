@@ -98,7 +98,16 @@ QVariant PythonAPI::pyObjectToQVariant(const py::object &value)
     if (py::isinstance<py::bool_>(value)) {
         return value.cast<bool>();
     } else if (py::isinstance<py::int_>(value)) {
-        return value.cast<int>();
+        // Past 32 bits an int goes as a qlonglong, which is what a Long setting takes.
+        int overflow = 0;
+        const long long v = PyLong_AsLongLongAndOverflow(value.ptr(), &overflow);
+        if (overflow != 0) {
+            throw py::value_error("integer does not fit in 64 bits");
+        }
+        if (v >= std::numeric_limits<int>::min() && v <= std::numeric_limits<int>::max()) {
+            return static_cast<int>(v);
+        }
+        return QVariant(static_cast<qlonglong>(v));
     } else if (py::isinstance<py::float_>(value)) {
         return value.cast<double>();
     } else if (py::isinstance<py::str>(value)) {

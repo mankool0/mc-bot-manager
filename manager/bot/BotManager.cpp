@@ -2967,7 +2967,8 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
     chunk.chunkZ = chunkData.chunkZ();
     chunk.dimension = chunkData.dimension();
     chunk.minY = chunkData.minY();
-    chunk.maxY = chunkData.maxY();
+    // The mod sends getMaxY(), the highest block y (inclusive since 1.21.2); ChunkData's maxY is one past it
+    chunk.maxY = chunkData.maxY() + 1;
 
     // Convert sections
     for (const auto &sectionProto : chunkData.sections()) {
