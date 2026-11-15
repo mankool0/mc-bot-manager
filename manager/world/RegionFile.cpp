@@ -219,7 +219,18 @@ void RegionFile::markSectorsFree(uint32_t offset, size_t count) {
     }
 }
 
+std::vector<uint8_t> RegionFile::encodeChunk(const nbt::tag_compound& chunkNBT) {
+    return zlibCompress(serializeNBT(chunkNBT));
+}
+
 bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chunkNBT) {
+    if (readOnly || !isValid() || !headersLoaded) {
+        return false;
+    }
+    return writeEncodedChunk(localX, localZ, encodeChunk(chunkNBT));
+}
+
+bool RegionFile::writeEncodedChunk(int localX, int localZ, const std::vector<uint8_t>& compressed) {
     if (readOnly || !isValid() || !headersLoaded) {
         return false;
     }
@@ -237,12 +248,6 @@ bool RegionFile::writeChunk(int localX, int localZ, const nbt::tag_compound& chu
             markSectorsFree(oldOffset, oldSectorCount);
         }
     }
-
-    // Serialize NBT to bytes
-    std::vector<uint8_t> nbtData = serializeNBT(chunkNBT);
-
-    // Compress with zlib
-    std::vector<uint8_t> compressed = zlibCompress(nbtData);
 
     // Prepare chunk data with header:
     // 4 bytes: length (excluding this field)

@@ -108,6 +108,8 @@ private:
     ScriptsWidget *m_globalScriptsWidget = nullptr;
     BotConsoleWidget *m_globalConsole = nullptr;
     QTimer *m_columnComputeTimer = nullptr;
+    QSet<QString> m_dirtyRows;
+    QTimer *m_rowRefreshTimer = nullptr;
 
     QMap<QString, QDateTime> m_lastAccountRefreshTime;
     QMap<QString, QDateTime> m_lastBotLaunchTime;
@@ -121,6 +123,8 @@ private:
 
     void setupUI();
     void updateInstancesTable();
+    void updateInstanceRow(int row, const BotInstance &bot, const QStringList &customCols);
+    void refreshDirtyRows();
     void loadBotConfiguration(const BotInstance &bot);
     void updateStatusDisplay();
     void updateCapabilityUiFor(const BotInstance *bot);

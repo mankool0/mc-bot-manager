@@ -26,6 +26,10 @@ public:
 
     // localX, localZ must be in range [0, 31]
     bool writeChunk(int localX, int localZ, const nbt::tag_compound& chunkNBT);
+    // writeChunk in two halves: a chunk's NBT serialized and compressed, which touches no file
+    // and so runs on any thread, and those bytes written in, on the file's own thread.
+    static std::vector<uint8_t> encodeChunk(const nbt::tag_compound& chunkNBT);
+    bool writeEncodedChunk(int localX, int localZ, const std::vector<uint8_t>& compressed);
     // Frees the chunk's sectors for reuse; the file does not shrink.
     bool removeChunk(int localX, int localZ);
     nbt::tag_compound readChunk(int localX, int localZ);

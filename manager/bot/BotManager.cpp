@@ -2988,35 +2988,22 @@ void BotManager::handleChunkDataImpl(int connectionId, const mankool::mcbot::pro
             }
         }
 
-        // Copy indices (only if not uniform)
+        // Indices, biomes and light are the message's own lists, shared rather than copied
+        // element by element (only if not uniform)
         if (!section.uniform) {
-            for (uint32_t index : sectionProto.blockIndices()) {
-                section.blockIndices.append(index);
-            }
+            section.blockIndices = sectionProto.blockIndices();
         }
 
-        // Copy biome data
         section.biomeUniform = sectionProto.biomeUniform();
-        for (const auto& biomeId : sectionProto.biomePalette()) {
-            section.biomePalette.append(biomeId);
-        }
+        section.biomePalette = sectionProto.biomePalette();
         if (!section.biomeUniform) {
-            for (uint32_t idx : sectionProto.biomeIndices()) {
-                section.biomeIndices.append(idx);
-            }
+            section.biomeIndices = sectionProto.biomeIndices();
         }
 
-        // Copy light data
-        const auto& bl = sectionProto.blockLight();
-        if (!bl.isEmpty()) {
-            section.blockLight = QByteArray(bl.data(), bl.size());
-        }
-        const auto& sl = sectionProto.skyLight();
-        if (!sl.isEmpty()) {
-            section.skyLight = QByteArray(sl.data(), sl.size());
-        }
+        section.blockLight = sectionProto.blockLight();
+        section.skyLight = sectionProto.skyLight();
 
-        chunk.sections[section.sectionY] = section;
+        chunk.sections[section.sectionY] = std::move(section);
     }
 
     // Load chunk into world data (with write lock), also parse and store block entities

@@ -347,6 +347,58 @@ target_include_directories(section_bench PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
 )
 
+# Checks and timing for network/ChunkWireDecoder against QProtobufSerializer. Not part of the
+# default build: cmake --build <build dir> --target chunk_decode_bench
+add_executable(chunk_decode_bench EXCLUDE_FROM_ALL
+    bench/ChunkDecodeBench.cpp
+    network/ChunkWireDecoder.cpp
+)
+target_link_libraries(chunk_decode_bench PRIVATE
+    Qt6::Core
+    Qt6::Protobuf
+    mc-bot-manager-proto
+)
+target_compile_options(chunk_decode_bench PRIVATE ${PROJECT_WARNING_FLAGS})
+target_include_directories(chunk_decode_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
+
+# The whole manager, its GUI thread driven by fake clients over the real pipe. Not part of the
+# default build: cmake --build <build dir> --target gui_thread_bench (run it as its header says)
+qt_add_executable(gui_thread_bench
+    bench/GuiThreadBench.cpp
+    ${PROJECT_SOURCES}
+    pythonlibs.qrc
+    icons.qrc
+    "${MONACO_QRC}"
+    "${EDITOR_QRC}"
+    "${STUBS_QRC}"
+)
+set_target_properties(gui_thread_bench PROPERTIES EXCLUDE_FROM_ALL TRUE)
+add_dependencies(gui_thread_bench generate_stubs)
+target_link_libraries(gui_thread_bench PRIVATE
+    Qt6::Widgets
+    Qt6::Network
+    Qt6::Protobuf
+    Qt6::Concurrent
+    Qt6::WebEngineWidgets
+    Qt6::OpenGLWidgets
+    mc-bot-manager-proto
+    pybind11::embed
+    Python3::Python
+    nbt++
+)
+target_compile_options(gui_thread_bench PRIVATE ${PROJECT_WARNING_FLAGS})
+target_include_directories(gui_thread_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+    ${CMAKE_CURRENT_BINARY_DIR}/_deps/libnbtplusplus-src/include
+)
+set_source_files_properties(bench/GuiThreadBench.cpp PROPERTIES
+    COMPILE_DEFINITIONS APP_VERSION="${PROJECT_VERSION}"
+)
+
 # Prism hook shared library
 FetchContent_Declare(
     prismlauncher

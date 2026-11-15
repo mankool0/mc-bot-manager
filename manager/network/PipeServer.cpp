@@ -1,4 +1,5 @@
 #include "PipeServer.h"
+#include "ChunkWireDecoder.h"
 #include "logging/LogManager.h"
 #include "bot/BotManager.h"
 #include "protocol.qpb.h"
@@ -182,6 +183,12 @@ void PipeServer::handleClientData()
 
 bool PipeServer::processMessage(int connectionId, const QByteArray &data)
 {
+    // Most of what bots send, and the serializer's slowest message: read off the wire instead.
+    if (std::optional<mankool::mcbot::protocol::ChunkDataMessage> chunk = ChunkWireDecoder::decode(data)) {
+        BotManager::handleChunkData(connectionId, *chunk);
+        return true;
+    }
+
     QProtobufSerializer serializer;
 
     mankool::mcbot::protocol::ClientToManagerMessage clientMsg;

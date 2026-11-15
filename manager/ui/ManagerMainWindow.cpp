@@ -421,9 +421,16 @@ void ManagerMainWindow::setupUI()
             this, [this](const QString &) { updateInstancesTable(); });
     connect(&BotManager::instance(), &BotManager::botRemoved,
             this, [this](const QString &) { updateInstancesTable(); });
+    m_rowRefreshTimer = new QTimer(this);
+    m_rowRefreshTimer->setSingleShot(true);
+    m_rowRefreshTimer->setInterval(250);
+    connect(m_rowRefreshTimer, &QTimer::timeout, this, &ManagerMainWindow::refreshDirtyRows);
     connect(&BotManager::instance(), &BotManager::botUpdated,
             this, [this](const QString &name) {
-                updateInstancesTable();
+                m_dirtyRows.insert(name);
+                if (!m_rowRefreshTimer->isActive()) {
+                    m_rowRefreshTimer->start();
+                }
                 // botUpdated also fires on every player state message; the
                 // buttons only need a redraw when the status actually moved.
                 const BotInstance *bot = name == selectedBotName ? BotManager::getBotByName(name) : nullptr;
@@ -646,147 +653,166 @@ void ManagerMainWindow::updateInstancesTable()
     const QStringList customCols = CustomColumnManager::instance().columnNames();
 
     for (int i = 0; i < bots.size(); ++i) {
-        const BotInstance &bot = *bots[i];
-
-        // Name column (0)
-        QTableWidgetItem *nameItem = ui->instancesTableWidget->item(i, 0);
-        if (!nameItem) {
-            nameItem = new QTableWidgetItem();
-            nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 0, nameItem);
-        }
-        nameItem->setText(bot.name);
-
-        // Status column (1)
-        QTableWidgetItem *statusItem = ui->instancesTableWidget->item(i, 1);
-        if (!statusItem) {
-            statusItem = new QTableWidgetItem();
-            statusItem->setFlags(statusItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 1, statusItem);
-        }
-        QString statusText = statusToString(bot.status);
-        if (bot.status == BotStatus::Starting) {
-            if (int queuePos = PrismLauncherManager::launchQueuePosition(bot.name); queuePos > 0) {
-                statusText = QString("Queued #%1").arg(queuePos);
-            }
-        }
-        statusItem->setText(QString("● %1").arg(statusText));
-
-        QColor statusColor;
-        if (bot.status == BotStatus::Online) {
-            statusColor = AppColors::statusOnline();
-        } else if (bot.status == BotStatus::Offline) {
-            statusColor = AppColors::statusOffline();
-        } else if (bot.status == BotStatus::Error) {
-            statusColor = AppColors::statusError();
-        } else {
-            statusColor = AppColors::statusOther();
-        }
-        if (statusItem->foreground().color() != statusColor) {
-            statusItem->setForeground(statusColor);
-        }
-
-        // Instance column (2)
-        QTableWidgetItem *instanceItem = ui->instancesTableWidget->item(i, 2);
-        if (!instanceItem) {
-            instanceItem = new QTableWidgetItem();
-            instanceItem->setFlags(instanceItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 2, instanceItem);
-        }
-        instanceItem->setText(bot.instance);
-
-        // Server column (3)
-        QTableWidgetItem *serverItem = ui->instancesTableWidget->item(i, 3);
-        if (!serverItem) {
-            serverItem = new QTableWidgetItem();
-            serverItem->setFlags(serverItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 3, serverItem);
-        }
-        serverItem->setText(bot.server);
-
-        // Memory column (4)
-        QTableWidgetItem *memoryItem = ui->instancesTableWidget->item(i, 4);
-        if (!memoryItem) {
-            memoryItem = new QTableWidgetItem();
-            memoryItem->setFlags(memoryItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 4, memoryItem);
-        }
-        QString memoryText = bot.status == BotStatus::Online
-            ? QString("%1/%2 MB").arg(bot.currentMemory).arg(bot.maxMemory)
-            : QString("-/%1 MB").arg(bot.maxMemory);
-        memoryItem->setText(memoryText);
-
-        // Position column (5)
-        QTableWidgetItem *positionItem = ui->instancesTableWidget->item(i, 5);
-        if (!positionItem) {
-            positionItem = new QTableWidgetItem();
-            positionItem->setFlags(positionItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 5, positionItem);
-        }
-        QString posText = bot.status == BotStatus::Online
-            ? QString("%1, %2, %3")
-                .arg(bot.position.x(), 0, 'f', 1)
-                .arg(bot.position.y(), 0, 'f', 1)
-                .arg(bot.position.z(), 0, 'f', 1)
-            : "-";
-        positionItem->setText(posText);
-
-        // Dimension column (6)
-        QTableWidgetItem *dimensionItem = ui->instancesTableWidget->item(i, 6);
-        if (!dimensionItem) {
-            dimensionItem = new QTableWidgetItem();
-            dimensionItem->setFlags(dimensionItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 6, dimensionItem);
-        }
-        dimensionItem->setText(bot.dimension.isEmpty() ? "-" : bot.dimension);
-
-        // Screen column (7)
-        QTableWidgetItem *screenItem = ui->instancesTableWidget->item(i, 7);
-        if (!screenItem) {
-            screenItem = new QTableWidgetItem();
-            screenItem->setFlags(screenItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 7, screenItem);
-        }
-        QString screenText;
-        if (bot.status != BotStatus::Online) {
-            screenText = "-";
-        } else if (bot.screenState.screenClass.isEmpty()) {
-            screenText = "Game";
-        } else {
-            screenText = bot.screenState.screenClass;
-        }
-        screenItem->setText(screenText);
-
-        // PID column (8)
-        QTableWidgetItem *pidItem = ui->instancesTableWidget->item(i, 8);
-        if (!pidItem) {
-            pidItem = new QTableWidgetItem();
-            pidItem->setFlags(pidItem->flags() & ~Qt::ItemIsEditable);
-            ui->instancesTableWidget->setItem(i, 8, pidItem);
-        }
-        QString pidText = bot.minecraftPid > 0 ? QString::number(bot.minecraftPid) : "-";
-        pidItem->setText(pidText);
-
-        // Custom columns after the fixed ones, values computed by global scripts.
-        for (int j = 0; j < customCols.size(); ++j) {
-            int col = kFixedColumnCount + j;
-            if (col >= ui->instancesTableWidget->columnCount())
-                break;
-            QTableWidgetItem *customItem = ui->instancesTableWidget->item(i, col);
-            if (!customItem) {
-                customItem = new QTableWidgetItem();
-                customItem->setFlags(customItem->flags() & ~Qt::ItemIsEditable);
-                ui->instancesTableWidget->setItem(i, col, customItem);
-            }
-            customItem->setText(bot.customColumns.value(customCols[j], "-"));
-        }
+        updateInstanceRow(i, *bots[i], customCols);
     }
-
+    m_dirtyRows.clear();
 
     // Update status display if the selected bot's state changed
     if (!selectedBotName.isEmpty()) {
         updateStatusDisplay();
     }
+}
+
+void ManagerMainWindow::updateInstanceRow(int row, const BotInstance &bot, const QStringList &customCols)
+{
+    // Name column (0)
+    QTableWidgetItem *nameItem = ui->instancesTableWidget->item(row, 0);
+    if (!nameItem) {
+        nameItem = new QTableWidgetItem();
+        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 0, nameItem);
+    }
+    nameItem->setText(bot.name);
+
+    // Status column (1)
+    QTableWidgetItem *statusItem = ui->instancesTableWidget->item(row, 1);
+    if (!statusItem) {
+        statusItem = new QTableWidgetItem();
+        statusItem->setFlags(statusItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 1, statusItem);
+    }
+    QString statusText = statusToString(bot.status);
+    if (bot.status == BotStatus::Starting) {
+        if (int queuePos = PrismLauncherManager::launchQueuePosition(bot.name); queuePos > 0) {
+            statusText = QString("Queued #%1").arg(queuePos);
+        }
+    }
+    statusItem->setText(QString("● %1").arg(statusText));
+
+    QColor statusColor;
+    if (bot.status == BotStatus::Online) {
+        statusColor = AppColors::statusOnline();
+    } else if (bot.status == BotStatus::Offline) {
+        statusColor = AppColors::statusOffline();
+    } else if (bot.status == BotStatus::Error) {
+        statusColor = AppColors::statusError();
+    } else {
+        statusColor = AppColors::statusOther();
+    }
+    if (statusItem->foreground().color() != statusColor) {
+        statusItem->setForeground(statusColor);
+    }
+
+    // Instance column (2)
+    QTableWidgetItem *instanceItem = ui->instancesTableWidget->item(row, 2);
+    if (!instanceItem) {
+        instanceItem = new QTableWidgetItem();
+        instanceItem->setFlags(instanceItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 2, instanceItem);
+    }
+    instanceItem->setText(bot.instance);
+
+    // Server column (3)
+    QTableWidgetItem *serverItem = ui->instancesTableWidget->item(row, 3);
+    if (!serverItem) {
+        serverItem = new QTableWidgetItem();
+        serverItem->setFlags(serverItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 3, serverItem);
+    }
+    serverItem->setText(bot.server);
+
+    // Memory column (4)
+    QTableWidgetItem *memoryItem = ui->instancesTableWidget->item(row, 4);
+    if (!memoryItem) {
+        memoryItem = new QTableWidgetItem();
+        memoryItem->setFlags(memoryItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 4, memoryItem);
+    }
+    QString memoryText = bot.status == BotStatus::Online
+        ? QString("%1/%2 MB").arg(bot.currentMemory).arg(bot.maxMemory)
+        : QString("-/%1 MB").arg(bot.maxMemory);
+    memoryItem->setText(memoryText);
+
+    // Position column (5)
+    QTableWidgetItem *positionItem = ui->instancesTableWidget->item(row, 5);
+    if (!positionItem) {
+        positionItem = new QTableWidgetItem();
+        positionItem->setFlags(positionItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 5, positionItem);
+    }
+    QString posText = bot.status == BotStatus::Online
+        ? QString("%1, %2, %3")
+            .arg(bot.position.x(), 0, 'f', 1)
+            .arg(bot.position.y(), 0, 'f', 1)
+            .arg(bot.position.z(), 0, 'f', 1)
+        : "-";
+    positionItem->setText(posText);
+
+    // Dimension column (6)
+    QTableWidgetItem *dimensionItem = ui->instancesTableWidget->item(row, 6);
+    if (!dimensionItem) {
+        dimensionItem = new QTableWidgetItem();
+        dimensionItem->setFlags(dimensionItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 6, dimensionItem);
+    }
+    dimensionItem->setText(bot.dimension.isEmpty() ? "-" : bot.dimension);
+
+    // Screen column (7)
+    QTableWidgetItem *screenItem = ui->instancesTableWidget->item(row, 7);
+    if (!screenItem) {
+        screenItem = new QTableWidgetItem();
+        screenItem->setFlags(screenItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 7, screenItem);
+    }
+    QString screenText;
+    if (bot.status != BotStatus::Online) {
+        screenText = "-";
+    } else if (bot.screenState.screenClass.isEmpty()) {
+        screenText = "Game";
+    } else {
+        screenText = bot.screenState.screenClass;
+    }
+    screenItem->setText(screenText);
+
+    // PID column (8)
+    QTableWidgetItem *pidItem = ui->instancesTableWidget->item(row, 8);
+    if (!pidItem) {
+        pidItem = new QTableWidgetItem();
+        pidItem->setFlags(pidItem->flags() & ~Qt::ItemIsEditable);
+        ui->instancesTableWidget->setItem(row, 8, pidItem);
+    }
+    QString pidText = bot.minecraftPid > 0 ? QString::number(bot.minecraftPid) : "-";
+    pidItem->setText(pidText);
+
+    // Custom columns after the fixed ones, values computed by global scripts.
+    for (int j = 0; j < customCols.size(); ++j) {
+        int col = kFixedColumnCount + j;
+        if (col >= ui->instancesTableWidget->columnCount())
+            break;
+        QTableWidgetItem *customItem = ui->instancesTableWidget->item(row, col);
+        if (!customItem) {
+            customItem = new QTableWidgetItem();
+            customItem->setFlags(customItem->flags() & ~Qt::ItemIsEditable);
+            ui->instancesTableWidget->setItem(row, col, customItem);
+        }
+        customItem->setText(bot.customColumns.value(customCols[j], "-"));
+    }
+}
+
+void ManagerMainWindow::refreshDirtyRows()
+{
+    const QVector<BotInstance*> &bots = BotManager::getBots();
+    if (ui->instancesTableWidget->rowCount() != bots.size()) {
+        updateInstancesTable();
+        return;
+    }
+    const QStringList customCols = CustomColumnManager::instance().columnNames();
+    for (int i = 0; i < bots.size(); ++i) {
+        if (m_dirtyRows.contains(bots[i]->name)) {
+            updateInstanceRow(i, *bots[i], customCols);
+        }
+    }
+    m_dirtyRows.clear();
 }
 
 void ManagerMainWindow::onHeaderContextMenu(const QPoint &pos)
